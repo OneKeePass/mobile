@@ -1,0 +1,61 @@
+{:linters
+ {:unused-namespace {:exclude [".*@rnp/.*" "react-native-gesture-handler" "react-native-vector-icons"]}
+  :unresolved-symbol {:exclude [ActivityIndicator
+                                Button
+                                SafeAreaView
+                                FlatList
+                                KeyboardAvoidingView
+                                Pressable
+                                TouchableWithoutFeedback
+                                TouchableHighlight
+                                ScrollView
+                                SectionList
+                                View
+                                Modal
+                                StatusBar
+                                TextInput
+                                Text
+
+
+
+                                Button
+                                BottomNavigation
+                                Checkbox
+                                Checkbox.Item
+                                Chip
+                                Divider
+                                Dialog
+                                Dialog.Title
+                                Dialog.Icon
+                                Dialog.Content
+                                Dialog.Actions
+                                FAB
+                                HelperText
+                                IconButton
+                                List.Section
+                                List.Item
+                                List.Icon
+                                List.Subheader
+                                Menu
+                                Modal
+                                Portal
+                                Provider
+                                Paragraph
+                                ProgressBar
+                                Snackbar
+                                Searchbar
+                                Switch
+                                TextInput
+                                Text
+                                TouchableRipple
+
+                                GestureHandlerRootView
+                                rnp-dialog]}
+
+  :unresolved-var {:exclude [onekeepass.mobile.rn-components]}
+  
+  ;;:config-in-ns {onekeepass.mobile.background {:linters {:unresolved-symbol {:level :off}}}}
+  ;;Following is not working 
+  ;; :unused-import {:exclude [camel-snake-kebab.core]}
+  }
+ :skip-comments true}

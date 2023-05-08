@@ -1,0 +1,57 @@
+namespace db_service {
+    void db_service_enable_logging();
+    void db_service_initialize(CommonDeviceService common_device_service);
+ 
+    ApiResponse read_kdbx(FileArgs file_args, string json_args);
+    ApiResponse create_kdbx(FileArgs file_args, string json_args);
+    ApiResponse create_temp_kdbx(FileArgs file_args, string json_args);
+    ApiResponse save_kdbx(FileArgs file_args);
+
+    string extract_file_provider(string full_file_name_uri);
+ 
+    string invoke_command(string command_name, string args);
+};
+
+callback interface CommonDeviceService {
+    string app_home_dir();
+    string? uri_to_file_name(string full_file_name_uri);
+    FileInfo? uri_to_file_info(string full_file_name_uri);
+};
+
+dictionary FileInfo {
+    string? file_name;
+    i64? file_size;
+    i64? last_modified;
+    string? location;
+};
+
+dictionary KdbxCreated {
+    sequence<u8> buffer;
+    string api_response;
+};
+
+interface IosSupportService {
+    constructor();
+    boolean save_book_mark_data(string url,sequence<u8> data);
+    sequence<u8> load_book_mark_data(string url);
+};
+
+interface JsonService {
+    constructor();
+    string form_with_file_name(string full_file_name_uri);
+};
+
+
+[Enum]
+interface FileArgs {
+    FileDecriptor(u64 fd);
+    FileDecriptorWithFullFileName(u64 fd,string full_file_name,string file_name);
+    FullFileName(string full_file_name);
+    FileNameWithDir(string dir_path,string file_name);
+};
+
+[Enum]
+interface ApiResponse {
+    Success(string result);
+    Failure(string result);
+};

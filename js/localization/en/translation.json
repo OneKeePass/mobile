@@ -1,0 +1,101 @@
+{
+    "_comment": "src/localization/en/translation.json",
+    "demoScope": {
+        "title": "i18next is Great!",
+        "description": "Everyone understands me!"
+    },
+    "databases":"Databases",
+    "databaseFile":"Database File",
+    "description":"Description",
+    "name":"Name",
+    "notes":"Notes",
+    "categoryMarked":"Marked as category",
+    "masterPassword":"Master Password",
+    "dialog": {
+        "titles": {
+            "historyDelete": "Delete history entry",
+            "historyDeleteAll": "Delete all histrory entries",
+            "deleteEntry":"Delete Entry",
+            "deleteGroup":"Delete Group/Category",
+            "deleteAllEntriesPermanet": "Delete entries permanent",
+            "fileInfo":"File Info",
+            "openDatabase":"Open database",
+            "newDatabase":"New database",
+            "remove":"Remove"
+        },
+        "texts": {
+            "historyDelete": "Are you sure you want to delete this history entry permanently?",
+            "historyDeleteAll":"Are you sure you want to delete all history entries permanently?",
+            "deleteEntry": "The entry will be deleted and put in the trash",
+            "deleteGroup": "The group or category and its content will be deleted and put in the trash",
+            "deleteAllEntriesPermanet":"Are you sure you want to delete all entries permanently?",
+            "remove":"All references to the database by the app will be removed. The original database is not deleted and can be opened later"
+        }
+    },
+    "modal.messages":{
+        
+    },
+
+    "snackbar.messages":{
+        "historiesDeleted":"History entries deleted"
+    },
+
+    "page.titles": {
+        "category": "Category",
+        "entry": "Entry",
+        "generator": "Generator",
+        "group": "Group",
+        "home": "OneKeePass",
+        "icons": "Icons",
+        "histories": "Histories",
+        "historyEntry": "History Entry",
+        "historyEntries": "History Entries",
+        "newCategory": "New Category",
+        "newGroup": "New Group",
+        "search": "Search",
+        "settings": "Settings"
+    },
+    "button.labels": {
+        "close": "Close",
+        "cancel": "Cancel",
+        "continue": "Continue",
+        "create":"Create",
+        "edit": "Edit",
+        "newdb": "New Database",
+        "no": "No",
+        "ok": "Ok",
+        "opendb": "Open Database",
+        "select": "Select",
+        "save": "Save",
+        "yes": "Yes"
+        
+    },
+    "menu.labels": {
+        "addEntry": "Add Entry",
+        "addGroup": "Add Group",
+        "addCategory": "Add Category",
+        "addCustomField": "Add Custom Field",
+        "categories": "Categories",
+        "changename": "Change Name",
+        "closedb": "Close Database",
+        "deleteAll": "Delete All",
+        "delete": "Delete",
+        "deleteField": "Delete Field",
+        "deletePermanently": "Delete Permanently",
+        "edit": "Edit",
+        "fileinfo": "File Info",
+        "favorite": "Favorite",
+        "favorites": "Favorites",
+        "exportTo":"Export To",
+        "groups": "Groups",
+        "home": "Home",
+        "history": "History",
+        "modifyCustomField": "Modify Custom Field",
+        "pwdGenerator": "Password Generator",
+        "putback": "Put Back",
+        "remove": "Remove",
+        "restore": "Restore",
+        "settings": "Settings",
+        "types": "Types"
+    }
+}

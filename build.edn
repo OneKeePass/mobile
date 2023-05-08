@@ -1,0 +1,3 @@
+{:main onekeepass.mobile.core
+ :output-to "target/main.js"
+ :output-dir "target"}

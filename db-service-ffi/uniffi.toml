@@ -1,0 +1,9 @@
+[bindings.kotlin]
+package_name = "onekeepass.mobile.ffi"
+## This name should be the same that is used in 'findLibraryName' method of generated code
+cdylib_name = "db_service_ffi"
+
+[bindings.swift]
+cdylib_name = "db_service_ffi"
+generate_module_map = false
+omit_argument_labels = true

@@ -1,0 +1,35 @@
+{
+	"folders": [
+		{
+			"path": "./src"
+		},
+		{
+			"path": "./js"
+		}
+	],
+	"settings": {
+
+		"rust-analyzer.diagnostics.disabled":["unresolved-proc-macro"],
+
+		"editor.semanticTokenColorCustomizations": {
+	        "enabled": true,
+	        	"rules": {
+	            	"*.mutable": {
+	                	"underline": false,
+	            }
+	        }
+		},
+
+		"calva.replConnectSequences": [
+			{
+				"name": "deps.edn + Krell",
+				"projectType": "deps.edn",
+				"cljsType": {
+					"connectCode": "(require '[clojure.edn :as edn] \n    '[clojure.java.io :as io]\n    '[cider.piggieback] \n    '[krell.api :as krell]\n    '[krell.repl])\n\n(def config (edn/read-string (slurp (io/file \"build.edn\"))))\n(apply cider.piggieback/cljs-repl (krell.repl/repl-env) (mapcat identity config))",
+					"dependsOn": "User provided"
+				}
+			}
+		]
+	
+    }
+}

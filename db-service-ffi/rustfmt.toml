@@ -1,0 +1,2 @@
+## Make it false to avoid formatting error in the generated code which prevents the build
+disable_all_formatting = false
