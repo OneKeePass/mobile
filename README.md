@@ -51,9 +51,5 @@ To build and run on a simulator/emulator locally, please follow the instructions
 The CONTRIBUTING document and other guidelines for code contributions are not yet ready. Till that time, please feel free to::
 - [Report bugs, suggest new features](https://github.com/OneKeePass/mobile/issues)
 
-## How to Contribute
-The CONTRIBUTING document and other guidelines for code contributions are not yet ready. Till that time, please feel free to::
-- [Report bugs, suggest new features](https://github.com/OneKeePass/mobile/issues)
-
 ## License
 This project is licensed under the GPLv3.
