@@ -39,6 +39,18 @@ OneKeePass is also available for **Windows, macOS and Linux desktops**.
 - [ ] Multi-language support
 - [ ] Support YubiKey 
 
+## How to build
+
+OneKeePass mobile application is developed primarily using the **ClojureScript** and **Rust** programming languages. Swift and Kotlin are used for the native modules development that interact with Rust core api lib.
+
+The apps are built with - [React Native](https://reactnative.dev/),[React Native Paper](https://reactnativepaper.com/) and many other well known react native packages 
+
+To build and run on a simulator/emulator locally, please follow the instructions [here](BUILD.md) for both iOS and Android platforms
+
+## How to Contribute
+The CONTRIBUTING document and other guidelines for code contributions are not yet ready. Till that time, please feel free to::
+- [Report bugs, suggest new features](https://github.com/OneKeePass/mobile/issues)
+
 ## How to Contribute
 The CONTRIBUTING document and other guidelines for code contributions are not yet ready. Till that time, please feel free to::
 - [Report bugs, suggest new features](https://github.com/OneKeePass/mobile/issues)
