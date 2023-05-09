@@ -11,10 +11,10 @@ All created database files are encrypted using the best and most secure encrypti
 
 You can install OneKeePass for Android from Google Play store and OneKeePass for iOS from Apple app store
 
-<a href="" target="_blank"><img alt="Get it on App Store" src="https://imgur.com/GdGqPMY.png" width="135" height="40"></a>
-<a href="" target="_blank"><img alt="Get it on Google Play" src="https://imgur.com/YQzmZi9.png" width="153" height="46"></a> 
+<a href="" target="_blank"><img alt="Get it on App Store" src="https://imgur.com/GdGqPMY.png" width="153" height="46"></a>
+<a href="https://play.google.com/store/apps/details?id=com.onekeepassmobile" target="_blank"><img alt="Get it on Google Play" src="https://imgur.com/YQzmZi9.png" width="153" height="46"></a> 
 
-| iPhone  | Android |
+| iOS  | Android |
 | ------------- | ------------- |
 | <img src="./screenshots/i_entrytypescat.png" alt="" width="325" height="650" /> | <img src="./screenshots/a_entrytypescat.png" alt="" width="300" height="650" />|
 
