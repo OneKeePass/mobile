@@ -18,8 +18,9 @@ You can install OneKeePass for Android from Google Play store and OneKeePass for
 | ------------- | ------------- |
 | <img src="./screenshots/i_entrytypescat.png" alt="" width="325" height="650" /> | <img src="./screenshots/a_entrytypescat.png" alt="" width="300" height="650" />|
 
+<br>
 
-OneKeePass is also available for **Windows, macOS and Linux desktops**.
+OneKeePass is also available for **Windows, macOS and Linux desktops** can be downloaded from [here](https://github.com/OneKeePass/desktop/releases)
 
 ## Features
 - Modern UI
@@ -39,13 +40,16 @@ OneKeePass is also available for **Windows, macOS and Linux desktops**.
 - [ ] Multi-language support
 - [ ] Support YubiKey 
 
+## FAQ
+Common FAQ about the application can be found [here](./docs/FAQ.md)
+
 ## How to build
 
 OneKeePass mobile application is developed primarily using the **ClojureScript** and **Rust** programming languages. Swift and Kotlin are used for the native modules development that interact with Rust core api lib.
 
 The apps are built with - [React Native](https://reactnative.dev/),[React Native Paper](https://reactnativepaper.com/) and many other well known react native packages 
 
-To build and run on a simulator/emulator locally, please follow the instructions [here](BUILD.md) for both iOS and Android platforms
+To build and run on a simulator/emulator locally, please follow the instructions [here](./docs/BUILD.md) for both iOS and Android platforms
 
 ## How to Contribute
 The CONTRIBUTING document and other guidelines for code contributions are not yet ready. Till that time, please feel free to::
