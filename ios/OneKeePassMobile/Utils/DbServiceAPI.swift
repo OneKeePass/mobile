@@ -17,6 +17,9 @@ class DbServiceAPI {
 
   static func initialize() {
     if !initialized {
+      Swift.debugPrint("Calling dbServiceEnableLogging...")
+      dbServiceEnableLogging()
+      Swift.debugPrint("dbServiceEnableLogging call is done")
       let cmnService = CommonDeviceServiceImpl()
       dbServiceInitialize(cmnService)
       initialized = true
@@ -54,6 +57,11 @@ class DbServiceAPI {
     let fileArgs = FileArgs.fullFileName(fullFileName: fullFileName)
     return OneKeePassMobile.saveKdbx(fileArgs)
   }
+  
+  static func writeToBackup(_ fullFileName: String) -> ApiResponse {
+    return OneKeePassMobile.writeToBackup(fullFileName)
+  }
+  
 }
 
 class CommonDeviceServiceImpl: CommonDeviceService {

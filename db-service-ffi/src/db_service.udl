@@ -6,7 +6,10 @@ namespace db_service {
     ApiResponse create_kdbx(FileArgs file_args, string json_args);
     ApiResponse create_temp_kdbx(FileArgs file_args, string json_args);
     ApiResponse save_kdbx(FileArgs file_args);
-
+    ApiResponse verify_db_file_checksum(FileArgs file_args);
+    // ApiResponse verify_and_save_kdbx(FileArgs file_args);
+    ApiResponse write_to_backup(string full_file_name_uri);
+    
     string extract_file_provider(string full_file_name_uri);
  
     string invoke_command(string command_name, string args);
@@ -46,6 +49,7 @@ interface JsonService {
 interface FileArgs {
     FileDecriptor(u64 fd);
     FileDecriptorWithFullFileName(u64 fd,string full_file_name,string file_name);
+    // ReadWriteFDsWithFullFileName(u64 read_fd,u64 write_fd,string full_file_name,string file_name);
     FullFileName(string full_file_name);
     FileNameWithDir(string dir_path,string file_name);
 };

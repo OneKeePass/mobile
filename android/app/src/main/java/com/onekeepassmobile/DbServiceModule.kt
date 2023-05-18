@@ -130,9 +130,46 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
         }
     }
 
+    fun verifyDbFileChanged(fullFileNameUri: String, promise: Promise): Boolean {
+        val uri = Uri.parse(fullFileNameUri);
+        try {
+            val fd: ParcelFileDescriptor? = contentResolver.openFileDescriptor(uri, "r");
+            if (fd != null) {
+                return when (val response = DbServiceAPI.verifyDbFileChecksum(fd.detachFd().toULong(), fullFileNameUri)) {
+                    is ApiResponse.Success -> {
+                        //Log.d(TAG, "File created using fd with SUCCESS response ${response.result}")
+                        // promise.resolve(response.result)
+                        false // no promise call done
+                    }
+                    is ApiResponse.Failure -> {
+                        //Log.d(TAG, "File created using fd with FAILURE response $response.result")
+                        promise.resolve(response.result)
+                        true // resolved
+                    }
+                }
+                return false // no promise call done
+            } else {
+                // Do we need to ask the user select the kdbx again to read ?
+                promise.reject(E_SAVE_FIE_DESCRIPTOR_ERROR, "Invalid file descriptor")
+                return true // resolved
+            }
+        } catch (e: Exception) {
+            // e.printStackTrace()
+            Log.e(TAG, "Error in verifyDbFileChanged ${e}")
+            promise.reject("Verification Failed", e)
+            return true // resolved
+        }
+    }
+
     @ReactMethod
     fun saveKdbx(fullFileNameUri: String, promise: Promise) {
         executorService.execute {
+            if (verifyDbFileChanged(fullFileNameUri,promise)) {
+                Log.d(TAG,"Db contents have changed and saving is not done")
+                //TODO: Store the db file with changed data to backup for later offline use
+                return@execute
+            }
+            Log.d(TAG,"Db contents have not changed and continuing with saving")
             val uri = Uri.parse(fullFileNameUri);
             try {
                 // Here it is assumed the fileNameUri starts with content:// for which there will be
@@ -166,15 +203,18 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
                 // This will happen, if we try to read the kdbx file without proper permissions
                 // We need to obtain while selecting the file.
                 Log.e(TAG, "SecurityException due to in sufficient permission")
+                //TODO: Store the db file with changed data to backup for later offline use
                 promise.reject(E_PERMISSION_REQUIRED_TO_WRITE, e)
             } catch (e: FileNotFoundException) {
                 // e.printStackTrace()
                 // Need to add logic in UI layer to handle this
                 Log.e(TAG, "Error in saveKdbx ${e}")
+                //TODO: Store the db file with changed data to backup for later offline use
                 promise.reject(E_FILE_NOT_FOUND, e)
             } catch (e: Exception) {
                 // e.printStackTrace()
                 Log.e(TAG, "Error in saveKdbx ${e}")
+                //TODO: Store the db file with changed data to backup for later offline use
                 promise.reject(E_SAVE_CALL_FAILED, e)
             }
         }

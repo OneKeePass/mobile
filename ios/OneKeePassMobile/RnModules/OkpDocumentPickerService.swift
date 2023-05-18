@@ -85,11 +85,18 @@ class OkpDocumentPickerService: NSObject, UIDocumentPickerDelegate {
     }
   }
   
-  // Not used currently
+  
+  /// ---------------------------------------------------------------------------------------------
+  // Leaving it here in case we need to use this if the current way of doing stuff fails
+  
+  // *** Not used currently ***
+  //See pickAndSaveNewKdbxFile
+  
   // Used to create a new kdbx file followed by createKdbx call
   // This worked fine for Local,iCloud and Dropbox. It did not work with GDrive
   // In case of OneDrive, empty file is created.
   // We need to call saveKdbx (e.g by adding a new entry or changing db name etc) for the newly created db to be written
+  @available(*, deprecated, message: "See pickAndSaveNewKdbxFile")
   @objc
   func pickKdbxFileToCreate(_ fileName: String, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
     logger.debug("pickKdbxFileToCreate is called for the fileName \(fileName)")
@@ -123,9 +130,9 @@ class OkpDocumentPickerService: NSObject, UIDocumentPickerDelegate {
     }
   }
   
+  // *** Not used currently ***
   // Picking dir works for File App folder and iCloud.
   // All other drives - Dropbox,OneDrive and GDrive are grayed out on device and not used
-  // Not used at this time
   @objc
   func pickDirectory(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
     DispatchQueue.main.async {
@@ -137,6 +144,8 @@ class OkpDocumentPickerService: NSObject, UIDocumentPickerDelegate {
       controller?.present(documentPicker, animated: true, completion: nil)
     }
   }
+  
+  /// ---------------------------------------------------------------------------------------------
   
   // Default delegate. Used in pickKdbxFileToCreate call
   func documentPicker(_: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
@@ -207,6 +216,7 @@ class ReadFilePickDelegate: NSObject, UIDocumentPickerDelegate {
         let b = DbServiceAPI.iosSupportService().saveBookMarkData(saved_file_url.absoluteString, byteArray)
         logger.debug("Bookmark save rust api call result is \(b)")
       
+        // After bookmarking just the uri is returned to the UI to use
         resolve(DbServiceAPI.formJsonWithFileName(saved_file_url.absoluteString))
         
       } catch {
@@ -238,6 +248,7 @@ class ReadFilePickDelegate: NSObject, UIDocumentPickerDelegate {
 }
 
 // Not used- see comments in pickAndSaveNewKdbxFile
+// Leaving it here in case we need to use this if the current way of doing stuff fails
 // Delegate used in testing the creation of a new kdbx file
 // This delegate uses writingIntent in addition to readingIntent. This did not work for OneDrive and GDrive
 class CreateFilePickDelegate: NSObject, UIDocumentPickerDelegate {

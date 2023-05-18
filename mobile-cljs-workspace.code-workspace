@@ -5,6 +5,9 @@
 		},
 		{
 			"path": "./js"
+		},
+		{
+			"path": "db-service-ffi"
 		}
 	],
 	"settings": {

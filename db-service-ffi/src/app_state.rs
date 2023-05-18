@@ -3,9 +3,9 @@ use serde::{Deserialize, Serialize};
 use std::{
     fs,
     path::{Path, PathBuf},
-    sync::Mutex,
+    sync::Mutex, collections::HashMap,
 };
-use log::{error, info};
+use log::{error, info, debug};
 
 use crate::util;
 
@@ -27,6 +27,7 @@ pub struct AppState {
     pub backup_dir_path: PathBuf,
     pub export_data_dir_path: PathBuf,
     pub common_device_service: Box<dyn CommonDeviceService>,
+    last_backup_on_error: Mutex<HashMap<String,String>>,
     pub preference: Mutex<Preference>,
 }
 
@@ -53,6 +54,7 @@ impl AppState {
             backup_dir_path,
             export_data_dir_path,
             common_device_service,
+            last_backup: HashMap::default(),
             preference: Mutex::new(pref),
         };
 
@@ -63,6 +65,16 @@ impl AppState {
                 );
             }
         }
+    }
+
+    pub fn add_last_backup_name_on_error(&self,full_file_name_uri:&str,backup_file_full_name:&str ) {
+        let mut bkp = self.last_backup_on_error.lock().unwrap();
+        bkp.insert(full_file_name_uri.into(), backup_file_full_name.into());
+        debug!("Added backup file name {} for the uri {}",backup_file_full_name,full_file_name_uri);
+    }
+
+    pub fn get_last_backup_on_error(&self,full_file_name_uri:&str) -> Option<&String> {
+        self.last_backup_on_error.lock().unwrap().get(full_file_name_uri)
     }
 
     pub fn add_recent_db_use_info(&self, full_file_name_uri: &str) {
@@ -87,6 +99,14 @@ impl AppState {
             .iter()
             .find(|r| r.db_file_path == full_file_name_uri)
             .map(|r| RecentlyUsed { ..r.clone() })
+    }
+
+    pub fn file_name_in_recently_used(&self, full_file_name_uri: &str) -> Option<String> {
+        let pref = self.preference.lock().unwrap();
+        pref.recent_dbs_info
+            .iter()
+            .find(|r| r.db_file_path == full_file_name_uri)
+            .map(|r| r.file_name.clone())
     }
 
     pub fn remove_recent_db_use_info(&self, full_file_name_uri: &str) {

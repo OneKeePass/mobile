@@ -133,7 +133,7 @@
 
 (defn- on-save-complete [api-response]
   (when-not (on-error api-response (fn [error]
-                                     (dispatch [:insert-update-group-form-error error])))
+                                     (dispatch [:save/send-error error])))
     (dispatch [:group-insert-update-save-complete])))
 
 (reg-event-fx
@@ -141,7 +141,7 @@
  (fn [{:keys [db]} [_event-id]]
    ;; call Save db call here
    {:fx [[:dispatch [:common/message-modal-show nil "Saving ..."]]
-         [:common/bg-save-kdbx [(active-db-key db) on-save-complete]]]}))
+         [:save/bg-save-kdbx [(active-db-key db) on-save-complete]]]}))
 
 (reg-event-fx
  :group-insert-update-save-complete

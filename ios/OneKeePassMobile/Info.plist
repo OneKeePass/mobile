@@ -42,17 +42,17 @@
 	<true/>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
-<!--	<key>NSAppTransportSecurity</key>-->
-<!--	<dict>-->
-<!--		<key>NSExceptionDomains</key>-->
-<!--		<dict>-->
-<!--			<key>localhost</key>-->
-<!--			<dict>-->
-<!--				<key>NSExceptionAllowsInsecureHTTPLoads</key>-->
-<!--				<true/>-->
-<!--			</dict>-->
-<!--		</dict>-->
-<!--	</dict>-->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>localhost</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+			</dict>
+		</dict>
+	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string></string>
 	<key>UIAppFonts</key>

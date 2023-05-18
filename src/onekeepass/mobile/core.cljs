@@ -6,9 +6,11 @@
                                                              rnp-portal]]
             [onekeepass.mobile.appbar :refer [appbar-main-content]]
             [onekeepass.mobile.events.native-events :as native-events]
+            [onekeepass.mobile.events.save :as save-events]
             [onekeepass.mobile.events.common :as cmn-events]
             [onekeepass.mobile.background :as bg]
             [onekeepass.mobile.common-components :as cc :refer [message-snackbar
+                                                                save-error-modal
                                                                 message-modal
                                                                 message-dialog]]))
 (set! *warn-on-infer* true)
@@ -20,6 +22,7 @@
    [appbar-main-content]
    [rnp-portal
     [message-snackbar]
+    [save-error-modal @(save-events/save-error-modal-data)]
     [message-modal @(cmn-events/message-modal-data)]
     [message-dialog @(cmn-events/message-dialog-data)]]])
 

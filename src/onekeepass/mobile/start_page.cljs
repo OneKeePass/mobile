@@ -52,7 +52,9 @@
      [rnp-dialog-content
       [rn-view {:style {:flexDirection "column"  :justify-content "center"}}
        [rnp-text-input {:label (lstr "name")
-                        :value database-name 
+                        ;;:value database-name
+                        :defaultValue database-name
+                        :autoComplete "off"
                         :onChangeText #(ndb-events/database-field-update :database-name %)}]
        (when (contains? error-fields :database-name)
          [rnp-helper-text {:type "error" :visible true}
@@ -60,18 +62,23 @@
 
        [rnp-text-input {:style {:margin-top 10}
                         :label (lstr "description")
-                        :value database-description
+                        ;;:value database-description
+                        :defaultValue database-description
+                        :autoComplete "off"
                         :onChangeText #(ndb-events/database-field-update :database-description %)}]
 
        [rnp-divider {:style {:margin-top 10 :margin-bottom 10 :backgroundColor "grey"}}]
 
        [rnp-text-input {:style {}
-                        :label (lstr "masterPassword") :value password
+                        :label (lstr "masterPassword")
+                        ;;:value password
+                        :defaultValue password
+                        :autoComplete "off"
                         :secureTextEntry (not password-visible)
-                        :right (r/as-element 
+                        :right (r/as-element
                                 [rnp-text-input-icon
                                  {:icon (if password-visible "eye" "eye-off")
-                                  :onPress #(ndb-events/database-field-update 
+                                  :onPress #(ndb-events/database-field-update
                                              :password-visible (not password-visible))}])
                         :onChangeText #(ndb-events/database-field-update :password %)}]
        (when (contains? error-fields :password)
@@ -114,7 +121,10 @@
                         :editable false
                         :onChangeText #()}]
        [rnp-text-input {:style {:margin-top 10}
-                        :label (lstr "masterPassword") :value password
+                        :label (lstr "masterPassword") 
+                        ;;:value password
+                        :defaultValue password
+                        :autoComplete "off"
                         :secureTextEntry (not password-visible)
                         :right (r/as-element 
                                 [rnp-text-input-icon
@@ -308,7 +318,7 @@
      #_[rn-view {:style {:width "100%" :height 60 :backgroundColor "red" :position "absolute" :bottom 0}}
         [rnp-text {:variant "titleMedium"} "Some icons here"]]
 
-     [rnp-portal
+     [rnp-portal 
       [db-action-menu @db-action-menu-data] 
       ;; Gets the precreated dialog reagent component
       (:dialog remove-confirm-dialog-info) 

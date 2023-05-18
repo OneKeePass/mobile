@@ -12,6 +12,7 @@ import java.io.FileNotFoundException
  *  All ffi api calls go through this
  */
 private const val TAG = "DbServiceAPI";
+
 object DbServiceAPI {
 
     private var jsonService = onekeepass.mobile.ffi.JsonService();
@@ -32,7 +33,7 @@ object DbServiceAPI {
 
     fun cleanExportDataDir(): String {
         // Delegates to the invokeCommand
-        return invokeCommand("clean_export_data_dir","{}")
+        return invokeCommand("clean_export_data_dir", "{}")
     }
 
     fun createKdbx(fd: ULong, args: String): ApiResponse {
@@ -44,6 +45,17 @@ object DbServiceAPI {
         val fileArgs = onekeepass.mobile.ffi.FileArgs.FileDecriptorWithFullFileName(fd, fullFileName, fileName)
         return onekeepass.mobile.ffi.saveKdbx(fileArgs)
     }
+
+    fun verifyDbFileChecksum(fd: ULong, fullFileName: String): ApiResponse {
+        val fileArgs = onekeepass.mobile.ffi.FileArgs.FileDecriptorWithFullFileName(fd, fullFileName, "")
+        return onekeepass.mobile.ffi.verifyDbFileChecksum(fileArgs)
+    }
+
+//    fun verifyAndSaveKdbx(readFd: ULong, writeFd: ULong, fullFileName: String, fileName: String): ApiResponse {
+//        Log.d(TAG,"Passed fds readFd: $readFd and writeFd: $writeFd")
+//        val fileArgs = onekeepass.mobile.ffi.FileArgs.ReadWriteFDsWithFullFileName(readFd, writeFd, fullFileName, fileName)
+//        return onekeepass.mobile.ffi.verifyAndSaveKdbx(fileArgs)
+//    }
 
     fun readKdbx(fd: ULong, args: String): ApiResponse {
         val fileArgs = onekeepass.mobile.ffi.FileArgs.FileDecriptor(fd)
@@ -70,16 +82,15 @@ class CommonDeviceServiceImpl(val reactContext: ReactApplicationContext) : Commo
             val uri = Uri.parse(fullFileNameUri);
             val fs = FileUtils.getMetaInfo(reactContext.contentResolver, uri);
             return fs?.filename
-        }
-        catch (e: Exception) {
+        } catch (e: Exception) {
             e.printStackTrace()
             return null
         }
     }
 
     override fun uriToFileInfo(fullFileNameUri: String): FileInfo? {
-        var info = FileInfo(null,null,null,null)
-        var location:String? = null
+        var info = FileInfo(null, null, null, null)
+        var location: String? = null
         try {
             val uri = Uri.parse(fullFileNameUri);
             location = onekeepass.mobile.ffi.extractFileProvider(fullFileNameUri)
@@ -94,8 +105,7 @@ class CommonDeviceServiceImpl(val reactContext: ReactApplicationContext) : Commo
             info.lastModified = fs?.lastModifiedTime
             info.location = location
             return info
-        }
-        catch (e: SecurityException) {
+        } catch (e: SecurityException) {
             // This will happen, if we try to create the kdbx file without proper read and write permissions
             // See DocumentPickerServiceModule how these permissions are set while selecting the file.
             Log.e(TAG, "SecurityException due to in sufficient permission")

@@ -44,7 +44,7 @@
      {:db (-> db (assoc-in-key-db  [:entry-delete :status] :completed)
               (assoc-in-key-db  [:entry-delete :from-entry-form] false))
     ;; calls to refresh entry list and category  
-      :fx [[:dispatch [:common/save-current-kdbx {:error-title "Save entry delete"
+      :fx [[:dispatch [:save/save-current-kdbx {:error-title "Save entry delete"
                                                   :save-message "Delete and Saving...."}]]
            [:dispatch [:common/refresh-forms]]
            (when from-entry-form?
@@ -80,7 +80,7 @@
  (fn [{:keys [db]} [_event-id]]
    (let [from-group-page (get-in-key-db db [:group-delete :from-group-page])]
      {:db (-> db (assoc-in-key-db  [:group-delete :from-group-page] false))
-      :fx [[:dispatch [:common/save-current-kdbx {:error-title "Save group delete"
+      :fx [[:dispatch [:save/save-current-kdbx {:error-title "Save group delete"
                                                   :save-message "Delete and Saving...."
                                                   :on-save-ok (fn []
                                                                 (dispatch [:common/refresh-forms])
@@ -163,7 +163,7 @@
  :move-group-entry-completed
  (fn [{:keys [db]} [_event-id]]
    {:db (-> db init-put-back-dialog-data)
-    :fx [[:dispatch [:common/save-current-kdbx {:error-title "Put back and save"
+    :fx [[:dispatch [:save/save-current-kdbx {:error-title "Put back and save"
                                                 :save-message "Moved entry and Saving...."}]]
          [:dispatch [:common/refresh-forms]]]}))
 
@@ -205,7 +205,7 @@
  :delete-permanent-completed
  (fn [{:keys [db]} [_event-id]]
    {:db (-> db (assoc-in-key-db [:move-delete :delete-permanent-dialog-data]  {:dialog-show false :uuid nil}))
-    :fx [[:dispatch [:common/save-current-kdbx {:error-title "Permanet delete"
+    :fx [[:dispatch [:save/save-current-kdbx {:error-title "Permanet delete"
                                                 :save-message "Entry deleted permanently and Saving...."}]]
          [:dispatch [:common/refresh-forms]]]}))
 
@@ -241,7 +241,7 @@
 (reg-event-fx
  :delete-all-entries-completed
  (fn [{:keys [_db]} [_event-id]]
-   {:fx [[:dispatch [:common/save-current-kdbx {:error-title "Save after deleting all entries"
+   {:fx [[:dispatch [:save/save-current-kdbx {:error-title "Save after deleting all entries"
                                                 :save-message "Deleted permanently and Saving" 
                                                 :on-save-ok (fn []
                                                               (dispatch [:common/refresh-forms])

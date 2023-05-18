@@ -5,6 +5,7 @@ class OkpDbService: NSObject {
   private let logger = OkpLogger(tag: "OkpDbService")
   private let E_PERMISSION_REQUIRED_TO_READ = "PERMISSION_REQUIRED_TO_READ"
   private let E_PERMISSION_REQUIRED_TO_WRITE = "PERMISSION_REQUIRED_TO_WRITE"
+  private let E_SAVE_CALL_FAILED = "SAVE_CALL_FAILED"
   private let E_CREATE_KDBX_FAILED = "CREATE_KDBX_FAILED"
   private let E_COORDINATOR_CALL_FAILED = "COORDINATOR_CALL_FAILED"
   private let E_DB_SERVICE_MODULE_ERROR = "DB_SERVICE_MODULE_ERROR"
@@ -132,6 +133,7 @@ class OkpDbService: NSObject {
         do {
           let burl = try URL(resolvingBookmarkData: bookmarkData, bookmarkDataIsStale: &isStale)
           if isStale {
+            writeToBackup(db_file_url?.absoluteString ?? fullFileNameUri)
             reject(E_BOOK_MARK_STALE, "Existing bookmark is stale.File selection is required before use", nil)
           } else {
             let isAccessed = burl.startAccessingSecurityScopedResource()
@@ -144,17 +146,36 @@ class OkpDbService: NSObject {
 
             if error != nil {
               logger.error("In saveKdbx NSFileCoordinator().coordinate call error \(String(describing: error?.localizedDescription))")
+              writeToBackup(db_file_url?.absoluteString ?? fullFileNameUri)
               // reject(CallError.coordinateError.rawValue,CallError.coordinateError.errorDescription(error?.localizedDescription) , error)
               reject(E_COORDINATOR_CALL_FAILED, "\(String(describing: error?.localizedDescription))", error)
             }
           }
 
-        } catch {
+        }
+        //see https://developer.apple.com/documentation/fileprovider/nsfileprovidererror/code/nosuchitem
+        catch let error as NSFileProviderError where error.code == .noSuchItem {
+          // This happens if a cloud file is updated after our has opened earlier. When we try to save any modiifcation
+          // this error is thrown by the above URL resolvingBookmarkData call
+          
+          // Store the db file with changed data to backup for later offline use
+          writeToBackup(db_file_url?.absoluteString ?? fullFileNameUri)
+          
+          logger.error("saveKdbx:resolvingBookmarkData NSFileProviderError is \(error)")
+          reject("FILE_NOT_FOUND", "\(error.localizedDescription)",error)
+        }
+        catch let error {
+          // Store the db file with changed data to backup for later offline use
+          writeToBackup(db_file_url?.absoluteString ?? fullFileNameUri)
+          
+          //Other errors
           logger.error("saveKdbx:resolvingBookmarkData Error is \(error)")
-          reject(E_PERMISSION_REQUIRED_TO_WRITE, "\(error.localizedDescription)", error)
+          reject(E_SAVE_CALL_FAILED, "\(error.localizedDescription)", error)
         }
 
       } else {
+        //Store the db file with changed data to backup for later offline use
+        writeToBackup(db_file_url?.absoluteString ?? fullFileNameUri)
         self.logger.error("No bookmark data is found for the url \(String(describing: db_file_url?.absoluteString))")
         reject(E_BOOK_MARK_NOT_FOUND, "No bookmark data is found for the url \(String(describing: db_file_url?.absoluteString))", nil)
       }
@@ -204,6 +225,17 @@ class OkpDbService: NSObject {
         self.logger.error("No bookmark data is found for the url \(String(describing: db_file_url?.absoluteString))")
         reject(E_BOOK_MARK_NOT_FOUND, "No bookmark data is found for the url \(String(describing: db_file_url?.absoluteString))", nil)
       }
+    }
+  }
+  
+  func writeToBackup(_ fullFileNameUri:String) {
+    // For now we are ignoring any backup writting error here
+    let apiResponse = DbServiceAPI.writeToBackup(fullFileNameUri)
+    switch apiResponse {
+    case let .success(result):
+      logger.debug("Backup is written and api response is \(result)")
+    case let .failure(result):
+      logger.error("Backup writting failed with error \(result)")
     }
   }
 

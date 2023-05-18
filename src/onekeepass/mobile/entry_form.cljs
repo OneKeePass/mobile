@@ -415,6 +415,7 @@
                    :ref (fn [ ref]
                           (when (and (not (nil? ref)) (str/blank? value)) (.clear ref)))
                    :autoCapitalize "none"
+                   :autoComplete "off"
                    :style {:width (if (or is-password-edit? custom-field-edit-focused?)  "90%" "100%")}
                    :onFocus #(field-focus-action key true)
                    :onBlur #(field-focus-action key false)
@@ -442,6 +443,7 @@
                    :value value
                    :showSoftInputOnFocus edit
                    :autoCapitalize "none"
+                   :autoComplete "off"
                    ;; Sometime in iOS when a text input has its secureTextEntry with true value
                    ;; Strong Password prompt comes up and hides the actual input box preventing any entry
                    ;; Particularly it happened with Simulator. For now, we can disable the Password AutoFill feature

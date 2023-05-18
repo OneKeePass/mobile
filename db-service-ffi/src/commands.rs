@@ -168,7 +168,7 @@ impl Commands {
 
             "close_kdbx" => db_service_call! (args, DbKey{db_key} => close_kdbx(&db_key)),
 
-            "create_kdbx" => db_service_call! (args, NewDbArg{new_db} => create_kdbx(new_db)),
+            // "create_kdbx" => db_service_call! (args, NewDbArg{new_db} => create_kdbx(new_db)),
 
             "categories_to_show" => {
                 db_service_call! (args, DbKey{db_key} => categories_to_show(&db_key))

@@ -89,35 +89,41 @@
     (try
       (let [r (<p! (aync-fn))
             deserialized-response (transform-api-response r opts)]
-        (reset! test-data r)
+        ;;(reset! test-data r)
         (dispatch-fn deserialized-response))
       (catch js/Error err
         (do
-          ;;(reset! test-data err)
+          
+          (reset! test-data err)
+          
           ;; (println "type of err is " (type err))
           ;; (println "type of (ex-cause err) is " (type (ex-cause err))) 
           ;; (println "(ex-data err) is " (ex-data err))
           ;; (println (js/Object.keys (ex-cause err)))
-
+          
           ;; (type err) is #object[cljs$core$ExceptionInfo], an instance of ExceptionInfo 
           ;; (type (ex-cause err)) is #object[Error], an instance of js/Error
-
+          
           ;; The RN err object keys are (in both iOs and Android) - can be seen using '(js/Object.keys (ex-cause err)'
           ;; #js [message data cause name description number fileName lineNumber columnNumber stack]
           ;; (ex-cause err) keys are #js [code message domain userInfo nativeStackIOS]
-
+          
           ;;Call the dispatch-fn with any error returned by the back end API
           (dispatch-fn {:error (cond
                                  (nil? (ex-cause err))
                                  (if (not (nil? (.-message err)))
-                                    (.-message err)
+                                   (.-message err)
                                    err)
-
+                                 
+                                 ;; When we reject the promise in native module, we get a detailed
+                                 ;; object as described above comments
+                                 ;; iOS error has :domain :userInfo keys 
+                                 ;; Android not sure on that 
                                  error-transform
                                  (-> err ex-cause u/jsx->clj (select-keys [:code :message]))
 
                                  :else
-                                 (ex-cause err))})
+                                 (ex-cause err))}) 
           (js/console.log (ex-cause err)))))))
 
 (defn invoke-api
@@ -149,6 +155,7 @@
 ;; created with 0 bytes and shows the entry category screen. If we make some changes and saved the db, then 
 ;; db size reflects that 
 ;; But this sequence does not work for GDrive
+;; In case of iOS, we are using the 'pick-and-save-new-kdbxFile' fn
 (defn pick-document-to-create
   "Starts a document picker view so that user can select a location to create the db file
   kdbx-file-name is the database file name. It is not full path. On users pick, the complete url
@@ -223,7 +230,8 @@
                   dispatch-fn :error-transform true))
 
 (defn save-kdbx [full-file-name dispatch-fn]
-  (call-api-async (fn [] (.saveKdbx okp-db-service full-file-name)) dispatch-fn))
+  ;;(println "Calling save... for full-file-name " full-file-name)
+  (call-api-async (fn [] (.saveKdbx okp-db-service full-file-name)) dispatch-fn :error-transform true))
 
 (defn categories-to-show [db-key dispatch-fn]
   (invoke-api "categories_to_show" {:db-key db-key} dispatch-fn))
