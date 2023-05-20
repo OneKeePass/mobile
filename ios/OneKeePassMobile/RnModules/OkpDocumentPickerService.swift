@@ -85,12 +85,49 @@ class OkpDocumentPickerService: NSObject, UIDocumentPickerDelegate {
     }
   }
   
+  // Called when user opts to use 'Save as' when there unsolvable save time error
+  @objc
+  func pickOnSaveErrorSaveAs(_ existingFullFileNameUri: String,
+                             resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock)
+  {
+    DispatchQueue.main.async {
+      self.promiseWrapper = PromiseWrapper(resolve: resolve, reject: reject)
+      let controller = RCTPresentedViewController()
+      
+      let tempFileName =  DbServiceAPI.iosSupportService().copyLastBackupToTempFile(existingFullFileNameUri)
+      guard tempFileName != nil else {
+        reject("NO_BACK_FILE_IS_FOUND", "Temp file name is nil", nil)
+        return
+      }
+      
+      guard let tempFileUrl = URL(string:tempFileName!) else {
+        reject("NO_BACK_FILE_IS_FOUND", "Temp file url is nil", nil)
+        return
+      }
+      
+      self.logger.debug("tempFileUrl is \(tempFileUrl.absoluteString)")
+      
+      // If we use this, the UIDocumentPickerView shows "Save" on the top right side
+      let documentPicker = UIDocumentPickerViewController(forExporting: [tempFileUrl], asCopy: true) // to export or copy
+      
+      // The temp file is moved when user selects a location
+      // If we use this, the UIDocumentPickerView shows "Move" on the top right side
+      // let documentPicker = UIDocumentPickerViewController(forExporting: [tempFileUrl])
+      
+      documentPicker.allowsMultipleSelection = false
+      
+      self.readFilePickDelegate = ReadFilePickDelegate(resolve, reject)
+      documentPicker.delegate = self.readFilePickDelegate
+    
+      controller?.present(documentPicker, animated: true, completion: nil)
+    }
+  }
   
   /// ---------------------------------------------------------------------------------------------
   // Leaving it here in case we need to use this if the current way of doing stuff fails
   
   // *** Not used currently ***
-  //See pickAndSaveNewKdbxFile
+  // See pickAndSaveNewKdbxFile
   
   // Used to create a new kdbx file followed by createKdbx call
   // This worked fine for Local,iCloud and Dropbox. It did not work with GDrive
@@ -359,4 +396,3 @@ class Delegate1: NSObject, UIDocumentPickerDelegate {
 }
 
 ///
-

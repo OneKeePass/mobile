@@ -91,6 +91,13 @@
                        (assoc :password "A valid password is required"))]
     error-fields))
 
+;;;;;;;;;;;;;;;;;;;;;  Used only for Android ;;;;;;;;;;;;;;;;
+;; In iOS we need to have separate set of steps this to work 
+;; See comments in pick-document-to-create and pick-and-save-new-kdbxFile
+
+;; Android :new-database-create -> ... :bg-create-kdbx
+;; iOS     :new-database-create-ios -> ... :bg-load-new-kdbx
+
 (reg-event-fx
  :new-database-create
  (fn [{:keys [db]} [_event-id]]
@@ -111,7 +118,7 @@
                                                                    #(dispatch [:new-database-dialog-hide]))]
                                                   (dispatch [:document-to-create-picked picked]))))))
 
-
+;; Used only for android; See :document-to-create-picked-ios for iOS
 (reg-event-fx
  :document-to-create-picked
  (fn [{:keys [db]} [_event-id full-file-name]]
@@ -120,7 +127,7 @@
       :fx [[:dispatch [:new-database-field-update :status :in-progress]]
            [:bg-create-kdbx [full-file-name  (:new-database db)]]]})))
 
-
+;; Used only for android
 (reg-event-fx
  :new-database-created
  (fn [{:keys [db]} [_event-id kdbx-loaded]]
@@ -128,6 +135,7 @@
             (assoc-in [:new-database :status] :completed))
     :fx [[:dispatch [:new-database-dialog-hide]]
          [:dispatch [:common/kdbx-database-opened kdbx-loaded]]]}))
+
 
 (reg-event-fx
  :new-database-create-kdbx-error
@@ -158,8 +166,9 @@
                                       (update-in [:kdf :Argon2 :memory] * 1048576)
                                       (select-keys newdb-fields)) on-database-creation-completed)))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;;;;;;;;;;;;;;;;;;;; iOS specific ;;;;;;;;;;; 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; iOS specific ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
 
 ;; We need to use iOS specific calls - create a temp db file, copy that file using user selection
 ;; and then read that newly created file to load the db

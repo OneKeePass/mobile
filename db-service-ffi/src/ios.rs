@@ -95,6 +95,36 @@ impl IosSupportService {
             }
         }
     }
+
+    pub fn copy_last_backup_to_temp_file(&self, full_file_name_uri: String) -> Option<String> {
+        // Gets the kdbx file name from the recently used info
+        // copies the last the backup to a temp file with proper kdbx file name
+        // bkp_file_name is of in the format ...Documents/backups/MyPasswords_8281494059675522447.kdbx
+        // We need to get the name MyPasswords.kdbx to present in UIDocumentPickerViewController
+
+        // We are assuming there is a backup file written already before this call
+        // TODO: 
+        //  To be failsafe, we may need to write from the db content to temp file
+        //  using db_service::save_kdbx_to_writer in case there is no backup at all
+
+        if let (Some(bkp_file_name), Some(kdbx_file_name)) = (
+            AppState::global().get_last_backup_on_error(&full_file_name_uri),
+            AppState::global().file_name_in_recently_used(&full_file_name_uri),
+        ) {
+            let mut temp_file = std::env::temp_dir();
+            temp_file.push(kdbx_file_name);
+            // Copies backup file to temp file with proper kdbx file name
+            if std::fs::copy(&bkp_file_name, &temp_file).is_err() {
+                log::error!("Copying the last backup to temp file failed ");
+                return None;
+            }
+            let mut temp_name = temp_file.as_os_str().to_string_lossy().to_string();
+            to_ios_file_uri(&mut temp_name);
+            Some(temp_name)
+        } else {
+            None
+        }
+    }
 }
 
 // Dummy implemenation
@@ -109,6 +139,10 @@ impl IosSupportService {
     }
 
     pub fn load_book_mark_data(&self, url: String) -> Vec<u8> {
+        unimplemented!();
+    }
+
+    pub fn copy_last_backup_to_temp_file(&self, full_file_name_uri: String) -> Option<String> {
         unimplemented!();
     }
 }
@@ -143,11 +177,24 @@ pub fn list_bookmark_files() -> Vec<String> {
     }
 }
 
+// The rust side file path should have prefix "file;//" to use in Swift side, 
 #[inline]
 pub fn to_ios_file_uri(full_file_path: &mut String) {
     if !full_file_path.starts_with("file://") {
         full_file_path.insert_str(0, "file://")
     }
+}
+
+pub fn to_ios_file_uri_str(file_path: &Option<String>) -> Option<String> {
+    file_path
+        .clone()
+        .as_mut()
+        .map(|s| {
+            to_ios_file_uri(s);
+            s
+        })
+        .as_deref()
+        .cloned()
 }
 
 // Generates a hash key based on the bytes data

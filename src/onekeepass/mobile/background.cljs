@@ -198,9 +198,22 @@
                     (.pickKdbxFileToOpen okp-document-pick-service))
                   dispatch-fn :error-transform true))
 
+;;;;;;;;
+
+(defn pick-on-save-error-save-as 
+  "Called to present os specific view for the user to save the copied kdbx file"
+  [db-key dispatch-fn] 
+  (call-api-async (fn [] (.pickOnSaveErrorSaveAs okp-document-pick-service db-key)) dispatch-fn :error-transform true))
+
+(defn complete-save-as-on-error [db-key new-db-key dispatch-fn]
+  (invoke-api "complete_save_as_on_error" {:db-key db-key :new-db-key new-db-key} dispatch-fn))
+
+;;;;;;
+
 (defn create-kdbx
   "Called with full file name uri that was picked by the user through the document picker 
    and new db related info in a map
+   Used only in case of Android. See comments in pick-document-to-create and pick-and-save-new-kdbxFile
    "
   [full-file-name new-db dispatch-fn]
   (call-api-async (fn [] (.createKdbx okp-db-service full-file-name
@@ -229,9 +242,9 @@
                                (api-args->json {:db-file-name db-file-name :password password :key_file_name key-file-name} true)))
                   dispatch-fn :error-transform true))
 
-(defn save-kdbx [full-file-name dispatch-fn]
-  ;;(println "Calling save... for full-file-name " full-file-name)
-  (call-api-async (fn [] (.saveKdbx okp-db-service full-file-name)) dispatch-fn :error-transform true))
+(defn save-kdbx [full-file-name overwrite dispatch-fn]
+  ;; By default, we pass 'false' for the overwrite arg
+  (call-api-async (fn [] (.saveKdbx okp-db-service full-file-name overwrite)) dispatch-fn :error-transform true))
 
 (defn categories-to-show [db-key dispatch-fn]
   (invoke-api "categories_to_show" {:db-key db-key} dispatch-fn))

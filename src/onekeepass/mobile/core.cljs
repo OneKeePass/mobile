@@ -9,8 +9,8 @@
             [onekeepass.mobile.events.save :as save-events]
             [onekeepass.mobile.events.common :as cmn-events]
             [onekeepass.mobile.background :as bg]
+            [onekeepass.mobile.save-error-dialog :refer [save-error-modal]]
             [onekeepass.mobile.common-components :as cc :refer [message-snackbar
-                                                                save-error-modal
                                                                 message-modal
                                                                 message-dialog]]))
 (set! *warn-on-infer* true)

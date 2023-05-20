@@ -17,7 +17,7 @@ RCT_EXTERN_METHOD(createKdbx:(NSString *) fullFileNameUri args:(NSString *)args 
 
 RCT_EXTERN_METHOD(readKdbx:(NSString *)fullFileNameUri jsonArgs:(NSString *)jsonArgs resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 
-RCT_EXTERN_METHOD(saveKdbx:(NSString *) fullFileNameUri resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+RCT_EXTERN_METHOD(saveKdbx:(NSString *) fullFileNameUri overwrite:(BOOL)overwrite  resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 
 
 @end

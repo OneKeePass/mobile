@@ -53,13 +53,17 @@ class DbServiceAPI {
     return OneKeePassMobile.readKdbx(fileArgs, jsonArgs)
   }
 
-  static func saveKdbx(_ fullFileName: String) -> ApiResponse {
+  static func saveKdbx(_ fullFileName: String, _ overwrite: Bool) -> ApiResponse {
     let fileArgs = FileArgs.fullFileName(fullFileName: fullFileName)
-    return OneKeePassMobile.saveKdbx(fileArgs)
+    return OneKeePassMobile.saveKdbx(fileArgs,overwrite)
   }
   
-  static func writeToBackup(_ fullFileName: String) -> ApiResponse {
-    return OneKeePassMobile.writeToBackup(fullFileName)
+  static func getLastBackupFileName(_ fullFileName: String) -> String {
+    return OneKeePassMobile.getLastBackupFileName(fullFileName)
+  }
+  
+  static func writeToBackupOnError(_ fullFileName: String) -> ApiResponse {
+    return OneKeePassMobile.writeToBackupOnError(fullFileName)
   }
   
 }

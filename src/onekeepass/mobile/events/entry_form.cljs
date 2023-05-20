@@ -753,8 +753,9 @@
    (bg/insert-entry db-key
                     new-entry-form-data
                     (fn [api-response]
-                      (when-not (on-error api-response (fn [error]
-                                                         (dispatch [:insert-update-entry-form-data-error error])))
+                      (when-not (on-error api-response 
+                                          (fn [error]
+                                            (dispatch [:insert-update-entry-form-data-error error])))
                         (dispatch [:insert-update-entry-form-data-complete]))))))
 
 (reg-fx
@@ -763,23 +764,20 @@
    (bg/update-entry db-key
                     entry-form-data
                     (fn [api-response]
-                      (when-not (on-error api-response (fn [error]
-                                                         (dispatch [:insert-update-entry-form-data-error error])))
+                      (when-not (on-error api-response 
+                                          (fn [error]
+                                            (dispatch [:insert-update-entry-form-data-error error])))
                         (dispatch [:insert-update-entry-form-data-complete]))))))
-
-(defn- on-save-complete [api-response]
-  (when-not (on-error
-             api-response
-             (fn [error]
-               (dispatch [:entry-insert-update-save-error error])))
-    (dispatch [:entry-insert-update-save-complete])))
 
 (reg-event-fx
  :insert-update-entry-form-data-complete
- (fn [{:keys [db]} [_event-id]]
-   {:fx [;; Need to save after inserting or updating an entry data
-         [:dispatch [:common/message-modal-show nil "Saving ..."]]
-         [:save/bg-save-kdbx [(active-db-key db) on-save-complete]]]}))
+ (fn [{:keys [_db]} [_event-id]]
+   {:fx [;; Need to save after inserting or updating an entry data 
+         [:dispatch [:save/save-current-kdbx
+                              {:error-title "Entry form save error"
+                               :save-message "Saving entry form..."
+                               :on-save-ok (fn [] 
+                                             (dispatch [:entry-insert-update-save-complete]))}]]]}))
 
 (reg-event-fx
  :insert-update-entry-form-data-error
@@ -813,14 +811,6 @@
            ;; Entry update is due to restoring from history
            (when restored?
              [:dispatch [:history-entry-restore-complete]])]})))
-
-(reg-event-fx
- :entry-insert-update-save-error
- (fn [{:keys [_db]} [_event-id error]]
-   {:fx [[:dispatch [:common/message-modal-hide]]
-         ;; Need to route through the common save error handler
-         [:save/handle-error [error "Save entry"]]
-         #_[:dispatch [:common/error-box-show "Save entry" error]]]}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  Entry History  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

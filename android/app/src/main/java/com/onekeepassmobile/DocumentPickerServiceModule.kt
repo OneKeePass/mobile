@@ -34,6 +34,7 @@ class DocumentPickerServiceModule(reactContext: ReactApplicationContext) : React
                                 pickerPromise = null
                             }
                         }
+                        // PICK_KDBX_FILE_CODES includes PICK_KDBX_FILE_CREATE_REQUEST_CODE, PICK_KDBX_FILE_OPEN_REQUEST_CODE
                         in PICK_KDBX_FILE_CODES -> {
                             when (resultCode) {
                                 Activity.RESULT_CANCELED ->

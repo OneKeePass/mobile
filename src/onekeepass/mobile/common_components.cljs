@@ -23,8 +23,7 @@
                      rnp-text
                      rnp-text-input
                      rnp-text-input-icon]]
-            [onekeepass.mobile.utils :as u]
-            [onekeepass.mobile.events.save :as save-events]
+            [onekeepass.mobile.utils :as u] 
             [onekeepass.mobile.events.common :as cmn-events]))
 
 (set! *warn-on-infer* true)
@@ -131,48 +130,6 @@
    [rn-view {:style {:height 100 :justify-content "center" :align-items "center"}}
     [rnp-text (lstr message)]]])
 
-(defn save-error-modal [{:keys [dialog-show error-type error-message]}]
-  [rnp-modal {:style {:margin-right 25 :margin-left 25  }
-              :visible dialog-show
-              :dismissable false
-              :dismissableBackButton false
-              ;;:onDismiss #() 
-              :contentContainerStyle {:borderRadius 15 :height "60%" :backgroundColor "white" :padding 10}} ;;:padding 20
-   [rn-scroll-view {:centerContent "true" :style {:backgroundColor "white"}}
-    [rn-view {:style {:height "100%" :backgroundColor "white"}} ;;:align-items "center"
-     [rn-view {:style {:flex .1  :justify-content "center" :align-items "center" }}
-      [rnp-text {:style {:color tertiary-color} :variant "titleLarge"} "Database Save Error"]
-      [rnp-text {:style {:color tertiary-color} :variant "titleSmall"} "Saving error"]
-      ]
-     
-     #_[rnp-divider]
-     [rn-view {:style {:flex .2  :min-height 50 :justify-content "center" :align-items "center"}}
-      [rnp-text {:style {:textAlign "justify"}} "The database content has changed since you have loaded"]
-      #_[rnp-text {:style {:margin-bottom 5}} "You may do:"]
-      ]
-     [rnp-divider]
-     [rn-view {:style {:flex .7}} ;;:backgroundColor "yellow"
-      [rn-view {:style {:margin-top 10 :margin-bottom 10 :align-items "center"}}
-       [rnp-button {:style {:width "50%"} :labelStyle {:fontWeight "bold"}  :mode "text" :on-press #()} "Save as .."]
-       [rnp-text {:style {:textAlign "justify"}} "You can save the database file with all your changes to another file and later manually resolve the conflicts"]]
-      [rnp-divider]
-      [rn-view {:style {:margin-top 10 :margin-bottom 10 :align-items "center"}}
-       [rnp-button {:style {:width "70%"} :labelStyle {:fontWeight "bold"} :mode "text" :on-press #()} "Discard & Close database"]
-       [rnp-text {:style {:textAlign "justify"}} "Ignore all changes made here"]
-       ]
-
-      [rnp-divider]
-      [rn-view {:style {:margin-top 10 :margin-bottom 10 :align-items "center"}}
-       [rnp-button {:style {:width "70%"} :labelStyle {:fontWeight "bold"}  :textColor "red" :mode "text" :on-press #()} "Overwrite"]
-       [rnp-text {:style {:textAlign "justify"}} "This database will overwrite the target database with your changes"]
-       ]
-
-      [rnp-divider]
-      [rn-view {:style {:margin-top 10 :margin-bottom 10 :align-items "center"}}
-       [rnp-button {:style {:width "70%"} :labelStyle {:fontWeight "bold"} :mode "text" :on-press save-events/save-error-modal-hide} "Cancel"]
-       [rnp-text {:style {:textAlign "justify"}} ""]
-       ]]]]])
-
 (defn menu-action-factory
   "Wraps the hide-menu-action and returns a factory which itself returns another factory
   This inner factory can be used in menu items' onPress call
@@ -204,7 +161,6 @@
                                             (call-on-ok-fn entry-uuid)
                                             (swap! entry-delete-confirm-dialog-data
                                                    assoc :dialog-show false))}]}]))
-
 
 (def group-delete-confirm-dialog-data (r/atom {:dialog-show false
                                                :group-uuid nil}))
@@ -241,6 +197,9 @@
                                             (call-on-ok-fn @data-ref)
                                             (swap! data-ref assoc :dialog-show false))}]}]))
 
+
+;;; See remove-confirm-dialog-info , overwrite-confirm-dialog-info for example usage
+;;; Important: we need to call (:dialog ..-info) inside rnp-portal
 
 (defn confirm-dialog-factory
   "The arg 'data-ref' is reagent.core/atom and returns a map (keys are :dialog :show) containg a  

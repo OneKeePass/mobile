@@ -44,7 +44,7 @@ open class RustBuffer : Structure() {
 
     companion object {
         internal fun alloc(size: Int = 0) = rustCall() { status ->
-            _UniFFILib.INSTANCE.ffi_db_service_1e1a_rustbuffer_alloc(size, status).also {
+            _UniFFILib.INSTANCE.ffi_db_service_cda0_rustbuffer_alloc(size, status).also {
                 if(it.data == null) {
                    throw RuntimeException("RustBuffer.alloc() returned null data pointer (size=${size})")
                }
@@ -52,7 +52,7 @@ open class RustBuffer : Structure() {
         }
 
         internal fun free(buf: RustBuffer.ByValue) = rustCall() { status ->
-            _UniFFILib.INSTANCE.ffi_db_service_1e1a_rustbuffer_free(buf, status)
+            _UniFFILib.INSTANCE.ffi_db_service_cda0_rustbuffer_free(buf, status)
         }
     }
 
@@ -264,91 +264,99 @@ internal interface _UniFFILib : Library {
         }
     }
 
-    fun ffi_db_service_1e1a_IosSupportService_object_free(`ptr`: Pointer,
+    fun ffi_db_service_cda0_IosSupportService_object_free(`ptr`: Pointer,
     _uniffi_out_err: RustCallStatus
     ): Unit
 
-    fun db_service_1e1a_IosSupportService_new(
+    fun db_service_cda0_IosSupportService_new(
     _uniffi_out_err: RustCallStatus
     ): Pointer
 
-    fun db_service_1e1a_IosSupportService_save_book_mark_data(`ptr`: Pointer,`url`: RustBuffer.ByValue,`data`: RustBuffer.ByValue,
+    fun db_service_cda0_IosSupportService_save_book_mark_data(`ptr`: Pointer,`url`: RustBuffer.ByValue,`data`: RustBuffer.ByValue,
     _uniffi_out_err: RustCallStatus
     ): Byte
 
-    fun db_service_1e1a_IosSupportService_load_book_mark_data(`ptr`: Pointer,`url`: RustBuffer.ByValue,
+    fun db_service_cda0_IosSupportService_load_book_mark_data(`ptr`: Pointer,`url`: RustBuffer.ByValue,
     _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
-    fun ffi_db_service_1e1a_JsonService_object_free(`ptr`: Pointer,
+    fun db_service_cda0_IosSupportService_copy_last_backup_to_temp_file(`ptr`: Pointer,`fullFileNameUri`: RustBuffer.ByValue,
+    _uniffi_out_err: RustCallStatus
+    ): RustBuffer.ByValue
+
+    fun ffi_db_service_cda0_JsonService_object_free(`ptr`: Pointer,
     _uniffi_out_err: RustCallStatus
     ): Unit
 
-    fun db_service_1e1a_JsonService_new(
+    fun db_service_cda0_JsonService_new(
     _uniffi_out_err: RustCallStatus
     ): Pointer
 
-    fun db_service_1e1a_JsonService_form_with_file_name(`ptr`: Pointer,`fullFileNameUri`: RustBuffer.ByValue,
+    fun db_service_cda0_JsonService_form_with_file_name(`ptr`: Pointer,`fullFileNameUri`: RustBuffer.ByValue,
     _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
-    fun ffi_db_service_1e1a_CommonDeviceService_init_callback(`callbackStub`: ForeignCallback,
+    fun ffi_db_service_cda0_CommonDeviceService_init_callback(`callbackStub`: ForeignCallback,
     _uniffi_out_err: RustCallStatus
     ): Unit
 
-    fun db_service_1e1a_db_service_enable_logging(
+    fun db_service_cda0_db_service_enable_logging(
     _uniffi_out_err: RustCallStatus
     ): Unit
 
-    fun db_service_1e1a_db_service_initialize(`commonDeviceService`: Long,
+    fun db_service_cda0_db_service_initialize(`commonDeviceService`: Long,
     _uniffi_out_err: RustCallStatus
     ): Unit
 
-    fun db_service_1e1a_read_kdbx(`fileArgs`: RustBuffer.ByValue,`jsonArgs`: RustBuffer.ByValue,
+    fun db_service_cda0_read_kdbx(`fileArgs`: RustBuffer.ByValue,`jsonArgs`: RustBuffer.ByValue,
     _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
-    fun db_service_1e1a_create_kdbx(`fileArgs`: RustBuffer.ByValue,`jsonArgs`: RustBuffer.ByValue,
+    fun db_service_cda0_create_kdbx(`fileArgs`: RustBuffer.ByValue,`jsonArgs`: RustBuffer.ByValue,
     _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
-    fun db_service_1e1a_create_temp_kdbx(`fileArgs`: RustBuffer.ByValue,`jsonArgs`: RustBuffer.ByValue,
+    fun db_service_cda0_create_temp_kdbx(`fileArgs`: RustBuffer.ByValue,`jsonArgs`: RustBuffer.ByValue,
     _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
-    fun db_service_1e1a_save_kdbx(`fileArgs`: RustBuffer.ByValue,
+    fun db_service_cda0_save_kdbx(`fileArgs`: RustBuffer.ByValue,
     _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
-    fun db_service_1e1a_verify_db_file_checksum(`fileArgs`: RustBuffer.ByValue,
+    fun db_service_cda0_verify_db_file_checksum(`fileArgs`: RustBuffer.ByValue,
     _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
-    fun db_service_1e1a_write_to_backup(`fullFileNameUri`: RustBuffer.ByValue,
+    fun db_service_cda0_write_to_backup(`fullFileNameUri`: RustBuffer.ByValue,
     _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
-    fun db_service_1e1a_extract_file_provider(`fullFileNameUri`: RustBuffer.ByValue,
+    fun db_service_cda0_get_last_backup_file_name(`fullFileNameUri`: RustBuffer.ByValue,
     _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
-    fun db_service_1e1a_invoke_command(`commandName`: RustBuffer.ByValue,`args`: RustBuffer.ByValue,
+    fun db_service_cda0_extract_file_provider(`fullFileNameUri`: RustBuffer.ByValue,
     _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
-    fun ffi_db_service_1e1a_rustbuffer_alloc(`size`: Int,
+    fun db_service_cda0_invoke_command(`commandName`: RustBuffer.ByValue,`args`: RustBuffer.ByValue,
     _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
-    fun ffi_db_service_1e1a_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,
+    fun ffi_db_service_cda0_rustbuffer_alloc(`size`: Int,
     _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
-    fun ffi_db_service_1e1a_rustbuffer_free(`buf`: RustBuffer.ByValue,
+    fun ffi_db_service_cda0_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,
+    _uniffi_out_err: RustCallStatus
+    ): RustBuffer.ByValue
+
+    fun ffi_db_service_cda0_rustbuffer_free(`buf`: RustBuffer.ByValue,
     _uniffi_out_err: RustCallStatus
     ): Unit
 
-    fun ffi_db_service_1e1a_rustbuffer_reserve(`buf`: RustBuffer.ByValue,`additional`: Int,
+    fun ffi_db_service_cda0_rustbuffer_reserve(`buf`: RustBuffer.ByValue,`additional`: Int,
     _uniffi_out_err: RustCallStatus
     ): RustBuffer.ByValue
 
@@ -653,6 +661,8 @@ public interface IosSupportServiceInterface {
     
     fun `loadBookMarkData`(`url`: String): List<UByte>
     
+    fun `copyLastBackupToTempFile`(`fullFileNameUri`: String): String?
+    
 }
 
 class IosSupportService(
@@ -661,7 +671,7 @@ class IosSupportService(
     constructor() :
         this(
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.db_service_1e1a_IosSupportService_new( _status)
+    _UniFFILib.INSTANCE.db_service_cda0_IosSupportService_new( _status)
 })
 
     /**
@@ -674,14 +684,14 @@ class IosSupportService(
      */
     override protected fun freeRustArcPtr() {
         rustCall() { status ->
-            _UniFFILib.INSTANCE.ffi_db_service_1e1a_IosSupportService_object_free(this.pointer, status)
+            _UniFFILib.INSTANCE.ffi_db_service_cda0_IosSupportService_object_free(this.pointer, status)
         }
     }
 
     override fun `saveBookMarkData`(`url`: String, `data`: List<UByte>): Boolean =
         callWithPointer {
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.db_service_1e1a_IosSupportService_save_book_mark_data(it, FfiConverterString.lower(`url`), FfiConverterSequenceUByte.lower(`data`),  _status)
+    _UniFFILib.INSTANCE.db_service_cda0_IosSupportService_save_book_mark_data(it, FfiConverterString.lower(`url`), FfiConverterSequenceUByte.lower(`data`),  _status)
 }
         }.let {
             FfiConverterBoolean.lift(it)
@@ -689,10 +699,18 @@ class IosSupportService(
     override fun `loadBookMarkData`(`url`: String): List<UByte> =
         callWithPointer {
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.db_service_1e1a_IosSupportService_load_book_mark_data(it, FfiConverterString.lower(`url`),  _status)
+    _UniFFILib.INSTANCE.db_service_cda0_IosSupportService_load_book_mark_data(it, FfiConverterString.lower(`url`),  _status)
 }
         }.let {
             FfiConverterSequenceUByte.lift(it)
+        }
+    override fun `copyLastBackupToTempFile`(`fullFileNameUri`: String): String? =
+        callWithPointer {
+    rustCall() { _status ->
+    _UniFFILib.INSTANCE.db_service_cda0_IosSupportService_copy_last_backup_to_temp_file(it, FfiConverterString.lower(`fullFileNameUri`),  _status)
+}
+        }.let {
+            FfiConverterOptionalString.lift(it)
         }
     
 
@@ -736,7 +754,7 @@ class JsonService(
     constructor() :
         this(
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.db_service_1e1a_JsonService_new( _status)
+    _UniFFILib.INSTANCE.db_service_cda0_JsonService_new( _status)
 })
 
     /**
@@ -749,14 +767,14 @@ class JsonService(
      */
     override protected fun freeRustArcPtr() {
         rustCall() { status ->
-            _UniFFILib.INSTANCE.ffi_db_service_1e1a_JsonService_object_free(this.pointer, status)
+            _UniFFILib.INSTANCE.ffi_db_service_cda0_JsonService_object_free(this.pointer, status)
         }
     }
 
     override fun `formWithFileName`(`fullFileNameUri`: String): String =
         callWithPointer {
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.db_service_1e1a_JsonService_form_with_file_name(it, FfiConverterString.lower(`fullFileNameUri`),  _status)
+    _UniFFILib.INSTANCE.db_service_cda0_JsonService_form_with_file_name(it, FfiConverterString.lower(`fullFileNameUri`),  _status)
 }
         }.let {
             FfiConverterString.lift(it)
@@ -1211,7 +1229,7 @@ public object FfiConverterTypeCommonDeviceService: FfiConverterCallbackInterface
 ) {
     override fun register(lib: _UniFFILib) {
         rustCall() { status ->
-            lib.ffi_db_service_1e1a_CommonDeviceService_init_callback(this.foreignCallback, status)
+            lib.ffi_db_service_cda0_CommonDeviceService_init_callback(this.foreignCallback, status)
         }
     }
 }
@@ -1331,21 +1349,21 @@ public object FfiConverterSequenceUByte: FfiConverterRustBuffer<List<UByte>> {
 fun `dbServiceEnableLogging`() =
     
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.db_service_1e1a_db_service_enable_logging( _status)
+    _UniFFILib.INSTANCE.db_service_cda0_db_service_enable_logging( _status)
 }
 
 
 fun `dbServiceInitialize`(`commonDeviceService`: CommonDeviceService) =
     
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.db_service_1e1a_db_service_initialize(FfiConverterTypeCommonDeviceService.lower(`commonDeviceService`), _status)
+    _UniFFILib.INSTANCE.db_service_cda0_db_service_initialize(FfiConverterTypeCommonDeviceService.lower(`commonDeviceService`), _status)
 }
 
 
 fun `readKdbx`(`fileArgs`: FileArgs, `jsonArgs`: String): ApiResponse {
     return FfiConverterTypeApiResponse.lift(
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.db_service_1e1a_read_kdbx(FfiConverterTypeFileArgs.lower(`fileArgs`), FfiConverterString.lower(`jsonArgs`), _status)
+    _UniFFILib.INSTANCE.db_service_cda0_read_kdbx(FfiConverterTypeFileArgs.lower(`fileArgs`), FfiConverterString.lower(`jsonArgs`), _status)
 })
 }
 
@@ -1354,7 +1372,7 @@ fun `readKdbx`(`fileArgs`: FileArgs, `jsonArgs`: String): ApiResponse {
 fun `createKdbx`(`fileArgs`: FileArgs, `jsonArgs`: String): ApiResponse {
     return FfiConverterTypeApiResponse.lift(
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.db_service_1e1a_create_kdbx(FfiConverterTypeFileArgs.lower(`fileArgs`), FfiConverterString.lower(`jsonArgs`), _status)
+    _UniFFILib.INSTANCE.db_service_cda0_create_kdbx(FfiConverterTypeFileArgs.lower(`fileArgs`), FfiConverterString.lower(`jsonArgs`), _status)
 })
 }
 
@@ -1363,7 +1381,7 @@ fun `createKdbx`(`fileArgs`: FileArgs, `jsonArgs`: String): ApiResponse {
 fun `createTempKdbx`(`fileArgs`: FileArgs, `jsonArgs`: String): ApiResponse {
     return FfiConverterTypeApiResponse.lift(
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.db_service_1e1a_create_temp_kdbx(FfiConverterTypeFileArgs.lower(`fileArgs`), FfiConverterString.lower(`jsonArgs`), _status)
+    _UniFFILib.INSTANCE.db_service_cda0_create_temp_kdbx(FfiConverterTypeFileArgs.lower(`fileArgs`), FfiConverterString.lower(`jsonArgs`), _status)
 })
 }
 
@@ -1372,7 +1390,7 @@ fun `createTempKdbx`(`fileArgs`: FileArgs, `jsonArgs`: String): ApiResponse {
 fun `saveKdbx`(`fileArgs`: FileArgs): ApiResponse {
     return FfiConverterTypeApiResponse.lift(
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.db_service_1e1a_save_kdbx(FfiConverterTypeFileArgs.lower(`fileArgs`), _status)
+    _UniFFILib.INSTANCE.db_service_cda0_save_kdbx(FfiConverterTypeFileArgs.lower(`fileArgs`), _status)
 })
 }
 
@@ -1381,7 +1399,7 @@ fun `saveKdbx`(`fileArgs`: FileArgs): ApiResponse {
 fun `verifyDbFileChecksum`(`fileArgs`: FileArgs): ApiResponse {
     return FfiConverterTypeApiResponse.lift(
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.db_service_1e1a_verify_db_file_checksum(FfiConverterTypeFileArgs.lower(`fileArgs`), _status)
+    _UniFFILib.INSTANCE.db_service_cda0_verify_db_file_checksum(FfiConverterTypeFileArgs.lower(`fileArgs`), _status)
 })
 }
 
@@ -1390,7 +1408,16 @@ fun `verifyDbFileChecksum`(`fileArgs`: FileArgs): ApiResponse {
 fun `writeToBackup`(`fullFileNameUri`: String): ApiResponse {
     return FfiConverterTypeApiResponse.lift(
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.db_service_1e1a_write_to_backup(FfiConverterString.lower(`fullFileNameUri`), _status)
+    _UniFFILib.INSTANCE.db_service_cda0_write_to_backup(FfiConverterString.lower(`fullFileNameUri`), _status)
+})
+}
+
+
+
+fun `getLastBackupFileName`(`fullFileNameUri`: String): String {
+    return FfiConverterString.lift(
+    rustCall() { _status ->
+    _UniFFILib.INSTANCE.db_service_cda0_get_last_backup_file_name(FfiConverterString.lower(`fullFileNameUri`), _status)
 })
 }
 
@@ -1399,7 +1426,7 @@ fun `writeToBackup`(`fullFileNameUri`: String): ApiResponse {
 fun `extractFileProvider`(`fullFileNameUri`: String): String {
     return FfiConverterString.lift(
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.db_service_1e1a_extract_file_provider(FfiConverterString.lower(`fullFileNameUri`), _status)
+    _UniFFILib.INSTANCE.db_service_cda0_extract_file_provider(FfiConverterString.lower(`fullFileNameUri`), _status)
 })
 }
 
@@ -1408,7 +1435,7 @@ fun `extractFileProvider`(`fullFileNameUri`: String): String {
 fun `invokeCommand`(`commandName`: String, `args`: String): String {
     return FfiConverterString.lift(
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.db_service_1e1a_invoke_command(FfiConverterString.lower(`commandName`), FfiConverterString.lower(`args`), _status)
+    _UniFFILib.INSTANCE.db_service_cda0_invoke_command(FfiConverterString.lower(`commandName`), FfiConverterString.lower(`args`), _status)
 })
 }
 

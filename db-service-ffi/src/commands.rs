@@ -1,10 +1,11 @@
 use crate::app_state::{AppState, CommonDeviceService, FileInfo, RecentlyUsed};
-use crate::ios;
-use crate::util;
+use crate::{as_api_response, ios};
+use crate::{open_backup_file, util, OkpError, OkpResult};
 use onekeepass_core::db_service::{
     self, DbSettings, EntryCategory, EntryFormData, Group, NewDatabase, PasswordGenerationOptions,
 };
 
+use std::fmt::format;
 use std::{
     collections::HashMap,
     fs::{File, OpenOptions},
@@ -81,7 +82,7 @@ pub enum CommandArg {
     },
     SaveAsArg {
         db_key: String,
-        database_file_name: String,
+        new_db_key: String,
     },
     GroupArg {
         db_key: String,
@@ -162,13 +163,7 @@ impl Commands {
                 db_service_call! (args, OpenDbArg{db_file_name,password,key_file_name} => load_kdbx(&db_file_name,&password,key_file_name.as_deref()))
             }
 
-            "save_as_kdbx" => {
-                db_service_call! (args, SaveAsArg{db_key,database_file_name} => save_as_kdbx(&db_key,&database_file_name))
-            }
-
             "close_kdbx" => db_service_call! (args, DbKey{db_key} => close_kdbx(&db_key)),
-
-            // "create_kdbx" => db_service_call! (args, NewDbArg{new_db} => create_kdbx(new_db)),
 
             "categories_to_show" => {
                 db_service_call! (args, DbKey{db_key} => categories_to_show(&db_key))
@@ -278,19 +273,21 @@ impl Commands {
 
             "new_blank_group" => Self::new_blank_group(args),
 
-            "all_kdbx_cache_keys" => result_json_str(db_service::all_kdbx_cache_keys()),
-
             "app_preference" => Self::app_preference(),
 
             "recently_used_dbs_info" => Self::recently_used_dbs_info(),
 
-            "list_backup_files" => ok_json_str(util::list_backup_files()),
-
-            "list_bookmark_files" => ok_json_str(ios::list_bookmark_files()),
-
             "get_file_info" => Self::get_file_info(&args),
 
             "prepare_export_kdbx_data" => Self::prepare_export_kdbx_data(&args),
+
+            "all_kdbx_cache_keys" => result_json_str(db_service::all_kdbx_cache_keys()),
+
+            "complete_save_as_on_error" => Self::complete_save_as_on_error(&args),
+
+            "list_backup_files" => ok_json_str(util::list_backup_files()),
+
+            "list_bookmark_files" => ok_json_str(ios::list_bookmark_files()),
 
             "clean_export_data_dir" => result_json_str(util::clean_export_data_dir()),
 
@@ -341,15 +338,7 @@ impl Commands {
 
             debug!("export_file_path is {:?}", &export_file_path_opt);
             let prefixed_path = if cfg!(target_os = "ios") {
-                export_file_path_opt
-                    .clone()
-                    .as_mut()
-                    .map(|s| {
-                        ios::to_ios_file_uri(s);
-                        s
-                    })
-                    .as_deref()
-                    .cloned()
+                ios::to_ios_file_uri_str(export_file_path_opt)
             } else {
                 export_file_path_opt.clone()
             };
@@ -422,22 +411,7 @@ impl Commands {
 
     fn remove_from_recently_used(args: &str) -> String {
         if let Ok(CommandArg::DbKey { db_key }) = serde_json::from_str(args) {
-            AppState::global().remove_recent_db_use_info(&db_key);
-            log::debug!("Removed db file info from recent list");
-
-            // Using uri_to_file_name may fail if the uri is stale or no more available
-            // as this is a callback to native side and any exception there results in rust panic in ffi
-            // let file_name = AppState::global().uri_to_file_name(&db_key);
-            // util::delete_backup_file(&db_key, &file_name);
-
-            if let Some(ru) = AppState::global().get_recently_used(&db_key) {
-                util::delete_backup_file(&db_key, &ru.file_name);
-                debug!("Backup file {} is deleted", &ru.file_name)
-            }
-
-            #[cfg(target_os = "ios")]
-            ios::delete_book_mark_data(&db_key);
-
+            remove_app_files(&db_key);
             log::debug!(
                 "Calling close_kdbx for {} after deleting recent infos, backfiles etc",
                 &db_key
@@ -449,6 +423,37 @@ impl Commands {
                 args
             ))
         }
+    }
+
+    // Used only for iOS
+    fn complete_save_as_on_error(args: &str) -> String {
+        let inner_fn = || -> OkpResult<db_service::KdbxLoaded> {
+            if let Ok(CommandArg::SaveAsArg { db_key, new_db_key }) = serde_json::from_str(args) {
+                let kdbx_loaded = db_service::rename_db_key(&db_key, &new_db_key)?;
+                // Need to ensure that the checksum is reset to the newly saved file
+                // Otherwise, Save error modal dialog will popup !
+                let bkp_file_opt = AppState::global().get_last_backup_on_error(&db_key);
+                if let Some(mut bkp_file) = open_backup_file(bkp_file_opt) {
+                    db_service::calculate_db_file_checksum(&new_db_key, &mut bkp_file)?;
+                } else {
+                    log::error!("Expected backup file is not found. 'Save as' should have this");
+                    return Err(OkpError::DataError("Expected backup file is not found"));
+                }
+
+                // AppState::global().remove_recent_db_use_info(&db_key);
+                remove_app_files(&db_key);
+                AppState::global().add_recent_db_use_info(&new_db_key);
+                AppState::global().remove_last_backup_name_on_error(&db_key);
+
+                Ok(kdbx_loaded)
+            } else {
+                Err(OkpError::Other(format!(
+                    "Call complete_save_as_on_error failed due Invalid args {}",
+                    args
+                )))
+            }
+        };
+        InvokeResult::from(inner_fn()).json_str()
     }
 
     fn _all_kdbx_cache_keys() -> String {
@@ -474,6 +479,25 @@ impl Commands {
         };
         json_str
     }
+}
+
+fn remove_app_files(db_key: &str) {
+    
+    // Using uri_to_file_name may fail if the uri is stale or no more available
+    // as this is a callback to native side and any exception there results in rust panic in ffi
+    // let file_name = AppState::global().uri_to_file_name(&db_key);
+    // util::delete_backup_file(&db_key, &file_name);
+
+    if let Some(ru) = AppState::global().get_recently_used(&db_key) {
+        util::delete_backup_file(&db_key, &ru.file_name);
+        debug!("Backup file {} is deleted", &ru.file_name)
+    }
+
+    AppState::global().remove_recent_db_use_info(&db_key);
+    log::debug!("Removed db file info from recent list");
+
+    #[cfg(target_os = "ios")]
+    ios::delete_book_mark_data(&db_key);
 }
 
 fn ok_json_str<T: serde::Serialize>(val: T) -> String {
