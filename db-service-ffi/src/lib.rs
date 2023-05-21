@@ -89,7 +89,7 @@ pub fn open_backup_file(backup_file_path: Option<String>) -> Option<File> {
         None => None,
     }
 }
-
+/* 
 fn create_kdbx(file_args: FileArgs, json_args: String) -> ApiResponse {
     log::debug!("create_kdbx: file_args received is {:?}", file_args);
     let mut fd_used = false;
@@ -166,6 +166,7 @@ fn create_kdbx(file_args: FileArgs, json_args: String) -> ApiResponse {
     };
     api_response
 }
+*/
 
 fn read_kdbx(file_args: FileArgs, json_args: String) -> ApiResponse {
     log::debug!("file_args received is {:?}", file_args);

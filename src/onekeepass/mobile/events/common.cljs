@@ -2,6 +2,7 @@
   "All common events that are used across many pages"
   (:require
    [clojure.string :as str]
+   [cljs.core.async :refer [go timeout <!]]
    [re-frame.core :refer [reg-event-db
                           reg-event-fx
                           reg-fx
@@ -122,7 +123,7 @@
          first :database-name))))
 
 (defn current-database-file-name
-  "Gets the database file name"
+  "Gets the database kdbx file name"
   [app-db]
   (let [curr-dbkey  (:current-db-file-name app-db)
         recent-dbs-info (-> app-db :app-preference :data :recent-dbs-info)]
@@ -708,6 +709,28 @@
    (get db :file-info-dialog-data {:dialog-show false})))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(def field-in-clip (atom false))
+
+(defn clear-clipboard 
+  "Clears out the last protected field after 10 sec assuming user copies one field and pastes
+   "
+  [protected]
+  (reset! field-in-clip protected)
+  (go
+    (<! (timeout 10000))
+    (when @field-in-clip (bg/write-string-to-clipboard nil))))
+
+(defn write-string-to-clipboard [{:keys [field-name value protected]}]
+  ;;(println "write-string-to-clipboard called field-name value... " field-name value)
+  (bg/write-string-to-clipboard value)
+  (clear-clipboard protected)
+  (when field-name
+    (dispatch [:common/message-snackbar-open (str field-name " " "copied")])))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (comment
   (in-ns 'onekeepass.mobile.events.common)

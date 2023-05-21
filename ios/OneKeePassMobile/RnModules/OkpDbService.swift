@@ -83,55 +83,6 @@ class OkpDbService: NSObject {
     }
   }
 
-  // Not called from UI because of files not getting created when we use some cloud storage locations
-  // Leaving it here in case we need to use again
-  /*
-  @objc
-  func createKdbx(_ fullFileNameUri: String, args: String, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-    DispatchQueue.global(qos: .userInteractive).async { [unowned self] in
-      let db_file_url = URL(string: fullFileNameUri)
-
-      let byteArray: [UInt8] = DbServiceAPI.iosSupportService().loadBookMarkData(db_file_url!.absoluteString)
-
-      if byteArray.count > 0 {
-        let bookmarkData = Data(_: byteArray)
-        var isStale = false
-        do {
-          // self.logger.debug("In createKdbx going to try to resolve the bookmark data for \(db_file_url?.absoluteString)")
-          let burl = try URL(resolvingBookmarkData: bookmarkData, bookmarkDataIsStale: &isStale)
-          // self.logger.debug("Stale? \(isStale) and bookmark resolved url is \(burl) ")
-          if isStale {
-            reject(E_BOOK_MARK_STALE, "Existing bookmark is stale.File selection is required before use", nil)
-          } else {
-            let isAccessed = burl.startAccessingSecurityScopedResource()
-            defer { if isAccessed { burl.stopAccessingSecurityScopedResource() }}
-
-            var error: NSError?
-            NSFileCoordinator().coordinate(writingItemAt: burl, error: &error) { _ in
-              let r = DbServiceAPI.createKdbx(fullFileNameUri, args)
-              resolveResponse(r, resolve)
-            }
-
-            if error != nil {
-              // logger.debug("In createKdbx NSFileCoordinator().coordinate call error \(error?.localizedDescription)")
-              // reject(CallError.coordinateError.rawValue,CallError.coordinateError.errorDescription(error?.localizedDescription) , error)
-              reject(E_COORDINATOR_CALL_FAILED, "\(String(describing: error?.localizedDescription))", error)
-            }
-          }
-
-        } catch {
-          logger.error("createKdbx:resolvingBookmarkData Error is \(error)")
-          reject(E_PERMISSION_REQUIRED_TO_WRITE, "\(error.localizedDescription)", error)
-        }
-
-      } else {
-        self.logger.error("No bookmark data is found for the url \(String(describing: db_file_url?.absoluteString))")
-        reject(E_BOOK_MARK_NOT_FOUND, "No bookmark data is found for the url \(String(describing: db_file_url?.absoluteString))", nil)
-      }
-    }
-  }
-  */
-  
   @objc
   func saveKdbx(_ fullFileNameUri: String, overwrite: Bool,resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
     DispatchQueue.global(qos: .userInteractive).async { [unowned self] in

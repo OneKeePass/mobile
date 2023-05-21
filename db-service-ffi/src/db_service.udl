@@ -3,7 +3,7 @@ namespace db_service {
     void db_service_initialize(CommonDeviceService common_device_service);
  
     ApiResponse read_kdbx(FileArgs file_args, string json_args);
-    ApiResponse create_kdbx(FileArgs file_args, string json_args);
+    //ApiResponse create_kdbx(FileArgs file_args, string json_args);
     ApiResponse create_temp_kdbx(FileArgs file_args, string json_args);
     ApiResponse save_kdbx(FileArgs file_args, boolean overwrite);
     ApiResponse verify_db_file_checksum(FileArgs file_args);
@@ -41,7 +41,7 @@ interface IosSupportService {
     constructor();
     boolean save_book_mark_data(string url,sequence<u8> data);
     sequence<u8> load_book_mark_data(string url);
-    string? copy_last_backup_to_temp_file(string full_file_name_uri);
+    string? copy_last_backup_to_temp_file(string kdbx_file_name,string full_file_name_uri);
     string complete_save_as_on_error([ByRef] string json_args);
 };
 

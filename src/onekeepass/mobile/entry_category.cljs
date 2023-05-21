@@ -227,11 +227,11 @@
         
         sections  [{:title "General"
                     :key "General"
-                    :data general-categories}
+                    :data (if (nil? general-categories) [] general-categories)}
 
                    {:title section-title
                     :key section-title
-                    :data section-data}]]
+                    :data (if (nil? section-data) [] section-data) }]]
     [rn-section-list
      {:style {}
       :sections (clj->js sections)

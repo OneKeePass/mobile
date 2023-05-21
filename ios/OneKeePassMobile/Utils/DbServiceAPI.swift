@@ -38,10 +38,10 @@ class DbServiceAPI {
     _jsonService.formWithFileName(fullFileName)
   }
 
-  static func createKdbx(_ fullFileName: String, _ args: String) -> ApiResponse {
-    let fileArgs = FileArgs.fullFileName(fullFileName: fullFileName)
-    return OneKeePassMobile.createKdbx(fileArgs, args)
-  }
+//  static func createKdbx(_ fullFileName: String, _ args: String) -> ApiResponse {
+//    let fileArgs = FileArgs.fullFileName(fullFileName: fullFileName)
+//    return OneKeePassMobile.createKdbx(fileArgs, args)
+//  }
 
   static func createTempKdbx(_ tempFileUri: String, _ args: String) -> ApiResponse {
     let fileArgs = FileArgs.fullFileName(fullFileName: tempFileUri)

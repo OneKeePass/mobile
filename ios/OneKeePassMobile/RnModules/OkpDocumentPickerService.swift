@@ -40,6 +40,7 @@ class OkpDocumentPickerService: NSObject, UIDocumentPickerDelegate {
   }
   
   // Used to create a new kdbx file followed by a readKdbx call
+  // fileName is the suggested kdbx file name to use and user can change the name in the document picker
   @objc
   func pickAndSaveNewKdbxFile(_ fileName: String, jsonArgs: String,
                               resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock)
@@ -86,15 +87,16 @@ class OkpDocumentPickerService: NSObject, UIDocumentPickerDelegate {
   }
   
   // Called when user opts to use 'Save as' when there unsolvable save time error
+  // fileName is the suggested kdbx file name to use and user can change the name in the document picker
   @objc
-  func pickOnSaveErrorSaveAs(_ existingFullFileNameUri: String,
+  func pickOnSaveErrorSaveAs(_ fileName: String,existingFullFileNameUri: String,
                              resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock)
   {
     DispatchQueue.main.async {
       self.promiseWrapper = PromiseWrapper(resolve: resolve, reject: reject)
       let controller = RCTPresentedViewController()
       
-      let tempFileName =  DbServiceAPI.iosSupportService().copyLastBackupToTempFile(existingFullFileNameUri)
+      let tempFileName =  DbServiceAPI.iosSupportService().copyLastBackupToTempFile(fileName,existingFullFileNameUri)
       guard tempFileName != nil else {
         reject("NO_BACK_FILE_IS_FOUND", "Temp file name is nil", nil)
         return

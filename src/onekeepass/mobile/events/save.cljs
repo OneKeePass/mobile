@@ -16,7 +16,7 @@
 
 (defn save-as-on-error []
   (if (bg/is-iOS)
-    (dispatch [:save-as-on-error])
+    (dispatch [:ios-save-as-on-error])
     (dispatch [:android-save-as-on-error])))
 
 (defn overwrite-on-save-error []
@@ -135,30 +135,39 @@
 
 ;;; Save as  ;;;
 ;; Sequences for save as  
-;; :save-as-on-error -> :bg-save-as-on-error -> :pick-save-as-on-error-completed
-;; -> :bg-complete-save-as-on-error -> :save-as-on-error-finished
+;; :ios-save-as-on-error -> :bg-ios-save-as-on-error -> :ios-pick-save-as-on-error-completed
+;; -> :bg-ios-complete-save-as-on-error -> :save-as-on-error-finished
 
 (reg-event-fx
- :save-as-on-error
+ :ios-save-as-on-error
  (fn [{:keys [db]} [_event-id]]
-   {:fx [[:bg-save-as-on-error [(active-db-key db)]]]}))
+   {:fx [[:bg-ios-save-as-on-error [(current-database-file-name db)(active-db-key db)]]]}))
 
 (defn- save-as-api-response-handler [api-reponse]
   (when-let [result (on-ok api-reponse #(dispatch [:pick-save-as-on-error-not-completed %]))]
-    (dispatch [:pick-save-as-on-error-completed result])))
+    (dispatch [:ios-pick-save-as-on-error-completed result])))
 
 (reg-fx
- :bg-save-as-on-error
- (fn [[db-key]]
-   (bg/pick-on-save-error-save-as db-key save-as-api-response-handler)))
+ :bg-ios-save-as-on-error
+ (fn [[ kdbx-file-name db-key]]
+   (bg/ios-pick-on-save-error-save-as kdbx-file-name db-key save-as-api-response-handler)))
 
 (reg-event-fx
- :pick-save-as-on-error-completed
+ :ios-pick-save-as-on-error-completed
  (fn [{:keys [db]} [_event-id {:keys [file-name full-file-name-uri]}]]
    ;; kdbx-info is a map  with keys :file-name,:full-file-name-uri
    ;;(println "kdbx-info is " kdbx-info)
-   {:fx [[:bg-complete-save-as-on-error [(active-db-key db) full-file-name-uri]]]}))
+   {:fx [[:bg-ios-complete-save-as-on-error [(active-db-key db) full-file-name-uri]]]}))
 
+(reg-fx
+ :bg-ios-complete-save-as-on-error
+ (fn [[db-key new-db-key]]
+   ;;(println "db-key new-db-key are " db-key new-db-key)
+   (bg/ios-complete-save-as-on-error db-key new-db-key (fn [api-reponse]
+                                                     (when-let [kdbx-loaded (on-ok api-reponse)]
+                                                       (dispatch [:save-as-on-error-finished kdbx-loaded]))))))
+
+;; Used for both  iOS and Abdroid
 (reg-event-fx
  :pick-save-as-on-error-not-completed
  (fn [{:keys [db]} [_event-id error]]
@@ -169,15 +178,7 @@
           []
           [[:dispatch [:common/error-box-show "Save as Error" error]]])}))
 
-(reg-fx
- :bg-complete-save-as-on-error
- (fn [[db-key new-db-key]]
-   ;;(println "db-key new-db-key are " db-key new-db-key)
-   (bg/complete-save-as-on-error db-key new-db-key (fn [api-reponse]
-                                                     (when-let [kdbx-loaded (on-ok api-reponse)]
-                                                       (dispatch [:save-as-on-error-finished kdbx-loaded]))))))
-
-
+;; Used for both  iOS and Abdroid
 (reg-event-fx
  :save-as-on-error-finished
  (fn [{:keys [db]} [_event-id kdbx-loaded]]

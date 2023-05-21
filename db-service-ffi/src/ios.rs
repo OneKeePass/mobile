@@ -97,22 +97,17 @@ impl IosSupportService {
         }
     }
 
-    pub fn copy_last_backup_to_temp_file(&self, full_file_name_uri: String) -> Option<String> {
-        // Gets the kdbx file name from the recently used info
-        // copies the last the backup to a temp file with proper kdbx file name
-        // bkp_file_name is of in the format ...Documents/backups/MyPasswords_8281494059675522447.kdbx
-        // We need to get the name MyPasswords.kdbx to present in UIDocumentPickerViewController
-
-        // We are assuming there is a backup file written already before this call
-        // TODO:
-        //  To be failsafe, we may need to write from the db content to temp file
-        //  using db_service::save_kdbx_to_writer in case there is no backup at all
-
-        if let (Some(bkp_file_name), Some(kdbx_file_name)) = (
-            AppState::global().get_last_backup_on_error(&full_file_name_uri),
-            AppState::global().file_name_in_recently_used(&full_file_name_uri),
-        ) {
+    pub fn copy_last_backup_to_temp_file(
+        &self,
+        kdbx_file_name: String,
+        full_file_name_uri: String,
+    ) -> Option<String> {
+        if let Some(bkp_file_name) =
+            AppState::global().get_last_backup_on_error(&full_file_name_uri)
+        {
             let mut temp_file = std::env::temp_dir();
+            // kdbx_file_name is the suggested file name to use in the Docuemnt picker
+            // and user may change the name
             temp_file.push(kdbx_file_name);
             // Copies backup file to temp file with proper kdbx file name
             if std::fs::copy(&bkp_file_name, &temp_file).is_err() {
@@ -123,13 +118,19 @@ impl IosSupportService {
             to_ios_file_uri(&mut temp_name);
             Some(temp_name)
         } else {
+            // We are assuming there is a backup file written already before this call
+            // TODO:
+            //  To be failsafe, we may need to write from the db content to temp file
+            //  using db_service::save_kdbx_to_writer in case there is no backup at all
             None
         }
     }
 
     pub fn complete_save_as_on_error(&self, json_args: &str) -> String {
         let inner_fn = || -> OkpResult<db_service::KdbxLoaded> {
-            if let Ok(CommandArg::SaveAsArg { db_key, new_db_key }) = serde_json::from_str(json_args) {
+            if let Ok(CommandArg::SaveAsArg { db_key, new_db_key }) =
+                serde_json::from_str(json_args)
+            {
                 let kdbx_loaded = db_service::rename_db_key(&db_key, &new_db_key)?;
                 // Need to ensure that the checksum is reset to the newly saved file
                 // Otherwise, Save error modal dialog will popup !
@@ -156,7 +157,6 @@ impl IosSupportService {
         };
         InvokeResult::from(inner_fn()).json_str()
     }
-
 }
 
 // Dummy implemenation
