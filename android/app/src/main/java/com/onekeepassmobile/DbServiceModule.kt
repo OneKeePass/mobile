@@ -130,48 +130,19 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
         }
     }
 
-    fun verifyDbFileChanged(fullFileNameUri: String, promise: Promise): Boolean {
-        val uri = Uri.parse(fullFileNameUri);
-        try {
-            val fd: ParcelFileDescriptor? = contentResolver.openFileDescriptor(uri, "r");
-            if (fd != null) {
-                return when (val response = DbServiceAPI.verifyDbFileChecksum(fd.detachFd().toULong(), fullFileNameUri)) {
-                    is ApiResponse.Success -> {
-                        //Log.d(TAG, "File created using fd with SUCCESS response ${response.result}")
-                        // promise.resolve(response.result)
-                        false // no promise call done
-                    }
-                    is ApiResponse.Failure -> {
-                        //Log.d(TAG, "File created using fd with FAILURE response $response.result")
-                        promise.resolve(response.result)
-                        true // resolved
-                    }
-                }
-                return false // no promise call done
-            } else {
-                // Do we need to ask the user select the kdbx again to read ?
-                promise.reject(E_SAVE_FIE_DESCRIPTOR_ERROR, "Invalid file descriptor")
-                return true // resolved
-            }
-        } catch (e: Exception) {
-            // e.printStackTrace()
-            Log.e(TAG, "Error in verifyDbFileChanged ${e}")
-            promise.reject("Verification Failed", e)
-            return true // resolved
-        }
-    }
-
     @ReactMethod
-    fun saveKdbx(fullFileNameUri: String, promise: Promise) {
+    fun saveKdbx(fullFileNameUri: String, overwrite:Boolean,promise: Promise) {
         executorService.execute {
-            if (verifyDbFileChanged(fullFileNameUri,promise)) {
-                Log.d(TAG,"Db contents have changed and saving is not done")
-                //TODO: Store the db file with changed data to backup for later offline use
-                return@execute
-            }
-            Log.d(TAG,"Db contents have not changed and continuing with saving")
             val uri = Uri.parse(fullFileNameUri);
             try {
+                if (!overwrite  && (verifyDbFileChanged(fullFileNameUri,promise))) {
+                    Log.d(TAG,"Db contents have changed and saving is not done")
+                    //TODO: Store the db file with changed data to backup for later offline use
+                    DbServiceAPI.writeToBackupOnError(fullFileNameUri)
+                    return@execute
+                }
+                Log.d(TAG,"Db contents have not changed and continuing with saving")
+
                 // Here it is assumed the fileNameUri starts with content:// for which there will be
                 // a resolver. If we use internal file path, we need to do something similar to readKdbx
 
@@ -181,7 +152,7 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
                 if (fd != null) {
                     // fd.detachFd() is not used so that Save works without any issues in case of
                     // google drive
-                    when (val response = DbServiceAPI.saveKdbx(fd.fd.toULong(), fullFileNameUri, fileName)) {
+                    when (val response = DbServiceAPI.saveKdbx(fd.fd.toULong(), fullFileNameUri, fileName,overwrite)) {
                         is ApiResponse.Success -> {
                             //Log.d(TAG, "File created using fd with SUCCESS response ${response.result}")
                             promise.resolve(response.result)
@@ -204,17 +175,20 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
                 // We need to obtain while selecting the file.
                 Log.e(TAG, "SecurityException due to in sufficient permission")
                 //TODO: Store the db file with changed data to backup for later offline use
+                DbServiceAPI.writeToBackupOnError(fullFileNameUri)
                 promise.reject(E_PERMISSION_REQUIRED_TO_WRITE, e)
             } catch (e: FileNotFoundException) {
                 // e.printStackTrace()
                 // Need to add logic in UI layer to handle this
                 Log.e(TAG, "Error in saveKdbx ${e}")
                 //TODO: Store the db file with changed data to backup for later offline use
+                DbServiceAPI.writeToBackupOnError(fullFileNameUri)
                 promise.reject(E_FILE_NOT_FOUND, e)
             } catch (e: Exception) {
                 // e.printStackTrace()
                 Log.e(TAG, "Error in saveKdbx ${e}")
                 //TODO: Store the db file with changed data to backup for later offline use
+                DbServiceAPI.writeToBackupOnError(fullFileNameUri)
                 promise.reject(E_SAVE_CALL_FAILED, e)
             }
         }
@@ -274,6 +248,47 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
         }
     }
 
+    @ReactMethod
+    fun completeSaveAsOnError(oldFullFileNameUri: String,newFullFileNameUri: String,promise: Promise) {
+        executorService.execute {
+            Log.i(TAG, "Received fullFileName is $newFullFileNameUri")
+            val uri = Uri.parse(newFullFileNameUri);
+            Log.i(TAG, "Parsed uri is $uri")
+            try {
+                // See rational to use mode:rwt here https://issuetracker.google.com/issues/180526528
+                // Our requirement is at least "rw"
+                val fd: ParcelFileDescriptor? = contentResolver.openFileDescriptor(uri, "rwt");
+                if (fd != null) {
+                    // Rust side the file should not be closed. So fd.detachFd() is not used.
+                    // if we use fd.detachFd(), then 'create db file' for google drive did not work
+                    val response = DbServiceAPI.completeSaveAsOnError(fd.fd.toULong(), oldFullFileNameUri,newFullFileNameUri);
+                    resolveResponse(response, promise)
+                    // IMPORTANT:
+                    // The caller is responsible for closing the file using its file descriptor
+                    // as the file is not yet closed
+                    fd.close()
+                } else {
+                    // Do we need to ask the user select the kdbx again to read ?
+                    promise.reject(E_CREATE_FIE_DESCRIPTOR_ERROR, "Invalid file descriptor in createKdbx")
+                }
+            } catch (e: SecurityException) {
+                // This will happen, if we try to create the kdbx file without proper read and write permissions
+                // We need to obtain while selecting the file. See DocumentPickerServiceModule
+                Log.e(TAG, "SecurityException due to in sufficient permission")
+                promise.reject(E_PERMISSION_REQUIRED_TO_WRITE, e)
+            } catch (e: FileNotFoundException) {
+                // Need to add logic in UI layer to handle this
+                Log.e(TAG, "Error in completeSaveAsOnError ${e}")
+                // e.printStackTrace()
+                promise.reject(E_FILE_NOT_FOUND, e)
+            } catch (e: Exception) {
+                // e.printStackTrace()
+                Log.e(TAG, "Error in completeSaveAsOnError ${e}")
+                promise.reject(E_SAVE_AS_CALL_FAILED, e)
+            }
+        }
+    }
+
     private fun resolveResponse(response: ApiResponse, promise: Promise) {
         when (response) {
             is ApiResponse.Success -> {
@@ -287,12 +302,39 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
         }
     }
 
+    // Will throw exception
+    private fun verifyDbFileChanged(fullFileNameUri: String, promise: Promise): Boolean {
+        val uri = Uri.parse(fullFileNameUri);
+        // Will throw exception
+        val fd: ParcelFileDescriptor? = contentResolver.openFileDescriptor(uri, "r");
+        if (fd != null) {
+            return when (val response = DbServiceAPI.verifyDbFileChecksum(fd.detachFd().toULong(), fullFileNameUri)) {
+                is ApiResponse.Success -> {
+                    //Log.d(TAG, "File created using fd with SUCCESS response ${response.result}")
+                    // promise.resolve(response.result)
+                    false // no promise call done
+                }
+                is ApiResponse.Failure -> {
+                    Log.d(TAG, "verifyDbFileChanged with FAILURE response $response.result")
+                    promise.resolve(response.result)
+                    true // resolved
+                }
+            }
+            return false // no promise call done
+        } else {
+            // Do we need to ask the user select the kdbx again to read ?
+            promise.reject(E_SAVE_FIE_DESCRIPTOR_ERROR, "Invalid file descriptor")
+            return true // resolved
+        }
+    }
+
     companion object {
         private const val E_PERMISSION_REQUIRED_TO_READ = "PERMISSION_REQUIRED_TO_READ"
         private const val E_PERMISSION_REQUIRED_TO_WRITE = "PERMISSION_REQUIRED_TO_WRITE"
         private const val E_READ_CALL_FAILED = "READ_CALL_FAILED"
         private const val E_FILE_NOT_FOUND = "FILE_NOT_FOUND"
         private const val E_CREATE_CALL_FAILED = "CREATE_CALL_FAILED"
+        private const val E_SAVE_AS_CALL_FAILED = "SAVE_AS_CALL_FAILED"
         private const val E_SAVE_CALL_FAILED = "SAVE_CALL_FAILED"
         private const val E_CREATE_FIE_DESCRIPTOR_ERROR = "CREATE_FIE_DESCRIPTOR_ERROR"
         private const val E_SAVE_FIE_DESCRIPTOR_ERROR = "SAVE_FIE_DESCRIPTOR_ERROR"

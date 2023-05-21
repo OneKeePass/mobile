@@ -58,6 +58,10 @@ class DbServiceAPI {
     return OneKeePassMobile.saveKdbx(fileArgs,overwrite)
   }
   
+  static func completeSaveAsOnError(_ jsonArgs: String) -> String {
+    _iosSupportService.completeSaveAsOnError(jsonArgs)
+  }
+  
   static func getLastBackupFileName(_ fullFileName: String) -> String {
     return OneKeePassMobile.getLastBackupFileName(fullFileName)
   }

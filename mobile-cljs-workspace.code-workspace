@@ -12,7 +12,7 @@
 	],
 	"settings": {
 
-		"rust-analyzer.diagnostics.disabled":["unresolved-proc-macro"],
+		"rust-analyzer.diagnostics.disabled":["unresolved-proc-macro","inactive-code"],
 
 		"editor.semanticTokenColorCustomizations": {
 	        "enabled": true,

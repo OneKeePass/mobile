@@ -1,10 +1,11 @@
 use crate::app_state::AppState;
-use crate::util;
+use crate::commands::{remove_app_files, CommandArg, InvokeResult};
+use crate::{open_backup_file, util, OkpError, OkpResult};
 use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
-use onekeepass_core::db_service::string_to_simple_hash;
+use onekeepass_core::db_service::{self, string_to_simple_hash};
 use regex::{Regex, RegexSet};
 
 // This is for any iOS specific services
@@ -103,7 +104,7 @@ impl IosSupportService {
         // We need to get the name MyPasswords.kdbx to present in UIDocumentPickerViewController
 
         // We are assuming there is a backup file written already before this call
-        // TODO: 
+        // TODO:
         //  To be failsafe, we may need to write from the db content to temp file
         //  using db_service::save_kdbx_to_writer in case there is no backup at all
 
@@ -125,6 +126,37 @@ impl IosSupportService {
             None
         }
     }
+
+    pub fn complete_save_as_on_error(&self, json_args: &str) -> String {
+        let inner_fn = || -> OkpResult<db_service::KdbxLoaded> {
+            if let Ok(CommandArg::SaveAsArg { db_key, new_db_key }) = serde_json::from_str(json_args) {
+                let kdbx_loaded = db_service::rename_db_key(&db_key, &new_db_key)?;
+                // Need to ensure that the checksum is reset to the newly saved file
+                // Otherwise, Save error modal dialog will popup !
+                let bkp_file_opt = AppState::global().get_last_backup_on_error(&db_key);
+                if let Some(mut bkp_file) = open_backup_file(bkp_file_opt) {
+                    db_service::calculate_db_file_checksum(&new_db_key, &mut bkp_file)?;
+                } else {
+                    log::error!("Expected backup file is not found. 'Save as' should have this");
+                    return Err(OkpError::DataError("Expected backup file is not found"));
+                }
+
+                // AppState::global().remove_recent_db_use_info(&db_key);
+                remove_app_files(&db_key);
+                AppState::global().add_recent_db_use_info(&new_db_key);
+                AppState::global().remove_last_backup_name_on_error(&db_key);
+
+                Ok(kdbx_loaded)
+            } else {
+                Err(OkpError::Other(format!(
+                    "Call complete_save_as_on_error failed due Invalid args {}",
+                    json_args
+                )))
+            }
+        };
+        InvokeResult::from(inner_fn()).json_str()
+    }
+
 }
 
 // Dummy implemenation
@@ -143,6 +175,10 @@ impl IosSupportService {
     }
 
     pub fn copy_last_backup_to_temp_file(&self, full_file_name_uri: String) -> Option<String> {
+        unimplemented!();
+    }
+
+    pub fn complete_save_as_on_error(args: &str) -> String {
         unimplemented!();
     }
 }
@@ -177,7 +213,7 @@ pub fn list_bookmark_files() -> Vec<String> {
     }
 }
 
-// The rust side file path should have prefix "file;//" to use in Swift side, 
+// The rust side file path should have prefix "file;//" to use in Swift side,
 #[inline]
 pub fn to_ios_file_uri(full_file_path: &mut String) {
     if !full_file_path.starts_with("file://") {

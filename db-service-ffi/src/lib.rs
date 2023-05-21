@@ -26,8 +26,10 @@ pub type OkpError = db_service::Error;
 
 // The implementation of structs and functions decalared in db_service.udl follows here
 
+// Needs to be added here to expose in the generated rs code
 #[allow(dead_code)]
 use ios::IosSupportService;
+use android::AndroidSupportService;
 
 #[allow(dead_code)]
 fn invoke_command(command_name: String, args: String) -> String {

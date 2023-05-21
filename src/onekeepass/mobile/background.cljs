@@ -163,11 +163,11 @@
   is used in 'transform-api-response'
   "
   [kdbx-file-name dispatch-fn]
-  ;;(println "pick-document-to-create called for " kdbx-file-name)
+  (println "pick-document-to-create called for " kdbx-file-name)
   (call-api-async (fn [] (.pickKdbxFileToCreate okp-document-pick-service kdbx-file-name))
                   dispatch-fn
                   ;; The API response is not converted as json. Instead used as value of :ok in return
-                  :no-response-conversion true
+                  ;; :no-response-conversion true
                   :error-transform true))
 
 (defn- request-argon2key-transformer
@@ -207,6 +207,14 @@
 
 (defn complete-save-as-on-error [db-key new-db-key dispatch-fn]
   (invoke-api "complete_save_as_on_error" {:db-key db-key :new-db-key new-db-key} dispatch-fn))
+
+;; 
+(defn android-pick-on-save-error-save-as [kdbx-file-name dispatch-fn]
+  (println "Called android-pick-on-save-error-save-as kdbx-file-name dispatch-fn " kdbx-file-name dispatch-fn)
+  (pick-document-to-create kdbx-file-name dispatch-fn))
+
+(defn android-complete-save-as-on-error [db-key new-db-key dispatch-fn]
+  (call-api-async (fn [] (.completeSaveAsOnError okp-db-service db-key new-db-key) ) dispatch-fn :error-transform true))
 
 ;;;;;;
 

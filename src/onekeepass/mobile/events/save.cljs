@@ -15,7 +15,9 @@
    [onekeepass.mobile.background :as bg]))
 
 (defn save-as-on-error []
-  (dispatch [:save-as-on-error]))
+  (if (bg/is-iOS)
+    (dispatch [:save-as-on-error])
+    (dispatch [:android-save-as-on-error])))
 
 (defn overwrite-on-save-error []
   (dispatch [:overwrite-on-save-error]))
@@ -28,12 +30,12 @@
   error and take appropriate action
   The arg error may be a string or a map with keys: code,message
   "
-  [error error-title] 
+  [error error-title]
   (cond
     (= error "DbFileContentChangeDetected")
     (dispatch [:save-error-modal-show {:error-type :content-change-detected
                                        :error-title error-title}]) ;;title error-type message
-    
+
     ;; This happens when the file is removed or cloud service changes the reference after 
     ;; syncing from remote source. This invalidates the reference help by okp
     (= "FILE_NOT_FOUND" (:code error))
@@ -99,8 +101,9 @@
                                (dispatch [:common/message-modal-hide])
                                (when on-save-ok (on-save-ok))))]]]}))
 
-(defn save-api-response-handler 
-  [{:keys [error-title on-save-ok on-save-error]} api-response] 
+(defn save-api-response-handler
+  [{:keys [error-title on-save-ok on-save-error]} api-response]
+  (println "api-response " api-response)
   ;; api-response :ok value is a map corresponding to struct KdbxSaved
   ;; Here we are checking only the :error key and :ok value is ignored
   (when-not (on-error api-response
@@ -182,30 +185,48 @@
          [:dispatch [:common/kdbx-database-opened kdbx-loaded]]
          [:dispatch [:common/message-box-show "Save completed" "The newly saved database is loaded now"]]]}))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Android specfic Save as events ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(reg-event-fx
+ :android-save-as-on-error
+ (fn [{:keys [db]} [_event-id]]
+   {:fx [[:bg-android-save-as-on-error [(current-database-file-name db)]]]}))
+
+(reg-fx
+ :bg-android-save-as-on-error
+ (fn [[kdbx-file]]
+   (println "kdbx-file is " kdbx-file)
+   (bg/android-pick-on-save-error-save-as kdbx-file (fn [api-reponse]
+                                                      (when-let [result (on-ok
+                                                                         api-reponse
+                                                                         #(dispatch [:pick-save-as-on-error-not-completed %]))]
+                                                        (dispatch [:android-pick-save-as-on-error-completed result]))))))
+
+(reg-event-fx
+ :android-pick-save-as-on-error-completed
+ (fn [{:keys [db]} [_event-id {:keys [file-name full-file-name-uri]}]]
+   {:fx [[:bg-android-complete-save-as-on-error [(active-db-key db) full-file-name-uri]]]}))
+
+(reg-fx
+ :bg-android-complete-save-as-on-error
+ (fn [[db-key new-db-key]]
+   ;;(println "db-key new-db-key are " db-key new-db-key)
+   (bg/android-complete-save-as-on-error db-key new-db-key (fn [api-reponse]
+                                                             (when-let [kdbx-loaded (on-ok api-reponse)]
+                                                               (dispatch [:save-as-on-error-finished kdbx-loaded]))))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Overwrite
 (reg-event-fx
  :overwrite-on-save-error
  (fn [{:keys [db]} [_event-id]]
+   (println "overwrite-on-save-error is called ...fn is " (get-in-key-db db [:save-api-response-handler]))
    {:fx [[:dispatch [:common/message-modal-show nil  "Overwriting the database ..."]]
          [:dispatch [:save-error-modal-hide]]
          [:bg-save-kdbx [(active-db-key db) true (get-in-key-db db [:save-api-response-handler])]]
          #_[:bg-overwrite-kdbx [(active-db-key db)]]]}))
-
-;; (defn- overwrite-api-response-handler
-;;   [api-response]
-;;   (println "overwrite-api-response-handler api-response " api-response)
-;;   (when-not (on-error api-response
-;;                       (fn [error]
-;;                         (handle-save-error error nil)))
-;;     (dispatch [:common/message-modal-hide]) 
-;;     (dispatch [:save-error-modal-hide])
-;;     (dispatch [:common/message-snackbar-open "Database overwritten"])))
-
-;; (reg-fx
-;;  :bg-overwrite-kdbx
-;;  (fn [[db-key]]
-;;    (bg/overwrite-kdbx db-key overwrite-api-response-handler)))
 
 
 ;;;; Discard and close

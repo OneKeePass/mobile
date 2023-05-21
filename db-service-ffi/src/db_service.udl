@@ -16,6 +16,7 @@ namespace db_service {
     string invoke_command(string command_name, string args);
 };
 
+// From Rust to Swift or Kotlin
 callback interface CommonDeviceService {
     string app_home_dir();
     string? uri_to_file_name(string full_file_name_uri);
@@ -34,13 +35,20 @@ dictionary KdbxCreated {
     string api_response;
 };
 
-// iOS specific APIs
-// See IosSupportService and all methods need to receive &self as first argument
+// iOS specific APIs. Called from Swift to Rust
+// All methods need to receive &self as first argument in Rust side implemenation
 interface IosSupportService {
     constructor();
     boolean save_book_mark_data(string url,sequence<u8> data);
     sequence<u8> load_book_mark_data(string url);
     string? copy_last_backup_to_temp_file(string full_file_name_uri);
+    string complete_save_as_on_error([ByRef] string json_args);
+};
+
+interface AndroidSupportService {
+    constructor();
+    ApiResponse create_kdbx(u64 file_descriptor, string json_args);
+    ApiResponse complete_save_as_on_error(u64 file_descriptor, string old_full_file_name_uri,string new_full_file_name_uri);
 };
 
 interface JsonService {

@@ -18,7 +18,7 @@ ios-lib-output := "target/libdb_service_ffi.a"
 ## cargo install uniffi_bindgen 
 ## installed already and version 0.20.0 should match that is used in Cargo.toml)
 generate-rs:
-    uniffi-bindgen scaffolding {{udl_src}} --out-dir ./target/
+    uniffi-bindgen scaffolding {{udl_src}} --no-format --out-dir ./target/
 
 generate-swift:
     mkdir  -p {{swift-src-dir}}

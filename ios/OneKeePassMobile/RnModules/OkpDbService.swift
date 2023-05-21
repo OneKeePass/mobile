@@ -74,6 +74,14 @@ class OkpDbService: NSObject {
       resolve(OneKeePassMobile.invokeCommand(commandName, args))
     }
   }
+  
+  @objc
+  func completeSaveAsOnError(_ args: String, resolve: @escaping RCTPromiseResolveBlock, reject _: @escaping RCTPromiseRejectBlock) {
+    DispatchQueue.global(qos: .userInteractive).async { [unowned self] in
+      logger.debug("completeSaveAsOnError with args \(args) and delegating to api call")
+      resolve(DbServiceAPI.completeSaveAsOnError(args))
+    }
+  }
 
   // Not called from UI because of files not getting created when we use some cloud storage locations
   // Leaving it here in case we need to use again

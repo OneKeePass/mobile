@@ -16,6 +16,7 @@ private const val TAG = "DbServiceAPI";
 object DbServiceAPI {
 
     private var jsonService = onekeepass.mobile.ffi.JsonService();
+    private var androidSupportService = onekeepass.mobile.ffi.AndroidSupportService();
 
     init {
         Log.d(TAG, "Before calling dbServiceEnableLogging")
@@ -37,13 +38,18 @@ object DbServiceAPI {
     }
 
     fun createKdbx(fd: ULong, args: String): ApiResponse {
-        val fileArgs = onekeepass.mobile.ffi.FileArgs.FileDecriptor(fd)
-        return onekeepass.mobile.ffi.createKdbx(fileArgs, args)
+        return androidSupportService.createKdbx(fd, args)
+//        val fileArgs = onekeepass.mobile.ffi.FileArgs.FileDecriptor(fd)
+//        return onekeepass.mobile.ffi.createKdbx(fileArgs, args)
     }
 
-    fun saveKdbx(fd: ULong, fullFileName: String, fileName: String): ApiResponse {
+    fun saveKdbx(fd: ULong, fullFileName: String, fileName: String, overwrite: Boolean): ApiResponse {
         val fileArgs = onekeepass.mobile.ffi.FileArgs.FileDecriptorWithFullFileName(fd, fullFileName, fileName)
-        return onekeepass.mobile.ffi.saveKdbx(fileArgs)
+        return onekeepass.mobile.ffi.saveKdbx(fileArgs, overwrite)
+    }
+
+    fun completeSaveAsOnError(fileDescriptor: ULong, oldFullFileNameUri: String, newFullFileNameUri: String): ApiResponse {
+        return androidSupportService.completeSaveAsOnError(fileDescriptor, oldFullFileNameUri, newFullFileNameUri)
     }
 
     fun verifyDbFileChecksum(fd: ULong, fullFileName: String): ApiResponse {
@@ -51,11 +57,18 @@ object DbServiceAPI {
         return onekeepass.mobile.ffi.verifyDbFileChecksum(fileArgs)
     }
 
-//    fun verifyAndSaveKdbx(readFd: ULong, writeFd: ULong, fullFileName: String, fileName: String): ApiResponse {
-//        Log.d(TAG,"Passed fds readFd: $readFd and writeFd: $writeFd")
-//        val fileArgs = onekeepass.mobile.ffi.FileArgs.ReadWriteFDsWithFullFileName(readFd, writeFd, fullFileName, fileName)
-//        return onekeepass.mobile.ffi.verifyAndSaveKdbx(fileArgs)
-//    }
+    fun writeToBackupOnError(fullFileName: String) {
+
+        val r = onekeepass.mobile.ffi.writeToBackupOnError(fullFileName)
+        when (r) {
+            is ApiResponse.Success -> {
+                Log.d(TAG, "writeToBackupOnError call is successful")
+            }
+            is ApiResponse.Failure -> {
+                Log.e(TAG, "writeToBackupOnError call failed with error ${r.result}")
+            }
+        }
+    }
 
     fun readKdbx(fd: ULong, args: String): ApiResponse {
         val fileArgs = onekeepass.mobile.ffi.FileArgs.FileDecriptor(fd)

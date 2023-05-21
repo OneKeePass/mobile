@@ -427,33 +427,34 @@ impl Commands {
 
     // Used only for iOS
     fn complete_save_as_on_error(args: &str) -> String {
-        let inner_fn = || -> OkpResult<db_service::KdbxLoaded> {
-            if let Ok(CommandArg::SaveAsArg { db_key, new_db_key }) = serde_json::from_str(args) {
-                let kdbx_loaded = db_service::rename_db_key(&db_key, &new_db_key)?;
-                // Need to ensure that the checksum is reset to the newly saved file
-                // Otherwise, Save error modal dialog will popup !
-                let bkp_file_opt = AppState::global().get_last_backup_on_error(&db_key);
-                if let Some(mut bkp_file) = open_backup_file(bkp_file_opt) {
-                    db_service::calculate_db_file_checksum(&new_db_key, &mut bkp_file)?;
-                } else {
-                    log::error!("Expected backup file is not found. 'Save as' should have this");
-                    return Err(OkpError::DataError("Expected backup file is not found"));
-                }
+        unimplemented!()
+        // let inner_fn = || -> OkpResult<db_service::KdbxLoaded> {
+        //     if let Ok(CommandArg::SaveAsArg { db_key, new_db_key }) = serde_json::from_str(args) {
+        //         let kdbx_loaded = db_service::rename_db_key(&db_key, &new_db_key)?;
+        //         // Need to ensure that the checksum is reset to the newly saved file
+        //         // Otherwise, Save error modal dialog will popup !
+        //         let bkp_file_opt = AppState::global().get_last_backup_on_error(&db_key);
+        //         if let Some(mut bkp_file) = open_backup_file(bkp_file_opt) {
+        //             db_service::calculate_db_file_checksum(&new_db_key, &mut bkp_file)?;
+        //         } else {
+        //             log::error!("Expected backup file is not found. 'Save as' should have this");
+        //             return Err(OkpError::DataError("Expected backup file is not found"));
+        //         }
 
-                // AppState::global().remove_recent_db_use_info(&db_key);
-                remove_app_files(&db_key);
-                AppState::global().add_recent_db_use_info(&new_db_key);
-                AppState::global().remove_last_backup_name_on_error(&db_key);
+        //         // AppState::global().remove_recent_db_use_info(&db_key);
+        //         remove_app_files(&db_key);
+        //         AppState::global().add_recent_db_use_info(&new_db_key);
+        //         AppState::global().remove_last_backup_name_on_error(&db_key);
 
-                Ok(kdbx_loaded)
-            } else {
-                Err(OkpError::Other(format!(
-                    "Call complete_save_as_on_error failed due Invalid args {}",
-                    args
-                )))
-            }
-        };
-        InvokeResult::from(inner_fn()).json_str()
+        //         Ok(kdbx_loaded)
+        //     } else {
+        //         Err(OkpError::Other(format!(
+        //             "Call complete_save_as_on_error failed due Invalid args {}",
+        //             args
+        //         )))
+        //     }
+        // };
+        // InvokeResult::from(inner_fn()).json_str()
     }
 
     fn _all_kdbx_cache_keys() -> String {
@@ -481,7 +482,7 @@ impl Commands {
     }
 }
 
-fn remove_app_files(db_key: &str) {
+pub fn remove_app_files(db_key: &str) {
     
     // Using uri_to_file_name may fail if the uri is stale or no more available
     // as this is a callback to native side and any exception there results in rust panic in ffi
