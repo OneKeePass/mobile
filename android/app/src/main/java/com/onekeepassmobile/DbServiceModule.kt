@@ -320,7 +320,6 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
                     true // resolved
                 }
             }
-            return false // no promise call done
         } else {
             // Do we need to ask the user select the kdbx again to read ?
             promise.reject(E_SAVE_FIE_DESCRIPTOR_ERROR, "Invalid file descriptor")
