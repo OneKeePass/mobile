@@ -91,6 +91,13 @@
                        (assoc :password "A valid password is required"))]
     error-fields))
 
+;;;;;;;;;;;;;;;;;;;;;  Used only for Android ;;;;;;;;;;;;;;;;
+;; In iOS we need to have separate set of steps this to work 
+;; See comments in pick-document-to-create and pick-and-save-new-kdbxFile
+
+;; Android :new-database-create -> ... :bg-create-kdbx
+;; iOS     :new-database-create-ios -> ... :bg-load-new-kdbx
+
 (reg-event-fx
  :new-database-create
  (fn [{:keys [db]} [_event-id]]
@@ -105,22 +112,24 @@
  :bg-pick-document-to-create
  (fn [kdbx-file-name]
    (bg/pick-document-to-create kdbx-file-name (fn [api-response]
-                                                (println "pick-document-to-create api-response " api-response)
+                                                (println "pick-document-to-create api-response.. " api-response)
                                                 (when-let [picked (on-ok
                                                                    api-response
                                                                    #(dispatch [:new-database-dialog-hide]))]
+                                                  ;; picked is a map with keys :file-name :full-file-name-uri
+                                                  ;; see the use of DbServiceAPI.formJsonWithFileName
                                                   (dispatch [:document-to-create-picked picked]))))))
 
-
+;; Used only for android; See :document-to-create-picked-ios for iOS
 (reg-event-fx
  :document-to-create-picked
- (fn [{:keys [db]} [_event-id full-file-name]]
-   (let [db (-> db (assoc-in [:new-database :database-file-name] full-file-name))]
+ (fn [{:keys [db]} [_event-id {:keys [file-name full-file-name-uri]}]] 
+   (let [db (-> db (assoc-in [:new-database :database-file-name] full-file-name-uri))]
      {:db db
       :fx [[:dispatch [:new-database-field-update :status :in-progress]]
-           [:bg-create-kdbx [full-file-name  (:new-database db)]]]})))
+           [:bg-create-kdbx [full-file-name-uri  (:new-database db)]]]})))
 
-
+;; Used only for android
 (reg-event-fx
  :new-database-created
  (fn [{:keys [db]} [_event-id kdbx-loaded]]
@@ -128,6 +137,7 @@
             (assoc-in [:new-database :status] :completed))
     :fx [[:dispatch [:new-database-dialog-hide]]
          [:dispatch [:common/kdbx-database-opened kdbx-loaded]]]}))
+
 
 (reg-event-fx
  :new-database-create-kdbx-error
@@ -150,6 +160,7 @@
 (reg-fx
  :bg-create-kdbx
  (fn [[full-file-name new-db]]
+   ;; (println "bg-create-kdbx full-file-name is... " full-file-name)
    (bg/create-kdbx full-file-name (-> new-db
                                       (update-in [:kdf :Argon2 :iterations] str->int)
                                       (update-in [:kdf :Argon2 :parallelism] str->int)
@@ -158,8 +169,9 @@
                                       (update-in [:kdf :Argon2 :memory] * 1048576)
                                       (select-keys newdb-fields)) on-database-creation-completed)))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;;;;;;;;;;;;;;;;;;;; iOS specific ;;;;;;;;;;; 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; iOS specific ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
 
 ;; We need to use iOS specific calls - create a temp db file, copy that file using user selection
 ;; and then read that newly created file to load the db

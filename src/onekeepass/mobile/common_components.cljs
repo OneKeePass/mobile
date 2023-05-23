@@ -8,6 +8,7 @@
                      primary-color
                      rn-view
                      rn-scroll-view
+                     rnp-button
                      rnp-chip
                      rnp-paragraph
                      rnp-divider
@@ -17,25 +18,24 @@
                      rnp-dialog-title
                      rnp-dialog-content
                      rnp-dialog-actions
-                     rnp-button
                      rnp-modal
                      rnp-snackbar
                      rnp-text
                      rnp-text-input
                      rnp-text-input-icon]]
-            [onekeepass.mobile.utils :as u]
+            [onekeepass.mobile.utils :as u] 
             [onekeepass.mobile.events.common :as cmn-events]))
 
 (set! *warn-on-infer* true)
 
 (defn message-dialog [{:keys [dialog-show title category message]}]
   [rnp-dialog {:style {}
-               :dismissable false 
-               :visible dialog-show 
+               :dismissable false
+               :visible dialog-show
                :onDismiss #()}
    [rnp-dialog-icon {:icon (if (= category :error) "alert" "information")
-                     :color (if (= category :error) 
-                             ^js/Error50Color (.-error50 rnc/md3-colors) 
+                     :color (if (= category :error)
+                              ^js/Error50Color (.-error50 rnc/md3-colors)
                               rnc/outline-color)}]
    [rnp-dialog-title {:style {:color ^js/Error20Color (.-error20 rnc/md3-colors)}} title]
    [rnp-dialog-content
@@ -44,14 +44,14 @@
    [rnp-dialog-actions
     [rnp-button {:mode "text" :onPress cmn-events/close-message-dialog} "Close"]]])
 
-(defn select-tags-dialog [{:keys [show all-tags new-tags-str selected-tags]} 
+(defn select-tags-dialog [{:keys [show all-tags new-tags-str selected-tags]}
                           selected-tags-receiver-fn]
 
   (let [sv-ref (atom nil)]
-    [cust-dialog {:style {} :dismissable true :visible show :onDismiss #()} 
+    [cust-dialog {:style {} :dismissable true :visible show :onDismiss #()}
      [rnp-dialog-title [rn-view {}
                         [rnp-text  {:variant "titleLarge"} "All Tags"]
-                        [rnp-text {:style {:color tertiary-color}} 
+                        [rnp-text {:style {:color tertiary-color}}
                          "Select or Deselect one or more tags"]]]
      [rnp-dialog-content
       [rn-view {:flexDirection "column"}
@@ -60,7 +60,7 @@
                          ;; Need to use flexGrow for the Scroll View to show its content
                          :contentContainerStyle {:flexGrow 1}
                          :ref (fn [ref] (reset! sv-ref ref))
-                         :onContentSizeChange (fn [_h] (when-not (nil? @sv-ref) 
+                         :onContentSizeChange (fn [_h] (when-not (nil? @sv-ref)
                                                          (.scrollToEnd ^js/SV @sv-ref)))}
          [rn-view {:style {:flexDirection "row" :flexWrap "wrap"}}
           (doall
@@ -70,8 +70,8 @@
                                     :onPress #(cmn-events/tags-dialog-tag-selected tag)} tag]))]]]
        [rnp-divider {:style {:margin-top 10}}]
        [rn-view {:flexDirection "column"}
-        [rnp-text-input  {:style {:width "100%"} 
-                          :label "Tags" 
+        [rnp-text-input  {:style {:width "100%"}
+                          :label "Tags"
                           :placeholder "Comma separated tags"
                           :value new-tags-str
                           :onChangeText #(cmn-events/tags-dialog-update-new-tags-str %)
@@ -91,7 +91,7 @@
   [rnms-modal-selector {;; data can also include additional custom keys which are passed to the onChange callback
                         ;; in addition to required ones - key, label
                         ;; For example uuid can also be passed
-                        :data options 
+                        :data options
                         :initValue value
                         ;;:selectedKey (get options value)
                         :disabled disabled
@@ -142,8 +142,8 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def entry-delete-confirm-dialog-data (r/atom {:dialog-show false
-                                               :entry-uuid nil}))
+(def entry-delete-confirm-dialog-data (r/atom {:dialog-show false :entry-uuid nil}))
+
 (defn show-entry-delete-confirm-dialog [entry-uuid]
   (swap! entry-delete-confirm-dialog-data assoc :dialog-show true :entry-uuid entry-uuid))
 
@@ -152,16 +152,15 @@
     [confirm-dialog {:dialog-show dialog-show
                      :title  (lstr "dialog.titles.deleteEntry")
                      :confirm-text (lstr "dialog.texts.deleteEntry")
-                     :actions [{:label (lstr "button.labels.cancel") 
+                     :actions [{:label (lstr "button.labels.cancel")
                                 :on-press (fn []
-                                            (swap! entry-delete-confirm-dialog-data 
+                                            (swap! entry-delete-confirm-dialog-data
                                                    assoc :dialog-show false))}
-                               {:label (lstr "button.labels.continue") 
-                                :on-press (fn [] 
+                               {:label (lstr "button.labels.continue")
+                                :on-press (fn []
                                             (call-on-ok-fn entry-uuid)
-                                            (swap! entry-delete-confirm-dialog-data 
+                                            (swap! entry-delete-confirm-dialog-data
                                                    assoc :dialog-show false))}]}]))
-
 
 (def group-delete-confirm-dialog-data (r/atom {:dialog-show false
                                                :group-uuid nil}))
@@ -174,17 +173,17 @@
                      :title  (lstr "dialog.titles.deleteGroup")
                      :confirm-text (lstr "dialog.texts.deleteGroup")
                      :actions [{:label (lstr "button.labels.cancel")
-                                :on-press #(swap! group-delete-confirm-dialog-data 
+                                :on-press #(swap! group-delete-confirm-dialog-data
                                                   assoc :dialog-show false)}
                                {:label (lstr "button.labels.continue")
                                 :on-press (fn []
                                             (call-on-ok-fn group-uuid)
-                                            (swap! group-delete-confirm-dialog-data 
+                                            (swap! group-delete-confirm-dialog-data
                                                    assoc :dialog-show false))}]}]))
 
 ;; TODO: Replace the use of group-delete-confirm-dialog and entry-delete-confirm-dialog with this 
 
-(defn confirm-dialog-with-ref 
+(defn confirm-dialog-with-ref
   "This creates an reagent component. The arg 'data-ref' is reagent.core/atom"
   [data-ref]
   (let [{:keys [dialog-show title confirm-text call-on-ok-fn]} @data-ref]
@@ -198,8 +197,10 @@
                                             (call-on-ok-fn @data-ref)
                                             (swap! data-ref assoc :dialog-show false))}]}]))
 
+;;; See remove-confirm-dialog-info , overwrite-confirm-dialog-info for example usage
+;;; Important: we need to call (:dialog ..-info) inside rnp-portal
 
-(defn confirm-dialog-factory 
+(defn confirm-dialog-factory
   "The arg 'data-ref' is reagent.core/atom and returns a map (keys are :dialog :show) containg a  
    reagent dialog component and a function to call to show this dialog"
   [data-ref]

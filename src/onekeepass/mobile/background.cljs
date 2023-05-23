@@ -89,11 +89,13 @@
     (try
       (let [r (<p! (aync-fn))
             deserialized-response (transform-api-response r opts)]
-        (reset! test-data r)
+        ;;(reset! test-data r)
         (dispatch-fn deserialized-response))
       (catch js/Error err
         (do
-          ;;(reset! test-data err)
+
+          (reset! test-data err)
+
           ;; (println "type of err is " (type err))
           ;; (println "type of (ex-cause err) is " (type (ex-cause err))) 
           ;; (println "(ex-data err) is " (ex-data err))
@@ -110,9 +112,13 @@
           (dispatch-fn {:error (cond
                                  (nil? (ex-cause err))
                                  (if (not (nil? (.-message err)))
-                                    (.-message err)
+                                   (.-message err)
                                    err)
 
+                                 ;; When we reject the promise in native module, we get a detailed
+                                 ;; object as described above comments
+                                 ;; iOS error has :domain :userInfo keys 
+                                 ;; Android not sure on that 
                                  error-transform
                                  (-> err ex-cause u/jsx->clj (select-keys [:code :message]))
 
@@ -149,6 +155,7 @@
 ;; created with 0 bytes and shows the entry category screen. If we make some changes and saved the db, then 
 ;; db size reflects that 
 ;; But this sequence does not work for GDrive
+;; In case of iOS, we are using the 'pick-and-save-new-kdbxFile' fn
 (defn pick-document-to-create
   "Starts a document picker view so that user can select a location to create the db file
   kdbx-file-name is the database file name. It is not full path. On users pick, the complete url
@@ -156,11 +163,11 @@
   is used in 'transform-api-response'
   "
   [kdbx-file-name dispatch-fn]
-  ;;(println "pick-document-to-create called for " kdbx-file-name)
+  (println "pick-document-to-create called for " kdbx-file-name)
   (call-api-async (fn [] (.pickKdbxFileToCreate okp-document-pick-service kdbx-file-name))
                   dispatch-fn
                   ;; The API response is not converted as json. Instead used as value of :ok in return
-                  :no-response-conversion true
+                  ;; :no-response-conversion true
                   :error-transform true))
 
 (defn- request-argon2key-transformer
@@ -191,9 +198,30 @@
                     (.pickKdbxFileToOpen okp-document-pick-service))
                   dispatch-fn :error-transform true))
 
+;;;;;;;;
+
+(defn ios-pick-on-save-error-save-as
+  "Called to present os specific view for the user to save the copied kdbx file"
+  [kdbx-file-name db-key dispatch-fn]
+  (call-api-async (fn [] (.pickOnSaveErrorSaveAs okp-document-pick-service kdbx-file-name db-key)) dispatch-fn :error-transform true))
+
+(defn ios-complete-save-as-on-error [db-key new-db-key dispatch-fn]
+  (call-api-async (fn [] (.completeSaveAsOnError okp-db-service
+                                                 (api-args->json {:db-key db-key :new-db-key new-db-key} true))) dispatch-fn))
+
+;; 
+(defn android-pick-on-save-error-save-as [kdbx-file-name dispatch-fn] 
+  (pick-document-to-create kdbx-file-name dispatch-fn))
+
+(defn android-complete-save-as-on-error [db-key new-db-key dispatch-fn]
+  (call-api-async (fn [] (.completeSaveAsOnError okp-db-service db-key new-db-key)) dispatch-fn :error-transform true))
+
+;;;;;;
+
 (defn create-kdbx
   "Called with full file name uri that was picked by the user through the document picker 
    and new db related info in a map
+   Used only in case of Android. See comments in pick-document-to-create and pick-and-save-new-kdbxFile
    "
   [full-file-name new-db dispatch-fn]
   (call-api-async (fn [] (.createKdbx okp-db-service full-file-name
@@ -222,8 +250,9 @@
                                (api-args->json {:db-file-name db-file-name :password password :key_file_name key-file-name} true)))
                   dispatch-fn :error-transform true))
 
-(defn save-kdbx [full-file-name dispatch-fn]
-  (call-api-async (fn [] (.saveKdbx okp-db-service full-file-name)) dispatch-fn))
+(defn save-kdbx [full-file-name overwrite dispatch-fn]
+  ;; By default, we pass 'false' for the overwrite arg
+  (call-api-async (fn [] (.saveKdbx okp-db-service full-file-name overwrite)) dispatch-fn :error-transform true))
 
 (defn categories-to-show [db-key dispatch-fn]
   (invoke-api "categories_to_show" {:db-key db-key} dispatch-fn))

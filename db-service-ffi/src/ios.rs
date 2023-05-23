@@ -1,10 +1,11 @@
 use crate::app_state::AppState;
-use crate::util;
+use crate::commands::{remove_app_files, CommandArg, InvokeResult};
+use crate::{open_backup_file, util, OkpError, OkpResult};
 use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
-use onekeepass_core::db_service::string_to_simple_hash;
+use onekeepass_core::db_service::{self, string_to_simple_hash};
 use regex::{Regex, RegexSet};
 
 // This is for any iOS specific services
@@ -95,6 +96,67 @@ impl IosSupportService {
             }
         }
     }
+
+    pub fn copy_last_backup_to_temp_file(
+        &self,
+        kdbx_file_name: String,
+        full_file_name_uri: String,
+    ) -> Option<String> {
+        if let Some(bkp_file_name) =
+            AppState::global().get_last_backup_on_error(&full_file_name_uri)
+        {
+            let mut temp_file = std::env::temp_dir();
+            // kdbx_file_name is the suggested file name to use in the Docuemnt picker
+            // and user may change the name
+            temp_file.push(kdbx_file_name);
+            // Copies backup file to temp file with proper kdbx file name
+            if std::fs::copy(&bkp_file_name, &temp_file).is_err() {
+                log::error!("Copying the last backup to temp file failed ");
+                return None;
+            }
+            let mut temp_name = temp_file.as_os_str().to_string_lossy().to_string();
+            to_ios_file_uri(&mut temp_name);
+            Some(temp_name)
+        } else {
+            // We are assuming there is a backup file written already before this call
+            // TODO:
+            //  To be failsafe, we may need to write from the db content to temp file
+            //  using db_service::save_kdbx_to_writer in case there is no backup at all
+            None
+        }
+    }
+
+    pub fn complete_save_as_on_error(&self, json_args: &str) -> String {
+        let inner_fn = || -> OkpResult<db_service::KdbxLoaded> {
+            if let Ok(CommandArg::SaveAsArg { db_key, new_db_key }) =
+                serde_json::from_str(json_args)
+            {
+                let kdbx_loaded = db_service::rename_db_key(&db_key, &new_db_key)?;
+                // Need to ensure that the checksum is reset to the newly saved file
+                // Otherwise, Save error modal dialog will popup !
+                let bkp_file_opt = AppState::global().get_last_backup_on_error(&db_key);
+                if let Some(mut bkp_file) = open_backup_file(bkp_file_opt) {
+                    db_service::calculate_db_file_checksum(&new_db_key, &mut bkp_file)?;
+                } else {
+                    log::error!("Expected backup file is not found. 'Save as' should have this");
+                    return Err(OkpError::DataError("Expected backup file is not found"));
+                }
+
+                // AppState::global().remove_recent_db_use_info(&db_key);
+                remove_app_files(&db_key);
+                AppState::global().add_recent_db_use_info(&new_db_key);
+                AppState::global().remove_last_backup_name_on_error(&db_key);
+
+                Ok(kdbx_loaded)
+            } else {
+                Err(OkpError::Other(format!(
+                    "Call complete_save_as_on_error failed due Invalid args {}",
+                    json_args
+                )))
+            }
+        };
+        InvokeResult::from(inner_fn()).json_str()
+    }
 }
 
 // Dummy implemenation
@@ -104,11 +166,23 @@ impl IosSupportService {
         unimplemented!();
     }
 
-    pub fn save_book_mark_data(&self, url: String, data: Vec<u8>) -> bool {
+    pub fn save_book_mark_data(&self, _url: String, _data: Vec<u8>) -> bool {
         unimplemented!();
     }
 
-    pub fn load_book_mark_data(&self, url: String) -> Vec<u8> {
+    pub fn load_book_mark_data(&self, _url: String) -> Vec<u8> {
+        unimplemented!();
+    }
+
+    pub fn copy_last_backup_to_temp_file(
+        &self,
+        _kdbx_file_name: String,
+        _full_file_name_uri: String,
+    ) -> Option<String> {
+        unimplemented!();
+    }
+
+    pub fn complete_save_as_on_error(&self, _json_args: &str) -> String {
         unimplemented!();
     }
 }
@@ -143,11 +217,24 @@ pub fn list_bookmark_files() -> Vec<String> {
     }
 }
 
+// The rust side file path should have prefix "file;//" to use in Swift side,
 #[inline]
 pub fn to_ios_file_uri(full_file_path: &mut String) {
     if !full_file_path.starts_with("file://") {
         full_file_path.insert_str(0, "file://")
     }
+}
+
+pub fn to_ios_file_uri_str(file_path: &Option<String>) -> Option<String> {
+    file_path
+        .clone()
+        .as_mut()
+        .map(|s| {
+            to_ios_file_uri(s);
+            s
+        })
+        .as_deref()
+        .cloned()
 }
 
 // Generates a hash key based on the bytes data

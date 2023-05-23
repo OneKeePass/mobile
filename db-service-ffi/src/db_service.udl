@@ -3,15 +3,16 @@ namespace db_service {
     void db_service_initialize(CommonDeviceService common_device_service);
  
     ApiResponse read_kdbx(FileArgs file_args, string json_args);
-    ApiResponse create_kdbx(FileArgs file_args, string json_args);
     ApiResponse create_temp_kdbx(FileArgs file_args, string json_args);
-    ApiResponse save_kdbx(FileArgs file_args);
+    ApiResponse save_kdbx(FileArgs file_args, boolean overwrite);
+    ApiResponse verify_db_file_checksum(FileArgs file_args);
+    ApiResponse write_to_backup_on_error(string full_file_name_uri);
 
     string extract_file_provider(string full_file_name_uri);
- 
     string invoke_command(string command_name, string args);
 };
 
+// From Rust to Swift or Kotlin
 callback interface CommonDeviceService {
     string app_home_dir();
     string? uri_to_file_name(string full_file_name_uri);
@@ -30,10 +31,21 @@ dictionary KdbxCreated {
     string api_response;
 };
 
+// iOS specific APIs. Called from Swift to Rust
+// All methods need to receive &self as first argument in Rust side implemenation
 interface IosSupportService {
     constructor();
     boolean save_book_mark_data(string url,sequence<u8> data);
     sequence<u8> load_book_mark_data(string url);
+    string? copy_last_backup_to_temp_file(string kdbx_file_name,string full_file_name_uri);
+    string complete_save_as_on_error([ByRef] string json_args);
+};
+
+// Android specific APIs. Called from Kotlin side to Rust
+interface AndroidSupportService {
+    constructor();
+    ApiResponse create_kdbx(u64 file_descriptor, string json_args);
+    ApiResponse complete_save_as_on_error(u64 file_descriptor, string old_full_file_name_uri,string new_full_file_name_uri);
 };
 
 interface JsonService {

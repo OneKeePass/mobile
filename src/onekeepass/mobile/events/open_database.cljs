@@ -1,5 +1,5 @@
 (ns onekeepass.mobile.events.open-database
-  (:require 
+  (:require
    [clojure.string :as str]
    [onekeepass.mobile.events.common :refer [on-ok]]
    [re-frame.core :refer [reg-event-db
@@ -12,7 +12,7 @@
 
 
 #_(defn open-database-dialog-show []
-  (dispatch [:open-database-dialog-show]))
+    (dispatch [:open-database-dialog-show]))
 
 (defn cancel-on-press []
   (dispatch [:open-database-dialog-hide]))
@@ -66,9 +66,9 @@
     error-fields))
 
 #_(reg-event-db
- :open-database-dialog-show
- (fn [db [_event-id]]
-   (-> db init-open-database-data (assoc-in [:open-database :dialog-show] true))))
+   :open-database-dialog-show
+   (fn [db [_event-id]]
+     (-> db init-open-database-data (assoc-in [:open-database :dialog-show] true))))
 
 (reg-event-db
  :open-database-dialog-hide
@@ -79,7 +79,7 @@
  :open-database-field-update
  (fn [db [_event-id kw-field-name value]] ;; kw-field-name is single kw or a vec of kws
    (-> db
-       (assoc-in (into [:open-database] 
+       (assoc-in (into [:open-database]
                        (if (vector? kw-field-name)
                          kw-field-name
                          [kw-field-name])) value)
@@ -94,12 +94,12 @@
 (reg-fx
  :bg-pick-database-file
  (fn []
-   (bg/pick-document-to-read-write 
-    (fn [api-response] 
+   (bg/pick-document-to-read-write
+    (fn [api-response]
       (when-let [picked-response (on-ok
                                   api-response
-                                  #(dispatch [:database-file-pick-error %]))] 
-        (dispatch [:open-database/database-file-picked picked-response ]))))))
+                                  #(dispatch [:database-file-pick-error %]))]
+        (dispatch [:open-database/database-file-picked picked-response]))))))
 
 ;; This will make dialog open status true
 (reg-event-fx
@@ -124,7 +124,7 @@
  :open-database-read-db-file
  (fn [{:keys [db]} [_event-id]]
    (let [error-fields (validate-required-fields db)
-         errors-found (boolean (seq error-fields))] 
+         errors-found (boolean (seq error-fields))]
      (if errors-found
        {:db (assoc-in db [:open-database :error-fields] error-fields)}
        {:db (-> db (assoc-in [:open-database :status] :in-progress))
@@ -145,13 +145,17 @@
 
 (reg-event-fx
  :open-database-read-kdbx-error
- (fn [{:keys [db]} [_event-id error]] 
+ (fn [{:keys [db]} [_event-id error]]
    {:db (-> db (assoc-in [:open-database :error-fields] {})
             (assoc-in [:open-database :status] :completed))
-    :fx (if (= (:code error) "PERMISSION_REQUIRED_TO_READ")
-          [[:dispatch [:repick-confirm-show]]
-           [:dispatch [:open-database-dialog-hide]]]
-          [[:dispatch [:common/error-box-show "Database Open Error" error]]])}))
+    :fx (cond (= (:code error) "PERMISSION_REQUIRED_TO_READ")
+              [[:dispatch [:repick-confirm-show]]
+               [:dispatch [:open-database-dialog-hide]]]
+              (= (:code error) "FILE_NOT_FOUND")
+              [[:dispatch [:open-database-dialog-hide]]
+               [:dispatch [:common/error-box-show "Database Open Error" (str "The database is no longer in that location." " You may open another one")]]]
+              :else
+              [[:dispatch [:common/error-box-show "Database Open Error" error]]])}))
 
 (reg-event-fx
  :open-database-db-opened

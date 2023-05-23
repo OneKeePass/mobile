@@ -2,6 +2,7 @@
   "All common events that are used across many pages"
   (:require
    [clojure.string :as str]
+   [cljs.core.async :refer [go timeout <!]]
    [re-frame.core :refer [reg-event-db
                           reg-event-fx
                           reg-fx
@@ -99,6 +100,9 @@
          ;; Need to check duplicate entries for the same db-key
          ;; and ask user whether to continue to open or not in open db dialog instead of the same db again
 
+         ;; opened-db-list is a vec of map with keys :db-key :database-name
+         ;; :database-name is different from :file-name found in the the map Preference -> RecentlyUsed
+         ;; See ':recently-used' subscription 
          ;; The latest opened db is last in the vector
         (update-in [:opened-db-list] conj {:db-key db-key
                                            :database-name database-name
@@ -118,13 +122,20 @@
      (-> (filter (fn [m] (= curr-dbkey (:db-key m))) (:opened-db-list app-db))
          first :database-name))))
 
+(defn current-database-file-name
+  "Gets the database kdbx file name"
+  [app-db]
+  (let [curr-dbkey  (:current-db-file-name app-db)
+        recent-dbs-info (-> app-db :app-preference :data :recent-dbs-info)]
+    (-> (filter (fn [{:keys [db-file-path]}] (= curr-dbkey db-file-path)) recent-dbs-info) first :file-name)))
+
 ;;;;;;;;;;;;;;;;;;;;  Common Events ;;;;;;;;;;;;;;;;;;;;;
 
 (defn close-kdbx [db-key]
   (dispatch [:close-kdbx-db db-key]))
 
 (defn close-current-kdbx-db []
-  (dispatch [:close-current-kdbx-db]))
+  (dispatch [:common/close-current-kdbx-db]))
 
 (defn remove-from-recent-list [full-file-name-uri]
   (dispatch [:remove-from-recent-list full-file-name-uri]))
@@ -149,13 +160,14 @@
 (reg-event-fx
  :common/kdbx-database-opened
  (fn [{:keys [db]} [_event-id {:keys [database-name] :as kdbx-loaded}]]
-   {:db (db-opened db kdbx-loaded)
+   {:db (db-opened db kdbx-loaded) ;; current-db-file-name is set in db-opened
     :fx [[:dispatch [:entry-category/load-categories-to-show]]
          [:dispatch [:common/next-page :entry-category database-name]]
          [:dispatch [:load-all-tags]]
          [:dispatch [:groups/load]]
-         [:dispatch [:common/load-entry-type-headers]]]}))
-
+         [:dispatch [:common/load-entry-type-headers]]
+         ;; Loads the updated recent dbs info
+         [:bg-app-preference]]}))
 
 (reg-event-fx
  :close-kdbx-db
@@ -172,7 +184,7 @@
                       (dispatch [:close-kdbx-completed db-key]))))))
 
 (reg-event-fx
- :close-current-kdbx-db
+ :common/close-current-kdbx-db
  (fn [{:keys [db]}  [_event-id]]
    {:fx [[:bg-close-kdbx [(active-db-key db)]]
          [:dispatch [:to-home-page]]]}))
@@ -220,33 +232,10 @@
    ;; This backend call not only removes the recent use file info but also closes the db if it is openned 
    (bg/remove-from-recently-used full-file-name-uri (fn [api-reponse]
                                                       (when-not (on-error api-reponse)
-                                                        (dispatch [:common/message-snackbar-open "Database removed from list"])
+                                                        (dispatch [:common/message-snackbar-open "Database is removed from the list"])
                                                         ;; As db is closed when this response is received, we call :close-kdbx-completed 
                                                         (dispatch [:close-kdbx-completed full-file-name-uri]))))
    {}))
-
-(reg-event-fx
- :common/save-current-kdbx
- (fn [{:keys [db]} [_event-id {:keys [error-title save-message on-save-ok on-save-error]}]]
-   {:fx [[:dispatch [:common/message-modal-show nil (if-not (nil? save-message) save-message "Saving ...")]]
-         [:common/bg-save-kdbx [(active-db-key db)
-                                (fn [api-response]
-                                  (when-not (on-error api-response
-                                                      (fn [error]
-                                                        (dispatch [:common/default-error error-title error])
-                                                        (when on-save-error (on-save-error error))))
-                                    (dispatch [:save-current-kdbx-completed])
-                                    (when on-save-ok (on-save-ok))))]]]}))
-
-
-;; Calls the background save kdbx api
-(reg-fx
- :common/bg-save-kdbx
- (fn [[db-key dispatch-fn]]
-   ;;(println "In common/bg-save-kdbx db-key dispatch-fn " db-key dispatch-fn)
-   ;; db-key is the full file name 
-   (bg/save-kdbx db-key dispatch-fn)))
-
 
 (reg-event-fx
  :common/default-error
@@ -263,11 +252,6 @@
                         (:opened-db-list db))]
      ;;(println "new-list " new-list (keys db))
      {:db (assoc db :opened-db-list new-list)})))
-
-(reg-event-fx
- :save-current-kdbx-completed
- (fn [{:keys [_db]} [_event-id]]
-   {:fx [[:dispatch [:common/message-modal-hide]]]}))
 
 (reg-sub
  :active-db-key
@@ -287,7 +271,11 @@
 
 ;;;;;;;;;;;;;;;;;;  App preference, Recent dbs etc ;;;;;;;;;;;;;;;;;;;;
 
-(defn recently-used []
+(defn recently-used
+  "Returns a vec of maps (from struct RecentlyUsed) with keys :file-name and :db-file-path 
+   The kdbx file name is found here for each db-key
+ "
+  []
   (subscribe [:recently-used]))
 
 (reg-event-fx
@@ -586,7 +574,6 @@
 (defn message-dialog-data []
   (subscribe [:message-box]))
 
-;; Not yet used. Should it be deprecated?
 (reg-event-db
  :common/message-box-show
  (fn [db [_event-id title message]]
@@ -722,6 +709,28 @@
    (get db :file-info-dialog-data {:dialog-show false})))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(def field-in-clip (atom false))
+
+(defn clear-clipboard 
+  "Clears out the last protected field after 10 sec assuming user copies one field and pastes
+   "
+  [protected]
+  (reset! field-in-clip protected)
+  (go
+    (<! (timeout 10000))
+    (when @field-in-clip (bg/write-string-to-clipboard nil))))
+
+(defn write-string-to-clipboard [{:keys [field-name value protected]}]
+  ;;(println "write-string-to-clipboard called field-name value... " field-name value)
+  (bg/write-string-to-clipboard value)
+  (clear-clipboard protected)
+  (when field-name
+    (dispatch [:common/message-snackbar-open (str field-name " " "copied")])))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (comment
   (in-ns 'onekeepass.mobile.events.common)

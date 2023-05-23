@@ -12,9 +12,11 @@ import java.io.FileNotFoundException
  *  All ffi api calls go through this
  */
 private const val TAG = "DbServiceAPI";
+
 object DbServiceAPI {
 
     private var jsonService = onekeepass.mobile.ffi.JsonService();
+    private var androidSupportService = onekeepass.mobile.ffi.AndroidSupportService();
 
     init {
         Log.d(TAG, "Before calling dbServiceEnableLogging")
@@ -32,17 +34,38 @@ object DbServiceAPI {
 
     fun cleanExportDataDir(): String {
         // Delegates to the invokeCommand
-        return invokeCommand("clean_export_data_dir","{}")
+        return invokeCommand("clean_export_data_dir", "{}")
     }
 
     fun createKdbx(fd: ULong, args: String): ApiResponse {
-        val fileArgs = onekeepass.mobile.ffi.FileArgs.FileDecriptor(fd)
-        return onekeepass.mobile.ffi.createKdbx(fileArgs, args)
+        return androidSupportService.createKdbx(fd, args)
     }
 
-    fun saveKdbx(fd: ULong, fullFileName: String, fileName: String): ApiResponse {
+    fun saveKdbx(fd: ULong, fullFileName: String, fileName: String, overwrite: Boolean): ApiResponse {
         val fileArgs = onekeepass.mobile.ffi.FileArgs.FileDecriptorWithFullFileName(fd, fullFileName, fileName)
-        return onekeepass.mobile.ffi.saveKdbx(fileArgs)
+        return onekeepass.mobile.ffi.saveKdbx(fileArgs, overwrite)
+    }
+
+    fun completeSaveAsOnError(fileDescriptor: ULong, oldFullFileNameUri: String, newFullFileNameUri: String): ApiResponse {
+        return androidSupportService.completeSaveAsOnError(fileDescriptor, oldFullFileNameUri, newFullFileNameUri)
+    }
+
+    fun verifyDbFileChecksum(fd: ULong, fullFileName: String): ApiResponse {
+        val fileArgs = onekeepass.mobile.ffi.FileArgs.FileDecriptorWithFullFileName(fd, fullFileName, "")
+        return onekeepass.mobile.ffi.verifyDbFileChecksum(fileArgs)
+    }
+
+    fun writeToBackupOnError(fullFileName: String) {
+
+        val r = onekeepass.mobile.ffi.writeToBackupOnError(fullFileName)
+        when (r) {
+            is ApiResponse.Success -> {
+                Log.d(TAG, "writeToBackupOnError call is successful")
+            }
+            is ApiResponse.Failure -> {
+                Log.e(TAG, "writeToBackupOnError call failed with error ${r.result}")
+            }
+        }
     }
 
     fun readKdbx(fd: ULong, args: String): ApiResponse {
@@ -70,16 +93,15 @@ class CommonDeviceServiceImpl(val reactContext: ReactApplicationContext) : Commo
             val uri = Uri.parse(fullFileNameUri);
             val fs = FileUtils.getMetaInfo(reactContext.contentResolver, uri);
             return fs?.filename
-        }
-        catch (e: Exception) {
+        } catch (e: Exception) {
             e.printStackTrace()
             return null
         }
     }
 
     override fun uriToFileInfo(fullFileNameUri: String): FileInfo? {
-        var info = FileInfo(null,null,null,null)
-        var location:String? = null
+        var info = FileInfo(null, null, null, null)
+        var location: String? = null
         try {
             val uri = Uri.parse(fullFileNameUri);
             location = onekeepass.mobile.ffi.extractFileProvider(fullFileNameUri)
@@ -94,8 +116,7 @@ class CommonDeviceServiceImpl(val reactContext: ReactApplicationContext) : Commo
             info.lastModified = fs?.lastModifiedTime
             info.location = location
             return info
-        }
-        catch (e: SecurityException) {
+        } catch (e: SecurityException) {
             // This will happen, if we try to create the kdbx file without proper read and write permissions
             // See DocumentPickerServiceModule how these permissions are set while selecting the file.
             Log.e(TAG, "SecurityException due to in sufficient permission")

@@ -34,6 +34,7 @@ class DocumentPickerServiceModule(reactContext: ReactApplicationContext) : React
                                 pickerPromise = null
                             }
                         }
+                        // PICK_KDBX_FILE_CODES includes PICK_KDBX_FILE_CREATE_REQUEST_CODE, PICK_KDBX_FILE_OPEN_REQUEST_CODE
                         in PICK_KDBX_FILE_CODES -> {
                             when (resultCode) {
                                 Activity.RESULT_CANCELED ->
@@ -49,12 +50,7 @@ class DocumentPickerServiceModule(reactContext: ReactApplicationContext) : React
                                                 Intent.FLAG_GRANT_WRITE_URI_PERMISSION  //and Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
                                         contentResolver.takePersistableUriPermission(uri, takeFlags)
                                     }
-                                    //
-                                    if (requestCode == PICK_KDBX_FILE_OPEN_REQUEST_CODE) {
-                                        pickerPromise?.resolve(DbServiceAPI.formJsonWithFileName(uri.toString()))
-                                    } else {
-                                        pickerPromise?.resolve(uri.toString())
-                                    }
+                                    pickerPromise?.resolve(DbServiceAPI.formJsonWithFileName(uri.toString()))
                                 }
                             }
                             pickerPromise = null

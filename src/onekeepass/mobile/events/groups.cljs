@@ -1,5 +1,5 @@
 (ns onekeepass.mobile.events.groups
-  (:require 
+  (:require
    [clojure.string :as str]
    [onekeepass.mobile.events.common :refer [active-db-key
                                             assoc-in-key-db
@@ -50,7 +50,7 @@
 ;;Called when data is entered or updated for all fields except tags
 (reg-event-db
  :update-group-form-data
- (fn [db [_event-id field-name-kw value]] 
+ (fn [db [_event-id field-name-kw value]]
    (assoc-in-key-db db [:group-form :data field-name-kw] value)))
 
 (reg-event-fx
@@ -63,7 +63,7 @@
 (reg-fx
  :bg-find-group-by-id
  (fn [[db-key group-id]]
-   (bg/find-group-by-id db-key group-id (fn [api-response] 
+   (bg/find-group-by-id db-key group-id (fn [api-response]
                                           (when-let [group (on-ok api-response)]
                                             (dispatch [:group-found group]))))))
 
@@ -80,7 +80,7 @@
 (reg-event-fx
  :group-form/create-blank-group
  ;; kind is :group or :category
- (fn [{:keys [db]} [_event-id parent-group-uuid kind]] 
+ (fn [{:keys [db]} [_event-id parent-group-uuid kind]]
    {:db (-> db (assoc-in-key-db [:group-form :kind] kind)
             (assoc-in-key-db [:group-form :new] true))
     :fx [[:bg-new-blank-group parent-group-uuid]]}))
@@ -88,7 +88,7 @@
 (reg-fx
  :bg-new-blank-group
  (fn [parent-group-uuid]
-   (bg/new-blank-group  (fn [api-reponse] 
+   (bg/new-blank-group  (fn [api-reponse]
                           (when-let [group (on-ok api-reponse)]
                             (let [group-with-parent (assoc group :parent-group-uuid parent-group-uuid)]
                               (dispatch [:new-blank-group-created group-with-parent])))))))
@@ -101,7 +101,7 @@
               (assoc-in-key-db [:group-form :undo-data] blank-group))
       ;; TODO: Use "page.titles.newGroup" "page.titles.newCategory" after finding a way to show longer texts
       ;; We may use the same technique as in Database settings page title ?
-      :fx [[:dispatch [:common/next-page :group-form 
+      :fx [[:dispatch [:common/next-page :group-form
                        (if (= kind :group) "page.titles.group" "page.titles.category")]]]})))
 
 (reg-event-fx
@@ -121,9 +121,9 @@
 
 (reg-fx
  :bg-insert-group
- (fn [[db-key group]] 
-   (bg/insert-group db-key group (fn [api-reponse] 
-                                   (when-not (on-error api-reponse #(dispatch [:insert-update-group-form-error %])) 
+ (fn [[db-key group]]
+   (bg/insert-group db-key group (fn [api-reponse]
+                                   (when-not (on-error api-reponse #(dispatch [:insert-update-group-form-error %]))
                                      (dispatch [:insert-update-group-form-data-complete]))))))
 
 (reg-event-fx
@@ -131,17 +131,15 @@
  (fn [{:keys [_db]} [_event-id error]]
    {:fx [[:dispatch [:common/error-box-show "Insert or Update failed.." error]]]}))
 
-(defn- on-save-complete [api-response]
-  (when-not (on-error api-response (fn [error]
-                                     (dispatch [:insert-update-group-form-error error])))
-    (dispatch [:group-insert-update-save-complete])))
-
 (reg-event-fx
  :insert-update-group-form-data-complete
- (fn [{:keys [db]} [_event-id]]
+ (fn [{:keys [_db]} [_event-id]]
    ;; call Save db call here
-   {:fx [[:dispatch [:common/message-modal-show nil "Saving ..."]]
-         [:common/bg-save-kdbx [(active-db-key db) on-save-complete]]]}))
+   {:fx [[:dispatch [:save/save-current-kdbx
+                     {:error-title "Group form save error"
+                      :save-message "Saving group form..."
+                      :on-save-ok (fn []
+                                    (dispatch [:group-insert-update-save-complete]))}]]]}))
 
 (reg-event-fx
  :group-insert-update-save-complete
@@ -154,8 +152,8 @@
 (reg-fx
  :bg-update-group
  (fn [[db-key group]]
-   (bg/update-group db-key group (fn [api-reponse] 
-                                   (when-not (on-error api-reponse #(dispatch [:insert-update-group-form-error %])) 
+   (bg/update-group db-key group (fn [api-reponse]
+                                   (when-not (on-error api-reponse #(dispatch [:insert-update-group-form-error %]))
                                      (dispatch [:insert-update-group-form-data-complete]))))))
 
 (reg-sub
@@ -171,7 +169,7 @@
 (reg-sub
  :group-form-data-fields
  :<- [:group-form-data]
- (fn [data [_query-id fields]] 
+ (fn [data [_query-id fields]]
    (if-not (vector? fields)
      ;; fields is a single field name
      (get data fields)
@@ -202,17 +200,17 @@
   (subscribe [:groups-data]))
 
 #_(defn root-group-uuid []
-  (subscribe [:group-data/root-group-uuid]))
+    (subscribe [:group-data/root-group-uuid]))
 
 ;; This event handler loads the group summary data once only.  
 #_(reg-event-fx
- :groups/load-once
- (fn [{:keys [db]} [_event-id]]
-   (let [data (get-in-key-db db [:groups :data])]
-     (if  (nil? data)
-       {:fx [[:dispatch [:groups-data-update nil]]
-             [:load-bg-groups-summary-data (active-db-key db)]]}
-       {}))))
+   :groups/load-once
+   (fn [{:keys [db]} [_event-id]]
+     (let [data (get-in-key-db db [:groups :data])]
+       (if  (nil? data)
+         {:fx [[:dispatch [:groups-data-update nil]]
+               [:load-bg-groups-summary-data (active-db-key db)]]}
+         {}))))
 
 ;; An event to reload group tree data whenever any group data update or insert is done
 (reg-event-fx
@@ -223,8 +221,8 @@
 
 (reg-fx
  :load-bg-groups-summary-data
- (fn [db-key] 
-   (bg/groups-summary-data db-key (fn [api-reponse] 
+ (fn [db-key]
+   (bg/groups-summary-data db-key (fn [api-reponse]
                                     (when-let [result (on-ok api-reponse)]
                                       (dispatch [:groups-data-update result]))))))
 
@@ -275,28 +273,28 @@
        (sort-by (fn [v] (:name v)) coll)))))
 
 #_(reg-sub
- :group-by-id
- :<- [:groups-data]
- (fn [{:keys [groups]} [_query-id by-group-uuid]]
-   (get groups by-group-uuid)))
+   :group-by-id
+   :<- [:groups-data]
+   (fn [{:keys [groups]} [_query-id by-group-uuid]]
+     (get groups by-group-uuid)))
 
 #_(reg-sub
- :groups/groups-tree-summary
- :<- [:groups-data]
- (fn [{:keys [groups recycle-bin-uuid deleted-group-uuids]} _query-vec]
-   (let [recycle-groups (conj deleted-group-uuids recycle-bin-uuid)]
-     (as-> (vals groups) coll
+   :groups/groups-tree-summary
+   :<- [:groups-data]
+   (fn [{:keys [groups recycle-bin-uuid deleted-group-uuids]} _query-vec]
+     (let [recycle-groups (conj deleted-group-uuids recycle-bin-uuid)]
+       (as-> (vals groups) coll
        ;; Only groups that are not deleted
-       (filter #(not (contains-val? recycle-groups (get % :uuid))) coll)
+         (filter #(not (contains-val? recycle-groups (get % :uuid))) coll)
        ;; Few fields for each group
-       (map (fn [v] {:title (get v :name)
-                     :uuid (get v :uuid)
-                     :icon-id (:icon-id v)
-                     :entries-count (-> v :entry-uuids count)})
-            (filter #(not (contains-val? recycle-groups %)) coll))
+         (map (fn [v] {:title (get v :name)
+                       :uuid (get v :uuid)
+                       :icon-id (:icon-id v)
+                       :entries-count (-> v :entry-uuids count)})
+              (filter #(not (contains-val? recycle-groups %)) coll))
        ;; Sort by name 
-       (sort-by (fn [v] (:name v)) coll)
-       (vec coll)))))
+         (sort-by (fn [v] (:name v)) coll)
+         (vec coll)))))
 
 ;; Called to show the root group in entry category
 (reg-sub

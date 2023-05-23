@@ -18,7 +18,7 @@ ios-lib-output := "target/libdb_service_ffi.a"
 ## cargo install uniffi_bindgen 
 ## installed already and version 0.20.0 should match that is used in Cargo.toml)
 generate-rs:
-    uniffi-bindgen scaffolding {{udl_src}} --out-dir ./target/
+    uniffi-bindgen scaffolding {{udl_src}} --no-format --out-dir ./target/
 
 generate-swift:
     mkdir  -p {{swift-src-dir}}
@@ -101,3 +101,14 @@ android-lib-output-dir := "target/jniLibs"
 cp-android-ffi-lib-src release="": (build-android-lib release) generate-kotlin
     cp -R {{kotlin-src-dir}}/ {{android-db-service-src-dir}}
     cp -R {{android-lib-output-dir}} {{android-db-service-lib-dir}} 
+
+
+######## 
+alias bca-d := cp-android-ffi-lib-src-d
+
+build-android-lib-d:
+    cargo ndk -t aarch64-linux-android -t armv7-linux-androideabi -o ./target/jniLibs build
+
+cp-android-ffi-lib-src-d:build-android-lib-d generate-kotlin
+    cp -R {{kotlin-src-dir}}/ {{android-db-service-src-dir}}
+    cp -R {{android-lib-output-dir}} {{android-db-service-lib-dir}}

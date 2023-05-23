@@ -1,4 +1,4 @@
-(ns 
+(ns
  onekeepass.mobile.events.entry-form
   "All entry form specific events"
   (:require
@@ -34,11 +34,11 @@
 
 ;; Not used at this time
 #_(defn entry-form-update-field-value
-  "Update a field found in :entry-form top level"
-  [field-name-kw value]
-  (dispatch [:entry-form-update-field-value field-name-kw value]))
+    "Update a field found in :entry-form top level"
+    [field-name-kw value]
+    (dispatch [:entry-form-update-field-value field-name-kw value]))
 
-(defn entry-form-field-visibility-toggle 
+(defn entry-form-field-visibility-toggle
   "Called with the field name as key that is toggled between show/hide"
   [key]
   (dispatch [:entry-form-field-visibility-toggle key]))
@@ -46,7 +46,7 @@
 (defn edit-mode-on-press []
   (dispatch [:entry-form/edit true]))
 
-(defn cancel-entry-form [] 
+(defn cancel-entry-form []
   (dispatch [:common/previous-page]))
 
 (defn favorite-menu-checked
@@ -170,9 +170,9 @@
 ;; Not used at this time
 ;; Update a field found in the top level :entry-form itself
 #_(reg-event-db
- :entry-form-update-field-value
- (fn [db [_event-id field-name-kw value]]
-   (assoc-in-key-db db [entry-form-key field-name-kw] value)))
+   :entry-form-update-field-value
+   (fn [db [_event-id field-name-kw value]]
+     (assoc-in-key-db db [entry-form-key field-name-kw] value)))
 
 (reg-event-db
  :entry-form-update-section-value
@@ -215,10 +215,10 @@
 
 ;; Gets the only section data
 #_(reg-sub
- :entry-form-section-data
- :<- [:entry-form-data]
- (fn [data [_query-id section]]
-   (get-in data [:section-fields section])))
+   :entry-form-section-data
+   :<- [:entry-form-data]
+   (fn [data [_query-id section]]
+     (get-in data [:section-fields section])))
 
 ;; Gets a :data level field value
 (reg-sub
@@ -293,7 +293,7 @@
   "Verifies that the user has entered valid values in some of the required fields of the entry form
   Returns a map of fileds with errors and error-fields will be {} in case no error is found
   "
-  [{:keys [group-uuid title]}] 
+  [{:keys [group-uuid title]}]
   (let [error-fields (cond-> {}
                        (u/uuid-nil-or-default? group-uuid)
                        (assoc :group-selection "Please select a group ")
@@ -302,7 +302,7 @@
                        (assoc :title "Please enter a title for this form"))]
     error-fields))
 
-(defn validate-required-fields 
+(defn validate-required-fields
   "Checks that all keys (form fields) that are marked as required are having some valid values 
    in a list of KV maps"
   [error-fields kvsd]
@@ -381,23 +381,23 @@
 (defn section-field-dialog-data []
   (subscribe [:section-field-dialog-data]))
 
-(defn- to-section-field-data 
+(defn- to-section-field-data
   "Gets one or more 'kw value' combination as variable parameters and merges with the old data 
    The arg db is the app-db 
    Returns the updated app-db
   "
-  [db & {:as kws}] 
+  [db & {:as kws}]
   (let [data (get-in-key-db db [entry-form-key field-edit-dialog-key])
         data (merge data kws)]
     (assoc-in-key-db db [entry-form-key field-edit-dialog-key] data)))
 
-(defn- init-section-field-dialog-data 
+(defn- init-section-field-dialog-data
   [db]
   (assoc-in-key-db db [entry-form-key field-edit-dialog-key] section-field-dialog-init-data))
 
 (defn- is-field-exist
   "Checks that a given field name exists in the entry form or not "
-  [app-db field-name] 
+  [app-db field-name]
   (let [all-section-fields (-> (get-in-key-db
                                 app-db
                                 [entry-form-key :data :section-fields])
@@ -483,8 +483,8 @@
  (fn [{:keys [db]} [_event-id {:keys [section-name field-name] :as m}]] ;; other fields in m are field-value protected
    (if-not (str/blank? field-name)
      (if (is-field-exist db field-name)
-       {:db (to-section-field-data db 
-                                   :error-fields 
+       {:db (to-section-field-data db
+                                   :error-fields
                                    {field-name (str "Field with name " field-name " already exists in this form")})}
        {:db (-> db (add-section-field  m)
                 (init-section-field-dialog-data)
@@ -535,15 +535,15 @@
   [app-db section-name field-name]
   (let [section-fields (get-in-key-db
                         app-db
-                        [entry-form-key :data :section-fields]) 
+                        [entry-form-key :data :section-fields])
         kvs (->> (get section-fields section-name)
                  (filterv (fn [m] (not= field-name (:key m)))))
-        section-fields (assoc section-fields section-name kvs)] 
+        section-fields (assoc section-fields section-name kvs)]
     (assoc-in-key-db app-db [entry-form-key :data :section-fields] section-fields)))
 
 (reg-event-db
  :field-delete-confirm
- (fn [db [_event-id yes?]] 
+ (fn [db [_event-id yes?]]
    (if yes?
      (let [section-name (get-in-key-db db [entry-form-key :field-delete-dialog-data :section-name])
            field-name (get-in-key-db db [entry-form-key :field-delete-dialog-data :field-name])]
@@ -583,7 +583,7 @@
                                     :mode :add ;; or :modify
                                     :current-section-name nil})
 
-(defn- to-section-name-dialog-data [db & {:as kws}] 
+(defn- to-section-name-dialog-data [db & {:as kws}]
   (let [data (get-in-key-db db [entry-form-key :section-name-dialog-data])
         data (merge data kws)]
     (assoc-in-key-db db [entry-form-key :section-name-dialog-data] data)))
@@ -593,7 +593,7 @@
 
 (reg-event-db
  :section-name-dialog-open
- (fn [db [_event-id]] 
+ (fn [db [_event-id]]
    (-> db
        (init-section-name-dialog-data)
        (to-section-name-dialog-data :dialog-show true))))
@@ -737,8 +737,8 @@
  (fn [{:keys [db]} [_event-id]]
    (let [form-data (get-in-key-db db [entry-form-key :data])
          showing (get-in-key-db db [entry-form-key :showing]) ;; :new or :selected
-         error-fields (validate-all form-data) 
-         errors-found (boolean (seq error-fields))] 
+         error-fields (validate-all form-data)
+         errors-found (boolean (seq error-fields))]
      (if errors-found
        {:db (assoc-in-key-db db [entry-form-key :error-fields] error-fields)}
        {:db (assoc-in-key-db db [entry-form-key :error-fields] error-fields)
@@ -749,39 +749,39 @@
 
 (reg-fx
  :bg-insert-entry
- (fn [[db-key new-entry-form-data]] 
+ (fn [[db-key new-entry-form-data]]
    (bg/insert-entry db-key
                     new-entry-form-data
                     (fn [api-response]
-                      (when-not (on-error api-response (fn [error]
-                                                         (dispatch [:insert-update-entry-form-data-error error])))
+                      (when-not (on-error api-response 
+                                          (fn [error]
+                                            (dispatch [:insert-update-entry-form-data-error error])))
                         (dispatch [:insert-update-entry-form-data-complete]))))))
 
 (reg-fx
  :bg-update-entry
- (fn [[db-key entry-form-data]] 
+ (fn [[db-key entry-form-data]]
    (bg/update-entry db-key
                     entry-form-data
                     (fn [api-response]
-                      (when-not (on-error api-response (fn [error]
-                                                         (dispatch [:insert-update-entry-form-data-error error])))
+                      (when-not (on-error api-response 
+                                          (fn [error]
+                                            (dispatch [:insert-update-entry-form-data-error error])))
                         (dispatch [:insert-update-entry-form-data-complete]))))))
-
-(defn- on-save-complete [api-response] 
-  (when-not (on-error api-response (fn [error]
-                                     (dispatch [:entry-insert-update-save-error error])))
-    (dispatch [:entry-insert-update-save-complete])))
 
 (reg-event-fx
  :insert-update-entry-form-data-complete
- (fn [{:keys [db]} [_event-id]]
-   {:fx [;; Need to save after inserting or updating an entry data
-         [:dispatch [:common/message-modal-show nil "Saving ..."]]
-         [:common/bg-save-kdbx [(active-db-key db) on-save-complete]]]}))
+ (fn [{:keys [_db]} [_event-id]]
+   {:fx [;; Need to save after inserting or updating an entry data 
+         [:dispatch [:save/save-current-kdbx
+                              {:error-title "Entry form save error"
+                               :save-message "Saving entry form..."
+                               :on-save-ok (fn [] 
+                                             (dispatch [:entry-insert-update-save-complete]))}]]]}))
 
 (reg-event-fx
  :insert-update-entry-form-data-error
- (fn [{:keys [_db]} [_event-id error]] 
+ (fn [{:keys [_db]} [_event-id error]]
    {:fx [[:dispatch [:common/message-modal-hide]]
          [:dispatch [:common/error-box-show "Entry insert/update" error]]]}))
 
@@ -811,12 +811,6 @@
            ;; Entry update is due to restoring from history
            (when restored?
              [:dispatch [:history-entry-restore-complete]])]})))
-
-(reg-event-fx
- :entry-insert-update-save-error
- (fn [{:keys [_db]} [_event-id error]]
-   {:fx [[:dispatch [:common/message-modal-hide]]
-         [:dispatch [:common/error-box-show "Save entry" error]]]}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  Entry History  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -886,7 +880,7 @@
  (fn [{:keys [db]} [_event-id entry-uuid]]
    (bg/history-entries-summary (active-db-key db)
                                entry-uuid
-                               (fn [api-response] 
+                               (fn [api-response]
                                  (when-let [summary-list (on-ok api-response)]
                                    (dispatch [:load-history-entries-summary-complete summary-list]))))
    {}))
@@ -964,7 +958,7 @@
              [:dispatch [:cancel-history-entry-form]])
            ;; reload the histories to reflect the delete
            [:dispatch [:load-history-entries-summary entry-id]]
-           [:dispatch [:common/save-current-kdbx {:error-title "Save entry history delete"
+           [:dispatch [:save/save-current-kdbx {:error-title "Save entry history delete"
                                                   :save-message "Saving entry history delete...."}]]]})))
 
 
@@ -993,8 +987,8 @@
 (reg-event-fx
  :delete-all-history-entries-complete
  (fn [{:keys [_db]} [_event-id entry-id]]
-   {:fx [[:dispatch [:history-entry-delete-all-confirm-open false]] 
-         [:dispatch [:common/save-current-kdbx {:error-title "Deleting and saving histories"
+   {:fx [[:dispatch [:history-entry-delete-all-confirm-open false]]
+         [:dispatch [:save/save-current-kdbx {:error-title "Deleting and saving histories"
                                                 :save-message "Deleting all histories and saving"
                                                 :on-save-ok (fn []
                                                               (dispatch [:reload-entry-by-id entry-id])
@@ -1078,7 +1072,7 @@
 
 (comment
   (in-ns 'onekeepass.mobile.events.entry-form)
- 
+
   (def db-key (-> @re-frame.db/app-db :current-db-file-name))
   (-> (get @re-frame.db/app-db db-key) :entry-form :data keys)
   (-> (get @re-frame.db/app-db db-key) :entry-form :data :group-uuid))

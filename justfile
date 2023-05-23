@@ -43,5 +43,6 @@ npx-rn-start:
 npx-rn-ios:
     npx react-native run-ios
 
+# need to use  npx react-native run-android --active-arch-only 
 npx-rn-android:
     npx react-native run-android

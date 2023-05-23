@@ -17,6 +17,9 @@ class DbServiceAPI {
 
   static func initialize() {
     if !initialized {
+      Swift.debugPrint("Calling dbServiceEnableLogging...")
+      dbServiceEnableLogging()
+      Swift.debugPrint("dbServiceEnableLogging call is done")
       let cmnService = CommonDeviceServiceImpl()
       dbServiceInitialize(cmnService)
       initialized = true
@@ -27,17 +30,11 @@ class DbServiceAPI {
   }
 
   static func iosSupportService() -> IosSupportService {
-    // IosSupportService()
     _iosSupportService
   }
 
   static func formJsonWithFileName(_ fullFileName: String) -> String {
     _jsonService.formWithFileName(fullFileName)
-  }
-
-  static func createKdbx(_ fullFileName: String, _ args: String) -> ApiResponse {
-    let fileArgs = FileArgs.fullFileName(fullFileName: fullFileName)
-    return OneKeePassMobile.createKdbx(fileArgs, args)
   }
 
   static func createTempKdbx(_ tempFileUri: String, _ args: String) -> ApiResponse {
@@ -50,10 +47,19 @@ class DbServiceAPI {
     return OneKeePassMobile.readKdbx(fileArgs, jsonArgs)
   }
 
-  static func saveKdbx(_ fullFileName: String) -> ApiResponse {
+  static func saveKdbx(_ fullFileName: String, _ overwrite: Bool) -> ApiResponse {
     let fileArgs = FileArgs.fullFileName(fullFileName: fullFileName)
-    return OneKeePassMobile.saveKdbx(fileArgs)
+    return OneKeePassMobile.saveKdbx(fileArgs,overwrite)
   }
+  
+  static func completeSaveAsOnError(_ jsonArgs: String) -> String {
+    _iosSupportService.completeSaveAsOnError(jsonArgs)
+  }
+  
+  static func writeToBackupOnError(_ fullFileName: String) -> ApiResponse {
+    return OneKeePassMobile.writeToBackupOnError(fullFileName)
+  }
+  
 }
 
 class CommonDeviceServiceImpl: CommonDeviceService {

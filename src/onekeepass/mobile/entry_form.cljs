@@ -1,6 +1,6 @@
 (ns
  onekeepass.mobile.entry-form
-  (:require [reagent.core :as r] 
+  (:require [reagent.core :as r]
             [onekeepass.mobile.rn-components
              :as rnc
              :refer [lstr
@@ -33,7 +33,7 @@
                                                                 select-field
                                                                 select-tags-dialog]]
             [onekeepass.mobile.icons-list :as icons-list]
-            [onekeepass.mobile.utils :as u ]
+            [onekeepass.mobile.utils :as u]
             [onekeepass.mobile.date-utils :refer [utc-str-to-local-datetime-str]]
             [clojure.string :as str]
             [onekeepass.mobile.events.entry-form :as form-events]
@@ -41,7 +41,7 @@
             [onekeepass.mobile.background :refer [is-iOS is-Android]]
             [onekeepass.mobile.events.common :as cmn-events]))
 
-(set! *warn-on-infer* true)
+;;(set! *warn-on-infer* true)
 
 (defn appbar-title
   "Entry form specific title to display"
@@ -342,7 +342,7 @@
                    :label (str "Title" "*")
                    :autoCapitalize "none"
                    :defaultValue title
-                   :ref (fn [ ref]
+                   :ref (fn [ref]
                                ;; Keys found in ref for textinput
                                ;; are #js ["focus" "clear" "setNativeProps" "isFocused" "blur" "forceFocus"]
                                ;; Need to call clear directly as the previous value is not getting cleared 
@@ -412,13 +412,20 @@
                        ;;:value value
                        ;;:editable edit
                    :showSoftInputOnFocus edit
-                   :ref (fn [ ref]
+                   :ref (fn [ref]
                           (when (and (not (nil? ref)) (str/blank? value)) (.clear ref)))
                    :autoCapitalize "none"
+                   :autoComplete "off"
+                   :autoCorrect false
                    :style {:width (if (or is-password-edit? custom-field-edit-focused?)  "90%" "100%")}
                    :onFocus #(field-focus-action key true)
                    :onBlur #(field-focus-action key false)
                    :onChangeText (if edit on-change-text nil)
+                   :onPressOut (if-not edit
+                                 #(cmn-events/write-string-to-clipboard {:field-name key
+                                                                         :protected protected
+                                                                         :value value})
+                                 nil)
                    :secureTextEntry (if (or (not protected) visible) false true)
                    ;; It looks like we can have only one icon
                    :right (when protected
@@ -427,7 +434,6 @@
                                                                   :onPress #(form-events/entry-form-field-visibility-toggle key)}])
                               (r/as-element [rnp-text-input-icon {:icon "eye-off"
                                                                   :onPress #(form-events/entry-form-field-visibility-toggle key)}])))}])
-
 
 ;; In iOS, we do not see the same issue as seen with the use of text input in android 
 (defn ios-form-text-input [{:keys [key
@@ -442,6 +448,12 @@
                    :value value
                    :showSoftInputOnFocus edit
                    :autoCapitalize "none"
+                   ;;:autoComplete "off"
+                   :autoCorrect false
+                   ;;:contextMenuHidden true
+                   :selectTextOnFocus false
+                   :spellCheck false ;;ios
+                   :textContentType "none"
                    ;; Sometime in iOS when a text input has its secureTextEntry with true value
                    ;; Strong Password prompt comes up and hides the actual input box preventing any entry
                    ;; Particularly it happened with Simulator. For now, we can disable the Password AutoFill feature
@@ -452,6 +464,11 @@
                    :onFocus #(field-focus-action key true)
                    :onBlur #(field-focus-action key false)
                    :onChangeText (if edit on-change-text nil)
+                   :onPressOut (if-not edit
+                                 #(cmn-events/write-string-to-clipboard {:field-name key
+                                                                         :protected protected
+                                                                         :value value})
+                                 nil)
                    :secureTextEntry (if (or (not protected) visible) false true)
                    ;; It looks like we can have only one icon
                    :right (when protected
@@ -541,7 +558,7 @@
       [rn-view {:style {:padding-right 5 :padding-left 5 :borderWidth .20 :borderRadius 4}}
        [rnp-text-input {:style {:width "100%"} :multiline true :label (lstr "notes")
                         :defaultValue value
-                        :ref (fn [ ref]
+                        :ref (fn [ref]
                                (reset! notes-ref ref)
                                (when (and (is-Android) (not (nil? ref)) (str/blank? value)) (.clear ref)))
                         :showSoftInputOnFocus edit
@@ -566,6 +583,9 @@
                                            :show true
                                            :x (-> event .-nativeEvent .-pageX)
                                            :y (-> event .-nativeEvent .-pageY)))}])]))
+
+#_(defn field-nam-k [key]
+    key)
 
 (defn section-content [edit section-name section-data]
   (let [errors @(form-events/entry-form-field :error-fields)]

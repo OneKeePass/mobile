@@ -199,7 +199,7 @@
 (reg-event-fx
  :db-settings-write-completed
  (fn [{:keys [_db]} [_event-id]]
-   {:fx [[:dispatch [:common/save-current-kdbx 
+   {:fx [[:dispatch [:save/save-current-kdbx 
                      {:error-title "Settings Save Error"
                       :save-message "Saving database settings..."
                       :on-save-ok (fn []
