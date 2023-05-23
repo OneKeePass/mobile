@@ -77,9 +77,9 @@ object EventEmitter {
     // is not on the top. The app is brought to the front and this func is called from MainActivity.onNewIntent
     fun onNewIntent(intent: Intent) {
         Log.d(TAG, "In EventEmitter onNewIntent Received intent $intent with ${intent.action}")
-        intent?.action?.let {
+        intent.action?.let {
             if (it == "android.intent.action.VIEW") {
-                var uri = intent.data
+                var uri = intent?.data
                 Log.d(TAG, "EventEmitter onNewIntent Uri received ${uri}")
                 if (uri != null) {
                     reactApplicationContext.getJSModule(RCTDeviceEventEmitter::class.java)
