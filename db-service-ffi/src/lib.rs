@@ -89,84 +89,6 @@ pub fn open_backup_file(backup_file_path: Option<String>) -> Option<File> {
         None => None,
     }
 }
-/* 
-fn create_kdbx(file_args: FileArgs, json_args: String) -> ApiResponse {
-    log::debug!("create_kdbx: file_args received is {:?}", file_args);
-    let mut fd_used = false;
-    let mut file = match file_args {
-        FileArgs::FileDecriptor { fd } => {
-            fd_used = true;
-            unsafe { util::get_file_from_fd(fd) }
-        }
-        FileArgs::FullFileName { full_file_name } => {
-            log::debug!("create_kdbx: FullFileName extracted is {}", &full_file_name);
-            match full_path_file_to_create(&full_file_name) {
-                Ok(f) => f,
-                Err(e) => return_api_response_failure!(e),
-            }
-        }
-        _ => {
-            return ApiResponse::Failure {
-                result: InvokeResult::<()>::with_error("Unsupported file args passed ").json_str(),
-            }
-        }
-    };
-
-    let mut full_file_name_uri: String = "".into();
-
-    let r = match serde_json::from_str(&json_args) {
-        Ok(CommandArg::NewDbArg { new_db }) => {
-            full_file_name_uri = new_db.database_file_name.clone();
-            let r = db_service::create_and_write_to_writer(&mut file, new_db);
-            // sync_all ensures the file is created and synced in case of dropbbox and one drive
-            let _ = file.sync_all();
-            if let Ok(md) = file.metadata() {
-                log::debug!("Meta data for {:?}", md);
-                log::debug!("Meta data created is {:?}", md.created());
-            }
-            r
-        }
-        Ok(_) => Err(OkpError::Other(
-            "Unexpected arguments for create_kdbx api call".into(),
-        )),
-        Err(e) => {
-            log::error!(
-                "Deserialization of {} failed with error {:?} ",
-                &json_args,
-                e
-            );
-            Err(OkpError::Other(format!("{:?}", e)))
-        }
-    };
-
-    if fd_used {
-        log::debug!("File fd_used is used and will not be closed here");
-        // We need to transfer the ownership of the underlying file descriptor to the caller.
-        // By this call, the file instance created using incoming fd will not close the file at the end of
-        // this function (Files are automatically closed when they go out of scope) and the caller
-        // function from device will be responsible for the file closing.
-        let _fd = file.into_raw_fd();
-    }
-
-    let api_response = match r {
-        Ok(v) => match serde_json::to_string_pretty(&InvokeResult::with_ok(v)) {
-            Ok(s) => {
-                //Add this newly created db file to the recent list
-                AppState::global().add_recent_db_use_info(&full_file_name_uri);
-                ApiResponse::Success { result: s }
-            }
-
-            Err(e) => ApiResponse::Failure {
-                result: InvokeResult::<()>::with_error(&format!("{:?}", e)).json_str(),
-            },
-        },
-        Err(e) => ApiResponse::Failure {
-            result: InvokeResult::<()>::with_error(&format!("{:?}", e)).json_str(),
-        },
-    };
-    api_response
-}
-*/
 
 fn read_kdbx(file_args: FileArgs, json_args: String) -> ApiResponse {
     log::debug!("file_args received is {:?}", file_args);
@@ -388,12 +310,6 @@ fn verify_db_file_checksum(file_args: FileArgs) -> ApiResponse {
     }
 }
 
-fn get_last_backup_file_name(full_file_name_uri: String) -> String {
-    AppState::global()
-        .get_last_backup_on_error(&full_file_name_uri)
-        .map_or("".into(), |s| s.to_string())
-}
-
 #[derive(Debug)]
 pub enum ApiResponse {
     Success { result: String },
@@ -482,11 +398,11 @@ fn db_service_enable_logging() {
     #[cfg(target_os = "android")]
     {
         let _ = std::panic::catch_unwind(|| {
-            let filter = android_logger::FilterBuilder::new()
-                //.filter_module("glean_ffi", log::LevelFilter::Debug)
-                // .filter_module("glean_core", log::LevelFilter::Debug)
-                // .filter_module("glean", log::LevelFilter::Debug)
-                // .filter_module("glean_core::ffi", log::LevelFilter::Info)
+            let _filter = android_logger::FilterBuilder::new()
+                //.filter_module("commands", log::LevelFilter::Debug)
+                // .filter_module("", log::LevelFilter::Debug)
+                // .filter_module("", log::LevelFilter::Debug)
+                // .filter_module("our_core::ffi", log::LevelFilter::Info)
                 .build();
             android_logger::init_once(
                 android_logger::Config::default()
@@ -593,7 +509,7 @@ fn create_temp_kdbx(file_args: FileArgs, json_args: String) -> ApiResponse {
 }
 
 #[cfg(target_os = "android")]
-fn create_temp_kdbx(file_args: FileArgs, json_args: String) -> ApiResponse {
+fn create_temp_kdbx(_file_args: FileArgs, _json_args: String) -> ApiResponse {
     unimplemented!()
 }
 
@@ -616,98 +532,3 @@ fn extract_file_provider(full_file_name_uri: String) -> String {
 
 #[cfg(any(target_os = "ios", target_os = "android"))]
 include!(concat!(env!("OUT_DIR"), "/db_service.uniffi.rs"));
-
-/*
-fn verify_and_save_kdbx(file_args: FileArgs) -> ApiResponse {
-    log::debug!("save_kdbx: file_args received is {:?}", file_args);
-
-    let mut fd_used = false;
-    let (mut reader,mut writer, db_key, backup_file_name) = match file_args {
-        FileArgs::ReadWriteFDsWithFullFileName {
-            read_fd,
-            write_fd,
-            full_file_name,
-            file_name,
-        } => {
-            fd_used = true;
-            let backup_file_name = util::generate_backup_file_name(&full_file_name, &file_name);
-            (
-                unsafe { util::get_file_from_fd(read_fd) },
-                unsafe { util::get_file_from_fd(write_fd) },
-                full_file_name,
-                backup_file_name,
-            )
-        }
-        FileArgs::FullFileName { full_file_name } => {
-            match full_path_file_to_create(&full_file_name) {
-                Ok(f) => {
-                    // mainly for ios
-                    //let file_name = util::file_name_from_full_path(&full_file_name);
-                    let file_name = AppState::global().uri_to_file_name(&full_file_name);
-                    let backup_file_name =
-                        util::generate_backup_file_name(&full_file_name, &file_name);
-                    let file_copy = f.try_clone().unwrap();
-                    (file_copy, f,full_file_name, backup_file_name)
-                }
-                Err(e) => return_api_response_failure!(e),
-            }
-        }
-        _ => return_api_response_failure!("Unsupported file args passed"),
-    };
-
-
-    let response = match db_service::verify_save_kdbx(&db_key, &mut reader,&mut writer, backup_file_name.as_deref(), false)  {
-        Ok(r) => r,
-        Err(e) => return_api_response_failure!(e),
-    };
-
-    // log::debug!("Backup file to write is {:#?}", backup_file_name);
-    // let backup_file = open_backup_file(backup_file_name);
-    // let response = match backup_file {
-    //     Some(mut bf_writer) => {
-    //         let r = match db_service::save_kdbx_to_writer(&mut bf_writer, &db_key) {
-    //             Ok(r) => {
-    //                 let rewind_r = bf_writer.sync_all().and(bf_writer.rewind());
-    //                 log::error!("Syncing and rewinding of backup file result {:?}", rewind_r);
-    //                 if let Err(e) = rewind_r {
-    //                     return_api_response_failure!(e)
-    //                 }
-    //                 // TODO: Call verify checksum here using writer "db_service::verify_db_file_checksum"
-    //                 let n = std::io::copy(&mut bf_writer, &mut writer);
-    //                 log::debug!("Bytes copied ...{:?}", n);
-    //                 log::debug!("Backup is successful and copied to db file");
-    //                 r
-    //             }
-    //             Err(e) => return_api_response_failure!(e),
-    //         };
-    //         r
-    //     }
-    //     None => {
-    //         log::warn!("No backup file is not found and writting to the db file directly");
-    //         // TODO: Call verify checksum here using writer "db_service::verify_db_file_checksum"
-    //         match db_service::save_kdbx_to_writer(&mut writer, &db_key) {
-    //             Ok(r) => r,
-    //             Err(e) => return_api_response_failure!(e),
-    //         }
-    //     }
-    // };
-
-    if fd_used {
-        // IMPORATNT:
-        // We need to transfer the ownership of the underlying file descriptor to the caller so that the file is not closed here
-        // and the caller closes the file
-        let _fd = writer.into_raw_fd();
-    }
-
-    let api_response = match serde_json::to_string_pretty(&InvokeResult::with_ok(response)) {
-        Ok(s) => s,
-        Err(e) => InvokeResult::<()>::with_error(format!("{:?}", e).as_str()).json_str(),
-    };
-
-    ApiResponse::Success {
-        result: api_response,
-    }
-}
-
-
- */

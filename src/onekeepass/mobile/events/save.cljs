@@ -63,7 +63,7 @@
     ;; TODO: Needs to find a way to change the db-key from old to the new one from the bookmarks  
     ;; resolution and continue to proceed saving
     (and (bg/is-iOS) (= error "DbKeyNotFound"))
-    (dispatch [:common/default-error "Invalid reference" "It appears the file name might have been changed. Please close the database and reopen the new file"])
+    (dispatch [:common/default-error "Invalid reference" "It appears the database file might have been moved or renamed. Please remove the database and reopen the moved or renamed file"])
     #_(dispatch [:save-error-modal-show {:error-type :unnown-error
                                          :message "Internal error"
                                          :error-title error-title}])
@@ -73,37 +73,9 @@
                                        :message (:message error)
                                        :error-title error-title}])))
 
-;; Useful when we want to use (dispatch [...]) instead of using the one with reg-fx
-#_(reg-event-fx
-   :save/send-error
-   (fn [{:keys [_db]} [_event-id error]]
-     {:fx [[:dispatch [:common/message-modal-hide]]
-         ;; Need to route through the common save error handler
-           [:save/handle-error [error nil]]]}))
-
-#_(reg-fx
-   :save/handle-error
-   (fn [[error error-title]]
-     (handle-save-error error error-title)))
-
-#_(reg-event-fx
-   :save/save-current-kdbx
-   (fn [{:keys [db]} [_event-id {:keys [error-title save-message on-save-ok on-save-error]}]]
-     {:fx [[:dispatch [:common/message-modal-show nil (if-not (nil? save-message) save-message "Saving ...")]]
-           [:bg-save-kdbx [(active-db-key db) false
-                           (fn [api-response]
-                             (when-not (on-error api-response
-                                                 (fn [error]
-                                                   (handle-save-error error error-title)
-                                                        ;; on-save-error is not yet used
-                                                        ;; Need to review its use and remove this
-                                                   (when on-save-error (on-save-error error))))
-                               (dispatch [:common/message-modal-hide])
-                               (when on-save-ok (on-save-ok))))]]]}))
-
 (defn save-api-response-handler
   [{:keys [error-title on-save-ok on-save-error]} api-response]
-  (println "api-response " api-response)
+  ;; (println "api-response " api-response)
   ;; api-response :ok value is a map corresponding to struct KdbxSaved
   ;; Here we are checking only the :error key and :ok value is ignored
   (when-not (on-error api-response
@@ -170,7 +142,7 @@
 ;; Used for both  iOS and Abdroid
 (reg-event-fx
  :pick-save-as-on-error-not-completed
- (fn [{:keys [db]} [_event-id error]]
+ (fn [{:keys [_db]} [_event-id error]]
    ;; When user cancels the picking document, we receive the error with
    ;; DOCUMENT_PICKER_CANCELED and in that case, we will continue show the save error dialog 
    ;; Any other error will be shown in the error dialog
@@ -181,7 +153,7 @@
 ;; Used for both  iOS and Abdroid
 (reg-event-fx
  :save-as-on-error-finished
- (fn [{:keys [db]} [_event-id kdbx-loaded]]
+ (fn [{:keys [_db]} [_event-id kdbx-loaded]]
    {:fx [[:dispatch [:save-error-modal-hide]]
          [:dispatch [:common/kdbx-database-opened kdbx-loaded]]
          [:dispatch [:common/message-box-show "Save completed" "The newly saved database is loaded now"]]]}))
@@ -196,7 +168,7 @@
 (reg-fx
  :bg-android-save-as-on-error
  (fn [[kdbx-file]]
-   (println "kdbx-file is " kdbx-file)
+   ;;(println "kdbx-file is " kdbx-file)
    (bg/android-pick-on-save-error-save-as kdbx-file (fn [api-reponse]
                                                       (when-let [result (on-ok
                                                                          api-reponse
@@ -223,7 +195,7 @@
 (reg-event-fx
  :overwrite-on-save-error
  (fn [{:keys [db]} [_event-id]]
-   (println "overwrite-on-save-error is called ...fn is " (get-in-key-db db [:save-api-response-handler]))
+   ;; (println "overwrite-on-save-error is called ...fn is " (get-in-key-db db [:save-api-response-handler]))
    {:fx [[:dispatch [:common/message-modal-show nil  "Overwriting the database ..."]]
          [:dispatch [:save-error-modal-hide]]
          [:bg-save-kdbx [(active-db-key db) true (get-in-key-db db [:save-api-response-handler])]]
@@ -236,8 +208,6 @@
  (fn [{:keys [_db]} [_event-id]]
    {:fx [[:dispatch [:save-error-modal-hide]]
          [:dispatch [:common/close-current-kdbx-db]]]}))
-
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;; Save error modal ;;;;;;;;;;;;;;;;
 

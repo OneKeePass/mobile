@@ -7,6 +7,7 @@
                      dots-icon-name
                      primary-color 
                      primary-container-color
+                     rn-keyboard
                      rn-view
                      rn-safe-area-view
                      rn-section-list
@@ -101,57 +102,60 @@
                    :onPress ndb-events/done-on-click} 
        (lstr "button.labels.create")]]]))
 
-(defn open-db-dialog [{:keys [dialog-show
-                              database-file-name
-                              password
-                              password-visible
-                              _key-file-name
-                              error-fields
-                              status]}]
+(defn open-db-dialog 
+  ([{:keys [dialog-show
+             database-file-name
+             password
+             password-visible
+             _key-file-name
+             error-fields
+             status]}]
 
-  (let [in-progress? (= :in-progress status)] 
-    [cust-dialog {:style {}
-                  :visible dialog-show :onDismiss opndb-events/cancel-on-press}
-     [rnp-dialog-title (lstr "dialog.titles.openDatabase")]
-     [rnp-dialog-content
+    (let [in-progress? (= :in-progress status)]
+      [cust-dialog {:style {}
+                    :visible dialog-show :onDismiss opndb-events/cancel-on-press}
+       [rnp-dialog-title (lstr "dialog.titles.openDatabase")]
+       [rnp-dialog-content
 
-      [rn-view {:style {:flexDirection "column"  :justify-content "center"}}
-       [rnp-text-input {:label (lstr "databaseFile")
-                        :value database-file-name
-                        :editable false
-                        :onChangeText #()}]
-       [rnp-text-input {:style {:margin-top 10}
-                        :label (lstr "masterPassword") 
+        [rn-view {:style {:flexDirection "column"  :justify-content "center"}}
+         [rnp-text-input {:label (lstr "databaseFile")
+                          :value database-file-name
+                          :editable false
+                          :onChangeText #()}]
+         [rnp-text-input {:style {:margin-top 10}
+                          :label (lstr "masterPassword")
                         ;;:value password
-                        :defaultValue password
-                        :autoComplete "off"
-                        :secureTextEntry (not password-visible)
-                        :right (r/as-element 
-                                [rnp-text-input-icon
-                                 {:icon (if password-visible "eye" "eye-off")
-                                  :onPress #(opndb-events/database-field-update 
-                                             :password-visible (not password-visible))}])
-                        :onChangeText #(opndb-events/database-field-update :password %)}]
-       (when (contains? error-fields :password)
-         [rnp-helper-text {:type "error" :visible (contains? error-fields :password)}
-          (:password error-fields)])
-       
-       #_[rnp-text-input {:style {:margin-top 10}
-                        :label "Key File"
-                        :value key-file-name
-                        :placeholder "Optional key file"
-                        :right (r/as-element [rnp-text-input-icon {:icon "file"}])
-                        :onChangeText #()}]]
+                          :defaultValue password
+                          :autoComplete "off"
+                          :autoCorrect false
+                          :secureTextEntry (not password-visible)
+                          :right (r/as-element
+                                  [rnp-text-input-icon
+                                   {:icon (if password-visible "eye" "eye-off")
+                                    :onPress #(opndb-events/database-field-update
+                                               :password-visible (not password-visible))}])
+                          :onChangeText #(opndb-events/database-field-update :password %)}]
+         (when (contains? error-fields :password)
+           [rnp-helper-text {:type "error" :visible (contains? error-fields :password)}
+            (:password error-fields)])
 
-      [rnp-progress-bar {:style {:margin-top 10} :visible in-progress? :indeterminate true}]]
+         #_[rnp-text-input {:style {:margin-top 10}
+                            :label "Key File"
+                            :value key-file-name
+                            :placeholder "Optional key file"
+                            :right (r/as-element [rnp-text-input-icon {:icon "file"}])
+                            :onChangeText #()}]]
 
-     [rnp-dialog-actions
-      [rnp-button {:mode "text" :disabled in-progress? 
-                   :onPress  opndb-events/cancel-on-press} 
-       (lstr "button.labels.cancel")]
-      [rnp-button {:mode "text" :disabled in-progress? 
-                   :onPress  opndb-events/open-database-read-db-file} 
-       (lstr "button.labels.continue")]]]))
+        [rnp-progress-bar {:style {:margin-top 10} :visible in-progress? :indeterminate true}]]
+
+       [rnp-dialog-actions
+        [rnp-button {:mode "text" :disabled in-progress?
+                     :onPress  opndb-events/cancel-on-press}
+         (lstr "button.labels.cancel")]
+        [rnp-button {:mode "text" :disabled in-progress?
+                     :onPress (fn [] ^js/RNKeyboard ( .dismiss rn-keyboard) (opndb-events/open-database-read-db-file))}
+         (lstr "button.labels.continue")]]]))
+  ([] [open-db-dialog @(opndb-events/dialog-data)]))
 
 (defn file-info-dialog [{:keys [dialog-show file-size location last-modified]}]
   [cust-dialog {:style {}
@@ -323,7 +327,8 @@
       ;; Gets the precreated dialog reagent component
       (:dialog remove-confirm-dialog-info) 
       [new-db-dialog @(ndb-events/dialog-data)]
-      [open-db-dialog @(opndb-events/dialog-data)]
+      #_[open-db-dialog @(opndb-events/dialog-data)]
+      [open-db-dialog]
       [file-info-dialog @(cmn-events/file-info-dialog-data)]
       [message-repick-database-file-dialog @(opndb-events/repick-confirm-data)]
       [message-dialog @(cmn-events/message-dialog-data)]]]))

@@ -89,18 +89,18 @@ class OkpDbService: NSObject {
       
       logger.debug("saveKdbx received fullFileNameUri is \(fullFileNameUri)")
 
-      let db_file_url = URL(string: fullFileNameUri)
+      let dbFileUrl = URL(string: fullFileNameUri)
 
-      let byteArray: [UInt8] = DbServiceAPI.iosSupportService().loadBookMarkData(db_file_url!.absoluteString)
+      let byteArray: [UInt8] = DbServiceAPI.iosSupportService().loadBookMarkData(dbFileUrl!.absoluteString)
 
       if byteArray.count > 0 {
         let bookmarkData = Data(_: byteArray)
         var isStale = false
         do {
           let burl = try URL(resolvingBookmarkData: bookmarkData, bookmarkDataIsStale: &isStale)
-          logger.debug("saveKdbx resolved url is \(burl.absoluteString)")
+          // logger.debug("saveKdbx resolved url is \(burl.absoluteString)")
           if isStale {
-            writeToBackupOnError(db_file_url?.absoluteString ?? fullFileNameUri)
+            writeToBackupOnError(dbFileUrl?.absoluteString ?? fullFileNameUri)
             reject(E_BOOK_MARK_STALE, "Existing bookmark is stale.File selection is required before use", nil)
           } else {
             let isAccessed = burl.startAccessingSecurityScopedResource()
@@ -108,13 +108,13 @@ class OkpDbService: NSObject {
 
             var error: NSError?
             NSFileCoordinator().coordinate(writingItemAt: burl, error: &error) { url in
-              logger.debug("saveKdbx in coordinate call url \(url.absoluteString)")
+              // logger.debug("saveKdbx in coordinate call url \(url.absoluteString)")
               resolveResponse(DbServiceAPI.saveKdbx(url.absoluteString,overwrite), resolve)
             }
 
             if error != nil {
               logger.error("In saveKdbx NSFileCoordinator().coordinate call error \(String(describing: error?.localizedDescription))")
-              writeToBackupOnError(db_file_url?.absoluteString ?? fullFileNameUri)
+              writeToBackupOnError(dbFileUrl?.absoluteString ?? fullFileNameUri)
               // reject(CallError.coordinateError.rawValue,CallError.coordinateError.errorDescription(error?.localizedDescription) , error)
               reject(E_COORDINATOR_CALL_FAILED, "\(String(describing: error?.localizedDescription))", error)
             }
@@ -127,14 +127,14 @@ class OkpDbService: NSObject {
           // this error is thrown by the above URL resolvingBookmarkData call
           
           // Store the db file with changed data to backup for later offline use
-          writeToBackupOnError(db_file_url?.absoluteString ?? fullFileNameUri)
+          writeToBackupOnError(dbFileUrl?.absoluteString ?? fullFileNameUri)
           
           logger.error("saveKdbx:resolvingBookmarkData NSFileProviderError is \(error)")
           reject(E_FILE_NOT_FOUND, "\(error.localizedDescription)",error)
         }
         catch let error {
           // Store the db file with changed data to backup for later offline use
-          writeToBackupOnError(db_file_url?.absoluteString ?? fullFileNameUri)
+          writeToBackupOnError(dbFileUrl?.absoluteString ?? fullFileNameUri)
           
           //Other errors
           logger.error("saveKdbx:resolvingBookmarkData Error is \(error)")
@@ -143,9 +143,9 @@ class OkpDbService: NSObject {
 
       } else {
         //Store the db file with changed data to backup for later offline use
-        writeToBackupOnError(db_file_url?.absoluteString ?? fullFileNameUri)
-        self.logger.error("No bookmark data is found for the url \(String(describing: db_file_url?.absoluteString))")
-        reject(E_BOOK_MARK_NOT_FOUND, "No bookmark data is found for the url \(String(describing: db_file_url?.absoluteString))", nil)
+        writeToBackupOnError(dbFileUrl?.absoluteString ?? fullFileNameUri)
+        self.logger.error("No bookmark data is found for the url \(String(describing: dbFileUrl?.absoluteString))")
+        reject(E_BOOK_MARK_NOT_FOUND, "No bookmark data is found for the url \(String(describing: dbFileUrl?.absoluteString))", nil)
       }
     }
   }
@@ -154,13 +154,13 @@ class OkpDbService: NSObject {
   func readKdbx(_ fullFileNameUri: String, jsonArgs: String, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
     DispatchQueue.global(qos: .userInteractive).async { [unowned self] in
 
-      let db_file_url = URL(string: fullFileNameUri)
-      guard db_file_url != nil else {
+      let dbFileUrl = URL(string: fullFileNameUri)
+      guard dbFileUrl != nil else {
         reject(E_DB_SERVICE_MODULE_ERROR, "fullFileNameUri cannot be nil", nil)
         return
       }
 
-      let byteArray: [UInt8] = DbServiceAPI.iosSupportService().loadBookMarkData(db_file_url!.absoluteString)
+      let byteArray: [UInt8] = DbServiceAPI.iosSupportService().loadBookMarkData(dbFileUrl!.absoluteString)
 
       if byteArray.count > 0 {
         let bookmarkData = Data(_: byteArray)
@@ -195,8 +195,8 @@ class OkpDbService: NSObject {
         }
 
       } else {
-        self.logger.error("No bookmark data is found for the url \(String(describing: db_file_url?.absoluteString))")
-        reject(E_BOOK_MARK_NOT_FOUND, "No bookmark data is found for the url \(String(describing: db_file_url?.absoluteString))", nil)
+        self.logger.error("No bookmark data is found for the url \(String(describing: dbFileUrl?.absoluteString))")
+        reject(E_BOOK_MARK_NOT_FOUND, "No bookmark data is found for the url \(String(describing: dbFileUrl?.absoluteString))", nil)
       }
     }
   }

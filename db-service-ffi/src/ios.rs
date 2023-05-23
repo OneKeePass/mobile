@@ -166,19 +166,23 @@ impl IosSupportService {
         unimplemented!();
     }
 
-    pub fn save_book_mark_data(&self, url: String, data: Vec<u8>) -> bool {
+    pub fn save_book_mark_data(&self, _url: String, _data: Vec<u8>) -> bool {
         unimplemented!();
     }
 
-    pub fn load_book_mark_data(&self, url: String) -> Vec<u8> {
+    pub fn load_book_mark_data(&self, _url: String) -> Vec<u8> {
         unimplemented!();
     }
 
-    pub fn copy_last_backup_to_temp_file(&self, full_file_name_uri: String) -> Option<String> {
+    pub fn copy_last_backup_to_temp_file(
+        &self,
+        _kdbx_file_name: String,
+        _full_file_name_uri: String,
+    ) -> Option<String> {
         unimplemented!();
     }
 
-    pub fn complete_save_as_on_error(args: &str) -> String {
+    pub fn complete_save_as_on_error(&self, _json_args: &str) -> String {
         unimplemented!();
     }
 }

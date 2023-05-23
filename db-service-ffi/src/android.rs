@@ -128,14 +128,14 @@ impl AndroidSupportService {
 
     pub fn complete_save_as_on_error(
         &self,
-        file_descriptor: u64,
-        old_full_file_name_uri: String,
-        new_full_file_name_uri: String,
+        _file_descriptor: u64,
+        _old_full_file_name_uri: String,
+        _new_full_file_name_uri: String,
     ) -> ApiResponse {
         unimplemented!();
     }
 
-    pub fn create_kdbx(&self, file_descriptor: u64, json_args: String) -> ApiResponse {
+    pub fn create_kdbx(&self, _file_descriptor: u64, _json_args: String) -> ApiResponse {
         unimplemented!();
     }
 }

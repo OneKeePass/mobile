@@ -232,7 +232,7 @@
    ;; This backend call not only removes the recent use file info but also closes the db if it is openned 
    (bg/remove-from-recently-used full-file-name-uri (fn [api-reponse]
                                                       (when-not (on-error api-reponse)
-                                                        (dispatch [:common/message-snackbar-open "Database removed from list"])
+                                                        (dispatch [:common/message-snackbar-open "Database is removed from the list"])
                                                         ;; As db is closed when this response is received, we call :close-kdbx-completed 
                                                         (dispatch [:close-kdbx-completed full-file-name-uri]))))
    {}))

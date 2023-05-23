@@ -283,8 +283,6 @@ impl Commands {
 
             "all_kdbx_cache_keys" => result_json_str(db_service::all_kdbx_cache_keys()),
 
-            "complete_save_as_on_error" => Self::complete_save_as_on_error(&args),
-
             "list_backup_files" => ok_json_str(util::list_backup_files()),
 
             "list_bookmark_files" => ok_json_str(ios::list_bookmark_files()),
@@ -423,42 +421,6 @@ impl Commands {
                 args
             ))
         }
-    }
-
-    // Used only for iOS
-    fn complete_save_as_on_error(args: &str) -> String {
-        unimplemented!()
-        // let inner_fn = || -> OkpResult<db_service::KdbxLoaded> {
-        //     if let Ok(CommandArg::SaveAsArg { db_key, new_db_key }) = serde_json::from_str(args) {
-        //         let kdbx_loaded = db_service::rename_db_key(&db_key, &new_db_key)?;
-        //         // Need to ensure that the checksum is reset to the newly saved file
-        //         // Otherwise, Save error modal dialog will popup !
-        //         let bkp_file_opt = AppState::global().get_last_backup_on_error(&db_key);
-        //         if let Some(mut bkp_file) = open_backup_file(bkp_file_opt) {
-        //             db_service::calculate_db_file_checksum(&new_db_key, &mut bkp_file)?;
-        //         } else {
-        //             log::error!("Expected backup file is not found. 'Save as' should have this");
-        //             return Err(OkpError::DataError("Expected backup file is not found"));
-        //         }
-
-        //         // AppState::global().remove_recent_db_use_info(&db_key);
-        //         remove_app_files(&db_key);
-        //         AppState::global().add_recent_db_use_info(&new_db_key);
-        //         AppState::global().remove_last_backup_name_on_error(&db_key);
-
-        //         Ok(kdbx_loaded)
-        //     } else {
-        //         Err(OkpError::Other(format!(
-        //             "Call complete_save_as_on_error failed due Invalid args {}",
-        //             args
-        //         )))
-        //     }
-        // };
-        // InvokeResult::from(inner_fn()).json_str()
-    }
-
-    fn _all_kdbx_cache_keys() -> String {
-        InvokeResult::from(db_service::all_kdbx_cache_keys()).json_str()
     }
 
     fn recently_used_dbs_info() -> String {

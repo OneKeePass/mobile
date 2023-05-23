@@ -51,14 +51,6 @@ class DocumentPickerServiceModule(reactContext: ReactApplicationContext) : React
                                         contentResolver.takePersistableUriPermission(uri, takeFlags)
                                     }
                                     pickerPromise?.resolve(DbServiceAPI.formJsonWithFileName(uri.toString()))
-                                    //
-//                                    if (requestCode == PICK_KDBX_FILE_OPEN_REQUEST_CODE) {
-//                                        pickerPromise?.resolve(DbServiceAPI.formJsonWithFileName(uri.toString()))
-//                                    } else {
-//                                        // As we are sending just the uri value, this is converted as
-//                                        // json string {:ok resolved} in transform-api-response function
-//                                        pickerPromise?.resolve(uri.toString())
-//                                    }
                                 }
                             }
                             pickerPromise = null

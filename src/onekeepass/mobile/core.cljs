@@ -10,6 +10,7 @@
             [onekeepass.mobile.events.common :as cmn-events]
             [onekeepass.mobile.background :as bg]
             [onekeepass.mobile.save-error-dialog :refer [save-error-modal]]
+            [onekeepass.mobile.start-page :refer [open-db-dialog]]
             [onekeepass.mobile.common-components :as cc :refer [message-snackbar
                                                                 message-modal
                                                                 message-dialog]]))
@@ -22,6 +23,7 @@
    [appbar-main-content]
    [rnp-portal
     [message-snackbar]
+    [open-db-dialog]
     [save-error-modal @(save-events/save-error-modal-data)]
     [message-modal @(cmn-events/message-modal-data)]
     [message-dialog @(cmn-events/message-dialog-data)]]])

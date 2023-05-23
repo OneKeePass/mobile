@@ -39,8 +39,6 @@ object DbServiceAPI {
 
     fun createKdbx(fd: ULong, args: String): ApiResponse {
         return androidSupportService.createKdbx(fd, args)
-//        val fileArgs = onekeepass.mobile.ffi.FileArgs.FileDecriptor(fd)
-//        return onekeepass.mobile.ffi.createKdbx(fileArgs, args)
     }
 
     fun saveKdbx(fd: ULong, fullFileName: String, fileName: String, overwrite: Boolean): ApiResponse {

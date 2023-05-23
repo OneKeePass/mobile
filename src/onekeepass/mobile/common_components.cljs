@@ -197,7 +197,6 @@
                                             (call-on-ok-fn @data-ref)
                                             (swap! data-ref assoc :dialog-show false))}]}]))
 
-
 ;;; See remove-confirm-dialog-info , overwrite-confirm-dialog-info for example usage
 ;;; Important: we need to call (:dialog ..-info) inside rnp-portal
 

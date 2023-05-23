@@ -23,12 +23,12 @@
 (def overwrite-confirm-dialog-info (confirm-dialog-factory ovewrite-confirm-dialog-data))
 
 ;; When we use 'lstr' fn, we need to define inside a component as it requires react context
-(defn overwrite-on-press [] 
+(defn overwrite-on-press []
   (swap! ovewrite-confirm-dialog-data assoc
          :title "Overwriting"
          :confirm-text   "This will overwrite the target databses. Are you sure?"
          :call-on-ok-fn save-events/overwrite-on-save-error)
-  
+
   ((:show overwrite-confirm-dialog-info)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -84,7 +84,7 @@
                        :labelStyle {:fontWeight "bold"}
                        :textColor "red"
                        :mode "text"
-                       :on-press overwrite-on-press } "Overwrite"]
+                       :on-press overwrite-on-press} "Overwrite"]
           [rnp-text {:style {:textAlign "justify"}}
            "This database will overwrite the target database with your changes"]]])
 
@@ -95,8 +95,6 @@
                     :mode "text"
                     :on-press save-events/save-error-modal-hide} "Cancel"]
        [rnp-text {:style {:textAlign "justify"}} ""]]]]]
-   
-   [rnp-portal 
-    (:dialog overwrite-confirm-dialog-info)
-    ]
-   ])
+
+   [rnp-portal
+    (:dialog overwrite-confirm-dialog-info)]])

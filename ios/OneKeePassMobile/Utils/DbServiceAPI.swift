@@ -30,18 +30,12 @@ class DbServiceAPI {
   }
 
   static func iosSupportService() -> IosSupportService {
-    // IosSupportService()
     _iosSupportService
   }
 
   static func formJsonWithFileName(_ fullFileName: String) -> String {
     _jsonService.formWithFileName(fullFileName)
   }
-
-//  static func createKdbx(_ fullFileName: String, _ args: String) -> ApiResponse {
-//    let fileArgs = FileArgs.fullFileName(fullFileName: fullFileName)
-//    return OneKeePassMobile.createKdbx(fileArgs, args)
-//  }
 
   static func createTempKdbx(_ tempFileUri: String, _ args: String) -> ApiResponse {
     let fileArgs = FileArgs.fullFileName(fullFileName: tempFileUri)
@@ -60,10 +54,6 @@ class DbServiceAPI {
   
   static func completeSaveAsOnError(_ jsonArgs: String) -> String {
     _iosSupportService.completeSaveAsOnError(jsonArgs)
-  }
-  
-  static func getLastBackupFileName(_ fullFileName: String) -> String {
-    return OneKeePassMobile.getLastBackupFileName(fullFileName)
   }
   
   static func writeToBackupOnError(_ fullFileName: String) -> ApiResponse {

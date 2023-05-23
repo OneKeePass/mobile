@@ -3,16 +3,12 @@ namespace db_service {
     void db_service_initialize(CommonDeviceService common_device_service);
  
     ApiResponse read_kdbx(FileArgs file_args, string json_args);
-    //ApiResponse create_kdbx(FileArgs file_args, string json_args);
     ApiResponse create_temp_kdbx(FileArgs file_args, string json_args);
     ApiResponse save_kdbx(FileArgs file_args, boolean overwrite);
     ApiResponse verify_db_file_checksum(FileArgs file_args);
     ApiResponse write_to_backup_on_error(string full_file_name_uri);
 
-    string get_last_backup_file_name(string full_file_name_uri);
-    
     string extract_file_provider(string full_file_name_uri);
- 
     string invoke_command(string command_name, string args);
 };
 
@@ -45,6 +41,7 @@ interface IosSupportService {
     string complete_save_as_on_error([ByRef] string json_args);
 };
 
+// Android specific APIs. Called from Kotlin side to Rust
 interface AndroidSupportService {
     constructor();
     ApiResponse create_kdbx(u64 file_descriptor, string json_args);
