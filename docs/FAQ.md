@@ -5,8 +5,6 @@ Here are some common ones. More will be added in due time
 ## Where and how the database is stored?
 OneKeePass stores all your passwords and other details in a single encrypted file in any place supported by the iOS's Files app or Android supported File Manager - typically called "My Files" or just "Files"
 
-***WARNING: OneKeePass does not check whether the database file has been changed outside or not before saving. Because of this the file may be overwritten. This issue will be fixed in the next version*** 
-
 <br>
 
 ## What is the format of the OneKeePass database?
