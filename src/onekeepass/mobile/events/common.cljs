@@ -278,6 +278,9 @@
   []
   (subscribe [:recently-used]))
 
+(defn biometric-available []
+  (subscribe [:biometric-available]))
+
 (reg-event-fx
  :load-app-preference
  (fn [{:keys [db]} [_event-id]]
@@ -310,7 +313,10 @@
  (fn [{:keys [db]} [_event-id pref]]
    ;; pref is a map - {:version \"0.0.1\" :recent-dbs-info [{},{}..]}
    ;; based on Preference struct 
-   {:db (-> db (assoc-in [:app-preference :status] :loaded)
+   {:db (-> db
+            ;; Set the biometric availablity info in db so that we can use it in a subscription
+            (assoc :biometric-available (bg/is-biometric-available))
+            (assoc-in [:app-preference :status] :loaded)
             (assoc-in [:app-preference :data] pref))}))
 
 (reg-sub

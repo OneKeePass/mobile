@@ -3,10 +3,9 @@ package com.onekeepassmobile
 import android.net.Uri
 import android.os.ParcelFileDescriptor
 import android.util.Log
-import com.facebook.react.bridge.Promise
-import com.facebook.react.bridge.ReactApplicationContext
-import com.facebook.react.bridge.ReactContextBaseJavaModule
-import com.facebook.react.bridge.ReactMethod
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
+import com.facebook.react.bridge.*
 import onekeepass.mobile.ffi.ApiResponse
 import java.io.FileNotFoundException
 import java.util.*
@@ -19,7 +18,7 @@ private const val TAG = "DbServiceModule"  //TAG can only be max 23 characters
 class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
     private val contentResolver = reactContext.contentResolver
     private val executorService: ExecutorService = Executors.newFixedThreadPool(4)
-
+    private val biometricService:BiometricService = BiometricService(reactContext)
     override fun getName() = "OkpDbService"
 
     // IMPORTANT: This call should have been made before any API Calls
@@ -56,7 +55,8 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
                 "MainBundleDir" to reactApplicationContext.applicationInfo.dataDir,
                 "SDCardDir" to sdCardDir,
                 "Country" to locale.country,  // Device country
-                "Language" to locale.language // Device level language
+                "Language" to locale.language, // Device level language
+                "BiometricAvailable" to biometricService.biometricAuthenticationAvailbale().toString()
         )
     }
 
@@ -287,6 +287,23 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
                 promise.reject(E_SAVE_AS_CALL_FAILED, e)
             }
         }
+    }
+
+    @ReactMethod
+    fun authenticateWithBiometric(promise: Promise) {
+        // BiometricPrompt should be called in the UI thread
+        UiThreadUtil.runOnUiThread( {
+            val executor = Executors.newSingleThreadExecutor()
+            Log.d(TAG,"Calling showPrompt....")
+            biometricService.showPrompt(currentActivity as FragmentActivity, executor,promise)
+            Log.d(TAG,"Called showPrompt")
+        })
+
+        // BiometricPrompt should be called in the UI thread. The following did not work and threw
+        // java.lang.IllegalStateException: Must be called from main thread of fragment host
+
+         // val executor = ContextCompat.getMainExecutor(this.reactApplicationContext)
+         // biometricService.showPrompt(currentActivity as FragmentActivity, executor,promise)
     }
 
     private fun resolveResponse(response: ApiResponse, promise: Promise) {

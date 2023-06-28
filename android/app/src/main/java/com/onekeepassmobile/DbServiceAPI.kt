@@ -25,7 +25,7 @@ object DbServiceAPI {
     }
 
     fun initialize(reactContext: ReactApplicationContext) {
-        dbServiceInitialize(CommonDeviceServiceImpl(reactContext))
+        dbServiceInitialize(CommonDeviceServiceImpl(reactContext),SecureKeyOperationImpl(reactContext))
     }
 
     fun invokeCommand(commandName: String, args: String): String {
@@ -80,6 +80,10 @@ object DbServiceAPI {
 
     fun formJsonWithFileName(fullFileName: String): String {
         return jsonService.formWithFileName(fullFileName)
+    }
+
+    fun jsonService():JsonService {
+        return jsonService
     }
 }
 

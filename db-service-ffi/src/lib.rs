@@ -4,8 +4,9 @@ mod app_state;
 mod commands;
 mod ios;
 mod util;
+mod key_secure;
 
-use app_state::{AppState, CommonDeviceService, FileInfo, RecentlyUsed};
+use app_state::{AppState, CommonDeviceService, SecureKeyOperation,SecureKeyOperationError,FileInfo, RecentlyUsed};
 use commands::{error_json_str, full_path_file_to_create, CommandArg, Commands, InvokeResult};
 use log::{debug, logger};
 use onekeepass_core::db_service;
@@ -374,6 +375,7 @@ impl JsonService {
         Self {}
     }
 
+    // Forms and returns a parseable (by cljs) json string with "ok"
     pub fn form_with_file_name(&self, full_file_name_uri: String) -> String {
         let file_name = AppState::global()
             .common_device_service
@@ -387,11 +389,29 @@ impl JsonService {
 
         InvokeResult::with_ok(m).json_str()
     }
+
+    // Returns the map data as a parseable (by cljs) json string with "ok" key
+    pub fn map_as_ok_json_string(&self,info:HashMap<String,String>) -> String {
+        InvokeResult::with_ok(info).json_str()
+    }
+
+    // Returns a parseable (by cljs) json string with "ok"
+    pub fn ok_json_string(&self,info:String) -> String {
+        InvokeResult::with_ok(info).json_str()
+    }
+
+    // Returns a string of form "{"error": "some error text"}"
+    // that can then be deserialized in UI layer 
+    pub fn error_json_string(&self,error:String) -> String {
+        commands::error_json_str(error.as_str())
+    }
 }
 
-fn db_service_initialize(common_device_service: Box<dyn CommonDeviceService>) {
-    AppState::setup(common_device_service);
+fn db_service_initialize(common_device_service: Box<dyn CommonDeviceService>,secure_key_operation:Box<dyn SecureKeyOperation>) {
+    AppState::setup(common_device_service,secure_key_operation);
     log::info!("AppState with CommonDeviceService is initialized");
+    key_secure::init_key_main_store();
+    log::info!("key_secure::init_key_main_store call done after AppState setup");
 }
 
 fn db_service_enable_logging() {
@@ -406,7 +426,8 @@ fn db_service_enable_logging() {
                 .build();
             android_logger::init_once(
                 android_logger::Config::default()
-                    .with_min_level(log::Level::Debug)
+                    .with_max_level(log::LevelFilter::Trace)
+                    //.with_min_level(log::Level::Debug)
                     //.with_filter(filter)
                     .with_tag("DbServiceFFI"),
             );
@@ -531,4 +552,6 @@ fn extract_file_provider(full_file_name_uri: String) -> String {
 // See the use of #![allow(dead_code, unused_imports)] in the top of this crate
 
 #[cfg(any(target_os = "ios", target_os = "android"))]
-include!(concat!(env!("OUT_DIR"), "/db_service.uniffi.rs"));
+uniffi::include_scaffolding!("db_service");
+//include!(concat!(env!("OUT_DIR"), "/db_service.uniffi.rs"));
+

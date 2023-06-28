@@ -1,6 +1,7 @@
 alias ba := build-android-lib
 alias gk := generate-kotlin
 alias bca := cp-android-ffi-lib-src
+# Use bca-d for development time - See below for target use
 
 alias gs := generate-swift
 alias bcis := cp-ios-ffi-fat-sim-debug-lib-src
@@ -17,12 +18,20 @@ ios-lib-output := "target/libdb_service_ffi.a"
 
 ## cargo install uniffi_bindgen 
 ## installed already and version 0.20.0 should match that is used in Cargo.toml)
+
+## Need to do this one time
+## cd ./uniffi-bindgen
+## cargo build --release  
+## Now on we can use the appropriate version of uniffi-bindgen
+
 generate-rs:
-    uniffi-bindgen scaffolding {{udl_src}} --no-format --out-dir ./target/
+    ../uniffi-bindgen/target/release/uniffi-bindgen scaffolding {{udl_src}} -o ./target/  --no-format
+    #cargo run --features=uniffi/cli --bin uniffi-bindgen scaffolding {{udl_src}} -o ./target/  --no-format
+    #uniffi-bindgen scaffolding {{udl_src}} --no-format --out-dir ./target/
 
 generate-swift:
     mkdir  -p {{swift-src-dir}}
-    uniffi-bindgen generate -l swift {{udl_src}} --out-dir {{swift-src-dir}}
+    ../uniffi-bindgen/target/release/uniffi-bindgen generate -l swift {{udl_src}} --out-dir {{swift-src-dir}}
 
 build-ios-device-lib-release:
     cargo build --target aarch64-apple-ios --release
@@ -91,7 +100,7 @@ build-android-lib release="" :
 
 generate-kotlin:
     mkdir  -p {{kotlin-src-dir}}
-    uniffi-bindgen generate -l kotlin {{udl_src}} --out-dir {{kotlin-src-dir}}
+    ../uniffi-bindgen/target/release/uniffi-bindgen generate -l kotlin {{udl_src}} --out-dir {{kotlin-src-dir}}
 
 android-db-service-src-dir  := "../android/app/src/main/java"
 android-db-service-lib-dir  := "../android/app/src/main"
@@ -104,6 +113,8 @@ cp-android-ffi-lib-src release="": (build-android-lib release) generate-kotlin
 
 
 ######## 
+
+## Do not build x86_64-linux-android and i686-linux-android during dev to speed things up
 alias bca-d := cp-android-ffi-lib-src-d
 
 build-android-lib-d:

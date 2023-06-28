@@ -38,8 +38,13 @@
 
 (def okp-events ^js/OkpEvents (.-OkpEvents rn/NativeModules))
 
+
 #_(defn get-constants []
     (.getConstants okp-db-service))
+
+(defn is-biometric-available []
+  ;; Valid values expected for BiometricAvailable are "true" or "false" for both iOS and Android
+  (= (-> okp-db-service .getConstants .-BiometricAvailable) "true"))
 
 (defn- api-args->json
   [api-args convert-request]
@@ -141,6 +146,9 @@
    "
   [dispatch-fn]
   (call-api-async (fn [] (.hide rn-boot-splash 200)) dispatch-fn))
+
+(defn authenticate-with-biometric [dispatch-fn]
+  (call-api-async (fn [] (.authenticateWithBiometric okp-db-service)) dispatch-fn))
 
 ;; Android: 
 ;; The call sequence - pickKdbxFileToCreate, .createKdbx - to create
@@ -477,7 +485,7 @@
 ;; in any place, the call gets optimized with false constant value resulting all calls that 
 ;; use such check to use platform specific code failed   
 
-;; For example, we the creation of 'OkpEvents' did not happen for '(util/is-iOS)'
+;; For example,  the creation of 'OkpEvents' did not happen for '(util/is-iOS)'
 ;; This in turn leading to error in case of iOS
 ;; Invariant Violation: `new NativeEventEmitter()` requires a non-null argument
 ;; The following dummy function definition ensures that, type hint ^js/OkpEvents work

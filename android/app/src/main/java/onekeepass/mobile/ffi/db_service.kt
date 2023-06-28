@@ -18,12 +18,15 @@ package onekeepass.mobile.ffi;
 // helpers directly inline like we're doing here.
 
 import com.sun.jna.Library
+import com.sun.jna.IntegerType
 import com.sun.jna.Native
 import com.sun.jna.Pointer
 import com.sun.jna.Structure
-import com.sun.jna.ptr.ByReference
+import com.sun.jna.Callback
+import com.sun.jna.ptr.*
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.locks.ReentrantLock
@@ -39,12 +42,12 @@ open class RustBuffer : Structure() {
     @JvmField var len: Int = 0
     @JvmField var data: Pointer? = null
 
-    class ByValue : RustBuffer(), Structure.ByValue
-    class ByReference : RustBuffer(), Structure.ByReference
+    class ByValue: RustBuffer(), Structure.ByValue
+    class ByReference: RustBuffer(), Structure.ByReference
 
     companion object {
         internal fun alloc(size: Int = 0) = rustCall() { status ->
-            _UniFFILib.INSTANCE.ffi_db_service_5341_rustbuffer_alloc(size, status).also {
+            _UniFFILib.INSTANCE.ffi_db_service_rustbuffer_alloc(size, status).also {
                 if(it.data == null) {
                    throw RuntimeException("RustBuffer.alloc() returned null data pointer (size=${size})")
                }
@@ -52,7 +55,7 @@ open class RustBuffer : Structure() {
         }
 
         internal fun free(buf: RustBuffer.ByValue) = rustCall() { status ->
-            _UniFFILib.INSTANCE.ffi_db_service_5341_rustbuffer_free(buf, status)
+            _UniFFILib.INSTANCE.ffi_db_service_rustbuffer_free(buf, status)
         }
     }
 
@@ -79,6 +82,19 @@ class RustBufferByReference : ByReference(16) {
         pointer.setInt(0, value.capacity)
         pointer.setInt(4, value.len)
         pointer.setPointer(8, value.data)
+    }
+
+    /**
+     * Get a `RustBuffer.ByValue` from this reference.
+     */
+    fun getValue(): RustBuffer.ByValue {
+        val pointer = getPointer()
+        val value = RustBuffer.ByValue()
+        value.writeField("capacity", pointer.getInt(0))
+        value.writeField("len", pointer.getInt(4))
+        value.writeField("data", pointer.getPointer(8))
+
+        return value
     }
 }
 
@@ -171,19 +187,21 @@ public interface FfiConverterRustBuffer<KotlinType>: FfiConverter<KotlinType, Ru
 // Error runtime.
 @Structure.FieldOrder("code", "error_buf")
 internal open class RustCallStatus : Structure() {
-    @JvmField var code: Int = 0
+    @JvmField var code: Byte = 0
     @JvmField var error_buf: RustBuffer.ByValue = RustBuffer.ByValue()
 
+    class ByValue: RustCallStatus(), Structure.ByValue
+
     fun isSuccess(): Boolean {
-        return code == 0
+        return code == 0.toByte()
     }
 
     fun isError(): Boolean {
-        return code == 1
+        return code == 1.toByte()
     }
 
     fun isPanic(): Boolean {
-        return code == 2
+        return code == 2.toByte()
     }
 }
 
@@ -202,8 +220,14 @@ interface CallStatusErrorHandler<E> {
 private inline fun <U, E: Exception> rustCallWithError(errorHandler: CallStatusErrorHandler<E>, callback: (RustCallStatus) -> U): U {
     var status = RustCallStatus();
     val return_value = callback(status)
+    checkCallStatus(errorHandler, status)
+    return return_value
+}
+
+// Check RustCallStatus and throw an error if the call wasn't successful
+private fun<E: Exception> checkCallStatus(errorHandler: CallStatusErrorHandler<E>, status: RustCallStatus) {
     if (status.isSuccess()) {
-        return return_value
+        return
     } else if (status.isError()) {
         throw errorHandler.lift(status.error_buf)
     } else if (status.isPanic()) {
@@ -233,6 +257,86 @@ private inline fun <U> rustCall(callback: (RustCallStatus) -> U): U {
     return rustCallWithError(NullCallStatusErrorHandler, callback);
 }
 
+// IntegerType that matches Rust's `usize` / C's `size_t`
+public class USize(value: Long = 0) : IntegerType(Native.SIZE_T_SIZE, value, true) {
+    // This is needed to fill in the gaps of IntegerType's implementation of Number for Kotlin.
+    override fun toByte() = toInt().toByte()
+    override fun toChar() = toInt().toChar()
+    override fun toShort() = toInt().toShort()
+
+    fun writeToBuffer(buf: ByteBuffer) {
+        // Make sure we always write usize integers using native byte-order, since they may be
+        // casted to pointer values
+        buf.order(ByteOrder.nativeOrder())
+        try {
+            when (Native.SIZE_T_SIZE) {
+                4 -> buf.putInt(toInt())
+                8 -> buf.putLong(toLong())
+                else -> throw RuntimeException("Invalid SIZE_T_SIZE: ${Native.SIZE_T_SIZE}")
+            }
+        } finally {
+            buf.order(ByteOrder.BIG_ENDIAN)
+        }
+    }
+
+    companion object {
+        val size: Int
+            get() = Native.SIZE_T_SIZE
+
+        fun readFromBuffer(buf: ByteBuffer) : USize {
+            // Make sure we always read usize integers using native byte-order, since they may be
+            // casted from pointer values
+            buf.order(ByteOrder.nativeOrder())
+            try {
+                return when (Native.SIZE_T_SIZE) {
+                    4 -> USize(buf.getInt().toLong())
+                    8 -> USize(buf.getLong())
+                    else -> throw RuntimeException("Invalid SIZE_T_SIZE: ${Native.SIZE_T_SIZE}")
+                }
+            } finally {
+                buf.order(ByteOrder.BIG_ENDIAN)
+            }
+        }
+    }
+}
+
+
+// Map handles to objects
+//
+// This is used when the Rust code expects an opaque pointer to represent some foreign object.
+// Normally we would pass a pointer to the object, but JNA doesn't support getting a pointer from an
+// object reference , nor does it support leaking a reference to Rust.
+//
+// Instead, this class maps USize values to objects so that we can pass a pointer-sized type to
+// Rust when it needs an opaque pointer.
+//
+// TODO: refactor callbacks to use this class
+internal class UniFfiHandleMap<T: Any> {
+    private val map = ConcurrentHashMap<USize, T>()
+    // Use AtomicInteger for our counter, since we may be on a 32-bit system.  4 billion possible
+    // values seems like enough. If somehow we generate 4 billion handles, then this will wrap
+    // around back to zero and we can assume the first handle generated will have been dropped by
+    // then.
+    private val counter = java.util.concurrent.atomic.AtomicInteger(0)
+
+    val size: Int
+        get() = map.size
+
+    fun insert(obj: T): USize {
+        val handle = USize(counter.getAndAdd(1).toLong())
+        map.put(handle, obj)
+        return handle
+    }
+
+    fun get(handle: USize): T? {
+        return map.get(handle)
+    }
+
+    fun remove(handle: USize) {
+        map.remove(handle)
+    }
+}
+
 // Contains loading, initialization code,
 // and the FFI Function declarations in a com.sun.jna.Library.
 @Synchronized
@@ -258,121 +362,203 @@ internal interface _UniFFILib : Library {
         internal val INSTANCE: _UniFFILib by lazy {
             loadIndirect<_UniFFILib>(componentName = "db_service")
             .also { lib: _UniFFILib ->
+                uniffiCheckContractApiVersion(lib)
+                uniffiCheckApiChecksums(lib)
                 FfiConverterTypeCommonDeviceService.register(lib)
+                FfiConverterTypeSecureKeyOperation.register(lib)
                 }
-            
         }
     }
 
-    fun ffi_db_service_5341_IosSupportService_object_free(`ptr`: Pointer,
-    _uniffi_out_err: RustCallStatus
+    fun uniffi_db_service_fn_free_iossupportservice(`ptr`: Pointer,_uniffi_out_err: RustCallStatus, 
     ): Unit
-
-    fun db_service_5341_IosSupportService_new(
-    _uniffi_out_err: RustCallStatus
+    fun uniffi_db_service_fn_constructor_iossupportservice_new(_uniffi_out_err: RustCallStatus, 
     ): Pointer
-
-    fun db_service_5341_IosSupportService_save_book_mark_data(`ptr`: Pointer,`url`: RustBuffer.ByValue,`data`: RustBuffer.ByValue,
-    _uniffi_out_err: RustCallStatus
+    fun uniffi_db_service_fn_method_iossupportservice_save_book_mark_data(`ptr`: Pointer,`url`: RustBuffer.ByValue,`data`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): Byte
-
-    fun db_service_5341_IosSupportService_load_book_mark_data(`ptr`: Pointer,`url`: RustBuffer.ByValue,
-    _uniffi_out_err: RustCallStatus
+    fun uniffi_db_service_fn_method_iossupportservice_load_book_mark_data(`ptr`: Pointer,`url`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
-
-    fun db_service_5341_IosSupportService_copy_last_backup_to_temp_file(`ptr`: Pointer,`kdbxFileName`: RustBuffer.ByValue,`fullFileNameUri`: RustBuffer.ByValue,
-    _uniffi_out_err: RustCallStatus
+    fun uniffi_db_service_fn_method_iossupportservice_copy_last_backup_to_temp_file(`ptr`: Pointer,`kdbxFileName`: RustBuffer.ByValue,`fullFileNameUri`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
-
-    fun db_service_5341_IosSupportService_complete_save_as_on_error(`ptr`: Pointer,`jsonArgs`: RustBuffer.ByValue,
-    _uniffi_out_err: RustCallStatus
+    fun uniffi_db_service_fn_method_iossupportservice_complete_save_as_on_error(`ptr`: Pointer,`jsonArgs`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
-
-    fun ffi_db_service_5341_AndroidSupportService_object_free(`ptr`: Pointer,
-    _uniffi_out_err: RustCallStatus
+    fun uniffi_db_service_fn_free_androidsupportservice(`ptr`: Pointer,_uniffi_out_err: RustCallStatus, 
     ): Unit
-
-    fun db_service_5341_AndroidSupportService_new(
-    _uniffi_out_err: RustCallStatus
+    fun uniffi_db_service_fn_constructor_androidsupportservice_new(_uniffi_out_err: RustCallStatus, 
     ): Pointer
-
-    fun db_service_5341_AndroidSupportService_create_kdbx(`ptr`: Pointer,`fileDescriptor`: Long,`jsonArgs`: RustBuffer.ByValue,
-    _uniffi_out_err: RustCallStatus
+    fun uniffi_db_service_fn_method_androidsupportservice_create_kdbx(`ptr`: Pointer,`fileDescriptor`: Long,`jsonArgs`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
-
-    fun db_service_5341_AndroidSupportService_complete_save_as_on_error(`ptr`: Pointer,`fileDescriptor`: Long,`oldFullFileNameUri`: RustBuffer.ByValue,`newFullFileNameUri`: RustBuffer.ByValue,
-    _uniffi_out_err: RustCallStatus
+    fun uniffi_db_service_fn_method_androidsupportservice_complete_save_as_on_error(`ptr`: Pointer,`fileDescriptor`: Long,`oldFullFileNameUri`: RustBuffer.ByValue,`newFullFileNameUri`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
-
-    fun ffi_db_service_5341_JsonService_object_free(`ptr`: Pointer,
-    _uniffi_out_err: RustCallStatus
+    fun uniffi_db_service_fn_free_jsonservice(`ptr`: Pointer,_uniffi_out_err: RustCallStatus, 
     ): Unit
-
-    fun db_service_5341_JsonService_new(
-    _uniffi_out_err: RustCallStatus
+    fun uniffi_db_service_fn_constructor_jsonservice_new(_uniffi_out_err: RustCallStatus, 
     ): Pointer
-
-    fun db_service_5341_JsonService_form_with_file_name(`ptr`: Pointer,`fullFileNameUri`: RustBuffer.ByValue,
-    _uniffi_out_err: RustCallStatus
+    fun uniffi_db_service_fn_method_jsonservice_form_with_file_name(`ptr`: Pointer,`fullFileNameUri`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
-
-    fun ffi_db_service_5341_CommonDeviceService_init_callback(`callbackStub`: ForeignCallback,
-    _uniffi_out_err: RustCallStatus
+    fun uniffi_db_service_fn_method_jsonservice_map_as_ok_json_string(`ptr`: Pointer,`info`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_db_service_fn_method_jsonservice_ok_json_string(`ptr`: Pointer,`info`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_db_service_fn_method_jsonservice_error_json_string(`ptr`: Pointer,`error`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_db_service_fn_init_callback_commondeviceservice(`callbackStub`: ForeignCallback,_uniffi_out_err: RustCallStatus, 
     ): Unit
-
-    fun db_service_5341_db_service_enable_logging(
-    _uniffi_out_err: RustCallStatus
+    fun uniffi_db_service_fn_init_callback_securekeyoperation(`callbackStub`: ForeignCallback,_uniffi_out_err: RustCallStatus, 
     ): Unit
-
-    fun db_service_5341_db_service_initialize(`commonDeviceService`: Long,
-    _uniffi_out_err: RustCallStatus
+    fun uniffi_db_service_fn_func_db_service_enable_logging(_uniffi_out_err: RustCallStatus, 
     ): Unit
-
-    fun db_service_5341_read_kdbx(`fileArgs`: RustBuffer.ByValue,`jsonArgs`: RustBuffer.ByValue,
-    _uniffi_out_err: RustCallStatus
-    ): RustBuffer.ByValue
-
-    fun db_service_5341_create_temp_kdbx(`fileArgs`: RustBuffer.ByValue,`jsonArgs`: RustBuffer.ByValue,
-    _uniffi_out_err: RustCallStatus
-    ): RustBuffer.ByValue
-
-    fun db_service_5341_save_kdbx(`fileArgs`: RustBuffer.ByValue,`overwrite`: Byte,
-    _uniffi_out_err: RustCallStatus
-    ): RustBuffer.ByValue
-
-    fun db_service_5341_verify_db_file_checksum(`fileArgs`: RustBuffer.ByValue,
-    _uniffi_out_err: RustCallStatus
-    ): RustBuffer.ByValue
-
-    fun db_service_5341_write_to_backup_on_error(`fullFileNameUri`: RustBuffer.ByValue,
-    _uniffi_out_err: RustCallStatus
-    ): RustBuffer.ByValue
-
-    fun db_service_5341_extract_file_provider(`fullFileNameUri`: RustBuffer.ByValue,
-    _uniffi_out_err: RustCallStatus
-    ): RustBuffer.ByValue
-
-    fun db_service_5341_invoke_command(`commandName`: RustBuffer.ByValue,`args`: RustBuffer.ByValue,
-    _uniffi_out_err: RustCallStatus
-    ): RustBuffer.ByValue
-
-    fun ffi_db_service_5341_rustbuffer_alloc(`size`: Int,
-    _uniffi_out_err: RustCallStatus
-    ): RustBuffer.ByValue
-
-    fun ffi_db_service_5341_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,
-    _uniffi_out_err: RustCallStatus
-    ): RustBuffer.ByValue
-
-    fun ffi_db_service_5341_rustbuffer_free(`buf`: RustBuffer.ByValue,
-    _uniffi_out_err: RustCallStatus
+    fun uniffi_db_service_fn_func_db_service_initialize(`commonDeviceService`: Long,`secureKeyOperation`: Long,_uniffi_out_err: RustCallStatus, 
     ): Unit
-
-    fun ffi_db_service_5341_rustbuffer_reserve(`buf`: RustBuffer.ByValue,`additional`: Int,
-    _uniffi_out_err: RustCallStatus
+    fun uniffi_db_service_fn_func_read_kdbx(`fileArgs`: RustBuffer.ByValue,`jsonArgs`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
-
+    fun uniffi_db_service_fn_func_create_temp_kdbx(`fileArgs`: RustBuffer.ByValue,`jsonArgs`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_db_service_fn_func_save_kdbx(`fileArgs`: RustBuffer.ByValue,`overwrite`: Byte,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_db_service_fn_func_verify_db_file_checksum(`fileArgs`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_db_service_fn_func_write_to_backup_on_error(`fullFileNameUri`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_db_service_fn_func_extract_file_provider(`fullFileNameUri`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_db_service_fn_func_invoke_command(`commandName`: RustBuffer.ByValue,`args`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun ffi_db_service_rustbuffer_alloc(`size`: Int,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun ffi_db_service_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun ffi_db_service_rustbuffer_free(`buf`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): Unit
+    fun ffi_db_service_rustbuffer_reserve(`buf`: RustBuffer.ByValue,`additional`: Int,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_db_service_checksum_func_db_service_enable_logging(
+    ): Short
+    fun uniffi_db_service_checksum_func_db_service_initialize(
+    ): Short
+    fun uniffi_db_service_checksum_func_read_kdbx(
+    ): Short
+    fun uniffi_db_service_checksum_func_create_temp_kdbx(
+    ): Short
+    fun uniffi_db_service_checksum_func_save_kdbx(
+    ): Short
+    fun uniffi_db_service_checksum_func_verify_db_file_checksum(
+    ): Short
+    fun uniffi_db_service_checksum_func_write_to_backup_on_error(
+    ): Short
+    fun uniffi_db_service_checksum_func_extract_file_provider(
+    ): Short
+    fun uniffi_db_service_checksum_func_invoke_command(
+    ): Short
+    fun uniffi_db_service_checksum_method_iossupportservice_save_book_mark_data(
+    ): Short
+    fun uniffi_db_service_checksum_method_iossupportservice_load_book_mark_data(
+    ): Short
+    fun uniffi_db_service_checksum_method_iossupportservice_copy_last_backup_to_temp_file(
+    ): Short
+    fun uniffi_db_service_checksum_method_iossupportservice_complete_save_as_on_error(
+    ): Short
+    fun uniffi_db_service_checksum_method_androidsupportservice_create_kdbx(
+    ): Short
+    fun uniffi_db_service_checksum_method_androidsupportservice_complete_save_as_on_error(
+    ): Short
+    fun uniffi_db_service_checksum_method_jsonservice_form_with_file_name(
+    ): Short
+    fun uniffi_db_service_checksum_method_jsonservice_map_as_ok_json_string(
+    ): Short
+    fun uniffi_db_service_checksum_method_jsonservice_ok_json_string(
+    ): Short
+    fun uniffi_db_service_checksum_method_jsonservice_error_json_string(
+    ): Short
+    fun uniffi_db_service_checksum_constructor_iossupportservice_new(
+    ): Short
+    fun uniffi_db_service_checksum_constructor_androidsupportservice_new(
+    ): Short
+    fun uniffi_db_service_checksum_constructor_jsonservice_new(
+    ): Short
+    fun ffi_db_service_uniffi_contract_version(
+    ): Int
     
+}
+
+private fun uniffiCheckContractApiVersion(lib: _UniFFILib) {
+    // Get the bindings contract version from our ComponentInterface
+    val bindings_contract_version = 22
+    // Get the scaffolding contract version by calling the into the dylib
+    val scaffolding_contract_version = lib.ffi_db_service_uniffi_contract_version()
+    if (bindings_contract_version != scaffolding_contract_version) {
+        throw RuntimeException("UniFFI contract version mismatch: try cleaning and rebuilding your project")
+    }
+}
+
+@Suppress("UNUSED_PARAMETER")
+private fun uniffiCheckApiChecksums(lib: _UniFFILib) {
+    if (lib.uniffi_db_service_checksum_func_db_service_enable_logging() != 15183.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_checksum_func_db_service_initialize() != 59332.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_checksum_func_read_kdbx() != 58897.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_checksum_func_create_temp_kdbx() != 4099.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_checksum_func_save_kdbx() != 7084.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_checksum_func_verify_db_file_checksum() != 15639.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_checksum_func_write_to_backup_on_error() != 39600.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_checksum_func_extract_file_provider() != 57962.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_checksum_func_invoke_command() != 50716.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_checksum_method_iossupportservice_save_book_mark_data() != 22922.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_checksum_method_iossupportservice_load_book_mark_data() != 7348.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_checksum_method_iossupportservice_copy_last_backup_to_temp_file() != 47860.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_checksum_method_iossupportservice_complete_save_as_on_error() != 17215.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_checksum_method_androidsupportservice_create_kdbx() != 64376.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_checksum_method_androidsupportservice_complete_save_as_on_error() != 63791.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_checksum_method_jsonservice_form_with_file_name() != 49474.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_checksum_method_jsonservice_map_as_ok_json_string() != 9794.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_checksum_method_jsonservice_ok_json_string() != 59589.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_checksum_method_jsonservice_error_json_string() != 36014.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_checksum_constructor_iossupportservice_new() != 27018.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_checksum_constructor_androidsupportservice_new() != 41968.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_checksum_constructor_jsonservice_new() != 2968.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
 }
 
 // Public interface members begin here.
@@ -659,7 +845,7 @@ abstract class FFIObject(
         try {
             return block(this.pointer)
         } finally {
-            // This decrement aways matches the increment we performed above.
+            // This decrement always matches the increment we performed above.
             if (this.callCounter.decrementAndGet() == 0L) {
                 this.freeRustArcPtr()
             }
@@ -670,9 +856,7 @@ abstract class FFIObject(
 public interface AndroidSupportServiceInterface {
     
     fun `createKdbx`(`fileDescriptor`: ULong, `jsonArgs`: String): ApiResponse
-    
     fun `completeSaveAsOnError`(`fileDescriptor`: ULong, `oldFullFileNameUri`: String, `newFullFileNameUri`: String): ApiResponse
-    
 }
 
 class AndroidSupportService(
@@ -681,7 +865,7 @@ class AndroidSupportService(
     constructor() :
         this(
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.db_service_5341_AndroidSupportService_new( _status)
+    _UniFFILib.INSTANCE.uniffi_db_service_fn_constructor_androidsupportservice_new(_status)
 })
 
     /**
@@ -694,26 +878,32 @@ class AndroidSupportService(
      */
     override protected fun freeRustArcPtr() {
         rustCall() { status ->
-            _UniFFILib.INSTANCE.ffi_db_service_5341_AndroidSupportService_object_free(this.pointer, status)
+            _UniFFILib.INSTANCE.uniffi_db_service_fn_free_androidsupportservice(this.pointer, status)
         }
     }
 
     override fun `createKdbx`(`fileDescriptor`: ULong, `jsonArgs`: String): ApiResponse =
         callWithPointer {
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.db_service_5341_AndroidSupportService_create_kdbx(it, FfiConverterULong.lower(`fileDescriptor`), FfiConverterString.lower(`jsonArgs`),  _status)
+    _UniFFILib.INSTANCE.uniffi_db_service_fn_method_androidsupportservice_create_kdbx(it,
+        FfiConverterULong.lower(`fileDescriptor`),FfiConverterString.lower(`jsonArgs`),
+        _status)
 }
         }.let {
             FfiConverterTypeApiResponse.lift(it)
         }
+    
     override fun `completeSaveAsOnError`(`fileDescriptor`: ULong, `oldFullFileNameUri`: String, `newFullFileNameUri`: String): ApiResponse =
         callWithPointer {
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.db_service_5341_AndroidSupportService_complete_save_as_on_error(it, FfiConverterULong.lower(`fileDescriptor`), FfiConverterString.lower(`oldFullFileNameUri`), FfiConverterString.lower(`newFullFileNameUri`),  _status)
+    _UniFFILib.INSTANCE.uniffi_db_service_fn_method_androidsupportservice_complete_save_as_on_error(it,
+        FfiConverterULong.lower(`fileDescriptor`),FfiConverterString.lower(`oldFullFileNameUri`),FfiConverterString.lower(`newFullFileNameUri`),
+        _status)
 }
         }.let {
             FfiConverterTypeApiResponse.lift(it)
         }
+    
     
 
     
@@ -747,13 +937,9 @@ public object FfiConverterTypeAndroidSupportService: FfiConverter<AndroidSupport
 public interface IosSupportServiceInterface {
     
     fun `saveBookMarkData`(`url`: String, `data`: List<UByte>): Boolean
-    
     fun `loadBookMarkData`(`url`: String): List<UByte>
-    
     fun `copyLastBackupToTempFile`(`kdbxFileName`: String, `fullFileNameUri`: String): String?
-    
     fun `completeSaveAsOnError`(`jsonArgs`: String): String
-    
 }
 
 class IosSupportService(
@@ -762,7 +948,7 @@ class IosSupportService(
     constructor() :
         this(
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.db_service_5341_IosSupportService_new( _status)
+    _UniFFILib.INSTANCE.uniffi_db_service_fn_constructor_iossupportservice_new(_status)
 })
 
     /**
@@ -775,42 +961,54 @@ class IosSupportService(
      */
     override protected fun freeRustArcPtr() {
         rustCall() { status ->
-            _UniFFILib.INSTANCE.ffi_db_service_5341_IosSupportService_object_free(this.pointer, status)
+            _UniFFILib.INSTANCE.uniffi_db_service_fn_free_iossupportservice(this.pointer, status)
         }
     }
 
     override fun `saveBookMarkData`(`url`: String, `data`: List<UByte>): Boolean =
         callWithPointer {
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.db_service_5341_IosSupportService_save_book_mark_data(it, FfiConverterString.lower(`url`), FfiConverterSequenceUByte.lower(`data`),  _status)
+    _UniFFILib.INSTANCE.uniffi_db_service_fn_method_iossupportservice_save_book_mark_data(it,
+        FfiConverterString.lower(`url`),FfiConverterSequenceUByte.lower(`data`),
+        _status)
 }
         }.let {
             FfiConverterBoolean.lift(it)
         }
+    
     override fun `loadBookMarkData`(`url`: String): List<UByte> =
         callWithPointer {
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.db_service_5341_IosSupportService_load_book_mark_data(it, FfiConverterString.lower(`url`),  _status)
+    _UniFFILib.INSTANCE.uniffi_db_service_fn_method_iossupportservice_load_book_mark_data(it,
+        FfiConverterString.lower(`url`),
+        _status)
 }
         }.let {
             FfiConverterSequenceUByte.lift(it)
         }
+    
     override fun `copyLastBackupToTempFile`(`kdbxFileName`: String, `fullFileNameUri`: String): String? =
         callWithPointer {
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.db_service_5341_IosSupportService_copy_last_backup_to_temp_file(it, FfiConverterString.lower(`kdbxFileName`), FfiConverterString.lower(`fullFileNameUri`),  _status)
+    _UniFFILib.INSTANCE.uniffi_db_service_fn_method_iossupportservice_copy_last_backup_to_temp_file(it,
+        FfiConverterString.lower(`kdbxFileName`),FfiConverterString.lower(`fullFileNameUri`),
+        _status)
 }
         }.let {
             FfiConverterOptionalString.lift(it)
         }
+    
     override fun `completeSaveAsOnError`(`jsonArgs`: String): String =
         callWithPointer {
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.db_service_5341_IosSupportService_complete_save_as_on_error(it, FfiConverterString.lower(`jsonArgs`),  _status)
+    _UniFFILib.INSTANCE.uniffi_db_service_fn_method_iossupportservice_complete_save_as_on_error(it,
+        FfiConverterString.lower(`jsonArgs`),
+        _status)
 }
         }.let {
             FfiConverterString.lift(it)
         }
+    
     
 
     
@@ -844,7 +1042,9 @@ public object FfiConverterTypeIosSupportService: FfiConverter<IosSupportService,
 public interface JsonServiceInterface {
     
     fun `formWithFileName`(`fullFileNameUri`: String): String
-    
+    fun `mapAsOkJsonString`(`info`: Map<String, String>): String
+    fun `okJsonString`(`info`: String): String
+    fun `errorJsonString`(`error`: String): String
 }
 
 class JsonService(
@@ -853,7 +1053,7 @@ class JsonService(
     constructor() :
         this(
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.db_service_5341_JsonService_new( _status)
+    _UniFFILib.INSTANCE.uniffi_db_service_fn_constructor_jsonservice_new(_status)
 })
 
     /**
@@ -866,18 +1066,54 @@ class JsonService(
      */
     override protected fun freeRustArcPtr() {
         rustCall() { status ->
-            _UniFFILib.INSTANCE.ffi_db_service_5341_JsonService_object_free(this.pointer, status)
+            _UniFFILib.INSTANCE.uniffi_db_service_fn_free_jsonservice(this.pointer, status)
         }
     }
 
     override fun `formWithFileName`(`fullFileNameUri`: String): String =
         callWithPointer {
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.db_service_5341_JsonService_form_with_file_name(it, FfiConverterString.lower(`fullFileNameUri`),  _status)
+    _UniFFILib.INSTANCE.uniffi_db_service_fn_method_jsonservice_form_with_file_name(it,
+        FfiConverterString.lower(`fullFileNameUri`),
+        _status)
 }
         }.let {
             FfiConverterString.lift(it)
         }
+    
+    override fun `mapAsOkJsonString`(`info`: Map<String, String>): String =
+        callWithPointer {
+    rustCall() { _status ->
+    _UniFFILib.INSTANCE.uniffi_db_service_fn_method_jsonservice_map_as_ok_json_string(it,
+        FfiConverterMapStringString.lower(`info`),
+        _status)
+}
+        }.let {
+            FfiConverterString.lift(it)
+        }
+    
+    override fun `okJsonString`(`info`: String): String =
+        callWithPointer {
+    rustCall() { _status ->
+    _UniFFILib.INSTANCE.uniffi_db_service_fn_method_jsonservice_ok_json_string(it,
+        FfiConverterString.lower(`info`),
+        _status)
+}
+        }.let {
+            FfiConverterString.lift(it)
+        }
+    
+    override fun `errorJsonString`(`error`: String): String =
+        callWithPointer {
+    rustCall() { _status ->
+    _UniFFILib.INSTANCE.uniffi_db_service_fn_method_jsonservice_error_json_string(it,
+        FfiConverterString.lower(`error`),
+        _status)
+}
+        }.let {
+            FfiConverterString.lift(it)
+        }
+    
     
 
     
@@ -1148,6 +1384,70 @@ public object FfiConverterTypeFileArgs : FfiConverterRustBuffer<FileArgs>{
 
 
 
+
+sealed class SecureKeyOperationException(message: String): Exception(message) {
+        // Each variant is a nested class
+        // Flat enums carries a string error message, so no special implementation is necessary.
+        class StoringKeyException(message: String) : SecureKeyOperationException(message)
+        class StoringKeyDuplicateItemException(message: String) : SecureKeyOperationException(message)
+        class QueryKeyException(message: String) : SecureKeyOperationException(message)
+        class DeleteKeyException(message: String) : SecureKeyOperationException(message)
+        class InternalSecureKeyOperationException(message: String) : SecureKeyOperationException(message)
+        
+
+    companion object ErrorHandler : CallStatusErrorHandler<SecureKeyOperationException> {
+        override fun lift(error_buf: RustBuffer.ByValue): SecureKeyOperationException = FfiConverterTypeSecureKeyOperationError.lift(error_buf)
+    }
+}
+
+public object FfiConverterTypeSecureKeyOperationError : FfiConverterRustBuffer<SecureKeyOperationException> {
+    override fun read(buf: ByteBuffer): SecureKeyOperationException {
+        
+            return when(buf.getInt()) {
+            1 -> SecureKeyOperationException.StoringKeyException(FfiConverterString.read(buf))
+            2 -> SecureKeyOperationException.StoringKeyDuplicateItemException(FfiConverterString.read(buf))
+            3 -> SecureKeyOperationException.QueryKeyException(FfiConverterString.read(buf))
+            4 -> SecureKeyOperationException.DeleteKeyException(FfiConverterString.read(buf))
+            5 -> SecureKeyOperationException.InternalSecureKeyOperationException(FfiConverterString.read(buf))
+            else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
+        }
+        
+    }
+
+    override fun allocationSize(value: SecureKeyOperationException): Int {
+        return 4
+    }
+
+    override fun write(value: SecureKeyOperationException, buf: ByteBuffer) {
+        when(value) {
+            is SecureKeyOperationException.StoringKeyException -> {
+                buf.putInt(1)
+                Unit
+            }
+            is SecureKeyOperationException.StoringKeyDuplicateItemException -> {
+                buf.putInt(2)
+                Unit
+            }
+            is SecureKeyOperationException.QueryKeyException -> {
+                buf.putInt(3)
+                Unit
+            }
+            is SecureKeyOperationException.DeleteKeyException -> {
+                buf.putInt(4)
+                Unit
+            }
+            is SecureKeyOperationException.InternalSecureKeyOperationException -> {
+                buf.putInt(5)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+
+}
+
+
+
+
 internal typealias Handle = Long
 internal class ConcurrentHandleMap<T>(
     private val leftMap: MutableMap<Handle, T> = mutableMapOf(),
@@ -1185,12 +1485,16 @@ internal class ConcurrentHandleMap<T>(
 }
 
 interface ForeignCallback : com.sun.jna.Callback {
-    public fun invoke(handle: Handle, method: Int, args: RustBuffer.ByValue, outBuf: RustBufferByReference): Int
+    public fun invoke(handle: Handle, method: Int, argsData: Pointer, argsLen: Int, outBuf: RustBufferByReference): Int
 }
 
 // Magic number for the Rust proxy to call using the same mechanism as every other method,
 // to free the callback once it's dropped by Rust.
 internal const val IDX_CALLBACK_FREE = 0
+// Callback return codes
+internal const val UNIFFI_CALLBACK_SUCCESS = 0
+internal const val UNIFFI_CALLBACK_ERROR = 1
+internal const val UNIFFI_CALLBACK_UNEXPECTED_ERROR = 2
 
 public abstract class FfiConverterCallbackInterface<CallbackInterface>(
     protected val foreignCallback: ForeignCallback
@@ -1235,90 +1539,127 @@ public interface CommonDeviceService {
 // The ForeignCallback that is passed to Rust.
 internal class ForeignCallbackTypeCommonDeviceService : ForeignCallback {
     @Suppress("TooGenericExceptionCaught")
-    override fun invoke(handle: Handle, method: Int, args: RustBuffer.ByValue, outBuf: RustBufferByReference): Int {
+    override fun invoke(handle: Handle, method: Int, argsData: Pointer, argsLen: Int, outBuf: RustBufferByReference): Int {
         val cb = FfiConverterTypeCommonDeviceService.lift(handle)
         return when (method) {
             IDX_CALLBACK_FREE -> {
                 FfiConverterTypeCommonDeviceService.drop(handle)
-                // No return value.
-                // See docs of ForeignCallback in `uniffi/src/ffi/foreigncallbacks.rs`
-                0
+                // Successful return
+                // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs`
+                UNIFFI_CALLBACK_SUCCESS
             }
             1 -> {
-                val buffer = this.`invokeAppHomeDir`(cb, args)
-                outBuf.setValue(buffer)
-                // Value written to out buffer.
-                // See docs of ForeignCallback in `uniffi/src/ffi/foreigncallbacks.rs`
-                1
+                // Call the method, write to outBuf and return a status code
+                // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs` for info
+                try {
+                    this.`invokeAppHomeDir`(cb, argsData, argsLen, outBuf)
+                } catch (e: Throwable) {
+                    // Unexpected error
+                    try {
+                        // Try to serialize the error into a string
+                        outBuf.setValue(FfiConverterString.lower(e.toString()))
+                    } catch (e: Throwable) {
+                        // If that fails, then it's time to give up and just return
+                    }
+                    UNIFFI_CALLBACK_UNEXPECTED_ERROR
+                }
             }
             2 -> {
-                val buffer = this.`invokeUriToFileName`(cb, args)
-                outBuf.setValue(buffer)
-                // Value written to out buffer.
-                // See docs of ForeignCallback in `uniffi/src/ffi/foreigncallbacks.rs`
-                1
+                // Call the method, write to outBuf and return a status code
+                // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs` for info
+                try {
+                    this.`invokeUriToFileName`(cb, argsData, argsLen, outBuf)
+                } catch (e: Throwable) {
+                    // Unexpected error
+                    try {
+                        // Try to serialize the error into a string
+                        outBuf.setValue(FfiConverterString.lower(e.toString()))
+                    } catch (e: Throwable) {
+                        // If that fails, then it's time to give up and just return
+                    }
+                    UNIFFI_CALLBACK_UNEXPECTED_ERROR
+                }
             }
             3 -> {
-                val buffer = this.`invokeUriToFileInfo`(cb, args)
-                outBuf.setValue(buffer)
-                // Value written to out buffer.
-                // See docs of ForeignCallback in `uniffi/src/ffi/foreigncallbacks.rs`
-                1
+                // Call the method, write to outBuf and return a status code
+                // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs` for info
+                try {
+                    this.`invokeUriToFileInfo`(cb, argsData, argsLen, outBuf)
+                } catch (e: Throwable) {
+                    // Unexpected error
+                    try {
+                        // Try to serialize the error into a string
+                        outBuf.setValue(FfiConverterString.lower(e.toString()))
+                    } catch (e: Throwable) {
+                        // If that fails, then it's time to give up and just return
+                    }
+                    UNIFFI_CALLBACK_UNEXPECTED_ERROR
+                }
             }
             
-            // This should never happen, because an out of bounds method index won't
-            // ever be used. Once we can catch errors, we should return an InternalException.
-            // https://github.com/mozilla/uniffi-rs/issues/351
             else -> {
                 // An unexpected error happened.
-                // See docs of ForeignCallback in `uniffi/src/ffi/foreigncallbacks.rs`
-                -1
+                // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs`
+                try {
+                    // Try to serialize the error into a string
+                    outBuf.setValue(FfiConverterString.lower("Invalid Callback index"))
+                } catch (e: Throwable) {
+                    // If that fails, then it's time to give up and just return
+                }
+                UNIFFI_CALLBACK_UNEXPECTED_ERROR
             }
         }
     }
 
     
-    private fun `invokeAppHomeDir`(kotlinCallbackInterface: CommonDeviceService, args: RustBuffer.ByValue): RustBuffer.ByValue =
-        try {
-            kotlinCallbackInterface.`appHomeDir`()
-            .let {
-                    FfiConverterString.lowerIntoRustBuffer(it)
-                }// TODO catch errors and report them back to Rust.
-                // https://github.com/mozilla/uniffi-rs/issues/351
-        } finally {
-            RustBuffer.free(args)
+    @Suppress("UNUSED_PARAMETER")
+    private fun `invokeAppHomeDir`(kotlinCallbackInterface: CommonDeviceService, argsData: Pointer, argsLen: Int, outBuf: RustBufferByReference): Int {
+        fun makeCall() : Int {
+            val returnValue = kotlinCallbackInterface.`appHomeDir`(
+            )
+            outBuf.setValue(FfiConverterString.lowerIntoRustBuffer(returnValue))
+            return UNIFFI_CALLBACK_SUCCESS
         }
+        fun makeCallAndHandleError() : Int = makeCall()
 
+        return makeCallAndHandleError()
+    }
     
-    private fun `invokeUriToFileName`(kotlinCallbackInterface: CommonDeviceService, args: RustBuffer.ByValue): RustBuffer.ByValue =
-        try {
-            val buf = args.asByteBuffer() ?: throw InternalException("No ByteBuffer in RustBuffer; this is a Uniffi bug")
-            kotlinCallbackInterface.`uriToFileName`(
-                    FfiConverterString.read(buf)
-                    )
-            .let {
-                    FfiConverterOptionalString.lowerIntoRustBuffer(it)
-                }// TODO catch errors and report them back to Rust.
-                // https://github.com/mozilla/uniffi-rs/issues/351
-        } finally {
-            RustBuffer.free(args)
+    @Suppress("UNUSED_PARAMETER")
+    private fun `invokeUriToFileName`(kotlinCallbackInterface: CommonDeviceService, argsData: Pointer, argsLen: Int, outBuf: RustBufferByReference): Int {
+        val argsBuf = argsData.getByteBuffer(0, argsLen.toLong()).also {
+            it.order(ByteOrder.BIG_ENDIAN)
         }
+        fun makeCall() : Int {
+            val returnValue = kotlinCallbackInterface.`uriToFileName`(
+                FfiConverterString.read(argsBuf)
+                
+            )
+            outBuf.setValue(FfiConverterOptionalString.lowerIntoRustBuffer(returnValue))
+            return UNIFFI_CALLBACK_SUCCESS
+        }
+        fun makeCallAndHandleError() : Int = makeCall()
 
+        return makeCallAndHandleError()
+    }
     
-    private fun `invokeUriToFileInfo`(kotlinCallbackInterface: CommonDeviceService, args: RustBuffer.ByValue): RustBuffer.ByValue =
-        try {
-            val buf = args.asByteBuffer() ?: throw InternalException("No ByteBuffer in RustBuffer; this is a Uniffi bug")
-            kotlinCallbackInterface.`uriToFileInfo`(
-                    FfiConverterString.read(buf)
-                    )
-            .let {
-                    FfiConverterOptionalTypeFileInfo.lowerIntoRustBuffer(it)
-                }// TODO catch errors and report them back to Rust.
-                // https://github.com/mozilla/uniffi-rs/issues/351
-        } finally {
-            RustBuffer.free(args)
+    @Suppress("UNUSED_PARAMETER")
+    private fun `invokeUriToFileInfo`(kotlinCallbackInterface: CommonDeviceService, argsData: Pointer, argsLen: Int, outBuf: RustBufferByReference): Int {
+        val argsBuf = argsData.getByteBuffer(0, argsLen.toLong()).also {
+            it.order(ByteOrder.BIG_ENDIAN)
         }
+        fun makeCall() : Int {
+            val returnValue = kotlinCallbackInterface.`uriToFileInfo`(
+                FfiConverterString.read(argsBuf)
+                
+            )
+            outBuf.setValue(FfiConverterOptionalTypeFileInfo.lowerIntoRustBuffer(returnValue))
+            return UNIFFI_CALLBACK_SUCCESS
+        }
+        fun makeCallAndHandleError() : Int = makeCall()
 
+        return makeCallAndHandleError()
+    }
     
 }
 
@@ -1328,7 +1669,179 @@ public object FfiConverterTypeCommonDeviceService: FfiConverterCallbackInterface
 ) {
     override fun register(lib: _UniFFILib) {
         rustCall() { status ->
-            lib.ffi_db_service_5341_CommonDeviceService_init_callback(this.foreignCallback, status)
+            lib.uniffi_db_service_fn_init_callback_commondeviceservice(this.foreignCallback, status)
+        }
+    }
+}
+
+
+
+
+
+
+// Declaration and FfiConverters for SecureKeyOperation Callback Interface
+
+public interface SecureKeyOperation {
+    fun `storeKey`(`dbKey`: String, `encKeyData`: String)
+    fun `getKey`(`dbKey`: String): String?
+    fun `deleteKey`(`dbKey`: String)
+    
+}
+
+// The ForeignCallback that is passed to Rust.
+internal class ForeignCallbackTypeSecureKeyOperation : ForeignCallback {
+    @Suppress("TooGenericExceptionCaught")
+    override fun invoke(handle: Handle, method: Int, argsData: Pointer, argsLen: Int, outBuf: RustBufferByReference): Int {
+        val cb = FfiConverterTypeSecureKeyOperation.lift(handle)
+        return when (method) {
+            IDX_CALLBACK_FREE -> {
+                FfiConverterTypeSecureKeyOperation.drop(handle)
+                // Successful return
+                // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs`
+                UNIFFI_CALLBACK_SUCCESS
+            }
+            1 -> {
+                // Call the method, write to outBuf and return a status code
+                // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs` for info
+                try {
+                    this.`invokeStoreKey`(cb, argsData, argsLen, outBuf)
+                } catch (e: Throwable) {
+                    // Unexpected error
+                    try {
+                        // Try to serialize the error into a string
+                        outBuf.setValue(FfiConverterString.lower(e.toString()))
+                    } catch (e: Throwable) {
+                        // If that fails, then it's time to give up and just return
+                    }
+                    UNIFFI_CALLBACK_UNEXPECTED_ERROR
+                }
+            }
+            2 -> {
+                // Call the method, write to outBuf and return a status code
+                // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs` for info
+                try {
+                    this.`invokeGetKey`(cb, argsData, argsLen, outBuf)
+                } catch (e: Throwable) {
+                    // Unexpected error
+                    try {
+                        // Try to serialize the error into a string
+                        outBuf.setValue(FfiConverterString.lower(e.toString()))
+                    } catch (e: Throwable) {
+                        // If that fails, then it's time to give up and just return
+                    }
+                    UNIFFI_CALLBACK_UNEXPECTED_ERROR
+                }
+            }
+            3 -> {
+                // Call the method, write to outBuf and return a status code
+                // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs` for info
+                try {
+                    this.`invokeDeleteKey`(cb, argsData, argsLen, outBuf)
+                } catch (e: Throwable) {
+                    // Unexpected error
+                    try {
+                        // Try to serialize the error into a string
+                        outBuf.setValue(FfiConverterString.lower(e.toString()))
+                    } catch (e: Throwable) {
+                        // If that fails, then it's time to give up and just return
+                    }
+                    UNIFFI_CALLBACK_UNEXPECTED_ERROR
+                }
+            }
+            
+            else -> {
+                // An unexpected error happened.
+                // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs`
+                try {
+                    // Try to serialize the error into a string
+                    outBuf.setValue(FfiConverterString.lower("Invalid Callback index"))
+                } catch (e: Throwable) {
+                    // If that fails, then it's time to give up and just return
+                }
+                UNIFFI_CALLBACK_UNEXPECTED_ERROR
+            }
+        }
+    }
+
+    
+    @Suppress("UNUSED_PARAMETER")
+    private fun `invokeStoreKey`(kotlinCallbackInterface: SecureKeyOperation, argsData: Pointer, argsLen: Int, outBuf: RustBufferByReference): Int {
+        val argsBuf = argsData.getByteBuffer(0, argsLen.toLong()).also {
+            it.order(ByteOrder.BIG_ENDIAN)
+        }
+        fun makeCall() : Int {
+            kotlinCallbackInterface.`storeKey`(
+                FfiConverterString.read(argsBuf), 
+                FfiConverterString.read(argsBuf)
+            )
+            return UNIFFI_CALLBACK_SUCCESS
+        }
+        fun makeCallAndHandleError()  : Int = try {
+            makeCall()
+        } catch (e: SecureKeyOperationException) {
+            // Expected error, serialize it into outBuf
+            outBuf.setValue(FfiConverterTypeSecureKeyOperationError.lowerIntoRustBuffer(e))
+            UNIFFI_CALLBACK_ERROR
+        }
+
+        return makeCallAndHandleError()
+    }
+    
+    @Suppress("UNUSED_PARAMETER")
+    private fun `invokeGetKey`(kotlinCallbackInterface: SecureKeyOperation, argsData: Pointer, argsLen: Int, outBuf: RustBufferByReference): Int {
+        val argsBuf = argsData.getByteBuffer(0, argsLen.toLong()).also {
+            it.order(ByteOrder.BIG_ENDIAN)
+        }
+        fun makeCall() : Int {
+            val returnValue = kotlinCallbackInterface.`getKey`(
+                FfiConverterString.read(argsBuf)
+                
+            )
+            outBuf.setValue(FfiConverterOptionalString.lowerIntoRustBuffer(returnValue))
+            return UNIFFI_CALLBACK_SUCCESS
+        }
+        fun makeCallAndHandleError()  : Int = try {
+            makeCall()
+        } catch (e: SecureKeyOperationException) {
+            // Expected error, serialize it into outBuf
+            outBuf.setValue(FfiConverterTypeSecureKeyOperationError.lowerIntoRustBuffer(e))
+            UNIFFI_CALLBACK_ERROR
+        }
+
+        return makeCallAndHandleError()
+    }
+    
+    @Suppress("UNUSED_PARAMETER")
+    private fun `invokeDeleteKey`(kotlinCallbackInterface: SecureKeyOperation, argsData: Pointer, argsLen: Int, outBuf: RustBufferByReference): Int {
+        val argsBuf = argsData.getByteBuffer(0, argsLen.toLong()).also {
+            it.order(ByteOrder.BIG_ENDIAN)
+        }
+        fun makeCall() : Int {
+            kotlinCallbackInterface.`deleteKey`(
+                FfiConverterString.read(argsBuf)
+            )
+            return UNIFFI_CALLBACK_SUCCESS
+        }
+        fun makeCallAndHandleError()  : Int = try {
+            makeCall()
+        } catch (e: SecureKeyOperationException) {
+            // Expected error, serialize it into outBuf
+            outBuf.setValue(FfiConverterTypeSecureKeyOperationError.lowerIntoRustBuffer(e))
+            UNIFFI_CALLBACK_ERROR
+        }
+
+        return makeCallAndHandleError()
+    }
+    
+}
+
+// The ffiConverter which transforms the Callbacks in to Handles to pass to Rust.
+public object FfiConverterTypeSecureKeyOperation: FfiConverterCallbackInterface<SecureKeyOperation>(
+    foreignCallback = ForeignCallbackTypeSecureKeyOperation()
+) {
+    override fun register(lib: _UniFFILib) {
+        rustCall() { status ->
+            lib.uniffi_db_service_fn_init_callback_securekeyoperation(this.foreignCallback, status)
         }
     }
 }
@@ -1445,81 +1958,111 @@ public object FfiConverterSequenceUByte: FfiConverterRustBuffer<List<UByte>> {
     }
 }
 
+
+
+public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<String, String>> {
+    override fun read(buf: ByteBuffer): Map<String, String> {
+        // TODO: Once Kotlin's `buildMap` API is stabilized we should use it here.
+        val items : MutableMap<String, String> = mutableMapOf()
+        val len = buf.getInt()
+        repeat(len) {
+            val k = FfiConverterString.read(buf)
+            val v = FfiConverterString.read(buf)
+            items[k] = v
+        }
+        return items
+    }
+
+    override fun allocationSize(value: Map<String, String>): Int {
+        val spaceForMapSize = 4
+        val spaceForChildren = value.map { (k, v) ->
+            FfiConverterString.allocationSize(k) +
+            FfiConverterString.allocationSize(v)
+        }.sum()
+        return spaceForMapSize + spaceForChildren
+    }
+
+    override fun write(value: Map<String, String>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        // The parens on `(k, v)` here ensure we're calling the right method,
+        // which is important for compatibility with older android devices.
+        // Ref https://blog.danlew.net/2017/03/16/kotlin-puzzler-whose-line-is-it-anyways/
+        value.forEach { (k, v) ->
+            FfiConverterString.write(k, buf)
+            FfiConverterString.write(v, buf)
+        }
+    }
+}
+
 fun `dbServiceEnableLogging`() =
     
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.db_service_5341_db_service_enable_logging( _status)
+    _UniFFILib.INSTANCE.uniffi_db_service_fn_func_db_service_enable_logging(_status)
 }
 
 
-fun `dbServiceInitialize`(`commonDeviceService`: CommonDeviceService) =
+
+fun `dbServiceInitialize`(`commonDeviceService`: CommonDeviceService, `secureKeyOperation`: SecureKeyOperation) =
     
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.db_service_5341_db_service_initialize(FfiConverterTypeCommonDeviceService.lower(`commonDeviceService`), _status)
+    _UniFFILib.INSTANCE.uniffi_db_service_fn_func_db_service_initialize(FfiConverterTypeCommonDeviceService.lower(`commonDeviceService`),FfiConverterTypeSecureKeyOperation.lower(`secureKeyOperation`),_status)
 }
+
 
 
 fun `readKdbx`(`fileArgs`: FileArgs, `jsonArgs`: String): ApiResponse {
     return FfiConverterTypeApiResponse.lift(
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.db_service_5341_read_kdbx(FfiConverterTypeFileArgs.lower(`fileArgs`), FfiConverterString.lower(`jsonArgs`), _status)
+    _UniFFILib.INSTANCE.uniffi_db_service_fn_func_read_kdbx(FfiConverterTypeFileArgs.lower(`fileArgs`),FfiConverterString.lower(`jsonArgs`),_status)
 })
 }
-
 
 
 fun `createTempKdbx`(`fileArgs`: FileArgs, `jsonArgs`: String): ApiResponse {
     return FfiConverterTypeApiResponse.lift(
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.db_service_5341_create_temp_kdbx(FfiConverterTypeFileArgs.lower(`fileArgs`), FfiConverterString.lower(`jsonArgs`), _status)
+    _UniFFILib.INSTANCE.uniffi_db_service_fn_func_create_temp_kdbx(FfiConverterTypeFileArgs.lower(`fileArgs`),FfiConverterString.lower(`jsonArgs`),_status)
 })
 }
-
 
 
 fun `saveKdbx`(`fileArgs`: FileArgs, `overwrite`: Boolean): ApiResponse {
     return FfiConverterTypeApiResponse.lift(
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.db_service_5341_save_kdbx(FfiConverterTypeFileArgs.lower(`fileArgs`), FfiConverterBoolean.lower(`overwrite`), _status)
+    _UniFFILib.INSTANCE.uniffi_db_service_fn_func_save_kdbx(FfiConverterTypeFileArgs.lower(`fileArgs`),FfiConverterBoolean.lower(`overwrite`),_status)
 })
 }
-
 
 
 fun `verifyDbFileChecksum`(`fileArgs`: FileArgs): ApiResponse {
     return FfiConverterTypeApiResponse.lift(
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.db_service_5341_verify_db_file_checksum(FfiConverterTypeFileArgs.lower(`fileArgs`), _status)
+    _UniFFILib.INSTANCE.uniffi_db_service_fn_func_verify_db_file_checksum(FfiConverterTypeFileArgs.lower(`fileArgs`),_status)
 })
 }
-
 
 
 fun `writeToBackupOnError`(`fullFileNameUri`: String): ApiResponse {
     return FfiConverterTypeApiResponse.lift(
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.db_service_5341_write_to_backup_on_error(FfiConverterString.lower(`fullFileNameUri`), _status)
+    _UniFFILib.INSTANCE.uniffi_db_service_fn_func_write_to_backup_on_error(FfiConverterString.lower(`fullFileNameUri`),_status)
 })
 }
-
 
 
 fun `extractFileProvider`(`fullFileNameUri`: String): String {
     return FfiConverterString.lift(
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.db_service_5341_extract_file_provider(FfiConverterString.lower(`fullFileNameUri`), _status)
+    _UniFFILib.INSTANCE.uniffi_db_service_fn_func_extract_file_provider(FfiConverterString.lower(`fullFileNameUri`),_status)
 })
 }
-
 
 
 fun `invokeCommand`(`commandName`: String, `args`: String): String {
     return FfiConverterString.lift(
     rustCall() { _status ->
-    _UniFFILib.INSTANCE.db_service_5341_invoke_command(FfiConverterString.lower(`commandName`), FfiConverterString.lower(`args`), _status)
+    _UniFFILib.INSTANCE.uniffi_db_service_fn_func_invoke_command(FfiConverterString.lower(`commandName`),FfiConverterString.lower(`args`),_status)
 })
 }
-
-
 
 

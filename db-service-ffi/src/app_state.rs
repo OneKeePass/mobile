@@ -8,6 +8,10 @@ use std::{
     sync::Mutex,
 };
 
+use onekeepass_core::{
+    db_service as kp_service,
+  };
+
 use crate::util;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -17,10 +21,51 @@ pub struct FileInfo {
     pub last_modified: Option<i64>,
     pub location: Option<String>,
 }
+
+// This trait represents a callback declared in 'db_service.udl'
+// We need to implement this interface in Swift and Kotlin for the rust side use
 pub trait CommonDeviceService: Send + Sync {
     fn app_home_dir(&self) -> String;
     fn uri_to_file_name(&self, full_file_name_uri: String) -> Option<String>;
     fn uri_to_file_info(&self, full_file_name_uri: String) -> Option<FileInfo>;
+}
+
+// udl type
+#[derive(Debug, thiserror::Error)]
+pub enum SecureKeyOperationError {
+    #[error("StoringKeyError")]
+    StoringKeyError,
+    #[error("StoringKeyDuplicateItemError")]
+    StoringKeyDuplicateItemError,
+    #[error("QueryKeyError")]
+    QueryKeyError,
+    #[error("DeleteKeyError")]
+    DeleteKeyError,
+    #[error("InternalSecureKeyOperationError")]
+    InternalSecureKeyOperationError,
+}
+
+impl From<uniffi::UnexpectedUniFFICallbackError> for SecureKeyOperationError {
+    fn from(callback_error: uniffi::UnexpectedUniFFICallbackError) -> Self {
+        log::error!("UnexpectedUniFFICallbackError is {}", callback_error);
+        Self::InternalSecureKeyOperationError
+    }
+}
+
+impl From<SecureKeyOperationError> for kp_service::error::Error {
+    fn from(err: SecureKeyOperationError) -> Self {
+        Self::SecureKeyOperationError(format!("{}",err))
+    }
+}
+
+pub type SecureKeyOpsResult<T> = std::result::Result<T, SecureKeyOperationError>;
+
+// This trait represents the callback declared in 'db_service.udl'
+// We need to implement this interface in Swift and Kotlin for the rust side use
+pub trait SecureKeyOperation: Send + Sync {
+    fn store_key(&self, db_key: String, enc_key_data: String) -> SecureKeyOpsResult<()>;
+    fn get_key(&self, db_key: String) -> SecureKeyOpsResult<Option<String>>;
+    fn delete_key(&self, db_key: String) -> SecureKeyOpsResult<()>;
 }
 
 pub struct AppState {
@@ -28,6 +73,7 @@ pub struct AppState {
     pub backup_dir_path: PathBuf,
     pub export_data_dir_path: PathBuf,
     pub common_device_service: Box<dyn CommonDeviceService>,
+    pub secure_key_operation: Box<dyn SecureKeyOperation>,
     last_backup_on_error: Mutex<HashMap<String, String>>,
     pub preference: Mutex<Preference>,
 }
@@ -40,7 +86,10 @@ impl AppState {
         APP_STATE.get().unwrap()
     }
 
-    pub fn setup(common_device_service: Box<dyn CommonDeviceService>) {
+    pub fn setup(
+        common_device_service: Box<dyn CommonDeviceService>,
+        secure_key_operation: Box<dyn SecureKeyOperation>,
+    ) {
         let app_dir = util::url_to_unix_file_name(&common_device_service.app_home_dir());
         let pref = Preference::read(&app_dir);
 
@@ -55,6 +104,7 @@ impl AppState {
             backup_dir_path,
             export_data_dir_path,
             common_device_service,
+            secure_key_operation,
             last_backup_on_error: Mutex::new(HashMap::default()),
             preference: Mutex::new(pref),
         };

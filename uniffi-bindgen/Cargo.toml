@@ -1,0 +1,19 @@
+
+[package]
+name = "uniffi-bindgen"
+version = "0.1.0"
+authors = ["The Firefox Sync Developers <sync-team@mozilla.com>"]
+edition = "2021"
+license = "MPL-2.0"
+
+## This version should match what is used in ./db_service_ffi/Cargo.toml 
+[dependencies]
+uniffi = { version = "0.24.1", features = ["cli"] }
+
+
+## Do this one time and can then be used to generate Rust, Swift and Kotlin codes during build 
+## See just file to see how this is used
+## cargo build --release 
+[[bin]]
+name = "uniffi-bindgen"
+path = "./src/uniffi-bindgen.rs"

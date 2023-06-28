@@ -1,6 +1,10 @@
 namespace db_service {
+    
+    // Called one time 
     void db_service_enable_logging();
-    void db_service_initialize(CommonDeviceService common_device_service);
+
+    // Needs to be called from Swift/Kotlin side to initialize callback that can be used from rust side
+    void db_service_initialize(CommonDeviceService common_device_service,SecureKeyOperation secure_key_operation);
  
     ApiResponse read_kdbx(FileArgs file_args, string json_args);
     ApiResponse create_temp_kdbx(FileArgs file_args, string json_args);
@@ -17,6 +21,28 @@ callback interface CommonDeviceService {
     string app_home_dir();
     string? uri_to_file_name(string full_file_name_uri);
     FileInfo? uri_to_file_info(string full_file_name_uri);
+};
+
+// From Rust to Swift or Kotlin
+callback interface SecureKeyOperation {
+    [Throws=SecureKeyOperationError]
+    void store_key(string db_key,string enc_key_data);
+
+    [Throws=SecureKeyOperationError]
+    string? get_key(string db_key);
+
+    [Throws=SecureKeyOperationError]
+    void delete_key(string db_key);
+};
+
+// Used in the callback error of SecureKeyOperation
+[Error]
+enum SecureKeyOperationError {
+    "StoringKeyError",
+    "StoringKeyDuplicateItemError",
+    "QueryKeyError",
+    "DeleteKeyError",
+    "InternalSecureKeyOperationError",
 };
 
 dictionary FileInfo {
@@ -44,13 +70,20 @@ interface IosSupportService {
 // Android specific APIs. Called from Kotlin side to Rust
 interface AndroidSupportService {
     constructor();
+    // All methods need to receive &self in rust side
     ApiResponse create_kdbx(u64 file_descriptor, string json_args);
     ApiResponse complete_save_as_on_error(u64 file_descriptor, string old_full_file_name_uri,string new_full_file_name_uri);
 };
 
+// Called from middle layer (Swift or Kotlin side) to form a json string and  return to UI layer
+// UI layer deserializes this to a valid json object and used accordingly
 interface JsonService {
     constructor();
+    // All methods need to receive &self in rust side
     string form_with_file_name(string full_file_name_uri);
+    string map_as_ok_json_string(record<DOMString,string> info);
+    string ok_json_string(string info);
+    string error_json_string(string error);
 };
 
 

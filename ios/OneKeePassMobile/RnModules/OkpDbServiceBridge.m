@@ -19,6 +19,7 @@ RCT_EXTERN_METHOD(readKdbx:(NSString *)fullFileNameUri jsonArgs:(NSString *)json
 
 RCT_EXTERN_METHOD(saveKdbx:(NSString *) fullFileNameUri overwrite:(BOOL)overwrite  resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 
+RCT_EXTERN_METHOD(authenticateWithBiometric:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 
 @end
 

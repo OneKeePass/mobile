@@ -8,6 +8,9 @@
 		},
 		{
 			"path": "db-service-ffi"
+		},
+		{
+			"path": "uniffi-bindgen"
 		}
 	],
 	"settings": {
@@ -32,6 +35,9 @@
 					"dependsOn": "User provided"
 				}
 			}
+		],
+		"rust-analyzer.linkedProjects": [
+			"./Cargo.toml"
 		]
 	
     }
