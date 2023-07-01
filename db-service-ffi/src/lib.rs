@@ -3,13 +3,16 @@ mod android;
 mod app_state;
 mod commands;
 mod ios;
-mod util;
 mod key_secure;
+mod util;
 
-use app_state::{AppState, CommonDeviceService, SecureKeyOperation,SecureKeyOperationError,FileInfo, RecentlyUsed};
+use app_state::{
+    AppState, CommonDeviceService, FileInfo, RecentlyUsed, SecureKeyOperation,
+    SecureKeyOperationError,
+};
 use commands::{error_json_str, full_path_file_to_create, CommandArg, Commands, InvokeResult};
 use log::{debug, logger};
-use onekeepass_core::db_service;
+use onekeepass_core::{db_service, error::Error};
 
 use serde::{Deserialize, Serialize};
 use std::{
@@ -28,9 +31,9 @@ pub type OkpError = db_service::Error;
 // The implementation of structs and functions decalared in db_service.udl follows here
 
 // Needs to be added here to expose in the generated rs code
+use android::AndroidSupportService;
 #[allow(dead_code)]
 use ios::IosSupportService;
-use android::AndroidSupportService;
 
 #[allow(dead_code)]
 fn invoke_command(command_name: String, args: String) -> String {
@@ -91,7 +94,7 @@ pub fn open_backup_file(backup_file_path: Option<String>) -> Option<File> {
     }
 }
 
-fn read_kdbx(file_args: FileArgs, json_args: String) -> ApiResponse {
+fn _read_kdbx_old(file_args: FileArgs, json_args: String) -> ApiResponse {
     log::debug!("file_args received is {:?}", file_args);
     let mut file = match file_args {
         FileArgs::FileDecriptor { fd } => unsafe { util::get_file_from_fd(fd) },
@@ -118,6 +121,7 @@ fn read_kdbx(file_args: FileArgs, json_args: String) -> ApiResponse {
                 &db_file_name, // This is db_key which is the full database file uri
                 &password,
                 key_file_name.as_deref(),
+                None,
             );
 
             if r.is_ok() {
@@ -137,7 +141,68 @@ fn read_kdbx(file_args: FileArgs, json_args: String) -> ApiResponse {
     }
 }
 
-fn save_kdbx(file_args: FileArgs,overwrite:bool) -> ApiResponse {
+fn read_kdbx(file_args: FileArgs, json_args: String) -> ApiResponse {
+    log::debug!("file_args received is {:?}", file_args);
+
+    let mut file = match file_args {
+        FileArgs::FileDecriptor { fd } => unsafe { util::get_file_from_fd(fd) },
+        FileArgs::FullFileName { full_file_name } => {
+            // Opening file in read mode alone is sufficient and works fine
+            // full_path_file_to_read_write may be used if we need to open file with read and write permissions
+            // match full_path_file_to_read_write(&full_file_name)
+            match File::open(util::url_to_unix_file_name(&full_file_name)) {
+                Ok(f) => f,
+                Err(e) => return_api_response_failure!(e),
+            }
+        }
+        _ => return_api_response_failure!("Unsupported file args passed"),
+    };
+
+    as_api_response(internal_read_kdbx(&mut file, &json_args))
+}
+
+fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service::KdbxLoaded> {
+    let CommandArg::OpenDbArg {
+        db_file_name,
+        password,
+        key_file_name,
+    } = serde_json::from_str(json_args)? else {
+        return Err(OkpError::Other(format!( "Unexpected argument {:?} for readkdbx api call", json_args)));
+    };
+
+    let file_name = AppState::global().uri_to_file_name(&db_file_name);
+    
+    debug!("File name from db_file_name {} is {} ",&db_file_name,&file_name);
+
+    let backup_file_name = util::generate_backup_file_name(&db_file_name, &file_name);
+
+    let mut backup_file = open_backup_file(backup_file_name.clone())
+        .ok_or(OkpError::DataError("Opening backup file failed"))?;
+
+    // Copy from db file to backup file first
+    std::io::copy(file, &mut backup_file)
+        .and(backup_file.sync_all())
+        .and(backup_file.rewind())?;
+
+    debug!("internal_read_kdbx copied to backup file and synced");
+
+    // We load and parse the database content from the backup file 
+    let kdbx_loaded = db_service::read_kdbx(
+        &mut backup_file,
+        &db_file_name,
+        &password,
+        key_file_name.as_deref(),
+        Some(&file_name)
+    )?;
+
+    debug!("internal_read_kdbx kdbx_loaded  is {:?}", &kdbx_loaded);
+
+    AppState::global().add_recent_db_use_info(&db_file_name);
+
+    Ok(kdbx_loaded)
+}
+
+fn save_kdbx(file_args: FileArgs, overwrite: bool) -> ApiResponse {
     log::debug!("save_kdbx: file_args received is {:?}", file_args);
 
     let mut fd_used = false;
@@ -196,7 +261,7 @@ fn save_kdbx(file_args: FileArgs,overwrite:bool) -> ApiResponse {
                         }
                     }
                     let _n = std::io::copy(&mut bf_writer, &mut writer);
-                    
+
                     if let Err(e) = db_service::calculate_db_file_checksum(&db_key, &mut bf_writer)
                     {
                         return_api_response_failure!(e)
@@ -237,6 +302,7 @@ fn save_kdbx(file_args: FileArgs,overwrite:bool) -> ApiResponse {
 }
 
 // Called to create the backup file whenever some save error happens during the save kdbx api call
+// See middle layer (Swift or Kotlin) the method 'saveKdbx'
 fn write_to_backup_on_error(full_file_name_uri: String) -> ApiResponse {
     // closure returns -> OkpResult<db_service::KdbxSaved>
     // and that is converted to ApiResponse. Helps to use ?. May be used in fuctions also
@@ -259,7 +325,6 @@ fn write_to_backup_on_error(full_file_name_uri: String) -> ApiResponse {
             .ok_or(OkpError::DataError("Backup file could not be created"))?;
 
         let r = db_service::save_kdbx_to_writer(&mut backup_file, &full_file_name_uri);
-        // TODO: Call AppState::global().add_last_backup_name_on_error(&db_key, bkp_file_name);
         debug!("Writing backup for the uri {} is done", &file_name);
 
         // Need to store
@@ -317,7 +382,8 @@ pub enum ApiResponse {
     Failure { result: String },
 }
 
-// impl From<OkpResult<T>> for ApiResponse {
+// Does not work if we use From<OkpResult<T:Serialize>> as discussed in  https://github.com/rust-lang/rust/issues/52662
+// impl<T> From<OkpResult<T:Serialize>> for ApiResponse {
 //     fn from<T: serde::Serialize>(val: OkpResult<T>) -> ApiResponse {
 //         match val {
 //             Ok(t) => ApiResponse::Success {
@@ -335,9 +401,11 @@ fn as_api_response<T: serde::Serialize>(val: OkpResult<T>) -> ApiResponse {
         Ok(t) => ApiResponse::Success {
             result: InvokeResult::with_ok(t).json_str(),
         },
-        Err(e) => ApiResponse::Failure {
-            result: InvokeResult::<()>::with_error(&format!("{:?}", e)).json_str(),
-        },
+        Err(e) =>  ApiResponse::Failure {
+            // Need to use "{}" not "{:?}" for the thiserror display call to work
+            // so that the string in #error[...] is returned in response
+            result: InvokeResult::<()>::with_error(&format!("{}", e)).json_str(),
+        }
     }
 }
 
@@ -391,24 +459,27 @@ impl JsonService {
     }
 
     // Returns the map data as a parseable (by cljs) json string with "ok" key
-    pub fn map_as_ok_json_string(&self,info:HashMap<String,String>) -> String {
+    pub fn map_as_ok_json_string(&self, info: HashMap<String, String>) -> String {
         InvokeResult::with_ok(info).json_str()
     }
 
     // Returns a parseable (by cljs) json string with "ok"
-    pub fn ok_json_string(&self,info:String) -> String {
+    pub fn ok_json_string(&self, info: String) -> String {
         InvokeResult::with_ok(info).json_str()
     }
 
     // Returns a string of form "{"error": "some error text"}"
-    // that can then be deserialized in UI layer 
-    pub fn error_json_string(&self,error:String) -> String {
+    // that can then be deserialized in UI layer
+    pub fn error_json_string(&self, error: String) -> String {
         commands::error_json_str(error.as_str())
     }
 }
 
-fn db_service_initialize(common_device_service: Box<dyn CommonDeviceService>,secure_key_operation:Box<dyn SecureKeyOperation>) {
-    AppState::setup(common_device_service,secure_key_operation);
+fn db_service_initialize(
+    common_device_service: Box<dyn CommonDeviceService>,
+    secure_key_operation: Box<dyn SecureKeyOperation>,
+) {
+    AppState::setup(common_device_service, secure_key_operation);
     log::info!("AppState with CommonDeviceService is initialized");
     key_secure::init_key_main_store();
     log::info!("key_secure::init_key_main_store call done after AppState setup");
@@ -554,4 +625,3 @@ fn extract_file_provider(full_file_name_uri: String) -> String {
 #[cfg(any(target_os = "ios", target_os = "android"))]
 uniffi::include_scaffolding!("db_service");
 //include!(concat!(env!("OUT_DIR"), "/db_service.uniffi.rs"));
-

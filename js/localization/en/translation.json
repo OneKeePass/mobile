@@ -21,6 +21,7 @@
             "fileInfo":"File Info",
             "openDatabase":"Open database",
             "newDatabase":"New database",
+            "unlockDatabase":"Unlock database",
             "remove":"Remove"
         },
         "texts": {
@@ -83,19 +84,21 @@
         "deleteField": "Delete Field",
         "deletePermanently": "Delete Permanently",
         "edit": "Edit",
+        "exportTo":"Export To",
         "fileinfo": "File Info",
         "favorite": "Favorite",
         "favorites": "Favorites",
-        "exportTo":"Export To",
         "groups": "Groups",
         "home": "Home",
         "history": "History",
+        "lockdb": "Lock Database",
         "modifyCustomField": "Modify Custom Field",
         "pwdGenerator": "Password Generator",
         "putback": "Put Back",
         "remove": "Remove",
         "restore": "Restore",
         "settings": "Settings",
-        "types": "Types"
+        "types": "Types",
+        "unlockdb":"Unlock Database"
     }
 }

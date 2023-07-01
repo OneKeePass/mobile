@@ -147,7 +147,12 @@
   [dispatch-fn]
   (call-api-async (fn [] (.hide rn-boot-splash 200)) dispatch-fn))
 
-(defn authenticate-with-biometric [dispatch-fn]
+(defn authenticate-with-biometric 
+  "Called to authenticate the previously locked database. 
+  There is no db specific biometric authentication settings or control. If the device supports
+  the biometric, then that feature is used for any locked database to unlock
+  "
+  [dispatch-fn]
   (call-api-async (fn [] (.authenticateWithBiometric okp-db-service)) dispatch-fn))
 
 ;; Android: 
@@ -296,6 +301,21 @@
 
 (defn close-kdbx [db-key dispatch-fn]
   (invoke-api "close_kdbx" {:db-key db-key} dispatch-fn))
+
+
+(defn unlock-kdbx
+  "Calls the API to unlock the previously opened db file.
+   Calls the dispatch-fn with the received map of type 'KdbxLoaded' 
+  "
+  [db-key password key-file-name dispatch-fn]
+  (invoke-api "unlock_kdbx" {:db-file-name db-key
+                             :password password
+                             :key-file-name key-file-name} dispatch-fn))
+
+;; See authenticate-with-biometric api above
+
+(defn unlock-kdbx-on-biometric-authentication [db-key dispatch-fn]
+  (invoke-api "unlock_kdbx_on_biometric_authentication" {:db-key db-key} dispatch-fn))
 
 (defn remove-from-recently-used
   "Removes recently used file info for the passed db-key and the database id also 

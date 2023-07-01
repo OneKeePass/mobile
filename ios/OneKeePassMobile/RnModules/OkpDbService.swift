@@ -273,7 +273,6 @@ class OkpDbService: NSObject {
       }
   }
 
-  
   func writeToBackupOnError(_ fullFileNameUri: String) {
     // For now we are ignoring any backup writting error here write_to_backup_on_error
     let apiResponse = DbServiceAPI.writeToBackupOnError(fullFileNameUri)

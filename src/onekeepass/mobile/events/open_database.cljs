@@ -8,7 +8,8 @@
                           dispatch
                           reg-fx
                           subscribe]]
-   [onekeepass.mobile.background :as bg]))
+   [onekeepass.mobile.background :as bg]
+   [onekeepass.mobile.constants :as const]))
 
 
 #_(defn open-database-dialog-show []
@@ -34,7 +35,11 @@
 (defn repick-confirm-data []
   (subscribe [:repick-confirm-data]))
 
-(defn open-database-read-db-file []
+(defn open-database-read-db-file
+  "Called when user clicks the continue button. By this time user would have picked a file to open in the 
+  previous pick file call
+  "
+  []
   (dispatch [:open-database-read-db-file]))
 
 (defn dialog-data []
@@ -120,6 +125,7 @@
            [:dispatch [:common/error-box-show "File Pick Error" error]])]}))
 
 ;; TODO: Need to initiate loading progress indication
+;; :open-database should have valid values by this time as user has picked a database and entered credentials to open
 (reg-event-fx
  :open-database-read-db-file
  (fn [{:keys [db]} [_event-id]]
@@ -148,6 +154,11 @@
  (fn [{:keys [db]} [_event-id error]]
    {:db (-> db (assoc-in [:open-database :error-fields] {})
             (assoc-in [:open-database :status] :completed))
+    ;; We get error code PERMISSION_REQUIRED_TO_READ or FILE_NOT_FOUND from middle layer readKdbx 
+    ;; PERMISSION_REQUIRED_TO_READ may happen if the File Manager decides 
+    ;; that the existing uri should be refreshed by asking user to pick the database again 
+    ;; FILE_NOT_FOUND happens when the uri we have no more points to a valid file as that file 
+    ;; might have been changed by other program
     :fx (cond (= (:code error) "PERMISSION_REQUIRED_TO_READ")
               [[:dispatch [:repick-confirm-show]]
                [:dispatch [:open-database-dialog-hide]]]
@@ -189,5 +200,98 @@
  (fn [db _query-vec]
    (get-in db [:open-database])))
 
+;;;;;;;;;;;;  Unlock ;;;;;;;;;;;;;;;;
+
+(defn unlock-selected-db
+  "Called to initiate the unlock db process"
+  [file-name full-file-name-uri]
+  (dispatch [:open-database-unlock-kdbx {:file-name file-name :full-file-name-uri full-file-name-uri}])
+  #_(dispatch [:open-database/unlock-dialog-show {:file-name file-name :full-file-name-uri full-file-name-uri}]))
+
+(defn authenticate-with-credential
+  "Called after user enters required credentials and press continue button to unlock"
+  []
+  (dispatch [:authenticate-with-credential]))
+
+(reg-event-fx
+ :open-database-unlock-kdbx
+ (fn [{:keys [db]} [_event-id {:keys [file-name full-file-name-uri] :as m}]]
+   ;; Determine whether, we can do bio authentication or credential dialog auth or PIN based here
+   (let [biometric-available (bg/is-biometric-available)]
+     (println "biometric-available is " biometric-available)
+     (if biometric-available
+       {:fx [[:bg-authenticate-with-biometric [m]]]}
+       {:fx [[:dispatch [:open-database-unlock-dialog-show m]]]}))))
+
+
+(reg-event-fx
+ :open-database-unlock-dialog-show
+ (fn [{:keys [db]} [_event-id {:keys [file-name full-file-name-uri]}]]
+   {:db (-> db init-open-database-data
+            ;;database-file-name to show in the dialog
+            (assoc-in [:open-database :database-file-name] file-name)
+            (assoc-in [:open-database :database-full-file-name] full-file-name-uri)
+            (assoc-in [:open-database :dialog-show] true))}))
+
+
+;; Somewhat similar to :open-database-read-db-file
+;; Called after user enters credentials 
+;; :open-database-unlock-dialog-show -> :authenticate-with-credential (as user presses continue)
+(reg-event-fx
+ :authenticate-with-credential
+ (fn [{:keys [db]} [_event-id]]
+   ;; open-database should have valid values to unlock 
+   (let [error-fields (validate-required-fields db)
+         errors-found (boolean (seq error-fields))
+         {:keys [database-full-file-name password key-file-name]} (:open-database db)]
+     (if errors-found
+       {:db (assoc-in db [:open-database :error-fields] error-fields)}
+       {:fx [[:bg-unlock-kdbx [database-full-file-name password key-file-name]]]}))))
+
+
+(defn- on-unlock-response [api-response]
+  (when-let [kdbx-loaded (on-ok
+                          api-response
+                          #(dispatch [:common/error-box-show "Database Unlock Error" %]))]
+    (dispatch [:unlock-kdbx-success kdbx-loaded])))
+
+(reg-fx
+ :bg-authenticate-with-biometric
+ (fn [[{:keys [full-file-name-uri] :as credential-m}]]
+   (bg/authenticate-with-biometric (fn [api-response]
+                                     (when-let [result
+                                                (on-ok api-response
+                                                       #(dispatch [:common/error-box-show "Authentication Error" %]))]
+                                       (if (= result const/BIOMETRIC-AUTHENTICATION-SUCCESS)
+                                         (bg/unlock-kdbx-on-biometric-authentication
+                                          full-file-name-uri
+                                          on-unlock-response)
+                                         ;; As biometric based failed, we need to use credential based one
+                                         (dispatch [:open-database-unlock-dialog-show credential-m])))))))
+
+(reg-fx
+ :bg-unlock-kdbx
+ (fn [[db-key password key-file-name]]
+   (bg/unlock-kdbx db-key
+                   password
+                   key-file-name
+                   on-unlock-response
+                   #_(fn [api-reponse]
+                       (when-let [kdbx-loaded (on-ok
+                                               api-reponse
+                                               #(dispatch [:common/error-box-show "Database Unlock Error" %]))]
+                         (dispatch [:unlock-kdbx-success kdbx-loaded]))))))
+
+(reg-event-fx
+ :unlock-kdbx-success
+ (fn [{:keys [db]} [_event-id kdbx-loaded]]
+   {:db (-> db (assoc-in [:open-database :error-fields] {})
+            (assoc-in [:open-database :status] :completed))
+    :fx [[:dispatch [:open-database-dialog-hide]]
+         [:dispatch [:common/unlock-selected-db (:db-key kdbx-loaded)]]
+         [:dispatch [:common/set-active-db-key (:db-key kdbx-loaded)]]]}))
+
 (comment
-  (in-ns 'onekeepass.mobile.events.open-database))
+  (in-ns 'onekeepass.mobile.events.open-database)
+  (def db-key (-> @re-frame.db/app-db :current-db-file-name))
+  (-> @re-frame.db/app-db (get db-key) keys))

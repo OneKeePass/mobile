@@ -131,11 +131,15 @@ impl AppState {
         );
     }
 
+    // Used in android and ios specific module
+    // See ios::complete_save_as_on_error and  android::complete_save_as_on_error
     pub fn remove_last_backup_name_on_error(&self, full_file_name_uri: &str) {
         let mut bkp = self.last_backup_on_error.lock().unwrap();
         bkp.remove(full_file_name_uri);
     }
 
+    // Used in android and ios specific module
+    // See ios::copy_last_backup_to_temp_file, android::complete_save_as_on_error
     pub fn get_last_backup_on_error(&self, full_file_name_uri: &str) -> Option<String> {
         self.last_backup_on_error
             .lock()

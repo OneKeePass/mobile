@@ -75,6 +75,9 @@
       [rnp-menu-item {:title (lstr "menu.labels.pwdGenerator") 
                       :onPress (header-menu-action pg-events/generate-password)}]
       [rnp-divider]
+      [rnp-menu-item {:title  (lstr "menu.labels.lockdb")
+                      :onPress (header-menu-action cmn-events/lock-kdbx nil)}]
+      [rnp-divider]
       [rnp-menu-item {:title (lstr "menu.labels.closedb") 
                       :onPress (header-menu-action cmn-events/close-current-kdbx-db)}]
       [rnp-divider]
