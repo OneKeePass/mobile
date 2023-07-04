@@ -38,7 +38,6 @@
 
 (def okp-events ^js/OkpEvents (.-OkpEvents rn/NativeModules))
 
-
 #_(defn get-constants []
     (.getConstants okp-db-service))
 
@@ -176,7 +175,7 @@
   is used in 'transform-api-response'
   "
   [kdbx-file-name dispatch-fn]
-  (println "pick-document-to-create called for " kdbx-file-name)
+  ;;(println "pick-document-to-create called for " kdbx-file-name)
   (call-api-async (fn [] (.pickKdbxFileToCreate okp-document-pick-service kdbx-file-name))
                   dispatch-fn
                   ;; The API response is not converted as json. Instead used as value of :ok in return
@@ -206,21 +205,42 @@
                           (api-args->json {:new_db (request-argon2key-transformer new-db)} false)))
                   dispatch-fn :error-transform true))
 
-(defn pick-document-to-read-write [dispatch-fn]
+(defn pick-database-to-read-write 
+  "Called to pick a kdbx file using platform specific File Manager. The 'dispatch-fn' called with a full uri
+   of a file picked and the file is read and loaded in the subsequent call
+   "
+  [dispatch-fn]
   (call-api-async (fn []
                     (.pickKdbxFileToOpen okp-document-pick-service))
-                  dispatch-fn :error-transform true))
+                  dispatch-fn 
+                  :error-transform true))
+
+(defn pick-key-file-to-copy
+  "Called to pick a kdbx file using platform specific File Manager. The 'dispatch-fn' called with a full uri
+   of a file picked and the file is read and loaded in the subsequent call
+   "
+  [dispatch-fn]
+  (call-api-async (fn []
+                    (.pickKeyFileToCopy okp-document-pick-service))
+                  dispatch-fn
+                  :error-transform true))
 
 ;;;;;;;;
 
 (defn ios-pick-on-save-error-save-as
   "Called to present os specific view for the user to save the copied kdbx file"
   [kdbx-file-name db-key dispatch-fn]
-  (call-api-async (fn [] (.pickOnSaveErrorSaveAs okp-document-pick-service kdbx-file-name db-key)) dispatch-fn :error-transform true))
+  (call-api-async (fn [] (.pickOnSaveErrorSaveAs 
+                          okp-document-pick-service 
+                          kdbx-file-name db-key)) 
+                  dispatch-fn 
+                  :error-transform true))
 
 (defn ios-complete-save-as-on-error [db-key new-db-key dispatch-fn]
-  (call-api-async (fn [] (.completeSaveAsOnError okp-db-service
-                                                 (api-args->json {:db-key db-key :new-db-key new-db-key} true))) dispatch-fn))
+  (call-api-async (fn [] (.completeSaveAsOnError 
+                          okp-db-service
+                          (api-args->json {:db-key db-key :new-db-key new-db-key} true))) 
+                  dispatch-fn))
 
 ;; 
 (defn android-pick-on-save-error-save-as [kdbx-file-name dispatch-fn] 
@@ -230,6 +250,9 @@
   (call-api-async (fn [] (.completeSaveAsOnError okp-db-service db-key new-db-key)) dispatch-fn :error-transform true))
 
 ;;;;;;
+
+(defn copy-key-file [full-file-name dispatch-fn]
+  (call-api-async (fn [] (.copyKeyFile okp-db-service full-file-name)) dispatch-fn :error-transform true))
 
 (defn create-kdbx
   "Called with full file name uri that was picked by the user through the document picker 
@@ -301,7 +324,6 @@
 
 (defn close-kdbx [db-key dispatch-fn]
   (invoke-api "close_kdbx" {:db-key db-key} dispatch-fn))
-
 
 (defn unlock-kdbx
   "Calls the API to unlock the previously opened db file.
@@ -499,6 +521,20 @@
 
 (defn collect-entry-group-tags [db-key dispatch-fn]
   (invoke-api  "collect_entry_group_tags" {:db-key db-key} dispatch-fn))
+
+(defn list-key-files 
+  "Gets all previously copied key files"
+  [dispatch-fn]
+  (invoke-api "list_key_files" {} dispatch-fn))
+
+(defn delete-key-file
+  "Deletes any specfic key file"
+  [file-name dispatch-fn]
+  ;; This api call make use of 'CommandArg::GenericArg' and accordingly we need to ensure
+  ;; we pass the expected arg name 'file_name' with non null value
+  ;; The Arg map to this api is not transformed automaticlly as done typically.
+  ;; Note the use of  'key_vals' and 'file_name' as Snakecase expected by serde conversion
+  (invoke-api "delete_key_file"  {:key_vals {"file_name" file-name}} dispatch-fn :convert-request false))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Native Events ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; While compiling with advanced option, if we use '(u/is-iOS)' to check platform

@@ -183,7 +183,7 @@
 
 ;; TODO: Replace the use of group-delete-confirm-dialog and entry-delete-confirm-dialog with this 
 
-(defn confirm-dialog-with-ref
+(defn- confirm-dialog-with-ref
   "This creates an reagent component. The arg 'data-ref' is reagent.core/atom"
   [data-ref]
   (let [{:keys [dialog-show title confirm-text call-on-ok-fn]} @data-ref]

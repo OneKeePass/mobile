@@ -48,6 +48,8 @@
 (def blank-open-db  {:dialog-show false
                      :password-visible false
                      :error-fields {}
+                     ;; database-file-name is just the 'file name' part derived from full 
+                     ;; uri 'database-full-file-name' to show in the dialog
                      :database-file-name nil
 
                      :status nil
@@ -99,7 +101,7 @@
 (reg-fx
  :bg-pick-database-file
  (fn []
-   (bg/pick-document-to-read-write
+   (bg/pick-database-to-read-write
     (fn [api-response]
       (when-let [picked-response (on-ok
                                   api-response
@@ -111,7 +113,8 @@
  :open-database/database-file-picked
  (fn [{:keys [db]} [_event-id {:keys [file-name full-file-name-uri]}]]
    {:db (-> db init-open-database-data
-            ;;database-file-name to show in the dialog
+            ;; database-file-name is just the 'file name' part derived from full uri 'database-full-file-name'
+            ;; to show in the dialog
             (assoc-in [:open-database :database-file-name] file-name)
             (assoc-in [:open-database :database-full-file-name] full-file-name-uri)
             (assoc-in [:open-database :dialog-show] true))}))
@@ -200,42 +203,90 @@
  (fn [db _query-vec]
    (get-in db [:open-database])))
 
-;;;;;;;;;;;;  Unlock ;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  DB Unlock ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; All DB lock related calls are in common ns
 
 (defn unlock-selected-db
-  "Called to initiate the unlock db process"
+  "Called to initiate the unlocking process of a selected database"
   [file-name full-file-name-uri]
-  (dispatch [:open-database-unlock-kdbx {:file-name file-name :full-file-name-uri full-file-name-uri}])
-  #_(dispatch [:open-database/unlock-dialog-show {:file-name file-name :full-file-name-uri full-file-name-uri}]))
+  (dispatch [:open-database-unlock-kdbx {:file-name file-name :full-file-name-uri full-file-name-uri}]))
 
 (defn authenticate-with-credential
-  "Called after user enters required credentials and press continue button to unlock"
+  "Called after user enters required credentials in a dialog box and press continue button to unlock"
   []
   (dispatch [:authenticate-with-credential]))
 
+(defn authenticate-biometric-ok
+  "User accepts to use biometric based authentication"
+  []
+  (dispatch [:open-database-authenticate-biometric-ok]))
+
+(defn authenticate-biometric-cancel
+  "User does not want to use biometric based authentication"
+  []
+  (dispatch [:open-database-authenticate-biometric-cancel]))
+
+(defn authenticate-biometric-confirm-dialog-data
+  "Need to get user confirmation to use the biometric authentication for quick unlock"
+  []
+  (subscribe [:open-database-authenticate-biometric-confirm-dialog-data]))
+
 (reg-event-fx
  :open-database-unlock-kdbx
- (fn [{:keys [db]} [_event-id {:keys [file-name full-file-name-uri] :as m}]]
-   ;; Determine whether, we can do bio authentication or credential dialog auth or PIN based here
+ (fn [{:keys [_db]} [_event-id credential-m]]
+   ;; credential-m is map with keys [file-name full-file-name-uri key-file-name..]
+   ;; Determine whether, we can do bio authentication or credential dialog auth or PIN based here (yet to add)
    (let [biometric-available (bg/is-biometric-available)]
-     (println "biometric-available is " biometric-available)
      (if biometric-available
-       {:fx [[:bg-authenticate-with-biometric [m]]]}
-       {:fx [[:dispatch [:open-database-unlock-dialog-show m]]]}))))
+       ;; Need to cofirm from user and then use biometric to authenticate
+       {:fx [[:dispatch [:open-database-authenticate-biometric-confirm credential-m]]]}
+       {:fx [[:dispatch [:open-database-unlock-dialog-show credential-m]]]}))))
 
+;; Called from event :open-database-unlock-kdbx
+(reg-event-fx
+ :open-database-authenticate-biometric-confirm
+ (fn [{:keys [db]} [_event-id credential-m]]
+   {:db (-> db
+            (assoc-in [:open-database :authenticate-biometric-confirm :dialog-show] true)
+            (assoc-in [:open-database :authenticate-biometric-confirm :data] credential-m))}))
 
+;; Called from a confirm dialog
+(reg-event-fx
+ :open-database-authenticate-biometric-cancel
+ (fn [{:keys [db]} [_event-id]]
+   {:db (-> db
+            (assoc-in [:open-database :authenticate-biometric-confirm :dialog-show] false))
+    :fx [[:dispatch [:open-database-unlock-dialog-show
+                     (get-in db [:open-database :authenticate-biometric-confirm :data])]]]}))
+
+;; Called from a confirm dialog
+(reg-event-fx
+ :open-database-authenticate-biometric-ok
+ (fn [{:keys [db]} [_event-id]]
+   ;; Need to close the dialog!
+   {:db (-> db (assoc-in [:open-database :authenticate-biometric-confirm :dialog-show] false))
+    :fx [[:bg-authenticate-with-biometric [(get-in db [:open-database :authenticate-biometric-confirm :data])]]]}))
+
+;; Confirm dialog
 (reg-event-fx
  :open-database-unlock-dialog-show
  (fn [{:keys [db]} [_event-id {:keys [file-name full-file-name-uri]}]]
    {:db (-> db init-open-database-data
-            ;;database-file-name to show in the dialog
+            ;; database-file-name is just the 'file name' part derived from full uri 'database-full-file-name'
+            ;; to show in the dialog
             (assoc-in [:open-database :database-file-name] file-name)
             (assoc-in [:open-database :database-full-file-name] full-file-name-uri)
             (assoc-in [:open-database :dialog-show] true))}))
 
+(reg-sub
+ :open-database-authenticate-biometric-confirm-dialog-data
+ (fn [db]
+   (get-in db [:open-database :authenticate-biometric-confirm])))
+
 
 ;; Somewhat similar to :open-database-read-db-file
-;; Called after user enters credentials 
+;; Called after user enters credentials to unlock db
 ;; :open-database-unlock-dialog-show -> :authenticate-with-credential (as user presses continue)
 (reg-event-fx
  :authenticate-with-credential
@@ -275,13 +326,15 @@
    (bg/unlock-kdbx db-key
                    password
                    key-file-name
-                   on-unlock-response
-                   #_(fn [api-reponse]
-                       (when-let [kdbx-loaded (on-ok
-                                               api-reponse
-                                               #(dispatch [:common/error-box-show "Database Unlock Error" %]))]
-                         (dispatch [:unlock-kdbx-success kdbx-loaded]))))))
+                   on-unlock-response)))
 
+;; TODO: 
+;; The Quick unlock just gets the data from memory on successful
+;; authentication using existing credential
+;; So we need to make sure, the data are not stale by checking whether database 
+;; has been changed externally and load accordingly as done for desktop
+;; For now, at least user needs to be alerted that, the db is changed 
+;; See desktop's event ':database-change-detected' in common ns
 (reg-event-fx
  :unlock-kdbx-success
  (fn [{:keys [db]} [_event-id kdbx-loaded]]
@@ -289,7 +342,8 @@
             (assoc-in [:open-database :status] :completed))
     :fx [[:dispatch [:open-database-dialog-hide]]
          [:dispatch [:common/unlock-selected-db (:db-key kdbx-loaded)]]
-         [:dispatch [:common/set-active-db-key (:db-key kdbx-loaded)]]]}))
+         [:dispatch [:common/set-active-db-key (:db-key kdbx-loaded)]]
+         [:dispatch [:common/message-snackbar-open "Database unlocked"]]]}))
 
 (comment
   (in-ns 'onekeepass.mobile.events.open-database)

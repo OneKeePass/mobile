@@ -6,6 +6,7 @@ use std::os::unix::io::FromRawFd;
 use std::path::{Path, PathBuf};
 
 use crate::app_state::AppState;
+use crate::KeyFileInfo;
 
 pub unsafe fn get_file_from_fd(fd: u64) -> File {
     File::from_raw_fd(fd as i32)
@@ -157,4 +158,35 @@ pub fn create_sub_dir(root_dir: &str, sub: &str) -> PathBuf {
         final_full_path_dir = full_path_dir;
     }
     final_full_path_dir
+}
+
+pub fn list_key_files() -> Vec<KeyFileInfo> {
+    let path = &AppState::global().key_files_dir_path;
+    let mut bfiles: Vec<KeyFileInfo> = vec![];
+    if let Ok(entries) = fs::read_dir(path) {
+        for entry in entries {
+            if let Ok(e) = entry {
+                if let Some(s) = e
+                    .path()
+                    .file_name()
+                    .map(|s| s.to_string_lossy().to_string())
+                {
+                    bfiles.push(KeyFileInfo {
+                        file_name: s,
+                        file_size: None,
+                    });
+                }
+            }
+        }
+    }
+    bfiles
+}
+
+// key_file_name_component is just the file name and not the full uri
+pub fn delete_key_file(key_file_name_component: &str) {
+    let path = &AppState::global()
+        .key_files_dir_path
+        .join(key_file_name_component);
+    let r = fs::remove_file(&path);
+    log::debug!("Delete key file  {:?} result {:?}", &path, r);
 }

@@ -10,6 +10,7 @@ use crate::{
 use onekeepass_core::db_service::{self, KdbxLoaded};
 use regex::{Error, RegexSet};
 
+// This is for any Android specific services
 pub struct AndroidSupportService {}
 
 // See https://users.rust-lang.org/t/can-i-stop-vscode-rust-analyzer-from-shading-out-cfgs/58773
@@ -77,8 +78,12 @@ impl AndroidSupportService {
 
         let mut full_file_name_uri: String = String::default();
         let r = match serde_json::from_str(&json_args) {
-            Ok(CommandArg::NewDbArg { new_db }) => {
+            Ok(CommandArg::NewDbArg { mut new_db }) => {
                 full_file_name_uri = new_db.database_file_name.clone();
+                // Need to get the file name from full uri
+                new_db.file_name = AppState::global()
+                    .common_device_service
+                    .uri_to_file_name(full_file_name_uri.clone());
                 let r = db_service::create_and_write_to_writer(&mut file, new_db);
                 // sync_all ensures the file is created and synced in case of dropbbox and one drive
                 let _ = file.sync_all();

@@ -71,6 +71,10 @@ class DbServiceAPI {
   
 }
 
+enum CallbackErrors: Error {
+    case apiIsNotSupported
+}
+
 class CommonDeviceServiceImpl: CommonDeviceService {
   func appHomeDir() -> String {
     return NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).first!
@@ -109,5 +113,9 @@ class CommonDeviceServiceImpl: CommonDeviceService {
                       lastModified: nil,
                       location: location)
     }
+  }
+  
+  func asFileDescriptor(_ fullFileNameUri: String) throws -> FileDescriptor {
+    throw CallbackErrors.apiIsNotSupported
   }
 }

@@ -137,7 +137,7 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
             try {
                 if (!overwrite  && (verifyDbFileChanged(fullFileNameUri,promise))) {
                     Log.d(TAG,"Db contents have changed and saving is not done")
-                    //TODO: Store the db file with changed data to backup for later offline use
+                    // Store the db file with changed data to backup for later offline use
                     DbServiceAPI.writeToBackupOnError(fullFileNameUri)
                     return@execute
                 }
@@ -304,6 +304,42 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
 
          // val executor = ContextCompat.getMainExecutor(this.reactApplicationContext)
          // biometricService.showPrompt(currentActivity as FragmentActivity, executor,promise)
+    }
+
+    @ReactMethod
+    fun copyKeyFile(fullKeyFileNameUri: String, promise: Promise) {
+        Log.d(TAG, "copyKeyFile is called with fullFileNameUri $fullKeyFileNameUri  ")
+        executorService.execute {
+            val uri = Uri.parse(fullKeyFileNameUri);
+            try {
+                val fd: ParcelFileDescriptor? = contentResolver.openFileDescriptor(uri, "r");
+                val fileName = FileUtils.getMetaInfo(contentResolver, uri)?.filename ?: ""
+                //fd will be null if the provider recently crashed
+                if (fd != null) {
+                    // detachFd call should be used so that the file is closed in the rust code automatically
+                    promise.resolve(DbServiceAPI.copyPickedKeyFile(fd.detachFd().toULong(),fullKeyFileNameUri,fileName))
+                } else {
+                    promise.reject(E_READ_FIE_DESCRIPTOR_ERROR, "Invalid file descriptor")
+                }
+
+            } catch (e: SecurityException) {
+                // UI layer needs to handle this with apprpriate message to the user
+                // This will happen, if we try to read the kdbx file without proper permissions
+                // We need to obtain while selecting the file.
+                // See 'pickKdbxFileToOpen'
+                Log.e(TAG, "SecurityException due to in sufficient permission")
+                promise.reject(E_PERMISSION_REQUIRED_TO_READ, e)
+            } catch (e: FileNotFoundException) {
+                // Need to add logic in UI layer to handle this
+                // e.printStackTrace()
+                Log.e(TAG, "Error in readKdbx ${e}")
+                promise.reject(E_FILE_NOT_FOUND, e)
+            } catch (e: Exception) {
+                // e.printStackTrace()
+                Log.e(TAG, "Error in readKdbx ${e}")
+                promise.reject(E_READ_CALL_FAILED, e)
+            }
+        }
     }
 
     private fun resolveResponse(response: ApiResponse, promise: Promise) {

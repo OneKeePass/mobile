@@ -365,6 +365,7 @@ internal interface _UniFFILib : Library {
                 uniffiCheckContractApiVersion(lib)
                 uniffiCheckApiChecksums(lib)
                 FfiConverterTypeCommonDeviceService.register(lib)
+                FfiConverterTypeFileDescriptor.register(lib)
                 FfiConverterTypeSecureKeyOperation.register(lib)
                 }
         }
@@ -402,6 +403,8 @@ internal interface _UniFFILib : Library {
     ): RustBuffer.ByValue
     fun uniffi_db_service_fn_method_jsonservice_error_json_string(`ptr`: Pointer,`error`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_db_service_fn_init_callback_filedescriptor(`callbackStub`: ForeignCallback,_uniffi_out_err: RustCallStatus, 
+    ): Unit
     fun uniffi_db_service_fn_init_callback_commondeviceservice(`callbackStub`: ForeignCallback,_uniffi_out_err: RustCallStatus, 
     ): Unit
     fun uniffi_db_service_fn_init_callback_securekeyoperation(`callbackStub`: ForeignCallback,_uniffi_out_err: RustCallStatus, 
@@ -419,6 +422,8 @@ internal interface _UniFFILib : Library {
     fun uniffi_db_service_fn_func_verify_db_file_checksum(`fileArgs`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_db_service_fn_func_write_to_backup_on_error(`fullFileNameUri`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_db_service_fn_func_copy_picked_key_file(`fileArgs`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_db_service_fn_func_extract_file_provider(`fullFileNameUri`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
@@ -445,6 +450,8 @@ internal interface _UniFFILib : Library {
     fun uniffi_db_service_checksum_func_verify_db_file_checksum(
     ): Short
     fun uniffi_db_service_checksum_func_write_to_backup_on_error(
+    ): Short
+    fun uniffi_db_service_checksum_func_copy_picked_key_file(
     ): Short
     fun uniffi_db_service_checksum_func_extract_file_provider(
     ): Short
@@ -512,6 +519,9 @@ private fun uniffiCheckApiChecksums(lib: _UniFFILib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_checksum_func_write_to_backup_on_error() != 39600.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_checksum_func_copy_picked_key_file() != 36212.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_checksum_func_extract_file_provider() != 57962.toShort()) {
@@ -1210,6 +1220,62 @@ public object FfiConverterTypeKdbxCreated: FfiConverterRustBuffer<KdbxCreated> {
 
 
 
+
+sealed class ApiCallbackException: Exception() {
+    // Each variant is a nested class
+    
+    class InternalCallbackException(
+        val `reason`: String
+        ) : ApiCallbackException() {
+        override val message
+            get() = "reason=${ `reason` }"
+    }
+    
+
+    companion object ErrorHandler : CallStatusErrorHandler<ApiCallbackException> {
+        override fun lift(error_buf: RustBuffer.ByValue): ApiCallbackException = FfiConverterTypeApiCallbackError.lift(error_buf)
+    }
+
+    
+}
+
+public object FfiConverterTypeApiCallbackError : FfiConverterRustBuffer<ApiCallbackException> {
+    override fun read(buf: ByteBuffer): ApiCallbackException {
+        
+
+        return when(buf.getInt()) {
+            1 -> ApiCallbackException.InternalCallbackException(
+                FfiConverterString.read(buf),
+                )
+            else -> throw RuntimeException("invalid error enum value, something is very wrong!!")
+        }
+    }
+
+    override fun allocationSize(value: ApiCallbackException): Int {
+        return when(value) {
+            is ApiCallbackException.InternalCallbackException -> (
+                // Add the size for the Int that specifies the variant plus the size needed for all fields
+                4
+                + FfiConverterString.allocationSize(value.`reason`)
+            )
+        }
+    }
+
+    override fun write(value: ApiCallbackException, buf: ByteBuffer) {
+        when(value) {
+            is ApiCallbackException.InternalCallbackException -> {
+                buf.putInt(1)
+                FfiConverterString.write(value.`reason`, buf)
+                Unit
+            }
+        }.let { /* this makes the `when` an expression, which ensures it is exhaustive */ }
+    }
+
+}
+
+
+
+
 sealed class ApiResponse {
     data class Success(
         val `result`: String
@@ -1533,6 +1599,7 @@ public interface CommonDeviceService {
     fun `appHomeDir`(): String
     fun `uriToFileName`(`fullFileNameUri`: String): String?
     fun `uriToFileInfo`(`fullFileNameUri`: String): FileInfo?
+    fun `asFileDescriptor`(`fullFileNameUri`: String): FileDescriptor
     
 }
 
@@ -1585,6 +1652,22 @@ internal class ForeignCallbackTypeCommonDeviceService : ForeignCallback {
                 // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs` for info
                 try {
                     this.`invokeUriToFileInfo`(cb, argsData, argsLen, outBuf)
+                } catch (e: Throwable) {
+                    // Unexpected error
+                    try {
+                        // Try to serialize the error into a string
+                        outBuf.setValue(FfiConverterString.lower(e.toString()))
+                    } catch (e: Throwable) {
+                        // If that fails, then it's time to give up and just return
+                    }
+                    UNIFFI_CALLBACK_UNEXPECTED_ERROR
+                }
+            }
+            4 -> {
+                // Call the method, write to outBuf and return a status code
+                // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs` for info
+                try {
+                    this.`invokeAsFileDescriptor`(cb, argsData, argsLen, outBuf)
                 } catch (e: Throwable) {
                     // Unexpected error
                     try {
@@ -1661,6 +1744,30 @@ internal class ForeignCallbackTypeCommonDeviceService : ForeignCallback {
         return makeCallAndHandleError()
     }
     
+    @Suppress("UNUSED_PARAMETER")
+    private fun `invokeAsFileDescriptor`(kotlinCallbackInterface: CommonDeviceService, argsData: Pointer, argsLen: Int, outBuf: RustBufferByReference): Int {
+        val argsBuf = argsData.getByteBuffer(0, argsLen.toLong()).also {
+            it.order(ByteOrder.BIG_ENDIAN)
+        }
+        fun makeCall() : Int {
+            val returnValue = kotlinCallbackInterface.`asFileDescriptor`(
+                FfiConverterString.read(argsBuf)
+                
+            )
+            outBuf.setValue(FfiConverterTypeFileDescriptor.lowerIntoRustBuffer(returnValue))
+            return UNIFFI_CALLBACK_SUCCESS
+        }
+        fun makeCallAndHandleError()  : Int = try {
+            makeCall()
+        } catch (e: ApiCallbackException) {
+            // Expected error, serialize it into outBuf
+            outBuf.setValue(FfiConverterTypeApiCallbackError.lowerIntoRustBuffer(e))
+            UNIFFI_CALLBACK_ERROR
+        }
+
+        return makeCallAndHandleError()
+    }
+    
 }
 
 // The ffiConverter which transforms the Callbacks in to Handles to pass to Rust.
@@ -1670,6 +1777,129 @@ public object FfiConverterTypeCommonDeviceService: FfiConverterCallbackInterface
     override fun register(lib: _UniFFILib) {
         rustCall() { status ->
             lib.uniffi_db_service_fn_init_callback_commondeviceservice(this.foreignCallback, status)
+        }
+    }
+}
+
+
+
+
+
+
+// Declaration and FfiConverters for FileDescriptor Callback Interface
+
+public interface FileDescriptor {
+    fun `openToRead`(): ULong
+    fun `close`()
+    
+}
+
+// The ForeignCallback that is passed to Rust.
+internal class ForeignCallbackTypeFileDescriptor : ForeignCallback {
+    @Suppress("TooGenericExceptionCaught")
+    override fun invoke(handle: Handle, method: Int, argsData: Pointer, argsLen: Int, outBuf: RustBufferByReference): Int {
+        val cb = FfiConverterTypeFileDescriptor.lift(handle)
+        return when (method) {
+            IDX_CALLBACK_FREE -> {
+                FfiConverterTypeFileDescriptor.drop(handle)
+                // Successful return
+                // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs`
+                UNIFFI_CALLBACK_SUCCESS
+            }
+            1 -> {
+                // Call the method, write to outBuf and return a status code
+                // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs` for info
+                try {
+                    this.`invokeOpenToRead`(cb, argsData, argsLen, outBuf)
+                } catch (e: Throwable) {
+                    // Unexpected error
+                    try {
+                        // Try to serialize the error into a string
+                        outBuf.setValue(FfiConverterString.lower(e.toString()))
+                    } catch (e: Throwable) {
+                        // If that fails, then it's time to give up and just return
+                    }
+                    UNIFFI_CALLBACK_UNEXPECTED_ERROR
+                }
+            }
+            2 -> {
+                // Call the method, write to outBuf and return a status code
+                // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs` for info
+                try {
+                    this.`invokeClose`(cb, argsData, argsLen, outBuf)
+                } catch (e: Throwable) {
+                    // Unexpected error
+                    try {
+                        // Try to serialize the error into a string
+                        outBuf.setValue(FfiConverterString.lower(e.toString()))
+                    } catch (e: Throwable) {
+                        // If that fails, then it's time to give up and just return
+                    }
+                    UNIFFI_CALLBACK_UNEXPECTED_ERROR
+                }
+            }
+            
+            else -> {
+                // An unexpected error happened.
+                // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs`
+                try {
+                    // Try to serialize the error into a string
+                    outBuf.setValue(FfiConverterString.lower("Invalid Callback index"))
+                } catch (e: Throwable) {
+                    // If that fails, then it's time to give up and just return
+                }
+                UNIFFI_CALLBACK_UNEXPECTED_ERROR
+            }
+        }
+    }
+
+    
+    @Suppress("UNUSED_PARAMETER")
+    private fun `invokeOpenToRead`(kotlinCallbackInterface: FileDescriptor, argsData: Pointer, argsLen: Int, outBuf: RustBufferByReference): Int {
+        fun makeCall() : Int {
+            val returnValue = kotlinCallbackInterface.`openToRead`(
+            )
+            outBuf.setValue(FfiConverterULong.lowerIntoRustBuffer(returnValue))
+            return UNIFFI_CALLBACK_SUCCESS
+        }
+        fun makeCallAndHandleError()  : Int = try {
+            makeCall()
+        } catch (e: ApiCallbackException) {
+            // Expected error, serialize it into outBuf
+            outBuf.setValue(FfiConverterTypeApiCallbackError.lowerIntoRustBuffer(e))
+            UNIFFI_CALLBACK_ERROR
+        }
+
+        return makeCallAndHandleError()
+    }
+    
+    @Suppress("UNUSED_PARAMETER")
+    private fun `invokeClose`(kotlinCallbackInterface: FileDescriptor, argsData: Pointer, argsLen: Int, outBuf: RustBufferByReference): Int {
+        fun makeCall() : Int {
+            kotlinCallbackInterface.`close`(
+            )
+            return UNIFFI_CALLBACK_SUCCESS
+        }
+        fun makeCallAndHandleError()  : Int = try {
+            makeCall()
+        } catch (e: ApiCallbackException) {
+            // Expected error, serialize it into outBuf
+            outBuf.setValue(FfiConverterTypeApiCallbackError.lowerIntoRustBuffer(e))
+            UNIFFI_CALLBACK_ERROR
+        }
+
+        return makeCallAndHandleError()
+    }
+    
+}
+
+// The ffiConverter which transforms the Callbacks in to Handles to pass to Rust.
+public object FfiConverterTypeFileDescriptor: FfiConverterCallbackInterface<FileDescriptor>(
+    foreignCallback = ForeignCallbackTypeFileDescriptor()
+) {
+    override fun register(lib: _UniFFILib) {
+        rustCall() { status ->
+            lib.uniffi_db_service_fn_init_callback_filedescriptor(this.foreignCallback, status)
         }
     }
 }
@@ -2046,6 +2276,14 @@ fun `writeToBackupOnError`(`fullFileNameUri`: String): ApiResponse {
     return FfiConverterTypeApiResponse.lift(
     rustCall() { _status ->
     _UniFFILib.INSTANCE.uniffi_db_service_fn_func_write_to_backup_on_error(FfiConverterString.lower(`fullFileNameUri`),_status)
+})
+}
+
+
+fun `copyPickedKeyFile`(`fileArgs`: FileArgs): String {
+    return FfiConverterString.lift(
+    rustCall() { _status ->
+    _UniFFILib.INSTANCE.uniffi_db_service_fn_func_copy_picked_key_file(FfiConverterTypeFileArgs.lower(`fileArgs`),_status)
 })
 }
 

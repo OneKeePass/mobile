@@ -30,6 +30,7 @@
                      rnp-progress-bar]]
             [onekeepass.mobile.utils :as u]
             [onekeepass.mobile.constants :as const]
+            [onekeepass.mobile.background :refer [is-iOS]]
             [onekeepass.mobile.date-utils :refer [utc-to-local-datetime-str]]
             [onekeepass.mobile.common-components :as cc  :refer [menu-action-factory message-dialog]]
             [onekeepass.mobile.events.new-database :as ndb-events]
@@ -292,6 +293,19 @@
                                   :on-press (fn []
                                               (opndb-events/repick-confirm-close))}]}])
 
+(defn authenticate-biometric-confirm-dialog [{:keys [dialog-show]}]
+  [cc/confirm-dialog  {:dialog-show dialog-show
+                       :title "Unlock Database"
+                       :confirm-text (if (is-iOS)
+                                       "Use FaceID/TouchID to unlock the database"
+                                       "Use Biometric authentication to unlock the database")
+                       :actions [{:label "Cancel"
+                                  :on-press (fn []
+                                              (opndb-events/authenticate-biometric-cancel))}
+                                 {:label "Continue"
+                                  :on-press (fn []
+                                              (opndb-events/authenticate-biometric-ok))}]}])
+
 (defn icon-name-color [found locked]
   (cond
     locked
@@ -386,6 +400,7 @@
       [open-db-dialog]
       [file-info-dialog @(cmn-events/file-info-dialog-data)]
       [message-repick-database-file-dialog @(opndb-events/repick-confirm-data)]
+      [authenticate-biometric-confirm-dialog @(opndb-events/authenticate-biometric-confirm-dialog-data)]
       [message-dialog @(cmn-events/message-dialog-data)]]]))
 
 ;;;;;;;;;;;;;;;;;;;;;

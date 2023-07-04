@@ -159,7 +159,7 @@
 (defn remove-from-recent-list [full-file-name-uri]
   (dispatch [:remove-from-recent-list full-file-name-uri]))
 
-(defn opened-database-file-names 
+(defn opened-database-file-names
   "Gets db info map with keys [db-key database-name file-name key-file-name] from the opened database list"
   []
   (subscribe [:opened-database-file-names]))
@@ -351,49 +351,43 @@
  (fn [db [_event-id]]
    (get db :biometric-available)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  DB Lock/Unlock ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  DB Lock ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; All DB unlock call events are in open-databse ns
 
 (defn locked? [db-key]
   (if (nil? db-key)
-    (subscribe [:common/current-db-locked])
-    (subscribe [:common/selected-db-locked db-key])))
+    (subscribe [:current-db-locked])
+    (subscribe [:selected-db-locked db-key])))
 
-(defn lock-kdbx 
+(defn lock-kdbx
   "Called to lock a database. The arg is nil if we want to lock the current database"
   [db-key]
+  ;; Lock database call from entry category or entry list page is meant for the 
+  ;; current database and hence db-key passed is nil
   (if (nil? db-key)
-    (dispatch  [:common/lock-current-kdbx])
-    (dispatch [:common/lock-selected-kdbx db-key])))
-
-#_(defn lock-current-kdbx []
-  (dispatch [:common/lock-current-kdbx]))
-
-#_(defn unlock-current-db
-    "Unlocks the database using biometric option if available"
-    [biometric-type]
-    (if (= biometric-type const/NO_BIOMETRIC)
-      (dispatch [:open-db-form/dialog-show-on-current-db-unlock-request])
-      (dispatch [:open-db-form/authenticate-with-biometric])))
-
+    (dispatch  [:lock-current-kdbx])
+    (dispatch [:lock-selected-kdbx db-key])))
 
 
 ;; Similiar to :common/close-current-kdbx-db 
 ;; Locks db instead of closing 
 ;; Called to lock the current active db - typically used from entry cat page menu 
 (reg-event-fx
- :common/lock-current-kdbx
+ :lock-current-kdbx
  (fn [{:keys [db]} [_event-id]]
    {:db (assoc-in-key-db db [:locked] true)
-    :fx [#_[:bg-lock-kdbx [(active-db-key db)]]
-         [:dispatch [:to-home-page]]]}))
+    :fx [[:dispatch [:to-home-page]]
+         [:dispatch [:common/message-snackbar-open "Database locked"]]]}))
 
 ;; Called to lock any opened database using the passed db-key - used from home page
 (reg-event-fx
- :common/lock-selected-kdbx
+ :lock-selected-kdbx
  (fn [{:keys [db]} [_event-id db-key]]
    {:db (assoc-in-selected-db db db-key [:locked] true)
     :fx [#_[:bg-lock-kdbx [(active-db-key db)]]
-         [:dispatch [:to-home-page]]]}))
+         [:dispatch [:to-home-page]]
+         [:dispatch [:common/message-snackbar-open "Database locked"]]]}))
 
 ;; Need to make use of API call in case we want to do something for lock call
 ;; Currently nothing is done on the backend
@@ -413,12 +407,12 @@
    {:db (assoc-in-selected-db db db-key [:locked] false)}))
 
 (reg-sub
- :common/current-db-locked
+ :current-db-locked
  (fn [db _query-vec]
    (boolean (get-in-key-db db [:locked]))))
 
 (reg-sub
- :common/selected-db-locked
+ :selected-db-locked
  (fn [db [_query-id db-key]]
    (boolean (get-in-selected-db db db-key [:locked]))))
 

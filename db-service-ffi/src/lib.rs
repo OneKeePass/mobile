@@ -4,16 +4,18 @@ mod app_state;
 mod commands;
 mod ios;
 mod key_secure;
+mod udl_types;
 mod util;
 
-use app_state::{
-    AppState, CommonDeviceService, FileInfo, RecentlyUsed, SecureKeyOperation,
-    SecureKeyOperationError,
-};
+use app_state::{AppState, RecentlyUsed};
 use commands::{error_json_str, full_path_file_to_create, CommandArg, Commands, InvokeResult};
-use log::{debug, logger};
 use onekeepass_core::{db_service, error::Error};
+use udl_types::{
+    ApiCallbackError, ApiResponse, CommonDeviceService, FileArgs, FileDescriptor, FileInfo,
+    JsonService, KdbxCreated, SecureKeyOperation, SecureKeyOperationError,
+};
 
+use log::{debug, logger};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -28,8 +30,6 @@ use uuid::Uuid;
 pub type OkpResult<T> = db_service::Result<T>;
 pub type OkpError = db_service::Error;
 
-// The implementation of structs and functions decalared in db_service.udl follows here
-
 // Needs to be added here to expose in the generated rs code
 use android::AndroidSupportService;
 #[allow(dead_code)]
@@ -40,10 +40,10 @@ fn invoke_command(command_name: String, args: String) -> String {
     Commands::invoke(command_name, args)
 }
 
-#[allow(dead_code)]
-pub struct KdbxCreated {
-    buffer: Vec<u8>,
-    api_response: String,
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct KeyFileInfo {
+    pub file_name: String,
+    pub file_size: Option<i64>,
 }
 
 macro_rules! return_api_response_failure {
@@ -94,53 +94,6 @@ pub fn open_backup_file(backup_file_path: Option<String>) -> Option<File> {
     }
 }
 
-fn _read_kdbx_old(file_args: FileArgs, json_args: String) -> ApiResponse {
-    log::debug!("file_args received is {:?}", file_args);
-    let mut file = match file_args {
-        FileArgs::FileDecriptor { fd } => unsafe { util::get_file_from_fd(fd) },
-        FileArgs::FullFileName { full_file_name } => {
-            // Opening file in read mode alone is sufficient and works fine
-            // full_path_file_to_read_write may be used if we need to open file with read and write permissions
-            // match full_path_file_to_read_write(&full_file_name)
-            match File::open(util::url_to_unix_file_name(&full_file_name)) {
-                Ok(f) => f,
-                Err(e) => return_api_response_failure!(e),
-            }
-        }
-        _ => return_api_response_failure!("Unsupported file args passed"),
-    };
-
-    let r = match serde_json::from_str(&json_args) {
-        Ok(CommandArg::OpenDbArg {
-            db_file_name,
-            password,
-            key_file_name,
-        }) => {
-            let r = db_service::read_kdbx(
-                &mut file,
-                &db_file_name, // This is db_key which is the full database file uri
-                &password,
-                key_file_name.as_deref(),
-                None,
-            );
-
-            if r.is_ok() {
-                AppState::global().add_recent_db_use_info(&db_file_name);
-            }
-            r
-        }
-        Ok(x) => Err(OkpError::Other(format!(
-            "Unexpected argument {:?} for readkdbx api call",
-            x
-        ))),
-        Err(e) => Err(OkpError::Other(format!("{:?}", e))),
-    };
-
-    ApiResponse::Success {
-        result: InvokeResult::from(r).json_str(),
-    }
-}
-
 fn read_kdbx(file_args: FileArgs, json_args: String) -> ApiResponse {
     log::debug!("file_args received is {:?}", file_args);
 
@@ -171,8 +124,11 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
     };
 
     let file_name = AppState::global().uri_to_file_name(&db_file_name);
-    
-    debug!("File name from db_file_name {} is {} ",&db_file_name,&file_name);
+
+    debug!(
+        "File name from db_file_name {} is {} ",
+        &db_file_name, &file_name
+    );
 
     let backup_file_name = util::generate_backup_file_name(&db_file_name, &file_name);
 
@@ -186,13 +142,13 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
 
     debug!("internal_read_kdbx copied to backup file and synced");
 
-    // We load and parse the database content from the backup file 
+    // We load and parse the database content from the backup file
     let kdbx_loaded = db_service::read_kdbx(
         &mut backup_file,
         &db_file_name,
         &password,
         key_file_name.as_deref(),
-        Some(&file_name)
+        Some(&file_name),
     )?;
 
     debug!("internal_read_kdbx kdbx_loaded  is {:?}", &kdbx_loaded);
@@ -338,6 +294,8 @@ fn write_to_backup_on_error(full_file_name_uri: String) -> ApiResponse {
     as_api_response(f())
 }
 
+// ApiResponse::Failure is returned when there is any db change detected
+// No change means no error and hence ApiResponse::Success is returned
 fn verify_db_file_checksum(file_args: FileArgs) -> ApiResponse {
     log::debug!(
         "verify_db_file_checksum: file_args received is {:?}",
@@ -371,15 +329,40 @@ fn verify_db_file_checksum(file_args: FileArgs) -> ApiResponse {
         Err(e) => return_api_response_failure!(e),
     };
 
+    // This means no db change detectecd
     ApiResponse::Success {
         result: api_response,
     }
 }
 
-#[derive(Debug)]
-pub enum ApiResponse {
-    Success { result: String },
-    Failure { result: String },
+fn copy_picked_key_file(file_args: FileArgs) -> String {
+
+    debug!("copy_picked_key_file: file_args received is {:?}", file_args);
+
+    let inner = || -> OkpResult<()> {
+        let (mut file, file_name) = match file_args {
+            // For Android
+            FileArgs::FileDecriptorWithFullFileName { fd,file_name,.. } => {
+                (unsafe { util::get_file_from_fd(fd) }, file_name)
+            },
+            // For iOS
+            FileArgs::FullFileName { full_file_name } => {
+                let name = AppState::global().uri_to_file_name(&full_file_name);
+                (File::open(util::url_to_unix_file_name(&full_file_name))?, name)
+            }
+            _ => return Err(OkpError::Other("Unsupported file args passed".into()))   
+        };
+
+        let key_file_full_path = AppState::global().key_files_dir_path.join(&file_name);
+        let mut target_file = File::create(key_file_full_path)?;
+        std::io::copy(&mut file, &mut target_file).and(target_file.sync_all())?;
+
+        debug!("Copied the key file {} locally",&file_name);
+
+        Ok(())
+    };
+
+    commands::result_json_str(inner())
 }
 
 // Does not work if we use From<OkpResult<T:Serialize>> as discussed in  https://github.com/rust-lang/rust/issues/52662
@@ -401,77 +384,11 @@ fn as_api_response<T: serde::Serialize>(val: OkpResult<T>) -> ApiResponse {
         Ok(t) => ApiResponse::Success {
             result: InvokeResult::with_ok(t).json_str(),
         },
-        Err(e) =>  ApiResponse::Failure {
+        Err(e) => ApiResponse::Failure {
             // Need to use "{}" not "{:?}" for the thiserror display call to work
             // so that the string in #error[...] is returned in response
             result: InvokeResult::<()>::with_error(&format!("{}", e)).json_str(),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum FileArgs {
-    FileDecriptor {
-        fd: u64,
-    },
-    FileDecriptorWithFullFileName {
-        fd: u64,
-        full_file_name: String,
-        file_name: String,
-    },
-    // ReadWriteFDsWithFullFileName {
-    //     read_fd: u64,
-    //     write_fd: u64,
-    //     full_file_name: String,
-    //     file_name: String,
-    // },
-    FullFileName {
-        full_file_name: String,
-    },
-    // Not used. Deprecate?
-    FileNameWithDir {
-        dir_path: String,
-        file_name: String,
-    },
-}
-
-#[allow(dead_code)]
-struct JsonService {}
-
-impl JsonService {
-    pub fn new() -> Self {
-        Self {}
-    }
-
-    // Forms and returns a parseable (by cljs) json string with "ok"
-    pub fn form_with_file_name(&self, full_file_name_uri: String) -> String {
-        let file_name = AppState::global()
-            .common_device_service
-            .uri_to_file_name(full_file_name_uri.clone())
-            .map_or_else(|| "".into(), |s| s);
-
-        let m = HashMap::from([
-            ("file_name", file_name),
-            ("full_file_name_uri", full_file_name_uri),
-        ]);
-
-        InvokeResult::with_ok(m).json_str()
-    }
-
-    // Returns the map data as a parseable (by cljs) json string with "ok" key
-    pub fn map_as_ok_json_string(&self, info: HashMap<String, String>) -> String {
-        InvokeResult::with_ok(info).json_str()
-    }
-
-    // Returns a parseable (by cljs) json string with "ok"
-    pub fn ok_json_string(&self, info: String) -> String {
-        InvokeResult::with_ok(info).json_str()
-    }
-
-    // Returns a string of form "{"error": "some error text"}"
-    // that can then be deserialized in UI layer
-    pub fn error_json_string(&self, error: String) -> String {
-        commands::error_json_str(error.as_str())
+        },
     }
 }
 
@@ -533,6 +450,7 @@ fn db_service_enable_logging() {
 
 // Currently this is used for iOS only as we need to create a new temp data before using
 // calling to store by picking a location in subsequent call
+// See 'pickAndSaveNewKdbxFile' in the Swift class 'OkpDocumentPickerService'
 #[cfg(target_os = "ios")]
 fn create_temp_kdbx(file_args: FileArgs, json_args: String) -> ApiResponse {
     #[allow(unused_mut)]
@@ -560,6 +478,8 @@ fn create_temp_kdbx(file_args: FileArgs, json_args: String) -> ApiResponse {
 
     let r = match serde_json::from_str(&json_args) {
         Ok(CommandArg::NewDbArg { mut new_db }) => {
+            // full_file_name is temp url and that is used as db-key
+            // That will be replaced with the picked uri in a subsequent load-kdbx call from UI
             new_db.database_file_name = full_file_name_uri.clone();
             let r = db_service::create_and_write_to_writer(&mut file, new_db);
             // sync_all ensures the file is created and synced
@@ -625,3 +545,54 @@ fn extract_file_provider(full_file_name_uri: String) -> String {
 #[cfg(any(target_os = "ios", target_os = "android"))]
 uniffi::include_scaffolding!("db_service");
 //include!(concat!(env!("OUT_DIR"), "/db_service.uniffi.rs"));
+
+//////////////////// To be removed //////////////////
+/*
+fn _read_kdbx_old(file_args: FileArgs, json_args: String) -> ApiResponse {
+    log::debug!("file_args received is {:?}", file_args);
+    let mut file = match file_args {
+        FileArgs::FileDecriptor { fd } => unsafe { util::get_file_from_fd(fd) },
+        FileArgs::FullFileName { full_file_name } => {
+            // Opening file in read mode alone is sufficient and works fine
+            // full_path_file_to_read_write may be used if we need to open file with read and write permissions
+            // match full_path_file_to_read_write(&full_file_name)
+            match File::open(util::url_to_unix_file_name(&full_file_name)) {
+                Ok(f) => f,
+                Err(e) => return_api_response_failure!(e),
+            }
+        }
+        _ => return_api_response_failure!("Unsupported file args passed"),
+    };
+
+    let r = match serde_json::from_str(&json_args) {
+        Ok(CommandArg::OpenDbArg {
+            db_file_name,
+            password,
+            key_file_name,
+        }) => {
+            let r = db_service::read_kdbx(
+                &mut file,
+                &db_file_name, // This is db_key which is the full database file uri
+                &password,
+                key_file_name.as_deref(),
+                None,
+            );
+
+            if r.is_ok() {
+                AppState::global().add_recent_db_use_info(&db_file_name);
+            }
+            r
+        }
+        Ok(x) => Err(OkpError::Other(format!(
+            "Unexpected argument {:?} for readkdbx api call",
+            x
+        ))),
+        Err(e) => Err(OkpError::Other(format!("{:?}", e))),
+    };
+
+    ApiResponse::Success {
+        result: InvokeResult::from(r).json_str(),
+    }
+}
+
+ */

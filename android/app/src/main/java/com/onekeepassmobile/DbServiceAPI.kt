@@ -1,6 +1,7 @@
 package com.onekeepassmobile
 
 import android.net.Uri
+import android.os.ParcelFileDescriptor
 import android.util.Log
 import com.facebook.react.bridge.ReactApplicationContext
 import onekeepass.mobile.ffi.*
@@ -78,6 +79,11 @@ object DbServiceAPI {
         return onekeepass.mobile.ffi.readKdbx(fileArgs, args)
     }
 
+    fun copyPickedKeyFile(fd: ULong, fullFileName: String, fileName: String):String {
+        val fileArgs = onekeepass.mobile.ffi.FileArgs.FileDecriptorWithFullFileName(fd, fullFileName, fileName)
+        return onekeepass.mobile.ffi.copyPickedKeyFile(fileArgs)
+    }
+
     fun formJsonWithFileName(fullFileName: String): String {
         return jsonService.formWithFileName(fullFileName)
     }
@@ -139,5 +145,33 @@ class CommonDeviceServiceImpl(val reactContext: ReactApplicationContext) : Commo
             info.location = location
             return info
         }
+    }
+
+    // REMOVE this
+    override fun asFileDescriptor(fullFileNameUri: String): FileDescriptor {
+        var fd = object: FileDescriptor {
+            var fd: ParcelFileDescriptor? = null;
+            override fun openToRead(): ULong {
+                try {
+                    val uri = Uri.parse(fullFileNameUri);
+                    fd = reactContext.contentResolver.openFileDescriptor(uri, "r");
+                    val detachFd = fd!!.detachFd()
+                    return detachFd.toULong()
+                } catch  (e: Exception) {
+                    Log.e(TAG, "Error in asFileDescriptor openToRead ${e}")
+                    throw e
+                }
+            }
+
+            override fun close() {
+                try {
+                    fd!!.close()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error in asFileDescriptor close ${e}")
+                    throw e
+                }
+            }
+        }
+        return fd
     }
 }

@@ -129,10 +129,10 @@
       :fx [[:dispatch [:new-database-field-update :status :in-progress]]
            [:bg-create-kdbx [full-file-name-uri  (:new-database db)]]]})))
 
-;; Used only for android
+;; Used for ios and android 
 (reg-event-fx
  :new-database-created
- (fn [{:keys [db]} [_event-id kdbx-loaded]]
+ (fn [{:keys [db]} [_event-id kdbx-loaded]] 
    {:db (-> db (assoc-in [:new-database :api-error-text] nil)
             (assoc-in [:new-database :status] :completed))
     :fx [[:dispatch [:new-database-dialog-hide]]

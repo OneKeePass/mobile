@@ -1,6 +1,6 @@
-use crate::app_state::{AppState, CommonDeviceService, FileInfo, RecentlyUsed};
+use crate::app_state::{AppState, RecentlyUsed};
 use crate::{as_api_response, ios};
-use crate::{open_backup_file, util, OkpError, OkpResult};
+use crate::{open_backup_file, util, OkpError, OkpResult, };
 use onekeepass_core::db_service::{
     self, DbSettings, EntryCategory, EntryFormData, Group, KdbxLoaded, NewDatabase,
     PasswordGenerationOptions,
@@ -114,6 +114,11 @@ pub enum CommandArg {
     DbKey {
         db_key: String,
     },
+
+    GenericArg {
+      key_vals:HashMap<String,String>  
+    },
+
 }
 pub struct Commands {}
 
@@ -286,6 +291,10 @@ impl Commands {
 
             "list_bookmark_files" => ok_json_str(ios::list_bookmark_files()),
 
+            "list_key_files" => ok_json_str(util::list_key_files()),
+
+            "delete_key_file" => Self::delete_key_file(&args),
+
             "clean_export_data_dir" => result_json_str(util::clean_export_data_dir()),
 
             x => error_json_str(&format!("Invalid command name {} is passed", x)),
@@ -317,7 +326,7 @@ impl Commands {
             ok_json_str(info)
         } else {
             error_json_str(&format!(
-                "Unexpected args passed to remove db from list {:?}",
+                "Unexpected args passed to remove db from list {}",
                 args
             ))
         }
@@ -340,6 +349,22 @@ impl Commands {
         let mut kdbx_loaded = db_service::unlock_kdbx_on_biometric_authentication(db_key)?;
         kdbx_loaded.file_name = AppState::global().common_device_service.uri_to_file_name(db_key.into());
         Ok(kdbx_loaded)
+    }
+
+    fn delete_key_file(args:&str) -> String {
+        if let Ok(CommandArg::GenericArg { key_vals }) = serde_json::from_str(args) {
+            let Some(file_name) = key_vals.get("file_name") else {
+                return error_json_str("Key file name to delete is not found");
+            };
+            util::delete_key_file(file_name);
+            // Latest list of key files after delete
+            ok_json_str(util::list_key_files())
+        } else {
+            error_json_str(&format!(
+                "Unexpected args passed to remove db from list {}",
+                args
+            ))
+        }
     }
 
     fn prepare_export_kdbx_data(args: &str) -> String {
@@ -441,24 +466,28 @@ impl Commands {
         }
     }
 
+    // Gets the recent files list
     fn recently_used_dbs_info() -> String {
         let pref = AppState::global().preference.lock().unwrap();
-        let json_str = match serde_json::to_string_pretty(&InvokeResult::with_ok(
-            pref.recent_dbs_info.clone(),
-        )) {
-            Ok(s) => s,
-            Err(e) => error_json_str(&format!("{:?}", e)),
-        };
-        json_str
+        ok_json_str(pref.recent_dbs_info.clone())
+        
+        // let json_str = match serde_json::to_string_pretty(&InvokeResult::with_ok(
+        //     pref.recent_dbs_info.clone(),
+        // )) {
+        //     Ok(s) => s,
+        //     Err(e) => error_json_str(&format!("{:?}", e)),
+        // };
+        // json_str
     }
 
     fn app_preference() -> String {
         let pref = AppState::global().preference.lock().unwrap();
-        let json_str = match serde_json::to_string_pretty(&InvokeResult::with_ok(pref.clone())) {
-            Ok(s) => s,
-            Err(e) => error_json_str(&format!("{:?}", e)),
-        };
-        json_str
+        ok_json_str(pref.clone())
+        // let json_str = match serde_json::to_string_pretty(&InvokeResult::with_ok(pref.clone())) {
+        //     Ok(s) => s,
+        //     Err(e) => error_json_str(&format!("{}", e)),
+        // };
+        // json_str
     }
 }
 
@@ -488,7 +517,7 @@ pub fn error_json_str(val: &str) -> String {
     InvokeResult::<()>::with_error(val).json_str()
 }
 
-fn result_json_str<T: serde::Serialize>(val: db_service::Result<T>) -> String {
+pub fn result_json_str<T: serde::Serialize>(val: db_service::Result<T>) -> String {
     match val {
         Ok(t) => InvokeResult::with_ok(t).json_str(),
         // Need to use "{}" not "{:?}" for the thiserror display call to work
@@ -568,8 +597,6 @@ fn _full_path_file_to_read_write(full_file_name: &str) -> db_service::Result<Fil
         .open(full_file_path)?;
     Ok(file)
 }
-
-
 
 /*
 

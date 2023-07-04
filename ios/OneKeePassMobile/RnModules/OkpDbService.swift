@@ -84,6 +84,8 @@ class OkpDbService: NSObject {
     }
   }
 
+  // Called when user picked a file to save the changed kdbx during the 'Save As' call
+  // This is used by user after a change detected on the previously read database 
   @objc
   func completeSaveAsOnError(_ args: String,
                              resolve: @escaping RCTPromiseResolveBlock,

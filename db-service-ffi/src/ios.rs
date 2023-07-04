@@ -11,10 +11,10 @@ use regex::{Regex, RegexSet};
 // This is for any iOS specific services
 pub struct IosSupportService {}
 
+// Created in iOS side native module and then iOS specific
+// support methods are called
 #[cfg(target_os = "ios")]
 impl IosSupportService {
-    // Called in iOS side native module and then iOS specific
-    // support methods are called
     pub fn new() -> Self {
         Self {}
     }
@@ -23,22 +23,9 @@ impl IosSupportService {
     // Called in case of iOS app, to save the secure url bookmarking data
     pub fn save_book_mark_data(&self, url: String, data: Vec<u8>) -> bool {
         let file_name = string_to_simple_hash(&url).to_string();
-        log::debug!(
-            "save_book_mark_data is called for url {} and its hash is {} ",
-            &url,
-            &file_name
-        );
+        
         let book_mark_file_root = Path::new(&AppState::global().app_home_dir).join("bookmarks");
         // Ensure that the parent dir exists
-        // if let Some(p) = Path::new(&book_mark_file_root) {
-        //     if !p.exists() {
-        //         if let Err(e) = std::fs::create_dir_all(p) {
-        //             log::error!("Bookmark root dir creation failed {:?}",e);
-        //             return false;
-        //         }
-        //     }
-        // }
-
         if !book_mark_file_root.exists() {
             if let Err(e) = std::fs::create_dir_all(&book_mark_file_root) {
                 log::error!("Bookmark root dir creation failed {:?}", e);

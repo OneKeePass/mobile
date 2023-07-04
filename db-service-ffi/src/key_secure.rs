@@ -10,7 +10,8 @@ use onekeepass_core::{
     db_service::{KeyStoreOperation, KeyStoreService},
 };
 
-use crate::app_state::{AppState, SecureKeyOperationError};
+use crate::udl_types::SecureKeyOperationError;
+use crate::app_state::AppState;
 
 // Should be called on app startup (see db_service_initialize fn and called from middle layer)
 // so that services are availble for the db_service layer.

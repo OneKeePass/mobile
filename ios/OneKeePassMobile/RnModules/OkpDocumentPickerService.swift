@@ -256,6 +256,7 @@ class ReadFilePickDelegate: NSObject, UIDocumentPickerDelegate {
         logger.debug("Bookmark save rust api call result is \(b)")
       
         // After bookmarking just the uri is returned to the UI to use
+        // The file is read and loaded only in the subsequent call from UI
         resolve(DbServiceAPI.formJsonWithFileName(saved_file_url.absoluteString))
         
       } catch {
