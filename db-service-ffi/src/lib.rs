@@ -42,6 +42,7 @@ fn invoke_command(command_name: String, args: String) -> String {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct KeyFileInfo {
+    pub full_file_name: String,
     pub file_name: String,
     pub file_size: Option<i64>,
 }
@@ -335,31 +336,32 @@ fn verify_db_file_checksum(file_args: FileArgs) -> ApiResponse {
     }
 }
 
+// Copies the picked key file to app dir and returns key file info json  or error 
 fn copy_picked_key_file(file_args: FileArgs) -> String {
 
     debug!("copy_picked_key_file: file_args received is {:?}", file_args);
 
-    let inner = || -> OkpResult<()> {
-        let (mut file, file_name) = match file_args {
+    let inner = || -> OkpResult<KeyFileInfo> {
+        let (mut file,file_name) = match file_args {
             // For Android
             FileArgs::FileDecriptorWithFullFileName { fd,file_name,.. } => {
-                (unsafe { util::get_file_from_fd(fd) }, file_name)
+                (unsafe { util::get_file_from_fd(fd) },file_name)
             },
             // For iOS
             FileArgs::FullFileName { full_file_name } => {
                 let name = AppState::global().uri_to_file_name(&full_file_name);
-                (File::open(util::url_to_unix_file_name(&full_file_name))?, name)
+                (File::open(util::url_to_unix_file_name(&full_file_name))?,name)
             }
             _ => return Err(OkpError::Other("Unsupported file args passed".into()))   
         };
 
         let key_file_full_path = AppState::global().key_files_dir_path.join(&file_name);
-        let mut target_file = File::create(key_file_full_path)?;
+        let mut target_file = File::create(&key_file_full_path)?;
         std::io::copy(&mut file, &mut target_file).and(target_file.sync_all())?;
-
         debug!("Copied the key file {} locally",&file_name);
 
-        Ok(())
+        let full_file_name = key_file_full_path.as_os_str().to_string_lossy().to_string();
+        Ok(KeyFileInfo {full_file_name,file_name,file_size:None})
     };
 
     commands::result_json_str(inner())

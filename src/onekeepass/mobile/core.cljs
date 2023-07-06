@@ -3,7 +3,7 @@
             [react-native :as rn]
             [onekeepass.mobile.rn-components :as rnc :refer [set-translator
                                                              rnp-provider
-                                                             rnp-portal]]
+                                                             rnp-portal]] 
             [onekeepass.mobile.appbar :refer [appbar-main-content]]
             [onekeepass.mobile.events.native-events :as native-events]
             [onekeepass.mobile.events.save :as save-events]

@@ -166,13 +166,15 @@ pub fn list_key_files() -> Vec<KeyFileInfo> {
     if let Ok(entries) = fs::read_dir(path) {
         for entry in entries {
             if let Ok(e) = entry {
-                if let Some(s) = e
-                    .path()
-                    .file_name()
-                    .map(|s| s.to_string_lossy().to_string())
-                {
+                if let (full_file_name, Some(file_name)) = (
+                    e.path().as_os_str().to_string_lossy().to_string(),
+                    e.path()
+                        .file_name()
+                        .map(|s| s.to_string_lossy().to_string()),
+                ) {
                     bfiles.push(KeyFileInfo {
-                        file_name: s,
+                        full_file_name,
+                        file_name,
                         file_size: None,
                     });
                 }

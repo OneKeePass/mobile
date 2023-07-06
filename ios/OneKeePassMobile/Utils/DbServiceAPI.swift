@@ -61,6 +61,11 @@ class DbServiceAPI {
     return OneKeePassMobile.saveKdbx(fileArgs,overwrite)
   }
   
+  static func copyPickedKeyFile(_ fullFileName: String) -> String {
+    let fileArgs = FileArgs.fullFileName(fullFileName: fullFileName)
+    return OneKeePassMobile.copyPickedKeyFile(fileArgs)
+  }
+  
   static func completeSaveAsOnError(_ jsonArgs: String) -> String {
     _iosSupportService.completeSaveAsOnError(jsonArgs)
   }

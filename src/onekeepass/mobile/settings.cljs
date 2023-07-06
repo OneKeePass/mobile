@@ -23,7 +23,8 @@
    [onekeepass.mobile.utils  :refer [str->int]]
    [onekeepass.mobile.common-components :as cc :refer [select-field confirm-dialog]]
    [onekeepass.mobile.events.settings :as stgs-events :refer [cancel-db-settings-form]]
-   [onekeepass.mobile.events.password-generator :as pg-events]))
+   [onekeepass.mobile.events.password-generator :as pg-events]
+   [onekeepass.mobile.constants :as const]))
 
 ;;:settings-general :settings-credentials :settings-security 
 (def ^:private desc-page-id {"General" :settings-general
@@ -128,14 +129,14 @@
                          :value password
                          :secureTextEntry (not password-visible)
                          :right (r/as-element [rnp-text-input-icon
-                                               {:icon  (if password-visible "eye" "eye-off")
+                                               {:icon  (if password-visible const/ICON-EYE const/ICON-EYE-OFF)
                                                 :onPress #(stgs-events/db-settings-field-update :password-visible (not password-visible))}])
                          ;; on-change-text is a single argument function
                          :onChangeText password-changed #_#(stgs-events/db-settings-data-field-update :password %)}]]
 
        [rn-view {:style {:backgroundColor "white"}}
         [rnp-icon-button {:style {}
-                          :icon "cached"
+                          :icon const/ICON-CACHED
                            ;; This function is called when the generated passed is selected in Generator page
                           :onPress #(pg-events/generate-password password-changed)}]]]
 
@@ -145,7 +146,7 @@
                        :editable true
                        ;; :onPressIn (fn [e] (println "Key file selector needs to be called"))
                        :placeholder "Pick an optional key file"
-                       :right (r/as-element [rnp-text-input-icon {:icon "file"
+                       :right (r/as-element [rnp-text-input-icon {:icon const/ICON-FILE
                                                                   :onPress (fn [e] (println "Key file selector needs to be called"))}])}]]
 
      [rnp-portal
@@ -226,7 +227,7 @@
                     :title (r/as-element
                             [rnp-text {:style {}
                                        :variant "titleMedium"} title])
-                    :right (fn [_props] (r/as-element [rnp-list-icon {:icon "chevron-right"}]))}]))
+                    :right (fn [_props] (r/as-element [rnp-list-icon {:icon const/ICON-CHEVRON-RIGHT}]))}]))
 
 (defn db-settings-list-content []
   (let [sections [{:title "Database Settings"
@@ -248,7 +249,6 @@
                                               (let [props (js->clj props :keywordize-keys true)
                                                     {:keys [title]} (-> props :section)]
                                                 (r/as-element [section-header title])))}]))
-
 
 (defn main-content []
   [rn-view {:style {:flex 1}}

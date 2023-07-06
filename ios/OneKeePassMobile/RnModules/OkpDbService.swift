@@ -216,6 +216,29 @@ class OkpDbService: NSObject {
     }
   }
 
+  @objc
+  func copyKeyFile(_ fullFileNameUri: String,
+                   resolve: @escaping RCTPromiseResolveBlock,
+                   reject: @escaping RCTPromiseRejectBlock) {
+    
+    let keyFileUrl = URL(string: fullFileNameUri)
+    guard keyFileUrl != nil else {
+      reject(E_DB_SERVICE_MODULE_ERROR, "fullFileNameUri cannot be nil", nil)
+      return
+    }
+    
+    // Rational for the need to use NSFileCoordinator though somewhat old
+    // http://karmeye.com/2014/12/18/uidocumentpicker-nsfilecoordinator/
+    var error: NSError?
+    NSFileCoordinator().coordinate(readingItemAt: keyFileUrl!, error: &error) { _ in
+      resolve(DbServiceAPI.copyPickedKeyFile(keyFileUrl!.absoluteString))
+    }
+
+    if error != nil {
+      logger.error("In readKdbx NSFileCoordinator().coordinate call error \(String(describing: error?.localizedDescription))")
+      reject(E_COORDINATOR_CALL_FAILED, "\(String(describing: error?.localizedDescription))", error)
+    }
+  }
   
   @objc
   func authenticateWithBiometric(_ resolve: @escaping RCTPromiseResolveBlock,

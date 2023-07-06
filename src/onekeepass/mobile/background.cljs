@@ -205,6 +205,7 @@
                           (api-args->json {:new_db (request-argon2key-transformer new-db)} false)))
                   dispatch-fn :error-transform true))
 
+;; This works for both iOS and Android
 (defn pick-database-to-read-write 
   "Called to pick a kdbx file using platform specific File Manager. The 'dispatch-fn' called with a full uri
    of a file picked and the file is read and loaded in the subsequent call
@@ -215,6 +216,7 @@
                   dispatch-fn 
                   :error-transform true))
 
+;; This works for both iOS and Android
 (defn pick-key-file-to-copy
   "Called to pick a kdbx file using platform specific File Manager. The 'dispatch-fn' called with a full uri
    of a file picked and the file is read and loaded in the subsequent call
@@ -251,7 +253,9 @@
 
 ;;;;;;
 
-(defn copy-key-file [full-file-name dispatch-fn]
+(defn copy-key-file 
+  "After user picks up a file to use as Key File, this api is called to copy to a dir inside the app"
+  [full-file-name dispatch-fn]
   (call-api-async (fn [] (.copyKeyFile okp-db-service full-file-name)) dispatch-fn :error-transform true))
 
 (defn create-kdbx
@@ -533,7 +537,7 @@
   ;; This api call make use of 'CommandArg::GenericArg' and accordingly we need to ensure
   ;; we pass the expected arg name 'file_name' with non null value
   ;; The Arg map to this api is not transformed automaticlly as done typically.
-  ;; Note the use of  'key_vals' and 'file_name' as Snakecase expected by serde conversion
+  ;; Note the use of snakecase convention for 'key_vals' and 'file_name' as expected by serde conversion
   (invoke-api "delete_key_file"  {:key_vals {"file_name" file-name}} dispatch-fn :convert-request false))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Native Events ;;;;;;;;;;;;;;;;;;;;;;;;;

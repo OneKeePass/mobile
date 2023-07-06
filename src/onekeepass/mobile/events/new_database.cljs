@@ -29,6 +29,9 @@
 (defn database-field-update [kw-field-name value]
   (dispatch [:new-database-field-update kw-field-name value]))
 
+(defn show-key-file-form []
+  (dispatch [:key-file-form/show :new-database-key-file-selected]))
+
 (defn dialog-data []
   (subscribe [:new-database-dialog-data]))
 
@@ -48,6 +51,7 @@
 
                     ;; Extra UI related fields
                     ;; These fields will be ignored by serde while doing json deserializing to NewDatabase struct
+                    :key-file-name-part nil
                     :dialog-show false
                     :password-visible false
                     :password-confirm nil
@@ -59,15 +63,22 @@
 (defn- init-new-database-data [app-db]
   (assoc app-db :new-database blank-new-db))
 
-(reg-event-db
+(reg-event-fx
  :new-database-dialog-show
- (fn [db [_event-id]]
-   (-> db init-new-database-data (assoc-in [:new-database :dialog-show] true))))
+ (fn [{:keys [db]} [_event-id]]
+   {:db (-> db init-new-database-data (assoc-in [:new-database :dialog-show] true))}))
 
 (reg-event-db
  :new-database-dialog-hide
  (fn [db [_event-id]]
    (assoc-in  db [:new-database :dialog-show] false)))
+
+;; An event to be called (from key file related page) after user selects a key file 
+(reg-event-fx
+ :new-database-key-file-selected
+ (fn [{:keys [db]} [_event-id {:keys [file-name full-file-name]}]]
+   {:db (-> db (assoc-in [:new-database :key-file-name-part] file-name)
+            (assoc-in [:new-database :key-file-name] full-file-name))}))
 
 (reg-event-db
  :new-database-field-update
@@ -123,7 +134,7 @@
 ;; Used only for android; See :document-to-create-picked-ios for iOS
 (reg-event-fx
  :document-to-create-picked
- (fn [{:keys [db]} [_event-id {:keys [file-name full-file-name-uri]}]] 
+ (fn [{:keys [db]} [_event-id {:keys [file-name full-file-name-uri]}]]
    (let [db (-> db (assoc-in [:new-database :database-file-name] full-file-name-uri))]
      {:db db
       :fx [[:dispatch [:new-database-field-update :status :in-progress]]
@@ -132,7 +143,7 @@
 ;; Used for ios and android 
 (reg-event-fx
  :new-database-created
- (fn [{:keys [db]} [_event-id kdbx-loaded]] 
+ (fn [{:keys [db]} [_event-id kdbx-loaded]]
    {:db (-> db (assoc-in [:new-database :api-error-text] nil)
             (assoc-in [:new-database :status] :completed))
     :fx [[:dispatch [:new-database-dialog-hide]]

@@ -47,6 +47,7 @@
                              password
                              password-visible
                              _key-file-name
+                             key-file-name-part
                              error-fields
                              status]}]
   (let [in-progress? (= :in-progress status)]
@@ -89,12 +90,20 @@
          [rnp-helper-text {:type "error" :visible true}
           (:password error-fields)])
 
-       ;; Key File use is not yet implemented
-       #_[rnp-text-input {:style {:margin-top 10}
+       [rnp-divider {:style {:margin-top 10 :margin-bottom 10 :backgroundColor "grey"}}]
+
+       (if  key-file-name-part
+         [rnp-text-input {:style {:margin-top 10}
                           :label "Key File"
-                          :value key-file-name
-                          :placeholder "Optional key file"
-                          :onChangeText #()}]]
+                          :value key-file-name-part
+                          :readOnly true
+                          :onPressIn #(println "pressed in...")
+                          :onChangeText nil}]
+         [rnp-text {:style {:margin-top 15
+                            :textDecorationLine "underline"
+                            :text-align "center"}
+                    :onPress #(ndb-events/show-key-file-form)} "Additional Protection"])]
+
       [rnp-progress-bar {:style {:margin-top 10} :visible in-progress?
                          :indeterminate true}]]
      [rnp-dialog-actions

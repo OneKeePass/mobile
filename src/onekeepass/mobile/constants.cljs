@@ -26,6 +26,14 @@
 (def ICON-DATABASE-CHECK  "database-check")
 (def ICON-DATABASE-ALERT  "database-alert")
 (def ICON-DATABASE-EYE  "database-eye")
+
+(def ICON-CHEVRON-RIGHT  "chevron-right")
+(def ICON-CACHED  "cached")
+(def ICON-FILE  "file")
+(def ICON-EYE  "eye")
+(def ICON-EYE-OFF  "eye-off")
+
+
 ;; (def ICON-  "")
 ;; (def ICON-  "")
 ;; (def ICON-  "")

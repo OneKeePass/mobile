@@ -11,6 +11,8 @@ RCT_EXTERN_METHOD(pickDirectory:(RCTPromiseResolveBlock)resolve reject:(RCTPromi
 
 RCT_EXTERN_METHOD(pickKdbxFileToOpen:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 
+RCT_EXTERN_METHOD(pickKeyFileToCopy:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+
 RCT_EXTERN_METHOD(pickKdbxFileToCreate:(NSString *)fileName resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 
 RCT_EXTERN_METHOD(pickAndSaveNewKdbxFile:(NSString *)fileName jsonArgs:(NSString *)jsonArgs resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
