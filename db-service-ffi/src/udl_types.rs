@@ -5,7 +5,6 @@ use serde::{Serialize, Deserialize};
 
 use crate::{app_state::AppState, commands::{InvokeResult, self}};
 
-
 // Most of types decalred in db_service.udl follows here
 // except few like  'IosSupportService' and 'AndroidSupportService' and functions from 'namespace db_service'.
 // The implementation of the =top level functions from 'namespace db_service' can be found in crate root lib.rs
@@ -30,9 +29,10 @@ pub enum ApiResponse {
     Failure { result: String },
 }
 
-////////////////////////////
+//////////////////////////////////////////////////////////////
 
-// TODO: Combine ApiCallbackError and SecureKeyOperationError as one general callback error
+// TODO: 
+// Combine ApiCallbackError and SecureKeyOperationError as one general callback error
 pub type ApiCallbackResult<T> = std::result::Result<T, ApiCallbackError>;
 
 #[derive(Debug, thiserror::Error)]
@@ -40,27 +40,7 @@ pub enum ApiCallbackError {
     #[error("InternalCallbackError")]
     InternalCallbackError {reason:String},
 }
-
-// This trait represents a callback declared in 'db_service.udl'
-// We need to implement this interface in Swift and Kotlin for the rust side use
-pub trait FileDescriptor {
-    fn open_to_read(&self) -> ApiCallbackResult<u64>;
-    fn close(&self)-> ApiCallbackResult<()>;
-}
-impl From<uniffi::UnexpectedUniFFICallbackError> for ApiCallbackError {
-    fn from(callback_error: uniffi::UnexpectedUniFFICallbackError) -> Self {
-        log::error!("UnexpectedUniFFICallbackError is {}", callback_error);
-        Self::InternalCallbackError{reason:callback_error.reason}
-    }
-}
-
-impl From<ApiCallbackError> for kp_service::error::Error {
-    fn from(err: ApiCallbackError) -> Self {
-        Self::Other(format!("{}",err))
-    }
-}
-
-//////////
+/////////////////////////////////////////////////////////////////
 
 // This trait represents a callback declared in 'db_service.udl'
 // We need to implement this interface in Swift and Kotlin for the rust side use
@@ -68,8 +48,6 @@ pub trait CommonDeviceService: Send + Sync {
     fn app_home_dir(&self) -> String;
     fn uri_to_file_name(&self, full_file_name_uri: String) -> Option<String>;
     fn uri_to_file_info(&self, full_file_name_uri: String) -> Option<FileInfo>;
-
-    fn as_file_descriptor(&self,full_file_name_uri:String) ->  ApiCallbackResult<Box<dyn FileDescriptor>>;
 }
 
 // TODO: Combine ApiCallbackError and SecureKeyOperationError as one general callback error
@@ -177,6 +155,28 @@ impl JsonService {
     }
 }
 
+
+/*
+// This trait represents a callback declared in 'db_service.udl'
+// We need to implement this interface in Swift and Kotlin for the rust side use
+pub trait FileDescriptor {
+    fn open_to_read(&self) -> ApiCallbackResult<u64>;
+    fn close(&self)-> ApiCallbackResult<()>;
+}
+impl From<uniffi::UnexpectedUniFFICallbackError> for ApiCallbackError {
+    fn from(callback_error: uniffi::UnexpectedUniFFICallbackError) -> Self {
+        log::error!("UnexpectedUniFFICallbackError is {}", callback_error);
+        Self::InternalCallbackError{reason:callback_error.reason}
+    }
+}
+
+impl From<ApiCallbackError> for kp_service::error::Error {
+    fn from(err: ApiCallbackError) -> Self {
+        Self::Other(format!("{}",err))
+    }
+}
+
+ */
 
 
 

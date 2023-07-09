@@ -105,7 +105,6 @@
   ;; First we get the kdbx content map and then supplied keys 'ks' used to get the actual value
   (get-in app-db (into [db-key] ks)))
 
-
 (defn db-opened
   "Updates the db list and current active db key when a new kdbx database is loaded
   The args are the re-frame 'app-db' and KdbxLoaded struct returned by backend API.
@@ -745,6 +744,7 @@
 (defn message-modal-data []
   (subscribe [:message-modal]))
 
+;; TODO: Need to swap the args order to 'message title' as title is used optional field
 (reg-event-db
  :common/message-modal-show
  (fn [db [_event-id title message]]

@@ -29,12 +29,13 @@
 (defn database-field-update [kw-field-name value]
   (dispatch [:new-database-field-update kw-field-name value]))
 
-(defn show-key-file-form []
-  (dispatch [:key-file-form/show :new-database-key-file-selected]))
+(defn show-key-file-form [show-generate-option?]
+  ;; kw :new-database-key-file-selected is used in events in ns onekeepass.mobile.events.key-file-form
+  ;; to send back the selected key file 
+  (dispatch [:key-file-form/show :new-database-key-file-selected show-generate-option?]))
 
 (defn dialog-data []
   (subscribe [:new-database-dialog-data]))
-
 
 (def newdb-fields [:database-name :database-description
                    :password :database-file-name :cipher-id
@@ -76,7 +77,7 @@
 ;; An event to be called (from key file related page) after user selects a key file 
 (reg-event-fx
  :new-database-key-file-selected
- (fn [{:keys [db]} [_event-id {:keys [file-name full-file-name]}]]
+ (fn [{:keys [db]} [_event-id {:keys [file-name full-file-name] :as m}]] 
    {:db (-> db (assoc-in [:new-database :key-file-name-part] file-name)
             (assoc-in [:new-database :key-file-name] full-file-name))}))
 
@@ -123,7 +124,7 @@
  :bg-pick-document-to-create
  (fn [kdbx-file-name]
    (bg/pick-document-to-create kdbx-file-name (fn [api-response]
-                                                (println "pick-document-to-create api-response.. " api-response)
+                                                ;;(println "pick-document-to-create api-response.. " api-response)
                                                 (when-let [picked (on-ok
                                                                    api-response
                                                                    #(dispatch [:new-database-dialog-hide]))]

@@ -19,28 +19,11 @@ namespace db_service {
 };
 
 
-[Enum]
-interface ApiCallbackError {
-    InternalCallbackError(string reason);
-};
-
-// Remove this 
-callback interface FileDescriptor {
-    [Throws=ApiCallbackError]
-    u64 open_to_read();
-    [Throws=ApiCallbackError]
-    void close();
-};
-
 // From Rust to Swift or Kotlin
 callback interface CommonDeviceService {
     string app_home_dir();
     string? uri_to_file_name(string full_file_name_uri);
     FileInfo? uri_to_file_info(string full_file_name_uri);
-
-    // Remove this 
-    [Throws=ApiCallbackError]
-    FileDescriptor as_file_descriptor(string full_file_name_uri);
 };
 
 // From Rust to Swift or Kotlin
@@ -53,6 +36,13 @@ callback interface SecureKeyOperation {
 
     [Throws=SecureKeyOperationError]
     void delete_key(string db_key);
+};
+
+// Need to combine this SecureKeyOperationError
+// and use that for all calback erors
+[Enum]
+interface ApiCallbackError {
+    InternalCallbackError(string reason);
 };
 
 // Used in the callback error of SecureKeyOperation
@@ -93,6 +83,7 @@ interface AndroidSupportService {
     constructor();
     ApiResponse create_kdbx(u64 file_descriptor, string json_args);
     ApiResponse complete_save_as_on_error(u64 file_descriptor, string old_full_file_name_uri,string new_full_file_name_uri);
+    string save_key_file(u64 file_descriptor, string full_key_file_name);
 };
 
 // Called from middle layer (Swift or Kotlin side) to form a json string and  return to UI layer
@@ -105,7 +96,6 @@ interface JsonService {
     string ok_json_string(string info);
     string error_json_string(string error);
 };
-
 
 [Enum]
 interface FileArgs {

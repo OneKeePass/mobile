@@ -105,7 +105,7 @@ impl IosSupportService {
             to_ios_file_uri(&mut temp_name);
             Some(temp_name)
         } else {
-            // We are assuming there is a backup file written already before this call
+            // We are assuming there is a backup file written before this call
             // TODO:
             //  To be failsafe, we may need to write from the db content to temp file
             //  using db_service::save_kdbx_to_writer in case there is no backup at all

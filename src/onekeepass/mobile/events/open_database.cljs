@@ -42,6 +42,11 @@
   []
   (dispatch [:open-database-read-db-file]))
 
+(defn show-key-file-form []
+  ;; kw :open-database-key-file-selected is used in events in ns onekeepass.mobile.events.key-file-form
+  ;; to send back the selected key file 
+  (dispatch [:key-file-form/show :open-database-key-file-selected]))
+
 (defn dialog-data []
   (subscribe [:open-database-dialog-data]))
 
@@ -51,6 +56,7 @@
                      ;; database-file-name is just the 'file name' part derived from full 
                      ;; uri 'database-full-file-name' to show in the dialog
                      :database-file-name nil
+                     :key-file-name-part nil
 
                      :status nil
                      ;; For read/load kdbx args
@@ -81,6 +87,13 @@
  :open-database-dialog-hide
  (fn [db [_event-id]]
    (assoc-in  db [:open-database :dialog-show] false)))
+
+;; An event to be called (from key file related page) after user selects a key file 
+(reg-event-fx
+ :open-database-key-file-selected
+ (fn [{:keys [db]} [_event-id {:keys [file-name full-file-name] :as m}]] 
+   {:db (-> db (assoc-in [:open-database :key-file-name-part] file-name)
+            (assoc-in [:open-database :key-file-name] full-file-name))}))
 
 (reg-event-db
  :open-database-field-update

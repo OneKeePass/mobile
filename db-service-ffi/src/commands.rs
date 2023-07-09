@@ -1,5 +1,5 @@
 use crate::app_state::{AppState, RecentlyUsed};
-use crate::{as_api_response, ios};
+use crate::{as_api_response, ios, KeyFileInfo};
 use crate::{open_backup_file, util, OkpError, OkpResult, };
 use onekeepass_core::db_service::{
     self, DbSettings, EntryCategory, EntryFormData, Group, KdbxLoaded, NewDatabase,
@@ -273,17 +273,26 @@ impl Commands {
                 db_service_call! (args, PasswordGeneratorArg{password_options} => analyzed_password(password_options))
             }
 
+            "generate_key_file" => {
+                service_call!(args, GenericArg { key_vals } => Self generate_key_file(key_vals))
+            }
+
+            "delete_key_file" => {
+                service_call!(args, GenericArg { key_vals } => Self delete_key_file(key_vals))
+            }
+            ////// 
             "remove_from_recently_used" => Self::remove_from_recently_used(&args),
 
             "new_blank_group" => Self::new_blank_group(args),
 
-            "app_preference" => Self::app_preference(),
-
-            "recently_used_dbs_info" => Self::recently_used_dbs_info(),
-
             "get_file_info" => Self::get_file_info(&args),
 
             "prepare_export_kdbx_data" => Self::prepare_export_kdbx_data(&args),
+            ///////
+
+            "app_preference" => Self::app_preference(),
+
+            "recently_used_dbs_info" => Self::recently_used_dbs_info(),
 
             "all_kdbx_cache_keys" => result_json_str(db_service::all_kdbx_cache_keys()),
 
@@ -293,7 +302,7 @@ impl Commands {
 
             "list_key_files" => ok_json_str(util::list_key_files()),
 
-            "delete_key_file" => Self::delete_key_file(&args),
+            // "delete_key_file" => Self::delete_key_file(&args),
 
             "clean_export_data_dir" => result_json_str(util::clean_export_data_dir()),
 
@@ -351,21 +360,54 @@ impl Commands {
         Ok(kdbx_loaded)
     }
 
-    fn delete_key_file(args:&str) -> String {
-        if let Ok(CommandArg::GenericArg { key_vals }) = serde_json::from_str(args) {
-            let Some(file_name) = key_vals.get("file_name") else {
-                return error_json_str("Key file name to delete is not found");
-            };
-            util::delete_key_file(file_name);
-            // Latest list of key files after delete
-            ok_json_str(util::list_key_files())
-        } else {
-            error_json_str(&format!(
-                "Unexpected args passed to remove db from list {}",
-                args
-            ))
+    fn generate_key_file(key_vals:HashMap<String,String>) -> OkpResult<KeyFileInfo> {
+        let Some(key_file_name_component) = key_vals.get("file_name") else {
+            return Err(OkpError::DataError("Key file name to generate is not found in args"));
+        };
+
+        let path = &AppState::global()
+        .key_files_dir_path
+        .join(key_file_name_component.trim());
+
+        debug!("Key file Path is {:?} and exists check {}",path,path.exists());
+
+        if path.exists() {
+            return Err(OkpError::DuplicateKeyFileName(format!("Key file with the same name exists")))
         }
+
+        let Some(full_file_name_str) = path.as_os_str().to_str() else {
+            return Err(OkpError::DataError("Full Key file name could not be formed"));
+        };
+        db_service::generate_key_file(full_file_name_str)?;
+        
+        debug!("Generated key file is {}",full_file_name_str);
+
+        Ok(KeyFileInfo {full_file_name:full_file_name_str.into(),file_name:key_file_name_component.clone(),file_size:None})
     }
+
+    fn delete_key_file(key_vals:HashMap<String,String>) ->  OkpResult<Vec<KeyFileInfo>> {
+        let Some(key_file_name) = key_vals.get("file_name") else {
+            return Err(OkpError::DataError("Key file name to delete is not found"));
+        };
+        util::delete_key_file(key_file_name);
+        Ok(util::list_key_files())
+    }
+
+    // fn delete_key_file(args:&str) -> String {
+    //     if let Ok(CommandArg::GenericArg { key_vals }) = serde_json::from_str(args) {
+    //         let Some(file_name) = key_vals.get("file_name") else {
+    //             return error_json_str("Key file name to delete is not found");
+    //         };
+    //         util::delete_key_file(file_name);
+    //         // Latest list of key files after delete
+    //         ok_json_str(util::list_key_files())
+    //     } else {
+    //         error_json_str(&format!(
+    //             "Unexpected args passed to remove db from list {}",
+    //             args
+    //         ))
+    //     }
+    // }
 
     fn prepare_export_kdbx_data(args: &str) -> String {
         if let Ok(CommandArg::DbKey { db_key }) = serde_json::from_str(args) {
@@ -470,14 +512,6 @@ impl Commands {
     fn recently_used_dbs_info() -> String {
         let pref = AppState::global().preference.lock().unwrap();
         ok_json_str(pref.recent_dbs_info.clone())
-        
-        // let json_str = match serde_json::to_string_pretty(&InvokeResult::with_ok(
-        //     pref.recent_dbs_info.clone(),
-        // )) {
-        //     Ok(s) => s,
-        //     Err(e) => error_json_str(&format!("{:?}", e)),
-        // };
-        // json_str
     }
 
     fn app_preference() -> String {

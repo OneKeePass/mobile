@@ -29,9 +29,13 @@
 
 (def ICON-CHEVRON-RIGHT  "chevron-right")
 (def ICON-CACHED  "cached")
-(def ICON-FILE  "file")
+(def ICON-CLOSE "close")
+
 (def ICON-EYE  "eye")
 (def ICON-EYE-OFF  "eye-off")
+
+(def ICON-FILE  "file")
+
 
 
 ;; (def ICON-  "")

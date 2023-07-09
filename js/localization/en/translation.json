@@ -8,6 +8,7 @@
     "databaseFile":"Database File",
     "description":"Description",
     "importedKeyFiles":"Imported Key Files",
+    "keyFileName":"Key File Name",
     "name":"Name",
     "notes":"Notes",
     "categoryMarked":"Marked as category",
@@ -59,11 +60,13 @@
         "settings": "Settings"
     },
     "button.labels": {
+        "browse":"Browse",
         "close": "Close",
         "cancel": "Cancel",
         "continue": "Continue",
         "create":"Create",
         "edit": "Edit",
+        "generate": "Generate",
         "newdb": "New Database",
         "no": "No",
         "ok": "Ok",
@@ -99,6 +102,8 @@
         "putback": "Put Back",
         "remove": "Remove",
         "restore": "Restore",
+        "saveAs":"Save As",
+        "select": "Select",
         "settings": "Settings",
         "types": "Types",
         "unlockdb":"Unlock Database"

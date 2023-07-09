@@ -119,8 +119,4 @@ class CommonDeviceServiceImpl: CommonDeviceService {
                       location: location)
     }
   }
-  
-  func asFileDescriptor(_ fullFileNameUri: String) throws -> FileDescriptor {
-    throw CallbackErrors.apiIsNotSupported
-  }
 }

@@ -171,15 +171,12 @@
 (defn pick-document-to-create
   "Starts a document picker view so that user can select a location to create the db file
   kdbx-file-name is the database file name. It is not full path. On users pick, the complete url
-  is passed to dispatch-fn as {:ok \"full file url\"}. See how the option ':no-response-conversion' 
-  is used in 'transform-api-response'
+  is passed to dispatch-fn in a map with keys [file-name full-file-name-uri] as ':ok' value. 
   "
   [kdbx-file-name dispatch-fn]
   ;;(println "pick-document-to-create called for " kdbx-file-name)
   (call-api-async (fn [] (.pickKdbxFileToCreate okp-document-pick-service kdbx-file-name))
-                  dispatch-fn
-                  ;; The API response is not converted as json. Instead used as value of :ok in return
-                  ;; :no-response-conversion true
+                  dispatch-fn 
                   :error-transform true))
 
 (defn- request-argon2key-transformer
@@ -198,12 +195,16 @@
 ;;
 ;; May need to explore the use of UIActivityViewController based export support. Using this the newly crated temp db file
 ;; may be saved to another app and then open from that. Someting similar to 'ACTION_SEND'
-(defn pick-and-save-new-kdbxFile [file-name new-db dispatch-fn]
+(defn pick-and-save-new-kdbxFile 
+  "Called to show a document pick view"
+  [file-name new-db dispatch-fn]
   (call-api-async (fn [] (.pickAndSaveNewKdbxFile
                           okp-document-pick-service file-name
                           ;; Explicit conversion of the api args to json here
                           (api-args->json {:new_db (request-argon2key-transformer new-db)} false)))
-                  dispatch-fn :error-transform true))
+                  ;; This dipatch function receives a map with keys [file-name full-file-name-uri] as ':ok' value
+                  dispatch-fn 
+                  :error-transform true))
 
 ;; This works for both iOS and Android
 (defn pick-database-to-read-write 
@@ -226,6 +227,16 @@
                     (.pickKeyFileToCopy okp-document-pick-service))
                   dispatch-fn
                   :error-transform true))
+
+;; This works for both iOS and Android
+(defn pick-key-file-to-save 
+  "Called to save the selected key file to a user chosen location
+   The arg 'full-file-name' is the fey file absolute path
+   The arg 'file-name' is the just key file name part
+   "
+  [full-file-name file-name dispatch-fn] 
+  (call-api-async (fn [] (.pickKeyFileToSave okp-document-pick-service full-file-name file-name)) 
+                  dispatch-fn :error-transform true))
 
 ;;;;;;;;
 
@@ -539,6 +550,11 @@
   ;; The Arg map to this api is not transformed automaticlly as done typically.
   ;; Note the use of snakecase convention for 'key_vals' and 'file_name' as expected by serde conversion
   (invoke-api "delete_key_file"  {:key_vals {"file_name" file-name}} dispatch-fn :convert-request false))
+
+(defn generate-key-file 
+  "Arg file-name is just the key file name part with .keyx suffix"
+  [file-name dispatch-fn]
+  (invoke-api "generate_key_file"  {:key_vals {"file_name" file-name}} dispatch-fn :convert-request false))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Native Events ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; While compiling with advanced option, if we use '(u/is-iOS)' to check platform

@@ -38,6 +38,10 @@ object DbServiceAPI {
         return invokeCommand("clean_export_data_dir", "{}")
     }
 
+    fun androidSupportService() : AndroidSupportService {
+        return androidSupportService
+    }
+
     fun createKdbx(fd: ULong, args: String): ApiResponse {
         return androidSupportService.createKdbx(fd, args)
     }
@@ -145,33 +149,5 @@ class CommonDeviceServiceImpl(val reactContext: ReactApplicationContext) : Commo
             info.location = location
             return info
         }
-    }
-
-    // REMOVE this
-    override fun asFileDescriptor(fullFileNameUri: String): FileDescriptor {
-        var fd = object: FileDescriptor {
-            var fd: ParcelFileDescriptor? = null;
-            override fun openToRead(): ULong {
-                try {
-                    val uri = Uri.parse(fullFileNameUri);
-                    fd = reactContext.contentResolver.openFileDescriptor(uri, "r");
-                    val detachFd = fd!!.detachFd()
-                    return detachFd.toULong()
-                } catch  (e: Exception) {
-                    Log.e(TAG, "Error in asFileDescriptor openToRead ${e}")
-                    throw e
-                }
-            }
-
-            override fun close() {
-                try {
-                    fd!!.close()
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error in asFileDescriptor close ${e}")
-                    throw e
-                }
-            }
-        }
-        return fd
     }
 }

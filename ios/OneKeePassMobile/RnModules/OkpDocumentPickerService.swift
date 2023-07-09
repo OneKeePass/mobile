@@ -57,6 +57,53 @@ class OkpDocumentPickerService: NSObject {
     }
   }
   
+  // Called to save the selected key file from app's private area to any user picked location
+  @objc
+  func pickKeyFileToSave(_ fullKeyFileName: String,
+                         keyFileName: String,
+                         resolve: @escaping (RCTPromiseResolveBlock),
+                         reject: @escaping (RCTPromiseRejectBlock))
+  {
+    DispatchQueue.main.async {
+      
+      // In rust side, file path should not have file:// prefix. The fullKeyFileName retuurned in an earlier
+      // does not start with file://
+      
+      var prefixedKeyFileName = fullKeyFileName
+      
+      // The file name string needs to start with file:// prefix to form a valid url and to be used in 'forExporting'
+      if !fullKeyFileName.hasPrefix("file://") {
+        prefixedKeyFileName = "file://"+fullKeyFileName
+      }
+      
+      guard let keyFileUrl = URL(string:prefixedKeyFileName) else {
+        reject("KEY_FILE_INVALID_URL", "Could not create a valid url", nil)
+        return
+      }
+      
+      
+      // For the file with non zero bytes of data needs to exist before user is presented with UIDocumentPickerView to use 'Save' 
+      guard FileManager.default.fileExists(atPath:keyFileUrl.path) else {
+        reject("KEY_FILE_IS_NOT_FOUND", "No key file is found at the url \(fullKeyFileName)", nil)
+        return
+      }
+      
+      let controller = RCTPresentedViewController()
+      // When we use this option, the UIDocumentPickerView shows "Save" on the top right side
+      let documentPicker = UIDocumentPickerViewController(forExporting: [keyFileUrl], asCopy: true) // to export or copy
+      
+      documentPicker.allowsMultipleSelection = false
+      //documentPicker.modalPresentationStyle = .pageSheet
+      
+      // We are reusing the same Delegate that we have used for 'pickKeyFileToCopy'
+      self.keyFilePickDelegate = KeyFilePickDelegate(resolve, reject)
+      documentPicker.delegate = self.keyFilePickDelegate
+    
+      controller?.present(documentPicker, animated: true, completion: nil)
+    }
+  }
+  
+  
   // Used to create a new kdbx file followed by a readKdbx call
   // fileName is the suggested kdbx file name to use and user can change the name in the document picker
   @objc

@@ -46,7 +46,6 @@
                              database-description
                              password
                              password-visible
-                             _key-file-name
                              key-file-name-part
                              error-fields
                              status]}]
@@ -92,17 +91,17 @@
 
        [rnp-divider {:style {:margin-top 10 :margin-bottom 10 :backgroundColor "grey"}}]
 
-       (if  key-file-name-part
+       (if key-file-name-part
          [rnp-text-input {:style {:margin-top 10}
                           :label "Key File"
-                          :value key-file-name-part
-                          :readOnly true
-                          :onPressIn #(println "pressed in...")
+                          :defaultValue key-file-name-part
+                          :readOnly (if (is-iOS) true false) 
+                          :onPressIn #(ndb-events/show-key-file-form true)
                           :onChangeText nil}]
          [rnp-text {:style {:margin-top 15
                             :textDecorationLine "underline"
                             :text-align "center"}
-                    :onPress #(ndb-events/show-key-file-form)} "Additional Protection"])]
+                    :onPress #(ndb-events/show-key-file-form true)} "Additional Protection"])]
 
       [rnp-progress-bar {:style {:margin-top 10} :visible in-progress?
                          :indeterminate true}]]
@@ -116,66 +115,152 @@
 
 ;; open-db-dialog is called after user pick a database file open 
 ;; or the database is locked and user needs to use password and keyfile based authentication
-(defn open-db-dialog
-  ([{:keys [dialog-show
-            database-file-name
-            database-full-file-name
-            password
-            password-visible
-            _key-file-name
-            error-fields
-            status]}]
+#_(defn open-db-dialog
+    ([{:keys [dialog-show
+              database-file-name
+              database-full-file-name
+              password
+              password-visible
+              key-file-name-part
+              error-fields
+              status]}]
 
-   (let [locked? @(cmn-events/locked? database-full-file-name)
-         in-progress? (= :in-progress status)
-         dlg-title (if locked? (lstr "dialog.titles.unlockDatabase") (lstr "dialog.titles.openDatabase"))]
-     [cust-dialog {:style {}
-                   :visible dialog-show :onDismiss opndb-events/cancel-on-press}
-      [rnp-dialog-title dlg-title]
-      [rnp-dialog-content
+     (let [locked? @(cmn-events/locked? database-full-file-name)
+           in-progress? (= :in-progress status)
+           dlg-title (if locked? (lstr "dialog.titles.unlockDatabase") (lstr "dialog.titles.openDatabase"))]
+       [cust-dialog {:style {}
+                     :visible dialog-show
+                     :dismissable false
+                   ;;:onDismiss opndb-events/cancel-on-press
+                     }
+        [rnp-dialog-title dlg-title]
+        [rnp-dialog-content
 
-       [rn-view {:style {:flexDirection "column"  :justify-content "center"}}
-        [rnp-text-input {:label (lstr "databaseFile")
-                         :value database-file-name
-                         :editable false
-                         :onChangeText #()}]
-        [rnp-text-input {:style {:margin-top 10}
-                         :label (lstr "masterPassword")
+         [rn-view {:style {:flexDirection "column"  :justify-content "center"}}
+          [rnp-text-input {:label (lstr "databaseFile")
+                           :value database-file-name
+                           :editable false
+                           :onChangeText #()}]
+          [rnp-text-input {:style {:margin-top 10}
+                           :label (lstr "masterPassword")
                         ;;:value password
-                         :defaultValue password
-                         :autoComplete "off"
-                         :autoCorrect false
-                         :secureTextEntry (not password-visible)
-                         :right (r/as-element
-                                 [rnp-text-input-icon
-                                  {:icon (if password-visible "eye" "eye-off")
-                                   :onPress #(opndb-events/database-field-update
-                                              :password-visible (not password-visible))}])
-                         :onChangeText #(opndb-events/database-field-update :password %)}]
-        (when (contains? error-fields :password)
-          [rnp-helper-text {:type "error" :visible (contains? error-fields :password)}
-           (:password error-fields)])
+                           :defaultValue password
+                           :autoComplete "off"
+                           :autoCorrect false
+                           :secureTextEntry (not password-visible)
+                           :right (r/as-element
+                                   [rnp-text-input-icon
+                                    {:icon (if password-visible "eye" "eye-off")
+                                     :onPress #(opndb-events/database-field-update
+                                                :password-visible (not password-visible))}])
+                           :onChangeText #(opndb-events/database-field-update :password %)}]
+          (when (contains? error-fields :password)
+            [rnp-helper-text {:type "error" :visible (contains? error-fields :password)}
+             (:password error-fields)])
 
-        #_[rnp-text-input {:style {:margin-top 10}
-                           :label "Key File"
-                           :value key-file-name
-                           :placeholder "Optional key file"
-                           :right (r/as-element [rnp-text-input-icon {:icon "file"}])
-                           :onChangeText #()}]]
+          [rnp-divider {:style {:margin-top 10 :margin-bottom 10 :backgroundColor "grey"}}]
 
-       [rnp-progress-bar {:style {:margin-top 10} :visible in-progress? :indeterminate true}]]
+          (if  key-file-name-part
+            [rnp-text-input {:style {:margin-top 10}
+                             :label "Key File"
+                             :value key-file-name-part
+                             :readOnly true
+                             :onPressIn #(println "pressed in...")
+                             :onChangeText nil}]
+            [rnp-text {:style {:margin-top 15
+                               :textDecorationLine "underline"
+                               :text-align "center"}
+                       :onPress #(opndb-events/show-key-file-form)} "Add Key File"])]
 
-      [rnp-dialog-actions
-       [rnp-button {:mode "text" :disabled in-progress?
-                    :onPress  opndb-events/cancel-on-press}
-        (lstr "button.labels.cancel")]
-       [rnp-button {:mode "text" :disabled in-progress?
-                    :onPress (fn [] ^js/RNKeyboard (.dismiss rn-keyboard)
-                               (if locked?
-                                 (opndb-events/authenticate-with-credential)
-                                 (opndb-events/open-database-read-db-file)))}
-        (lstr "button.labels.continue")]]]))
-  ([] [open-db-dialog @(opndb-events/dialog-data)]))
+         [rnp-progress-bar {:style {:margin-top 10} :visible in-progress? :indeterminate true}]]
+
+
+        [rnp-dialog-actions
+         [rnp-button {:mode "text" :disabled in-progress?
+                      :onPress  opndb-events/cancel-on-press}
+          (lstr "button.labels.cancel")]
+         [rnp-button {:mode "text" :disabled in-progress?
+                      :onPress (fn [] ^js/RNKeyboard (.dismiss rn-keyboard)
+                                 (if locked?
+                                   (opndb-events/authenticate-with-credential)
+                                   (opndb-events/open-database-read-db-file)))}
+          (lstr "button.labels.continue")]]]))
+    ([] [open-db-dialog @(opndb-events/dialog-data)]))
+
+(defn open-db-dialog  [{:keys [dialog-show
+                               database-file-name
+                               database-full-file-name
+                               password
+                               password-visible
+                               key-file-name-part
+                               error-fields
+                               status]}]
+
+  (let [locked? @(cmn-events/locked? database-full-file-name)
+        in-progress? (= :in-progress status)
+        dlg-title (if locked? (lstr "dialog.titles.unlockDatabase") (lstr "dialog.titles.openDatabase"))]
+    [cust-dialog {:style {}
+                  :visible dialog-show
+                  :dismissable false
+                   ;;:onDismiss opndb-events/cancel-on-press
+                  }
+     [rnp-dialog-title dlg-title]
+     [rnp-dialog-content
+
+      [rn-view {:style {:flexDirection "column"  :justify-content "center"}}
+       [rnp-text-input {:label (lstr "databaseFile")
+                        :value database-file-name
+                        :editable false
+                        :onChangeText #()}]
+       [rnp-text-input {:style {:margin-top 10}
+                        :label (lstr "masterPassword")
+                        ;;:value password
+                        :defaultValue password
+                        :autoComplete "off"
+                        :autoCorrect false
+                        :secureTextEntry (not password-visible)
+                        :right (r/as-element
+                                [rnp-text-input-icon
+                                 {:icon (if password-visible "eye" "eye-off")
+                                  :onPress #(opndb-events/database-field-update
+                                             :password-visible (not password-visible))}])
+                        :onChangeText #(opndb-events/database-field-update :password %)}]
+       (when (contains? error-fields :password)
+         [rnp-helper-text {:type "error" :visible (contains? error-fields :password)}
+          (:password error-fields)])
+
+       [rnp-divider {:style {:margin-top 10 :margin-bottom 10 :backgroundColor "grey"}}]
+
+       (if  key-file-name-part
+         [rnp-text-input {:style {:margin-top 10}
+                          :label "Key File"
+                          :defaultValue key-file-name-part
+                          :readOnly (if (is-iOS) true false)
+                          :onPressIn #(opndb-events/show-key-file-form)
+                          :onChangeText nil
+                          :right (r/as-element [rnp-text-input-icon
+                                                {:icon const/ICON-CLOSE
+                                                 :onPress (fn []
+                                                            (opndb-events/database-field-update :key-file-name-part nil)
+                                                            (opndb-events/database-field-update :key-file-name nil))}])}]
+         [rnp-text {:style {:margin-top 15
+                            :textDecorationLine "underline"
+                            :text-align "center"}
+                    :onPress #(opndb-events/show-key-file-form)} "Key File"])]
+
+      [rnp-progress-bar {:style {:margin-top 10} :visible in-progress? :indeterminate true}]]
+
+
+     [rnp-dialog-actions
+      [rnp-button {:mode "text" :disabled in-progress?
+                   :onPress  opndb-events/cancel-on-press}
+       (lstr "button.labels.cancel")]
+      [rnp-button {:mode "text" :disabled in-progress?
+                   :onPress (fn [] ^js/RNKeyboard (.dismiss rn-keyboard)
+                              (if locked?
+                                (opndb-events/authenticate-with-credential)
+                                (opndb-events/open-database-read-db-file)))}
+       (lstr "button.labels.continue")]]]))
 
 (defn file-info-dialog [{:keys [dialog-show file-size location last-modified]}]
   [cust-dialog {:style {}
@@ -248,7 +333,7 @@
   ;; db-file-path is the full-file-name-uri and used as db-key
   [rnp-menu {:visible show :onDismiss hide-db-action-menu :anchor (clj->js {:x x :y y})}
    [rnp-menu-item {:title (lstr "menu.labels.settings")
-                   :disabled (not opened)
+                   :disabled (or (not opened) locked)
                    :onPress (db-action-menu-action
                              stgs-events/load-db-settings-with-active-db
                              opened db-file-path)}]
@@ -405,8 +490,8 @@
       ;; Gets the precreated dialog reagent component
       (:dialog remove-confirm-dialog-info)
       [new-db-dialog @(ndb-events/dialog-data)]
-      #_[open-db-dialog @(opndb-events/dialog-data)]
-      [open-db-dialog]
+      [open-db-dialog @(opndb-events/dialog-data)]
+      #_[open-db-dialog]
       [file-info-dialog @(cmn-events/file-info-dialog-data)]
       [message-repick-database-file-dialog @(opndb-events/repick-confirm-data)]
       [authenticate-biometric-confirm-dialog @(opndb-events/authenticate-biometric-confirm-dialog-data)]

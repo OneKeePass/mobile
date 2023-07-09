@@ -11,7 +11,7 @@ use app_state::{AppState, RecentlyUsed};
 use commands::{error_json_str, full_path_file_to_create, CommandArg, Commands, InvokeResult};
 use onekeepass_core::{db_service, error::Error};
 use udl_types::{
-    ApiCallbackError, ApiResponse, CommonDeviceService, FileArgs, FileDescriptor, FileInfo,
+    ApiCallbackError, ApiResponse, CommonDeviceService, FileArgs, FileInfo,
     JsonService, KdbxCreated, SecureKeyOperation, SecureKeyOperationError,
 };
 
@@ -356,6 +356,11 @@ fn copy_picked_key_file(file_args: FileArgs) -> String {
         };
 
         let key_file_full_path = AppState::global().key_files_dir_path.join(&file_name);
+
+        if key_file_full_path.exists() {
+            return Err(OkpError::DuplicateKeyFileName(format!("Key file with the same name exists")))
+        }
+
         let mut target_file = File::create(&key_file_full_path)?;
         std::io::copy(&mut file, &mut target_file).and(target_file.sync_all())?;
         debug!("Copied the key file {} locally",&file_name);
