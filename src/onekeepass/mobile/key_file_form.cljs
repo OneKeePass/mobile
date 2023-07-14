@@ -35,6 +35,7 @@
      [rnp-text-input {:label (lstr "name")
                       :defaultValue file-name
                       :autoComplete "off"
+                      :autoCapitalize "none"
                       :placeholder "e.g mykey.keyx"
                       :onChangeText #(kf-events/generate-file-name-dialog-update %)}]]]
 
@@ -112,7 +113,7 @@
                       :key "Key Files"
                       ;; imported-key-files is a list of map formed from struct 'KeyFileInfo' 
                       ;; forms the data for this list
-                      :data imported-key-files}]]
+                      :data (if-not (nil? imported-key-files) imported-key-files [])}]]
       [rn-section-list
        {:style {}
         :sections (clj->js sections)

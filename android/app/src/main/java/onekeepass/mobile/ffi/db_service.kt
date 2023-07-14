@@ -378,6 +378,8 @@ internal interface _UniFFILib : Library {
     ): Byte
     fun uniffi_db_service_fn_method_iossupportservice_load_book_mark_data(`ptr`: Pointer,`url`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_db_service_fn_method_iossupportservice_delete_book_mark_data(`ptr`: Pointer,`fullFileNameUri`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): Unit
     fun uniffi_db_service_fn_method_iossupportservice_copy_last_backup_to_temp_file(`ptr`: Pointer,`kdbxFileName`: RustBuffer.ByValue,`fullFileNameUri`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_db_service_fn_method_iossupportservice_complete_save_as_on_error(`ptr`: Pointer,`jsonArgs`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
@@ -460,6 +462,8 @@ internal interface _UniFFILib : Library {
     ): Short
     fun uniffi_db_service_checksum_method_iossupportservice_load_book_mark_data(
     ): Short
+    fun uniffi_db_service_checksum_method_iossupportservice_delete_book_mark_data(
+    ): Short
     fun uniffi_db_service_checksum_method_iossupportservice_copy_last_backup_to_temp_file(
     ): Short
     fun uniffi_db_service_checksum_method_iossupportservice_complete_save_as_on_error(
@@ -535,6 +539,9 @@ private fun uniffiCheckApiChecksums(lib: _UniFFILib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_checksum_method_iossupportservice_load_book_mark_data() != 7348.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_checksum_method_iossupportservice_delete_book_mark_data() != 8442.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_checksum_method_iossupportservice_copy_last_backup_to_temp_file() != 47860.toShort()) {
@@ -964,6 +971,7 @@ public interface IosSupportServiceInterface {
     
     fun `saveBookMarkData`(`url`: String, `data`: List<UByte>): Boolean
     fun `loadBookMarkData`(`url`: String): List<UByte>
+    fun `deleteBookMarkData`(`fullFileNameUri`: String)
     fun `copyLastBackupToTempFile`(`kdbxFileName`: String, `fullFileNameUri`: String): String?
     fun `completeSaveAsOnError`(`jsonArgs`: String): String
 }
@@ -1012,6 +1020,16 @@ class IosSupportService(
         }.let {
             FfiConverterSequenceUByte.lift(it)
         }
+    
+    override fun `deleteBookMarkData`(`fullFileNameUri`: String) =
+        callWithPointer {
+    rustCall() { _status ->
+    _UniFFILib.INSTANCE.uniffi_db_service_fn_method_iossupportservice_delete_book_mark_data(it,
+        FfiConverterString.lower(`fullFileNameUri`),
+        _status)
+}
+        }
+    
     
     override fun `copyLastBackupToTempFile`(`kdbxFileName`: String, `fullFileNameUri`: String): String? =
         callWithPointer {

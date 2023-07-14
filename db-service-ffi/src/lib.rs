@@ -350,13 +350,18 @@ fn copy_picked_key_file(file_args: FileArgs) -> String {
             // For iOS
             FileArgs::FullFileName { full_file_name } => {
                 let name = AppState::global().uri_to_file_name(&full_file_name);
-                (File::open(util::url_to_unix_file_name(&full_file_name))?,name)
+                let ux_file_path = util::url_to_unix_file_name(&full_file_name);
+                debug!("copy_picked_key_file:ux_file_path is {}",&ux_file_path);
+                let r = File::open(ux_file_path);
+                debug!("copy_picked_key_file:File::open return is {:?}",&r);
+                (r?,name)
             }
             _ => return Err(OkpError::Other("Unsupported file args passed".into()))   
         };
 
         let key_file_full_path = AppState::global().key_files_dir_path.join(&file_name);
-
+        debug!("copy_picked_key_file:key_file_full_path is {:?}",key_file_full_path);
+        
         if key_file_full_path.exists() {
             return Err(OkpError::DuplicateKeyFileName(format!("Key file with the same name exists")))
         }

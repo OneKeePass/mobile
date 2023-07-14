@@ -66,21 +66,19 @@ class OkpDocumentPickerService: NSObject {
   {
     DispatchQueue.main.async {
       
-      // In rust side, file path should not have file:// prefix. The fullKeyFileName retuurned in an earlier
-      // does not start with file://
+      // In rust side, file path should not have file:// prefix.
+      // The fullKeyFileName returned from earlier call does not start with file://
+      // UIDocumentPickerView expects proper file scheme URL
       
-      var prefixedKeyFileName = fullKeyFileName
+      /*
+      // Another way building the file url
+      var u2 = URLComponents()
+      u2.scheme = "file"
+      u2.path = fullKeyFileName
+      self.logger.debug("u2 is \(u2) and u1 is \(u1)")
+      */
       
-      // The file name string needs to start with file:// prefix to form a valid url and to be used in 'forExporting'
-      if !fullKeyFileName.hasPrefix("file://") {
-        prefixedKeyFileName = "file://"+fullKeyFileName
-      }
-      
-      guard let keyFileUrl = URL(string:prefixedKeyFileName) else {
-        reject("KEY_FILE_INVALID_URL", "Could not create a valid url", nil)
-        return
-      }
-      
+      let keyFileUrl = URL(fileURLWithPath: fullKeyFileName)
       
       // For the file with non zero bytes of data needs to exist before user is presented with UIDocumentPickerView to use 'Save' 
       guard FileManager.default.fileExists(atPath:keyFileUrl.path) else {
@@ -281,6 +279,59 @@ class KeyFilePickDelegate: NSObject, UIDocumentPickerDelegate {
   func documentPicker(_: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
     // logger.debug("Picked urls: \(urls)")
     let pickedFileUrl = urls.first!
+    let fc = NSFileCoordinator()
+    let intent = NSFileAccessIntent.readingIntent(with: pickedFileUrl, options: [.withoutChanges, .resolvesSymbolicLink])
+    
+    // IMPORTANT:
+    // Any file picked by the user is outside the app's sandbox and to openning and reading any
+    // such file can only be done after a successful 'startAccessingSecurityScopedResource'
+    // Instead of openning and reading the file here, we keep a bookmark and that
+    // bookmark is read in 'copyKeyFile' fun from OkpDbService. Without the bookmark, we cannot read the file
+      
+    fc.coordinate(with: [intent], queue: .main) { [unowned self] err in
+      guard err == nil else {
+        logger.error("Coordinate error  is \(String(describing: err))")
+        reject(OkpDocumentPickerService.E_COORDINATOR_CALL_FAILED, "\(String(describing: err?.localizedDescription))", err)
+        return
+      }
+    
+    
+      // Need to access the url with security scope
+      guard pickedFileUrl.startAccessingSecurityScopedResource() else {
+        logger.error("startAccessingSecurityScopedResource call failed")
+        reject(OkpDocumentPickerService.E_ACCESSING_SECURITY_SCOPED_RESOURCE, "startAccessingSecurityScopedResource failed", nil)
+        return
+      }
+      
+      // Make sure we release the security-scoped resource when finished.
+      defer { pickedFileUrl.stopAccessingSecurityScopedResource() }
+      do {
+        // Secured access to url should be available before bookmarking
+        let bookmarkData = try pickedFileUrl.bookmarkData(options: .minimalBookmark, includingResourceValuesForKeys: nil, relativeTo: nil)
+        let byteArray: [UInt8] = .init(bookmarkData)
+        
+        // Note: At this time both kdbx and the key file uri bookmarking use the same way
+        let b = DbServiceAPI.iosSupportService().saveBookMarkData(pickedFileUrl.absoluteString, byteArray)
+        logger.debug("Bookmark save rust api call result is \(b)")
+      
+        // After bookmarking just the uri is returned to the UI to use
+        // The file is read and loaded only in 'copyKeyFile' after the subsequent call from UI
+        resolve(DbServiceAPI.jsonService().okJsonString(pickedFileUrl.absoluteString))
+        
+      } catch {
+        // Handle the error here.
+        logger.error("E_READ_FILE_PICK_DELEGATE_FAILED: bookmarkData Error \(error)")
+        reject(OkpDocumentPickerService.E_READ_FILE_PICK_DELEGATE_FAILED, "\(error.localizedDescription)", error)
+      }
+    }
+  }
+  
+  /*
+  
+   // This did not work as we have not read the file here itself or created a bookmark.
+  func documentPicker(_: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+    // logger.debug("Picked urls: \(urls)")
+    let pickedFileUrl = urls.first!
     
     // Rational for the needto use NSFileCoordinator though somewhat old
     // http://karmeye.com/2014/12/18/uidocumentpicker-nsfilecoordinator/
@@ -301,16 +352,16 @@ class KeyFilePickDelegate: NSObject, UIDocumentPickerDelegate {
         reject(OkpDocumentPickerService.E_ACCESSING_SECURITY_SCOPED_RESOURCE, "startAccessingSecurityScopedResource failed", nil)
         return
       }
-      
+
       // Make sure we release the security-scoped resource when finished.
       defer { pickedFileUrl.stopAccessingSecurityScopedResource() }
       
       // Send the picked full uri to the cljs caller.
       // The file is read and loaded only in the subsequent call from UI
       resolve(DbServiceAPI.jsonService().okJsonString(pickedFileUrl.absoluteString))
-      
     }
   }
+   */
   
   func documentPickerWasCancelled(_: UIDocumentPickerViewController) {
     reject(OkpDocumentPickerService.E_DOCUMENT_PICKER_CANCELED, "User cancelled the picking a directory or a document", nil)

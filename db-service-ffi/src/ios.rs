@@ -21,6 +21,7 @@ impl IosSupportService {
 
     // The implementation for the udl defined fn "boolean save_book_mark_data(string url,sequence<u8> data)"
     // Called in case of iOS app, to save the secure url bookmarking data
+    // Note: At this time both kdbx and the key file uri bookmarking use the same way
     pub fn save_book_mark_data(&self, url: String, data: Vec<u8>) -> bool {
         let file_name = string_to_simple_hash(&url).to_string();
         
@@ -82,6 +83,12 @@ impl IosSupportService {
                 vec![]
             }
         }
+    }
+
+    // Called to delete any previous bookmark data. 
+    // For now mainly used after saving any key file to a user selected location 
+    pub fn delete_book_mark_data(&self, full_file_name_uri: &str) {
+        delete_book_mark_data(&full_file_name_uri);
     }
 
     pub fn copy_last_backup_to_temp_file(
@@ -158,6 +165,10 @@ impl IosSupportService {
     }
 
     pub fn load_book_mark_data(&self, _url: String) -> Vec<u8> {
+        unimplemented!();
+    }
+
+    pub fn delete_book_mark_data(&self, full_file_name_uri: &str) {
         unimplemented!();
     }
 

@@ -143,24 +143,23 @@
                            ;; This function is called when the generated passed is selected in Generator page
                           :onPress #(pg-events/generate-password password-changed)}]]]
 
-      (if key-file-name-part
+      (when key-file-name-part
         [rnp-text-input {:style {:margin-top 10}
                          :label "Key File"
                          :defaultValue key-file-name-part
                          :readOnly (if (is-iOS) true false)
                          :onPressIn #(stgs-events/show-key-file-form)
-                         :onChangeText nil
-                       ;; :onPressIn (fn [e] (println "Key file selector needs to be called"))
+                         :onChangeText nil 
                          :placeholder "Pick an optional key file"
                          :right (r/as-element [rnp-text-input-icon
                                                {:icon const/ICON-CLOSE
                                                 :onPress (fn []
                                                            (stgs-events/db-settings-data-field-update :key-file-name-part nil)
-                                                           (stgs-events/db-settings-data-field-update :key-file-name nil))}])}]
-        [rnp-text {:style {:margin-top 15
-                           :textDecorationLine "underline"
-                           :text-align "center"}
-                   :onPress #(stgs-events/show-key-file-form)} "Key File"])]
+                                                           (stgs-events/db-settings-data-field-update :key-file-name nil))}])}])
+      [rnp-text {:style {:margin-top 15
+                         :textDecorationLine "underline"
+                         :text-align "center"}
+                 :onPress #(stgs-events/show-key-file-form)} "Key File"]]
 
      [rnp-portal
       [master-password-change-confirm-dialog]]]))

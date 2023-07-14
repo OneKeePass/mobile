@@ -57,7 +57,8 @@
       [rn-view {:style {:flexDirection "column"  :justify-content "center"}}
        [rnp-text-input {:label (lstr "name")
                         ;;:value database-name
-                        :defaultValue database-name
+                        :defaultValue database-name 
+                        :autoCapitalize "none" ;; this starts with the lowercase keyboard 
                         :autoComplete "off"
                         :onChangeText #(ndb-events/database-field-update :database-name %)}]
        (when (contains? error-fields :database-name)

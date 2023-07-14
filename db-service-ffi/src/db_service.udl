@@ -73,6 +73,7 @@ interface IosSupportService {
     constructor();
     boolean save_book_mark_data(string url,sequence<u8> data);
     sequence<u8> load_book_mark_data(string url);
+    void delete_book_mark_data([ByRef] string full_file_name_uri);
     string? copy_last_backup_to_temp_file(string kdbx_file_name,string full_file_name_uri);
     string complete_save_as_on_error([ByRef] string json_args);
 };
