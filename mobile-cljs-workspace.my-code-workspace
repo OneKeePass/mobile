@@ -6,7 +6,20 @@
 		{
 			"path": "./js"
 		}
-	]
+	],
+	"settings": {
+
+		"rust-analyzer.diagnostics.disabled":["unresolved-proc-macro","inactive-code"],
+
+		"editor.semanticTokenColorCustomizations": {
+	        "enabled": true,
+	        	"rules": {
+	            	"*.mutable": {
+	                	"underline": false,
+	            }
+	        }
+		},
+
 		"calva.replConnectSequences": [
 			{
 				"name": "deps.edn + Krell",
@@ -16,6 +29,9 @@
 					"dependsOn": "User provided"
 				}
 			}
+		],
+		"rust-analyzer.linkedProjects": [
+			"./Cargo.toml"
 		]
 	
     }

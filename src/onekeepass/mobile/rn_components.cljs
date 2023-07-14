@@ -128,19 +128,22 @@
 (def theme-colors (->  ^js/Theme4Colors custom-theme .-colors))
 ;; Some useful custom colors
 (def primary-color (.-primary theme-colors))
-(def on-primary-color (.-onPrimary theme-colors))
+(def on-primary-color (.-onPrimary theme-colors)) ;; whiteish
 (def primary-container-color (.-primaryContainer theme-colors ))
-(def tertiary-color (.-tertiary theme-colors))
+(def tertiary-color (.-tertiary theme-colors)) ;; slight reddish
 (def outline-color (.-outline theme-colors))
 (def background-color (.-background theme-colors))  ;; white
-(def inverse-onsurface-color (.-inverseOnSurface theme-colors))
+(def inverse-onsurface-color (.-inverseOnSurface theme-colors)) ;; very dim on white
 #_(def on-background-color (.-onBackground theme-colors)) ;; primary color ?
 
 ;; Additional colors that are specifc to MD3/MD2 
 (def md2-colors ^js/MD2Color rnp/MD2Colors)
 (def md3-colors ^js/MD3Colors rnp/MD3Colors)
 
+
 (def neutral50-color ^js/N50Color (.-neutral50 md3-colors))
+(def neutral-variant60-color ^js/NV60Color (.-neutralVariant60 md3-colors))
+(def neutral-variant20-color ^js/NV20Color (.-neutralVariant20 md3-colors))
 ;;;;
 
 (def icon-color primary-color)

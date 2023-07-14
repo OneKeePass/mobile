@@ -7,3 +7,39 @@
 (def TYPE_SECTION_TITLE "Types")
 (def CAT_SECTION_TITLE "Categories")
 (def GROUP_SECTION_TITLE "Groups")
+
+
+(def BIOMETRIC-AUTHENTICATION-SUCCESS "AuthenticationSucceeded")
+(def BIOMETRIC-AUTHENTICATION-FAILED "AuthenticationFailed")
+
+;;;;;;; Icon names ;;;;;
+
+;; react-native-vector-icons is used to display the icons
+;; We need to get the name of icons from https://materialdesignicons.com/ ( new url https://pictogrammers.com/library/mdi/)
+;; Need to use the lower case name with "-" 
+
+;; See onekeepass.mobile.icons-list where the Entry and Group Icons listed
+
+(def ICON-DATABASE "database")
+(def ICON-DATABASE-OUTLINE "database-outline")
+(def ICON-LOCKED-DATABASE "database-lock")
+(def ICON-DATABASE-CHECK  "database-check")
+(def ICON-DATABASE-ALERT  "database-alert")
+(def ICON-DATABASE-EYE  "database-eye")
+
+(def ICON-CHEVRON-RIGHT  "chevron-right")
+(def ICON-CACHED  "cached")
+(def ICON-CLOSE "close")
+
+(def ICON-EYE  "eye")
+(def ICON-EYE-OFF  "eye-off")
+
+(def ICON-FILE  "file")
+
+
+
+;; (def ICON-  "")
+;; (def ICON-  "")
+;; (def ICON-  "")
+
+;;(def ICON-  "")

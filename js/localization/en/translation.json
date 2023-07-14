@@ -7,6 +7,8 @@
     "databases":"Databases",
     "databaseFile":"Database File",
     "description":"Description",
+    "importedKeyFiles":"Imported Key Files",
+    "keyFileName":"Key File Name",
     "name":"Name",
     "notes":"Notes",
     "categoryMarked":"Marked as category",
@@ -21,6 +23,7 @@
             "fileInfo":"File Info",
             "openDatabase":"Open database",
             "newDatabase":"New database",
+            "unlockDatabase":"Unlock database",
             "remove":"Remove"
         },
         "texts": {
@@ -47,6 +50,7 @@
         "group": "Group",
         "home": "OneKeePass",
         "icons": "Icons",
+        "keyFileForm":"Key Files",
         "histories": "Histories",
         "historyEntry": "History Entry",
         "historyEntries": "History Entries",
@@ -56,11 +60,13 @@
         "settings": "Settings"
     },
     "button.labels": {
+        "browse":"Browse",
         "close": "Close",
         "cancel": "Cancel",
         "continue": "Continue",
         "create":"Create",
         "edit": "Edit",
+        "generate": "Generate",
         "newdb": "New Database",
         "no": "No",
         "ok": "Ok",
@@ -83,19 +89,23 @@
         "deleteField": "Delete Field",
         "deletePermanently": "Delete Permanently",
         "edit": "Edit",
+        "exportTo":"Export To",
         "fileinfo": "File Info",
         "favorite": "Favorite",
         "favorites": "Favorites",
-        "exportTo":"Export To",
         "groups": "Groups",
         "home": "Home",
         "history": "History",
+        "lockdb": "Lock Database",
         "modifyCustomField": "Modify Custom Field",
         "pwdGenerator": "Password Generator",
         "putback": "Put Back",
         "remove": "Remove",
         "restore": "Restore",
+        "saveAs":"Save As",
+        "select": "Select",
         "settings": "Settings",
-        "types": "Types"
+        "types": "Types",
+        "unlockdb":"Unlock Database"
     }
 }

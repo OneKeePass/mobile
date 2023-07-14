@@ -131,6 +131,7 @@
 ;; check-all, heart-outline delete-outline, login, bank-outline,credit-card-outline, access-point,router-wireless
 ;; earth,airplane,dots-horizontal,dots-vertical
 
+;; TODO: Move Icon names to 'onekeepass.mobile.constants'
 (def category-icons {;; General categories
                      "AllEntries" "check-all"
                      "Favorites" "heart-outline"

@@ -19,18 +19,20 @@
                                                     rnp-text
                                                     inverse-onsurface-color
                                                     neutral50-color]]
-   [clojure.string :as str] 
+   [clojure.string :as str]
+   [onekeepass.mobile.background :refer [is-iOS]]
    [onekeepass.mobile.utils  :refer [str->int]]
    [onekeepass.mobile.common-components :as cc :refer [select-field confirm-dialog]]
    [onekeepass.mobile.events.settings :as stgs-events :refer [cancel-db-settings-form]]
-   [onekeepass.mobile.events.password-generator :as pg-events]))
+   [onekeepass.mobile.events.password-generator :as pg-events]
+   [onekeepass.mobile.constants :as const :refer [ICON-EYE ICON-EYE-OFF]]))
 
 ;;:settings-general :settings-credentials :settings-security 
 (def ^:private desc-page-id {"General" :settings-general
-                   "Credentials" :settings-credentials
-                   "Security" :settings-security
-                   "Encryption" :settings-encryption
-                   "Key Derivation Function" :settings-kdf})
+                             "Credentials" :settings-credentials
+                             "Security" :settings-security
+                             "Encryption" :settings-encryption
+                             "Key Derivation Function" :settings-kdf})
 
 (def ^:private mp-confirm-dialog-data (r/atom false))
 
@@ -38,11 +40,11 @@
   [confirm-dialog {:dialog-show @mp-confirm-dialog-data
                    :title "Changing Master Password"
                    :confirm-text "You are changing the master password. Please keep it safe. Otherwise you will not be able to unlock the databse"
-                   :actions [{:label (lstr "button.labels.yes") 
+                   :actions [{:label (lstr "button.labels.yes")
                               :on-press (fn []
                                           (stgs-events/save-db-settings)
                                           (reset! mp-confirm-dialog-data false))}
-                             {:label (lstr "button.labels.no") 
+                             {:label (lstr "button.labels.no")
                               :on-press (fn []
                                           (reset! mp-confirm-dialog-data false))}]}])
 
@@ -117,7 +119,8 @@
 (defn credential-content []
   (let [password (-> @(stgs-events/db-settings-data) :password)
         password-visible @(stgs-events/master-password-visible?)
-        password-changed #(stgs-events/db-settings-data-field-update :password (if (str/blank? %) nil %))]
+        password-changed #(stgs-events/db-settings-data-field-update :password (if (str/blank? %) nil %))
+        key-file-name-part (-> @(stgs-events/db-settings-data) :key-file-name-part)]
     [rn-view {:style {:flex 1}}
      [form-header "Credentials"]
      [rn-view {:style form-style}
@@ -128,25 +131,35 @@
                          :value password
                          :secureTextEntry (not password-visible)
                          :right (r/as-element [rnp-text-input-icon
-                                               {:icon  (if password-visible "eye" "eye-off")
-                                                :onPress #(stgs-events/db-settings-field-update :password-visible (not password-visible))}])
+                                               {:icon  (if password-visible ICON-EYE ICON-EYE-OFF)
+                                                :onPress #(stgs-events/db-settings-field-update
+                                                           :password-visible (not password-visible))}])
                          ;; on-change-text is a single argument function
                          :onChangeText password-changed #_#(stgs-events/db-settings-data-field-update :password %)}]]
 
        [rn-view {:style {:backgroundColor "white"}}
         [rnp-icon-button {:style {}
-                          :icon "cached"
+                          :icon const/ICON-CACHED
                            ;; This function is called when the generated passed is selected in Generator page
                           :onPress #(pg-events/generate-password password-changed)}]]]
 
-      [rnp-text-input {:style {:margin-top 10}
-                       :label "Key File"
-                       :value nil
-                       :editable true
-                       ;; :onPressIn (fn [e] (println "Key file selector needs to be called"))
-                       :placeholder "Pick an optional key file"
-                       :right (r/as-element [rnp-text-input-icon {:icon "file"
-                                                                  :onPress (fn [e] (println "Key file selector needs to be called"))}])}]]
+      (when key-file-name-part
+        [rnp-text-input {:style {:margin-top 10}
+                         :label "Key File"
+                         :defaultValue key-file-name-part
+                         :readOnly (if (is-iOS) true false)
+                         :onPressIn #(stgs-events/show-key-file-form)
+                         :onChangeText nil 
+                         :placeholder "Pick an optional key file"
+                         :right (r/as-element [rnp-text-input-icon
+                                               {:icon const/ICON-CLOSE
+                                                :onPress (fn []
+                                                           (stgs-events/db-settings-data-field-update :key-file-name-part nil)
+                                                           (stgs-events/db-settings-data-field-update :key-file-name nil))}])}])
+      [rnp-text {:style {:margin-top 15
+                         :textDecorationLine "underline"
+                         :text-align "center"}
+                 :onPress #(stgs-events/show-key-file-form)} "Key File"]]
 
      [rnp-portal
       [master-password-change-confirm-dialog]]]))
@@ -226,7 +239,7 @@
                     :title (r/as-element
                             [rnp-text {:style {}
                                        :variant "titleMedium"} title])
-                    :right (fn [_props] (r/as-element [rnp-list-icon {:icon "chevron-right"}]))}]))
+                    :right (fn [_props] (r/as-element [rnp-list-icon {:icon const/ICON-CHEVRON-RIGHT}]))}]))
 
 (defn db-settings-list-content []
   (let [sections [{:title "Database Settings"
@@ -237,7 +250,7 @@
                           #_{:title "Key Derivation Function"}]}]]
     [rn-section-list  {:style {}
                        :sections (clj->js sections)
-                       :renderItem  (fn [props] 
+                       :renderItem  (fn [props]
                                       ;; keys are (:item :index :section :separators)
                                       (let [props (js->clj props :keywordize-keys true)]
                                         (r/as-element [row-item (-> props :item)])))
@@ -248,7 +261,6 @@
                                               (let [props (js->clj props :keywordize-keys true)
                                                     {:keys [title]} (-> props :section)]
                                                 (r/as-element [section-header title])))}]))
-
 
 (defn main-content []
   [rn-view {:style {:flex 1}}

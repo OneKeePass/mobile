@@ -8,26 +8,20 @@ use std::{
     sync::Mutex,
 };
 
-use crate::util;
+use onekeepass_core::db_service as kp_service;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct FileInfo {
-    pub file_name: Option<String>,
-    pub file_size: Option<i64>,
-    pub last_modified: Option<i64>,
-    pub location: Option<String>,
-}
-pub trait CommonDeviceService: Send + Sync {
-    fn app_home_dir(&self) -> String;
-    fn uri_to_file_name(&self, full_file_name_uri: String) -> Option<String>;
-    fn uri_to_file_info(&self, full_file_name_uri: String) -> Option<FileInfo>;
-}
+use crate::udl_types::{FileInfo, CommonDeviceService};
+use crate::{udl_types::SecureKeyOperation, util};
 
+
+// Any mutable field needs to be behind Mutex
 pub struct AppState {
     pub app_home_dir: String,
     pub backup_dir_path: PathBuf,
     pub export_data_dir_path: PathBuf,
+    pub key_files_dir_path:PathBuf,
     pub common_device_service: Box<dyn CommonDeviceService>,
+    pub secure_key_operation: Box<dyn SecureKeyOperation>,
     last_backup_on_error: Mutex<HashMap<String, String>>,
     pub preference: Mutex<Preference>,
 }
@@ -40,7 +34,10 @@ impl AppState {
         APP_STATE.get().unwrap()
     }
 
-    pub fn setup(common_device_service: Box<dyn CommonDeviceService>) {
+    pub fn setup(
+        common_device_service: Box<dyn CommonDeviceService>,
+        secure_key_operation: Box<dyn SecureKeyOperation>,
+    ) {
         let app_dir = util::url_to_unix_file_name(&common_device_service.app_home_dir());
         let pref = Preference::read(&app_dir);
 
@@ -50,11 +47,16 @@ impl AppState {
         let backup_dir_path = util::create_sub_dir(&app_dir, "backups");
         log::debug!("backup_dir_path is {:?}", backup_dir_path);
 
+        let key_files_dir_path = util::create_sub_dir(&app_dir, "key_files");
+        log::debug!("key_files_dir_path is {:?}", key_files_dir_path);
+
         let app_state = AppState {
             app_home_dir: app_dir.into(),
             backup_dir_path,
             export_data_dir_path,
+            key_files_dir_path,
             common_device_service,
+            secure_key_operation,
             last_backup_on_error: Mutex::new(HashMap::default()),
             preference: Mutex::new(pref),
         };
@@ -75,17 +77,17 @@ impl AppState {
     ) {
         let mut bkp = self.last_backup_on_error.lock().unwrap();
         bkp.insert(full_file_name_uri.into(), backup_file_full_name.into());
-        debug!(
-            "Added backup file name {} for the uri {}",
-            backup_file_full_name, full_file_name_uri
-        );
     }
 
+    // Used in android and ios specific module
+    // See ios::complete_save_as_on_error and  android::complete_save_as_on_error
     pub fn remove_last_backup_name_on_error(&self, full_file_name_uri: &str) {
         let mut bkp = self.last_backup_on_error.lock().unwrap();
         bkp.remove(full_file_name_uri);
     }
 
+    // Used in android and ios specific module
+    // See ios::copy_last_backup_to_temp_file, android::complete_save_as_on_error
     pub fn get_last_backup_on_error(&self, full_file_name_uri: &str) -> Option<String> {
         self.last_backup_on_error
             .lock()

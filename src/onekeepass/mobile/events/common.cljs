@@ -58,6 +58,7 @@
    (on-ok api-response nil)))
 
 (defn active-db-key
+  "Returns the current database key 'db-key'"
   ;; To be called only in react components as it used 'subscribe' (i.e in React context)
   ([]
    (subscribe [:active-db-key]))
@@ -76,7 +77,21 @@
   ;; Then update the main db
   (let [kdbx-db-key (active-db-key app-db)
         kdb (get app-db kdbx-db-key)]
+    ;; kdb is the db info map found for the current db key 'kdbx-db-key'
     (assoc app-db kdbx-db-key (assoc-in kdb ks v))))
+
+(defn assoc-in-selected-db
+  "Called to associate the value in 'v' to the keys 'ks' location 
+  in the db info map found by using the passed db-key and then updates the main db 
+  with this new key db
+  Returns the main db 
+  "
+  [app-db db-key ks v]
+  ;; Get db info using the db-key arg and update that map with v in ks
+  ;; Then update the main db
+  (let [kdb (get app-db db-key)]
+    ;; kdb is the db info map found for the db-key
+    (assoc app-db db-key (assoc-in kdb ks v))))
 
 (defn get-in-key-db
   "Gets the value for the key lists from an active kdbx content"
@@ -84,28 +99,31 @@
   ;; First we get the kdbx content map and then supplied keys 'ks' used to get the actual value
   (get-in app-db (into [(active-db-key app-db)] ks)))
 
+(defn get-in-selected-db
+  "Gets the value for the key lists from database info using the passed database key 'db-key'"
+  [app-db db-key ks]
+  ;; First we get the kdbx content map and then supplied keys 'ks' used to get the actual value
+  (get-in app-db (into [db-key] ks)))
+
 (defn db-opened
   "Updates the db list and current active db key when a new kdbx database is loaded
   The args are the re-frame 'app-db' and KdbxLoaded struct returned by backend API.
   Returns the updated app-db
   "
-  [app-db {:keys [db-key database-name]}] ;;kdbx-loaded 
+  [app-db {:keys [db-key database-name file-name key-file-name]}] ;;kdbx-loaded 
   (let [app-db  (if (nil? (:opened-db-list app-db)) (assoc app-db :opened-db-list []) app-db)
         ;; Existing db-key is removed first to maintain unique db-key
         dbs (filterv (fn [m] (not= db-key (:db-key m))) (:opened-db-list app-db))
         app-db (assoc app-db :opened-db-list dbs)]
     (-> app-db
         (assoc :current-db-file-name db-key)
-         ;; TODO: 
-         ;; Need to check duplicate entries for the same db-key
-         ;; and ask user whether to continue to open or not in open db dialog instead of the same db again
-
          ;; opened-db-list is a vec of map with keys :db-key :database-name
          ;; :database-name is different from :file-name found in the the map Preference -> RecentlyUsed
          ;; See ':recently-used' subscription 
          ;; The latest opened db is last in the vector
         (update-in [:opened-db-list] conj {:db-key db-key
                                            :database-name database-name
+                                           :file-name file-name
                                            ;;:database-name (:database-name meta)
                                            }))))
 
@@ -140,7 +158,9 @@
 (defn remove-from-recent-list [full-file-name-uri]
   (dispatch [:remove-from-recent-list full-file-name-uri]))
 
-(defn opened-database-file-names []
+(defn opened-database-file-names
+  "Gets db info map with keys [db-key database-name file-name key-file-name] from the opened database list"
+  []
   (subscribe [:opened-database-file-names]))
 
 ;; Put an initial value into app-db.
@@ -278,6 +298,9 @@
   []
   (subscribe [:recently-used]))
 
+(defn biometric-available []
+  (subscribe [:biometric-available]))
+
 (reg-event-fx
  :load-app-preference
  (fn [{:keys [db]} [_event-id]]
@@ -310,7 +333,10 @@
  (fn [{:keys [db]} [_event-id pref]]
    ;; pref is a map - {:version \"0.0.1\" :recent-dbs-info [{},{}..]}
    ;; based on Preference struct 
-   {:db (-> db (assoc-in [:app-preference :status] :loaded)
+   {:db (-> db
+            ;; Set the biometric availablity info in db so that we can use it in a subscription
+            (assoc :biometric-available (bg/is-biometric-available))
+            (assoc-in [:app-preference :status] :loaded)
             (assoc-in [:app-preference :data] pref))}))
 
 (reg-sub
@@ -319,6 +345,75 @@
    (let [r (get-in db [:app-preference :data :recent-dbs-info])]
      (if (nil? r) [] r))))
 
+(reg-sub
+ :biometric-available
+ (fn [db [_event-id]]
+   (get db :biometric-available)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  DB Lock ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; All DB unlock call events are in open-databse ns
+
+(defn locked? [db-key]
+  (if (nil? db-key)
+    (subscribe [:current-db-locked])
+    (subscribe [:selected-db-locked db-key])))
+
+(defn lock-kdbx
+  "Called to lock a database. The arg is nil if we want to lock the current database"
+  [db-key]
+  ;; Lock database call from entry category or entry list page is meant for the 
+  ;; current database and hence db-key passed is nil
+  (if (nil? db-key)
+    (dispatch  [:lock-current-kdbx])
+    (dispatch [:lock-selected-kdbx db-key])))
+
+
+;; Similiar to :common/close-current-kdbx-db 
+;; Locks db instead of closing 
+;; Called to lock the current active db - typically used from entry cat page menu 
+(reg-event-fx
+ :lock-current-kdbx
+ (fn [{:keys [db]} [_event-id]]
+   {:db (assoc-in-key-db db [:locked] true)
+    :fx [[:dispatch [:to-home-page]]
+         [:dispatch [:common/message-snackbar-open "Database locked"]]]}))
+
+;; Called to lock any opened database using the passed db-key - used from home page
+(reg-event-fx
+ :lock-selected-kdbx
+ (fn [{:keys [db]} [_event-id db-key]]
+   {:db (assoc-in-selected-db db db-key [:locked] true)
+    :fx [#_[:bg-lock-kdbx [(active-db-key db)]]
+         [:dispatch [:to-home-page]]
+         [:dispatch [:common/message-snackbar-open "Database locked"]]]}))
+
+;; Need to make use of API call in case we want to do something for lock call
+;; Currently nothing is done on the backend
+#_(reg-fx
+   :bg-lock-kdbx
+   (fn [[db-key]]
+     #_(bg/lock-kdbx db-key (fn [api-response]
+                              (when-not (on-error api-response)
+                            ;; Add any relevant dispatch calls here
+                            ;;(println "Database is locked")
+                                #())))))
+
+;;:open-database/unlock-dialog-show
+(reg-event-fx
+ :common/unlock-selected-db
+ (fn [{:keys [db]} [_event-id db-key]]
+   {:db (assoc-in-selected-db db db-key [:locked] false)}))
+
+(reg-sub
+ :current-db-locked
+ (fn [db _query-vec]
+   (boolean (get-in-key-db db [:locked]))))
+
+(reg-sub
+ :selected-db-locked
+ (fn [db [_query-id db-key]]
+   (boolean (get-in-selected-db db db-key [:locked]))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  Page Navigation ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -649,6 +744,7 @@
 (defn message-modal-data []
   (subscribe [:message-modal]))
 
+;; TODO: Need to swap the args order to 'message title' as title is used optional field
 (reg-event-db
  :common/message-modal-show
  (fn [db [_event-id title message]]
@@ -713,7 +809,7 @@
 
 (def field-in-clip (atom false))
 
-(defn clear-clipboard 
+(defn clear-clipboard
   "Clears out the last protected field after 10 sec assuming user copies one field and pastes
    "
   [protected]

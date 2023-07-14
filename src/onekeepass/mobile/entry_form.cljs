@@ -414,7 +414,8 @@
                    :showSoftInputOnFocus edit
                    :ref (fn [ref]
                           (when (and (not (nil? ref)) (str/blank? value)) (.clear ref)))
-                   :autoCapitalize "none"
+                   :autoCapitalize "none" 
+                   :keyboardType "email-address"
                    :autoComplete "off"
                    :autoCorrect false
                    :style {:width (if (or is-password-edit? custom-field-edit-focused?)  "90%" "100%")}
@@ -448,6 +449,7 @@
                    :value value
                    :showSoftInputOnFocus edit
                    :autoCapitalize "none"
+                   :keyboardType "email-address"
                    ;;:autoComplete "off"
                    :autoCorrect false
                    ;;:contextMenuHidden true

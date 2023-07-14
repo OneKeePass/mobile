@@ -18,7 +18,7 @@
                                            :confirm-text nil
                                            :call-on-ok-fn #(println %)}))
 
-;; overwrite-confirm-dialog-info is a map with :dialog and :show
+;; overwrite-confirm-dialog-info is a map with keys [:dialog :show]
 ;; value of key :show is a fn
 (def overwrite-confirm-dialog-info (confirm-dialog-factory ovewrite-confirm-dialog-data))
 
@@ -96,5 +96,6 @@
                     :on-press save-events/save-error-modal-hide} "Cancel"]
        [rnp-text {:style {:textAlign "justify"}} ""]]]]]
 
+   ;; Anchoring the overwrite confirm dialog to this modal 
    [rnp-portal
     (:dialog overwrite-confirm-dialog-info)]])

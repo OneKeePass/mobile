@@ -46,6 +46,11 @@
 (defn save-db-settings []
   (dispatch [:db-settings-write]))
 
+(defn show-key-file-form []
+  ;; kw :settings-key-file-selected is used in events in ns onekeepass.mobile.events.key-file-form
+  ;; to send back the selected key file 
+  (dispatch [:key-file-form/show :settings-key-file-selected true]))
+
 (defn db-settings-data []
   (subscribe [:db-settings-data]))
 
@@ -205,6 +210,13 @@
                       :on-save-ok (fn []
                                     (dispatch [:common/previous-page])
                                     (dispatch [:common/message-snackbar-open "Database Settings saved"]))}]]]}))
+
+;; An event to be called (from key file related page) after user selects a key file 
+(reg-event-fx
+ :settings-key-file-selected
+ (fn [{:keys [db]} [_event-id {:keys [file-name full-file-name]}]]
+   {:db (-> db (assoc-in-key-db [:db-settings :data :key-file-name-part] file-name)
+            (assoc-in-key-db [:db-settings :data :key-file-name] full-file-name))}))
 
 (reg-sub
  :master-password-visible

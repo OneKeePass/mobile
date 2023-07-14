@@ -3,10 +3,9 @@ package com.onekeepassmobile
 import android.net.Uri
 import android.os.ParcelFileDescriptor
 import android.util.Log
-import com.facebook.react.bridge.Promise
-import com.facebook.react.bridge.ReactApplicationContext
-import com.facebook.react.bridge.ReactContextBaseJavaModule
-import com.facebook.react.bridge.ReactMethod
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
+import com.facebook.react.bridge.*
 import onekeepass.mobile.ffi.ApiResponse
 import java.io.FileNotFoundException
 import java.util.*
@@ -19,7 +18,7 @@ private const val TAG = "DbServiceModule"  //TAG can only be max 23 characters
 class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
     private val contentResolver = reactContext.contentResolver
     private val executorService: ExecutorService = Executors.newFixedThreadPool(4)
-
+    private val biometricService:BiometricService = BiometricService(reactContext)
     override fun getName() = "OkpDbService"
 
     // IMPORTANT: This call should have been made before any API Calls
@@ -56,7 +55,8 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
                 "MainBundleDir" to reactApplicationContext.applicationInfo.dataDir,
                 "SDCardDir" to sdCardDir,
                 "Country" to locale.country,  // Device country
-                "Language" to locale.language // Device level language
+                "Language" to locale.language, // Device level language
+                "BiometricAvailable" to biometricService.biometricAuthenticationAvailbale().toString()
         )
     }
 
@@ -137,7 +137,7 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
             try {
                 if (!overwrite  && (verifyDbFileChanged(fullFileNameUri,promise))) {
                     Log.d(TAG,"Db contents have changed and saving is not done")
-                    //TODO: Store the db file with changed data to backup for later offline use
+                    // Store the db file with changed data to backup for later offline use
                     DbServiceAPI.writeToBackupOnError(fullFileNameUri)
                     return@execute
                 }
@@ -285,6 +285,59 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
                 // e.printStackTrace()
                 Log.e(TAG, "Error in completeSaveAsOnError ${e}")
                 promise.reject(E_SAVE_AS_CALL_FAILED, e)
+            }
+        }
+    }
+
+    @ReactMethod
+    fun authenticateWithBiometric(promise: Promise) {
+        // BiometricPrompt should be called in the UI thread
+        UiThreadUtil.runOnUiThread( {
+            val executor = Executors.newSingleThreadExecutor()
+            Log.d(TAG,"Calling showPrompt....")
+            biometricService.showPrompt(currentActivity as FragmentActivity, executor,promise)
+            Log.d(TAG,"Called showPrompt")
+        })
+
+        // BiometricPrompt should be called in the UI thread. The following did not work and threw
+        // java.lang.IllegalStateException: Must be called from main thread of fragment host
+
+         // val executor = ContextCompat.getMainExecutor(this.reactApplicationContext)
+         // biometricService.showPrompt(currentActivity as FragmentActivity, executor,promise)
+    }
+
+    @ReactMethod
+    fun copyKeyFile(fullKeyFileNameUri: String, promise: Promise) {
+        Log.d(TAG, "copyKeyFile is called with fullFileNameUri $fullKeyFileNameUri  ")
+        executorService.execute {
+            val uri = Uri.parse(fullKeyFileNameUri);
+            try {
+                val fd: ParcelFileDescriptor? = contentResolver.openFileDescriptor(uri, "r");
+                val fileName = FileUtils.getMetaInfo(contentResolver, uri)?.filename ?: ""
+                //fd will be null if the provider recently crashed
+                if (fd != null) {
+                    // detachFd call should be used so that the file is closed in the rust code automatically
+                    promise.resolve(DbServiceAPI.copyPickedKeyFile(fd.detachFd().toULong(),fullKeyFileNameUri,fileName))
+                } else {
+                    promise.reject(E_READ_FIE_DESCRIPTOR_ERROR, "Invalid file descriptor")
+                }
+
+            } catch (e: SecurityException) {
+                // UI layer needs to handle this with apprpriate message to the user
+                // This will happen, if we try to read the kdbx file without proper permissions
+                // We need to obtain while selecting the file.
+                // See 'pickKdbxFileToOpen'
+                Log.e(TAG, "SecurityException due to in sufficient permission")
+                promise.reject(E_PERMISSION_REQUIRED_TO_READ, e)
+            } catch (e: FileNotFoundException) {
+                // Need to add logic in UI layer to handle this
+                // e.printStackTrace()
+                Log.e(TAG, "Error in readKdbx ${e}")
+                promise.reject(E_FILE_NOT_FOUND, e)
+            } catch (e: Exception) {
+                // e.printStackTrace()
+                Log.e(TAG, "Error in readKdbx ${e}")
+                promise.reject(E_READ_CALL_FAILED, e)
             }
         }
     }

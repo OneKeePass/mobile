@@ -1,6 +1,8 @@
 use std::io::{Read, Seek, Write};
+use std::path::Path;
 use std::{fs::File, os::fd::IntoRawFd};
 
+use crate::commands;
 use crate::{
     app_state::AppState,
     as_api_response,
@@ -10,6 +12,7 @@ use crate::{
 use onekeepass_core::db_service::{self, KdbxLoaded};
 use regex::{Error, RegexSet};
 
+// This is for any Android specific services
 pub struct AndroidSupportService {}
 
 // See https://users.rust-lang.org/t/can-i-stop-vscode-rust-analyzer-from-shading-out-cfgs/58773
@@ -77,8 +80,12 @@ impl AndroidSupportService {
 
         let mut full_file_name_uri: String = String::default();
         let r = match serde_json::from_str(&json_args) {
-            Ok(CommandArg::NewDbArg { new_db }) => {
+            Ok(CommandArg::NewDbArg { mut new_db }) => {
                 full_file_name_uri = new_db.database_file_name.clone();
+                // Need to get the file name from full uri
+                new_db.file_name = AppState::global()
+                    .common_device_service
+                    .uri_to_file_name(full_file_name_uri.clone());
                 let r = db_service::create_and_write_to_writer(&mut file, new_db);
                 // sync_all ensures the file is created and synced in case of dropbbox and one drive
                 let _ = file.sync_all();
@@ -97,6 +104,7 @@ impl AndroidSupportService {
             // By this call, the file instance created using incoming fd will not close the file at the end of
             // this function (Files are automatically closed when they go out of scope) and the caller
             // function from device will be responsible for the file closing.
+            // If this is not done, android app will crash!
             let _fd = file.into_raw_fd();
         }
 
@@ -118,6 +126,33 @@ impl AndroidSupportService {
         };
         api_response
     }
+
+    pub fn save_key_file(&self, file_descriptor: u64, full_key_file_name:String) -> String {
+        log::debug!("AndroidSupportService save_key_file is called with full_key_file_name {}",&full_key_file_name);
+        
+        let inner = || -> OkpResult<()> {
+            let p = Path::new(&full_key_file_name);
+            if !p.exists() {
+                return Err(OkpError::Other(format!("Key file {:?} is not found", p.file_name())));
+            }
+
+            let mut reader = File::open(p)?;
+            let mut writer = unsafe { util::get_file_from_fd(file_descriptor) };
+            std::io::copy(&mut reader, &mut writer).and(writer.sync_all())?;
+            {
+                log::debug!("Key File fd is used and will not be closed here");
+                // IMPORTANT
+                // We need to transfer the ownership of the underlying file descriptor to the caller.
+                // By this call, the file instance created using incoming fd will not close the file at the end of
+                // this function (Files are automatically closed when they go out of scope) and the caller
+                // function from device will be responsible for the file closing.
+                // If this is not done, android app will crash!
+                let _fd = writer.into_raw_fd();
+            }
+            Ok(())
+        };
+        commands::result_json_str(inner())
+    }
 }
 
 #[cfg(target_os = "ios")]
@@ -138,6 +173,11 @@ impl AndroidSupportService {
     pub fn create_kdbx(&self, _file_descriptor: u64, _json_args: String) -> ApiResponse {
         unimplemented!();
     }
+
+    pub fn save_key_file(&self, _file_descriptor: u64, _full_key_file_name:String) -> String {
+        unimplemented!();
+    }
+    
 }
 
 #[cfg(target_os = "android")]

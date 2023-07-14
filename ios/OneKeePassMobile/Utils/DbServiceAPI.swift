@@ -1,10 +1,14 @@
 import Foundation
 
+
+// Only one logger with variable 'cmnLogger' be declared
+let cmnLogger = OkpLogger(tag: "common ios ffi")
+
 class DbServiceAPI {
   static let logger = OkpLogger(tag: "DbServiceAPI")
   
-  static var _iosSupportService = IosSupportService()
-  static var _jsonService = JsonService()
+  private static var _iosSupportService = IosSupportService()
+  private static var _jsonService = JsonService()
 
   static var initialized = false
 
@@ -21,7 +25,8 @@ class DbServiceAPI {
       dbServiceEnableLogging()
       Swift.debugPrint("dbServiceEnableLogging call is done")
       let cmnService = CommonDeviceServiceImpl()
-      dbServiceInitialize(cmnService)
+      let secKeyOps = SecureKeyOperationImpl()
+      dbServiceInitialize(cmnService,secKeyOps)
       initialized = true
       Swift.debugPrint("API initialize is done")
     } else {
@@ -31,6 +36,10 @@ class DbServiceAPI {
 
   static func iosSupportService() -> IosSupportService {
     _iosSupportService
+  }
+  
+  static func jsonService() -> JsonService {
+    _jsonService
   }
 
   static func formJsonWithFileName(_ fullFileName: String) -> String {
@@ -52,6 +61,11 @@ class DbServiceAPI {
     return OneKeePassMobile.saveKdbx(fileArgs,overwrite)
   }
   
+  static func copyPickedKeyFile(_ fullFileName: String) -> String {
+    let fileArgs = FileArgs.fullFileName(fullFileName: fullFileName)
+    return OneKeePassMobile.copyPickedKeyFile(fileArgs)
+  }
+  
   static func completeSaveAsOnError(_ jsonArgs: String) -> String {
     _iosSupportService.completeSaveAsOnError(jsonArgs)
   }
@@ -60,6 +74,10 @@ class DbServiceAPI {
     return OneKeePassMobile.writeToBackupOnError(fullFileName)
   }
   
+}
+
+enum CallbackErrors: Error {
+    case apiIsNotSupported
 }
 
 class CommonDeviceServiceImpl: CommonDeviceService {

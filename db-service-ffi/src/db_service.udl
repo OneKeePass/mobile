@@ -1,6 +1,10 @@
 namespace db_service {
+    
+    // Called one time 
     void db_service_enable_logging();
-    void db_service_initialize(CommonDeviceService common_device_service);
+
+    // Needs to be called from Swift/Kotlin side to initialize callback that can be used from rust side
+    void db_service_initialize(CommonDeviceService common_device_service,SecureKeyOperation secure_key_operation);
  
     ApiResponse read_kdbx(FileArgs file_args, string json_args);
     ApiResponse create_temp_kdbx(FileArgs file_args, string json_args);
@@ -8,15 +12,47 @@ namespace db_service {
     ApiResponse verify_db_file_checksum(FileArgs file_args);
     ApiResponse write_to_backup_on_error(string full_file_name_uri);
 
+    string copy_picked_key_file(FileArgs file_args);
+
     string extract_file_provider(string full_file_name_uri);
     string invoke_command(string command_name, string args);
 };
+
 
 // From Rust to Swift or Kotlin
 callback interface CommonDeviceService {
     string app_home_dir();
     string? uri_to_file_name(string full_file_name_uri);
     FileInfo? uri_to_file_info(string full_file_name_uri);
+};
+
+// From Rust to Swift or Kotlin
+callback interface SecureKeyOperation {
+    [Throws=SecureKeyOperationError]
+    void store_key(string db_key,string enc_key_data);
+
+    [Throws=SecureKeyOperationError]
+    string? get_key(string db_key);
+
+    [Throws=SecureKeyOperationError]
+    void delete_key(string db_key);
+};
+
+// Need to combine this SecureKeyOperationError
+// and use that for all calback erors
+[Enum]
+interface ApiCallbackError {
+    InternalCallbackError(string reason);
+};
+
+// Used in the callback error of SecureKeyOperation
+[Error]
+enum SecureKeyOperationError {
+    "StoringKeyError",
+    "StoringKeyDuplicateItemError",
+    "QueryKeyError",
+    "DeleteKeyError",
+    "InternalSecureKeyOperationError",
 };
 
 dictionary FileInfo {
@@ -32,27 +68,35 @@ dictionary KdbxCreated {
 };
 
 // iOS specific APIs. Called from Swift to Rust
-// All methods need to receive &self as first argument in Rust side implemenation
+// All methods need to receive &self as first argument in Rust side implementaion
 interface IosSupportService {
     constructor();
     boolean save_book_mark_data(string url,sequence<u8> data);
     sequence<u8> load_book_mark_data(string url);
+    void delete_book_mark_data([ByRef] string full_file_name_uri);
     string? copy_last_backup_to_temp_file(string kdbx_file_name,string full_file_name_uri);
     string complete_save_as_on_error([ByRef] string json_args);
 };
 
 // Android specific APIs. Called from Kotlin side to Rust
+// All methods need to receive &self in Rust side implementaion side except constructor 
 interface AndroidSupportService {
     constructor();
     ApiResponse create_kdbx(u64 file_descriptor, string json_args);
     ApiResponse complete_save_as_on_error(u64 file_descriptor, string old_full_file_name_uri,string new_full_file_name_uri);
+    string save_key_file(u64 file_descriptor, string full_key_file_name);
 };
 
+// Called from middle layer (Swift or Kotlin side) to form a json string and  return to UI layer
+// UI layer deserializes this to a valid json object and used accordingly
+// All methods need to receive &self in Rust side implementaion except constructor 
 interface JsonService {
     constructor();
     string form_with_file_name(string full_file_name_uri);
+    string map_as_ok_json_string(record<DOMString,string> info);
+    string ok_json_string(string info);
+    string error_json_string(string error);
 };
-
 
 [Enum]
 interface FileArgs {

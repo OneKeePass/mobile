@@ -1,6 +1,7 @@
 package com.onekeepassmobile
 
 import android.net.Uri
+import android.os.ParcelFileDescriptor
 import android.util.Log
 import com.facebook.react.bridge.ReactApplicationContext
 import onekeepass.mobile.ffi.*
@@ -25,7 +26,7 @@ object DbServiceAPI {
     }
 
     fun initialize(reactContext: ReactApplicationContext) {
-        dbServiceInitialize(CommonDeviceServiceImpl(reactContext))
+        dbServiceInitialize(CommonDeviceServiceImpl(reactContext),SecureKeyOperationImpl(reactContext))
     }
 
     fun invokeCommand(commandName: String, args: String): String {
@@ -35,6 +36,10 @@ object DbServiceAPI {
     fun cleanExportDataDir(): String {
         // Delegates to the invokeCommand
         return invokeCommand("clean_export_data_dir", "{}")
+    }
+
+    fun androidSupportService() : AndroidSupportService {
+        return androidSupportService
     }
 
     fun createKdbx(fd: ULong, args: String): ApiResponse {
@@ -78,8 +83,17 @@ object DbServiceAPI {
         return onekeepass.mobile.ffi.readKdbx(fileArgs, args)
     }
 
+    fun copyPickedKeyFile(fd: ULong, fullFileName: String, fileName: String):String {
+        val fileArgs = onekeepass.mobile.ffi.FileArgs.FileDecriptorWithFullFileName(fd, fullFileName, fileName)
+        return onekeepass.mobile.ffi.copyPickedKeyFile(fileArgs)
+    }
+
     fun formJsonWithFileName(fullFileName: String): String {
         return jsonService.formWithFileName(fullFileName)
+    }
+
+    fun jsonService():JsonService {
+        return jsonService
     }
 }
 

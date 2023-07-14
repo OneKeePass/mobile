@@ -41,6 +41,10 @@
 #_(defn get-constants []
     (.getConstants okp-db-service))
 
+(defn is-biometric-available []
+  ;; Valid values expected for BiometricAvailable are "true" or "false" for both iOS and Android
+  (= (-> okp-db-service .getConstants .-BiometricAvailable) "true"))
+
 (defn- api-args->json
   [api-args convert-request]
   (if convert-request
@@ -142,6 +146,14 @@
   [dispatch-fn]
   (call-api-async (fn [] (.hide rn-boot-splash 200)) dispatch-fn))
 
+(defn authenticate-with-biometric 
+  "Called to authenticate the previously locked database. 
+  There is no db specific biometric authentication settings or control. If the device supports
+  the biometric, then that feature is used for any locked database to unlock
+  "
+  [dispatch-fn]
+  (call-api-async (fn [] (.authenticateWithBiometric okp-db-service)) dispatch-fn))
+
 ;; Android: 
 ;; The call sequence - pickKdbxFileToCreate, .createKdbx - to create
 ;; a new database works (works only with GDrive, DropBox, Local)
@@ -159,15 +171,12 @@
 (defn pick-document-to-create
   "Starts a document picker view so that user can select a location to create the db file
   kdbx-file-name is the database file name. It is not full path. On users pick, the complete url
-  is passed to dispatch-fn as {:ok \"full file url\"}. See how the option ':no-response-conversion' 
-  is used in 'transform-api-response'
+  is passed to dispatch-fn in a map with keys [file-name full-file-name-uri] as ':ok' value. 
   "
   [kdbx-file-name dispatch-fn]
-  (println "pick-document-to-create called for " kdbx-file-name)
+  ;;(println "pick-document-to-create called for " kdbx-file-name)
   (call-api-async (fn [] (.pickKdbxFileToCreate okp-document-pick-service kdbx-file-name))
-                  dispatch-fn
-                  ;; The API response is not converted as json. Instead used as value of :ok in return
-                  ;; :no-response-conversion true
+                  dispatch-fn 
                   :error-transform true))
 
 (defn- request-argon2key-transformer
@@ -186,16 +195,47 @@
 ;;
 ;; May need to explore the use of UIActivityViewController based export support. Using this the newly crated temp db file
 ;; may be saved to another app and then open from that. Someting similar to 'ACTION_SEND'
-(defn pick-and-save-new-kdbxFile [file-name new-db dispatch-fn]
+(defn pick-and-save-new-kdbxFile 
+  "Called to show a document pick view"
+  [file-name new-db dispatch-fn]
   (call-api-async (fn [] (.pickAndSaveNewKdbxFile
                           okp-document-pick-service file-name
                           ;; Explicit conversion of the api args to json here
                           (api-args->json {:new_db (request-argon2key-transformer new-db)} false)))
-                  dispatch-fn :error-transform true))
+                  ;; This dipatch function receives a map with keys [file-name full-file-name-uri] as ':ok' value
+                  dispatch-fn 
+                  :error-transform true))
 
-(defn pick-document-to-read-write [dispatch-fn]
+;; This works for both iOS and Android
+(defn pick-database-to-read-write 
+  "Called to pick a kdbx file using platform specific File Manager. The 'dispatch-fn' called with a full uri
+   of a file picked and the file is read and loaded in the subsequent call
+   "
+  [dispatch-fn]
   (call-api-async (fn []
                     (.pickKdbxFileToOpen okp-document-pick-service))
+                  dispatch-fn 
+                  :error-transform true))
+
+;; This works for both iOS and Android
+(defn pick-key-file-to-copy
+  "Called to pick a kdbx file using platform specific File Manager. The 'dispatch-fn' called with a full uri
+   of a file picked and the file is read and loaded in the subsequent call
+   "
+  [dispatch-fn]
+  (call-api-async (fn []
+                    (.pickKeyFileToCopy okp-document-pick-service))
+                  dispatch-fn
+                  :error-transform true))
+
+;; This works for both iOS and Android
+(defn pick-key-file-to-save 
+  "Called to save the selected key file to a user chosen location
+   The arg 'full-file-name' is the fey file absolute path
+   The arg 'file-name' is the just key file name part
+   "
+  [full-file-name file-name dispatch-fn] 
+  (call-api-async (fn [] (.pickKeyFileToSave okp-document-pick-service full-file-name file-name)) 
                   dispatch-fn :error-transform true))
 
 ;;;;;;;;
@@ -203,11 +243,17 @@
 (defn ios-pick-on-save-error-save-as
   "Called to present os specific view for the user to save the copied kdbx file"
   [kdbx-file-name db-key dispatch-fn]
-  (call-api-async (fn [] (.pickOnSaveErrorSaveAs okp-document-pick-service kdbx-file-name db-key)) dispatch-fn :error-transform true))
+  (call-api-async (fn [] (.pickOnSaveErrorSaveAs 
+                          okp-document-pick-service 
+                          kdbx-file-name db-key)) 
+                  dispatch-fn 
+                  :error-transform true))
 
 (defn ios-complete-save-as-on-error [db-key new-db-key dispatch-fn]
-  (call-api-async (fn [] (.completeSaveAsOnError okp-db-service
-                                                 (api-args->json {:db-key db-key :new-db-key new-db-key} true))) dispatch-fn))
+  (call-api-async (fn [] (.completeSaveAsOnError 
+                          okp-db-service
+                          (api-args->json {:db-key db-key :new-db-key new-db-key} true))) 
+                  dispatch-fn))
 
 ;; 
 (defn android-pick-on-save-error-save-as [kdbx-file-name dispatch-fn] 
@@ -217,6 +263,11 @@
   (call-api-async (fn [] (.completeSaveAsOnError okp-db-service db-key new-db-key)) dispatch-fn :error-transform true))
 
 ;;;;;;
+
+(defn copy-key-file 
+  "After user picks up a file to use as Key File, this api is called to copy to a dir inside the app"
+  [full-file-name dispatch-fn]
+  (call-api-async (fn [] (.copyKeyFile okp-db-service full-file-name)) dispatch-fn :error-transform true))
 
 (defn create-kdbx
   "Called with full file name uri that was picked by the user through the document picker 
@@ -288,6 +339,20 @@
 
 (defn close-kdbx [db-key dispatch-fn]
   (invoke-api "close_kdbx" {:db-key db-key} dispatch-fn))
+
+(defn unlock-kdbx
+  "Calls the API to unlock the previously opened db file.
+   Calls the dispatch-fn with the received map of type 'KdbxLoaded' 
+  "
+  [db-key password key-file-name dispatch-fn]
+  (invoke-api "unlock_kdbx" {:db-file-name db-key
+                             :password password
+                             :key-file-name key-file-name} dispatch-fn))
+
+;; See authenticate-with-biometric api above
+
+(defn unlock-kdbx-on-biometric-authentication [db-key dispatch-fn]
+  (invoke-api "unlock_kdbx_on_biometric_authentication" {:db-key db-key} dispatch-fn))
 
 (defn remove-from-recently-used
   "Removes recently used file info for the passed db-key and the database id also 
@@ -472,12 +537,31 @@
 (defn collect-entry-group-tags [db-key dispatch-fn]
   (invoke-api  "collect_entry_group_tags" {:db-key db-key} dispatch-fn))
 
+(defn list-key-files 
+  "Gets all previously copied key files"
+  [dispatch-fn]
+  (invoke-api "list_key_files" {} dispatch-fn))
+
+(defn delete-key-file
+  "Deletes any specfic key file"
+  [file-name dispatch-fn]
+  ;; This api call make use of 'CommandArg::GenericArg' and accordingly we need to ensure
+  ;; we pass the expected arg name 'file_name' with non null value
+  ;; The Arg map to this api is not transformed automaticlly as done typically.
+  ;; Note the use of snakecase convention for 'key_vals' and 'file_name' as expected by serde conversion
+  (invoke-api "delete_key_file"  {:key_vals {"file_name" file-name}} dispatch-fn :convert-request false))
+
+(defn generate-key-file 
+  "Arg file-name is just the key file name part with .keyx suffix"
+  [file-name dispatch-fn]
+  (invoke-api "generate_key_file"  {:key_vals {"file_name" file-name}} dispatch-fn :convert-request false))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Native Events ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; While compiling with advanced option, if we use '(u/is-iOS)' to check platform
 ;; in any place, the call gets optimized with false constant value resulting all calls that 
 ;; use such check to use platform specific code failed   
 
-;; For example, we the creation of 'OkpEvents' did not happen for '(util/is-iOS)'
+;; For example,  the creation of 'OkpEvents' did not happen for '(util/is-iOS)'
 ;; This in turn leading to error in case of iOS
 ;; Invariant Violation: `new NativeEventEmitter()` requires a non-null argument
 ;; The following dummy function definition ensures that, type hint ^js/OkpEvents work

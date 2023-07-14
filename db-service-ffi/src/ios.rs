@@ -11,34 +11,22 @@ use regex::{Regex, RegexSet};
 // This is for any iOS specific services
 pub struct IosSupportService {}
 
+// Created in iOS side native module and then iOS specific
+// support methods are called
 #[cfg(target_os = "ios")]
 impl IosSupportService {
-    // Called in iOS side native module and then iOS specific
-    // support methods are called
     pub fn new() -> Self {
         Self {}
     }
 
     // The implementation for the udl defined fn "boolean save_book_mark_data(string url,sequence<u8> data)"
     // Called in case of iOS app, to save the secure url bookmarking data
+    // Note: At this time both kdbx and the key file uri bookmarking use the same way
     pub fn save_book_mark_data(&self, url: String, data: Vec<u8>) -> bool {
         let file_name = string_to_simple_hash(&url).to_string();
-        log::debug!(
-            "save_book_mark_data is called for url {} and its hash is {} ",
-            &url,
-            &file_name
-        );
+        
         let book_mark_file_root = Path::new(&AppState::global().app_home_dir).join("bookmarks");
         // Ensure that the parent dir exists
-        // if let Some(p) = Path::new(&book_mark_file_root) {
-        //     if !p.exists() {
-        //         if let Err(e) = std::fs::create_dir_all(p) {
-        //             log::error!("Bookmark root dir creation failed {:?}",e);
-        //             return false;
-        //         }
-        //     }
-        // }
-
         if !book_mark_file_root.exists() {
             if let Err(e) = std::fs::create_dir_all(&book_mark_file_root) {
                 log::error!("Bookmark root dir creation failed {:?}", e);
@@ -97,6 +85,12 @@ impl IosSupportService {
         }
     }
 
+    // Called to delete any previous bookmark data. 
+    // For now mainly used after saving any key file to a user selected location 
+    pub fn delete_book_mark_data(&self, full_file_name_uri: &str) {
+        delete_book_mark_data(&full_file_name_uri);
+    }
+
     pub fn copy_last_backup_to_temp_file(
         &self,
         kdbx_file_name: String,
@@ -118,7 +112,7 @@ impl IosSupportService {
             to_ios_file_uri(&mut temp_name);
             Some(temp_name)
         } else {
-            // We are assuming there is a backup file written already before this call
+            // We are assuming there is a backup file written before this call
             // TODO:
             //  To be failsafe, we may need to write from the db content to temp file
             //  using db_service::save_kdbx_to_writer in case there is no backup at all
@@ -171,6 +165,10 @@ impl IosSupportService {
     }
 
     pub fn load_book_mark_data(&self, _url: String) -> Vec<u8> {
+        unimplemented!();
+    }
+
+    pub fn delete_book_mark_data(&self, full_file_name_uri: &str) {
         unimplemented!();
     }
 

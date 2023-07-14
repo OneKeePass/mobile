@@ -7,9 +7,10 @@
 
 import Foundation
 
-private let logger = OkpLogger(tag: "OkpEvents")
+
 @objc(OkpEvents)
 public class OkpEvents: RCTEventEmitter {
+  private let logger = OkpLogger(tag: "OkpEvents")
   private static var instance: OkpEvents?
   
   override init() {

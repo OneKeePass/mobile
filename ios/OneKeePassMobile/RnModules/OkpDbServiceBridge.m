@@ -17,8 +17,11 @@ RCT_EXTERN_METHOD(completeSaveAsOnError:(NSString *)args resolve:(RCTPromiseReso
 
 RCT_EXTERN_METHOD(readKdbx:(NSString *)fullFileNameUri jsonArgs:(NSString *)jsonArgs resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 
+RCT_EXTERN_METHOD(copyKeyFile:(NSString *)fullFileNameUri resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+
 RCT_EXTERN_METHOD(saveKdbx:(NSString *) fullFileNameUri overwrite:(BOOL)overwrite  resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 
+RCT_EXTERN_METHOD(authenticateWithBiometric:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 
 @end
 
