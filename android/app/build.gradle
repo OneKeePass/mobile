@@ -106,7 +106,7 @@ android {
         applicationId "com.onekeepassmobile"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
+        versionCode 3
         versionName "0.7.0"
     }
 
@@ -126,14 +126,14 @@ android {
             keyPassword 'android'
         }
         //TODO: (Custom-Jey) Added for release time upload key
-//        release {
-//            if (project.hasProperty('OKP_APP_UPLOAD_STORE_FILE')) {
-//                storeFile file(OKP_APP_UPLOAD_STORE_FILE)
-//                storePassword OKP_APP_UPLOAD_STORE_PASSWORD
-//                keyAlias OKP_APP_UPLOAD_KEY_ALIAS
-//                keyPassword OKP_APP_UPLOAD_KEY_PASSWORD
-//            }
-//        }
+        release {
+            if (project.hasProperty('OKP_APP_UPLOAD_STORE_FILE')) {
+                storeFile file(OKP_APP_UPLOAD_STORE_FILE)
+                storePassword OKP_APP_UPLOAD_STORE_PASSWORD
+                keyAlias OKP_APP_UPLOAD_KEY_ALIAS
+                keyPassword OKP_APP_UPLOAD_KEY_PASSWORD
+            }
+        }
     }
     buildTypes {
         debug {
@@ -143,9 +143,9 @@ android {
             // Caution! In production, you need to generate your own keystore file.
             // see https://reactnative.dev/docs/signed-apk-android.
             // Uncomment this for development after commenting out the following one for release
-            signingConfig signingConfigs.debug
+            // signingConfig signingConfigs.debug
             // TODO: (Custom-Jey) Changed to signingConfig signingConfigs.release
-            // signingConfig signingConfigs.release
+            signingConfig signingConfigs.release
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
