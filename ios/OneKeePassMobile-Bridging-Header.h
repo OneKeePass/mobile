@@ -17,9 +17,10 @@
 #import <React/RCTBundleURLProvider.h>
 #import <React/RCTEventEmitter.h>
 
+// See https://github.com/facebook/react-native/blob/v0.72.3/packages/react-native/Libraries/AppDelegate/RCTAppSetupUtils.h
 // Used in AppDelegate.swift
 #import <RCTAppDelegate.h>
-#import <React/RCTAppSetupUtils.h>
+#import <RCTAppSetupUtils.h>
 
 // Used in SceneDelegate.swift
 #import "RNBootSplash.h"
