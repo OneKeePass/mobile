@@ -3,6 +3,11 @@
   (:require
    [reagent.core :as r]
    [onekeepass.mobile.rn-components :as rnc :refer [lstr
+                                                    
+                                                    appbar-text-color
+                                                    page-background-color
+                                                    inverse-onsurface-color
+                                                    
                                                     page-title-text-variant
                                                     rn-view
                                                     rn-safe-area-view
@@ -17,7 +22,7 @@
                                                     rnp-list-icon
                                                     rnp-portal
                                                     rnp-text
-                                                    inverse-onsurface-color
+                                                    
                                                     neutral50-color]]
    [clojure.string :as str]
    [onekeepass.mobile.background :refer [is-iOS]]
@@ -60,17 +65,17 @@
                         :alignItems "center"
                         :justify-content "space-between"}}
        [rnp-button {:style {}
-                    :textColor "white"
+                    :textColor @appbar-text-color
                     :mode "text"
                     :onPress cancel-db-settings-form} "Cancel"]
-       [rnp-text {:style {:color "white"
+       [rnp-text {:style {:color @appbar-text-color
                           :max-width "60%"
                           :margin-right 0 :margin-left 0}
                   :ellipsizeMode "tail"
                   :numberOfLines 1
                   :variant page-title-text-variant} "Database Settings"]
        [rnp-button {:style {}
-                    :textColor "white"
+                    :textColor @appbar-text-color
                     :disabled modified?
                     :mode "text" :onPress (fn [_e]
                                             (cond
@@ -83,10 +88,10 @@
 (defn form-header [title]
   [rn-view  {:style {:flexDirection "row"
                      :width "100%"
-                     :backgroundColor inverse-onsurface-color
+                     ;;:backgroundColor @inverse-onsurface-color
                      :margin-top 0
                      :min-height 38}}
-   [rnp-text {:style {:color neutral50-color
+   [rnp-text {:style {;;:color neutral50-color
                       :alignSelf "center"
                       ;;:width "85%"
                       :text-align "center"
@@ -99,7 +104,7 @@
 (defn general-content []
   (let [{:keys [database-name database-description]} (-> @(stgs-events/db-settings-data) :meta)
         error-text (:database-name @(stgs-events/db-settings-validation-errors))]
-    [rn-view {:flex 1}
+    [rn-view {:flex 1 :backgroundColor @page-background-color } ;;
      [form-header "Database Details"]
      [rn-view {:style form-style}
       [rnp-text-input {:label "Database Name"
@@ -121,7 +126,7 @@
         password-visible @(stgs-events/master-password-visible?)
         password-changed #(stgs-events/db-settings-data-field-update :password (if (str/blank? %) nil %))
         key-file-name-part (-> @(stgs-events/db-settings-data) :key-file-name-part)]
-    [rn-view {:style {:flex 1}}
+    [rn-view {:style {:flex 1 :backgroundColor @page-background-color}} ;;
      [form-header "Credentials"]
      [rn-view {:style form-style}
       [rn-view {:style {:flexDirection "row"}}
@@ -137,7 +142,7 @@
                          ;; on-change-text is a single argument function
                          :onChangeText password-changed #_#(stgs-events/db-settings-data-field-update :password %)}]]
 
-       [rn-view {:style {:backgroundColor "white"}}
+       [rn-view { :style {:backgroundColor @page-background-color}}  ;;
         [rnp-icon-button {:style {}
                           :icon const/ICON-CACHED
                            ;; This function is called when the generated passed is selected in Generator page
@@ -172,7 +177,7 @@
         {:keys [memory iterations parallelism]} Argon2
         errors @(stgs-events/db-settings-validation-errors)]
 
-    [rn-view {:flex 1}
+    [rn-view {:flex 1 :backgroundColor @page-background-color }  ;;
      [form-header "Security"]
      [rn-view {:style form-style}
       [select-field {:text-label "Encription Algorithm"
@@ -222,10 +227,12 @@
 (defn section-header [title]
   [rn-view  {:style {:flexDirection "row"
                      :width "100%"
-                     :backgroundColor inverse-onsurface-color
+                     :backgroundColor @inverse-onsurface-color
                      :margin-top 0
                      :min-height 38}}
-   [rnp-text {:style {:color neutral50-color
+   [rnp-text {:style {
+                      ;;:color neutral50-color
+                      ;; :color "red"
                       :textTransform "uppercase"
                       :alignSelf "center"
                       ;;:width "85%"
@@ -267,5 +274,5 @@
    [db-settings-list-content]])
 
 (defn content []
-  [rn-safe-area-view {:style {:flex 1}}
+  [rn-safe-area-view {:style {:flex 1 :backgroundColor @page-background-color}}
    [main-content]])

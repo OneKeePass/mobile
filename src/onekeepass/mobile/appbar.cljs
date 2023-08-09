@@ -6,6 +6,7 @@
                                                              primary-color
                                                              on-primary-color
                                                              rnp-divider
+                                                             cust-rnp-divider
                                                              rnp-menu
                                                              rnp-menu-item
                                                              rnp-appbar-header
@@ -17,9 +18,7 @@
             [onekeepass.mobile.events.entry-form :as ef-events]
             [onekeepass.mobile.events.search :as search-events]
             [onekeepass.mobile.events.password-generator :as pg-events]
-            [onekeepass.mobile.events.settings :as stgs-events]
-            [onekeepass.mobile.events.key-file-form :as kf-events]
-
+            [onekeepass.mobile.events.settings :as stgs-events] 
             [onekeepass.mobile.common-components :as cc :refer [menu-action-factory]]
             [onekeepass.mobile.entry-form :as entry-form]
             [onekeepass.mobile.group-form :as group-form]
@@ -57,7 +56,7 @@
      [:<>
       [rnp-menu-item {:title (lstr "menu.labels.pwdGenerator")
                       :onPress (header-menu-action pg-events/generate-password)}]
-      [rnp-divider]
+      [cust-rnp-divider]
       [rnp-menu-item {:title (lstr "menu.labels.settings")
                       :onPress #()}]]
 
@@ -75,13 +74,13 @@
                       :onPress (header-menu-action cmn-events/to-home-page)}]
       [rnp-menu-item {:title (lstr "menu.labels.pwdGenerator")
                       :onPress (header-menu-action pg-events/generate-password)}]
-      [rnp-divider]
+      [cust-rnp-divider]
       [rnp-menu-item {:title  (lstr "menu.labels.lockdb")
                       :onPress (header-menu-action cmn-events/lock-kdbx nil)}]
-      [rnp-divider]
+      [cust-rnp-divider]
       [rnp-menu-item {:title (lstr "menu.labels.closedb")
                       :onPress (header-menu-action cmn-events/close-current-kdbx-db)}]
-      [rnp-divider]
+      [cust-rnp-divider]
       [rnp-menu-item {:title (lstr "menu.labels.settings")
                       :onPress (header-menu-action stgs-events/load-db-settings)}]]
 
@@ -106,9 +105,9 @@
         [rnp-menu-item {:title "History"
                         :disabled (not @(ef-events/history-available))
                         :onPress (header-menu-action ef-events/load-history-entries-summary entry-uuid)}]
-        ;; [rnp-divider]
+        ;; [cust-rnp-divider]
         ;; [rnp-menu-item {:title "Password Generator" :onPress #()}]
-        [rnp-divider]
+        [cust-rnp-divider]
         [rnp-menu-item {:title (lstr "menu.labels.delete")
                         :onPress (header-menu-action cc/show-entry-delete-confirm-dialog entry-uuid)}]]))])
 
@@ -117,7 +116,7 @@
 #_(def appbar-content-style {:padding-top 0
                              :alignItems "center"
                            ;;:color background-color
-                             :backgroundColor primary-color})
+                             :backgroundColor @primary-color})
 
 (defn is-settings-page [page]
   (u/contains-val? [:settings-general :settings-credentials :settings-security :settings-encryption :settings-kdf] page))
@@ -133,7 +132,7 @@
    [rnp-appbar-content {:style {:zIndex -1}}]
      ;; Need to use max-width in titleStyle for the text to put ...
    [rnp-appbar-content {:style (merge {:marginLeft 0  :position "absolute", :left 0, :right 0, :zIndex -1} style)
-                        :color background-color
+                        :color @background-color
                         :titleStyle (merge {:align-self "center"} titleStyle)
                         :title (cond
 
@@ -188,13 +187,13 @@
 
 (defn appbar-header-content [{:keys [page title] :as page-info}]
   ;; AppbarHeader contains three components : BackAction, AppbarContent(which has title), AppbarAction menus
-  [rnp-appbar-header {:style {:backgroundColor primary-color}}
+  [rnp-appbar-header {:style {:backgroundColor @primary-color}}
 
    ;; Component for the back icon with onpress event handlers
    (cond
      (= page :entry-list)
      [rnp-appbar-back-action {:style {}
-                              :color background-color
+                              :color @background-color
                               :onPress (fn [] (elist-events/entry-list-back-action))}]
 
      (or (= page :entry-history-list)
@@ -202,7 +201,7 @@
          (= page :search)
          (= page :settings)
          (= page :key-file-form))
-     [rnp-appbar-back-action {:color background-color
+     [rnp-appbar-back-action {:color @background-color
                               :onPress cmn-events/to-previous-page}])
 
    ;; Title component
@@ -216,16 +215,16 @@
      [:<>
       [header-menu @header-menu-data page-info]
       (when-not (or (= page :entry-form) (= page :entry-history-list))
-        [rnp-appbar-action {:style {:backgroundColor primary-color
+        [rnp-appbar-action {:style {:backgroundColor @primary-color
                                     ;;:position "absolute" :right 50
                                     :margin-right -9}
-                            :color on-primary-color
+                            :color @on-primary-color
                             :icon "magnify"
                             :onPress search-events/to-search-page}])
-      [rnp-appbar-action {:style {:backgroundColor primary-color
+      [rnp-appbar-action {:style {:backgroundColor @primary-color
                                   ;;:position "absolute" :right 0 
                                   }
-                          :color on-primary-color
+                          :color @on-primary-color
                           :icon dots-icon-name
                           :onPress #(header-menu-show %)}]])])
 

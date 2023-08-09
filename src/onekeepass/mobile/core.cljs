@@ -3,7 +3,7 @@
             [react-native :as rn]
             [onekeepass.mobile.rn-components :as rnc :refer [set-translator
                                                              rnp-provider
-                                                             rnp-portal]] 
+                                                             rnp-portal]]
             [onekeepass.mobile.appbar :refer [appbar-main-content]]
             [onekeepass.mobile.events.native-events :as native-events]
             [onekeepass.mobile.events.save :as save-events]
@@ -11,6 +11,7 @@
             [onekeepass.mobile.background :as bg]
             [onekeepass.mobile.save-error-dialog :refer [save-error-modal]]
             [onekeepass.mobile.start-page :refer [open-db-dialog]]
+            [onekeepass.mobile.constants :refer [DARK-THEME]]
             [onekeepass.mobile.common-components :as cc :refer [message-snackbar
                                                                 message-modal
                                                                 message-dialog]]))
@@ -32,28 +33,40 @@
   "A functional component so that we can call the react hook set-translator"
   []
   (fn []
-    ;; useEffect is called after the component is rendered
-    ;; it runs both after the first render and after every update
-    (rnc/react-use-effect
-     (fn []
-       (bg/hide-splash #())
-       ;; cleanup fn is returned which is called when this component unmounts
-       (fn []))
-     ;; Need to pass the list of all reactive values referenced inside of the setup code or empty list
-     (clj->js []))
+    (let [theme-name (rnc/use-color-scheme)]
 
-    (set-translator)
-    [rnp-provider {:theme rnc/custom-theme}
-     [main-content]]))
+      ;; displays the current time, Wi-Fi and cellular network information, battery level
+      ;; In case we want use white color for these, we need to do the following onetime
+      ;; See https://stackoverflow.com/questions/39297291/how-to-set-ios-status-bar-background-color-in-react-native
+      ;; https://reactnative.dev/docs/statusbar#statusbarstyle
+      ;; This is mainly for iOS
+      (if (bg/is-iOS)
+        (.setBarStyle rn/StatusBar (if (= DARK-THEME theme-name) "dark-content" "light-content") true)
+        (.setBarStyle rn/StatusBar "light-content" true))
+      
+
+      ;; Resets r/atoms that hold some standard colors used in many UI pages
+      (rnc/reset-colors theme-name)
+
+      ;; useEffect is called after the component is rendered
+      ;; it runs both after the first render and after every update
+      (rnc/react-use-effect
+       (fn []
+         (bg/hide-splash #())
+       ;; cleanup fn is returned which is called when this component unmounts
+         (fn []))
+     ;; Need to pass the list of all reactive values referenced inside of the setup code or empty list
+       (clj->js []))
+
+      (set-translator)
+
+      [rnp-provider {:theme (if (= DARK-THEME theme-name) rnc/dark-theme rnc/light-theme)}
+       [main-content]])))
 
 (defn app-root
   []
-  ;; displays the current time, Wi-Fi and cellular network information, battery level
-  ;; In case we want use white color for these, we need to do the following onetime
-  ;; See https://stackoverflow.com/questions/39297291/how-to-set-ios-status-bar-background-color-in-react-native
-  ;; https://reactnative.dev/docs/statusbar#statusbarstyle
-  ;; This is mainly for iOS
-  (.setBarStyle rn/StatusBar "light-content" true)  ;; default or dark-content
+  ;; Moved to 'main'
+  #_(.setBarStyle rn/StatusBar "light-content" true)  ;; default or dark-content
 
   ;; Need to wrap the entry point with <GestureHandlerRootView> or gestureHandlerRootHOC
   ;; See https://docs.swmansion.com/react-native-gesture-handler/docs/installation

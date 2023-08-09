@@ -12,6 +12,9 @@
 (def BIOMETRIC-AUTHENTICATION-SUCCESS "AuthenticationSucceeded")
 (def BIOMETRIC-AUTHENTICATION-FAILED "AuthenticationFailed")
 
+(def DARK-THEME "dark")
+(def LIGHT-THEME "light")
+
 ;;;;;;; Icon names ;;;;;
 
 ;; react-native-vector-icons is used to display the icons

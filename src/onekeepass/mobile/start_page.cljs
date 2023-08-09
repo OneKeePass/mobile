@@ -4,9 +4,12 @@
             [onekeepass.mobile.rn-components
              :as rnc
              :refer [lstr
-                     dots-icon-name
                      primary-color
                      primary-container-color
+                     divider-color-1
+                     
+                     dots-icon-name
+                     
                      rn-keyboard
                      rn-view
                      rn-safe-area-view
@@ -18,6 +21,7 @@
                      rnp-list-icon
                      rnp-icon-button
                      rnp-divider
+                     cust-rnp-divider
                      rnp-text-input
                      rnp-helper-text
                      rnp-text-input-icon
@@ -292,7 +296,7 @@
 (defn databases-list-header [title]
   [rn-view  {:style {:flexDirection "row"
                      :width "100%"
-                     :backgroundColor primary-container-color
+                     :backgroundColor @primary-container-color
                      :justify-content "space-around"
                      :margin-top 5
                      :min-height 38}}
@@ -349,7 +353,8 @@
                    :onPress (db-action-menu-action
                              exp-events/prepare-export-kdbx-data
                              db-file-path)}]
-   [rnp-divider]
+   ;; Dividers used in menu has a preset background-color
+   [cust-rnp-divider]
    (when opened
      (if locked
        [rnp-menu-item {:title  (lstr "menu.labels.unlockdb")
@@ -367,7 +372,8 @@
                    :onPress (db-action-menu-action
                              cmn-events/close-kdbx
                              db-file-path)}]
-   [rnp-divider]
+   ;; Another way of setting the background-color of dividers in menu
+   [rnp-divider {:style {:background-color @divider-color-1}}]
    [rnp-menu-item {:title (lstr "menu.labels.remove")
                    :onPress (fn []
                               (hide-db-action-menu)
@@ -404,13 +410,13 @@
 (defn icon-name-color [found locked]
   (cond
     locked
-    [const/ICON-LOCKED-DATABASE  primary-color]  ;;"#477956" green tint
+    [const/ICON-LOCKED-DATABASE  @primary-color]  ;;"#477956" green tint
 
     found
-    [const/ICON-DATABASE rnc/neutral-variant20-color]
+    [const/ICON-DATABASE @rnc/tertiary-color #_rnc/neutral-variant20-color]
 
     :else
-    [const/ICON-DATABASE-OUTLINE rnc/neutral-variant60-color]))
+    [const/ICON-DATABASE-OUTLINE @rnc/secondary-color #_rnc/neutral-variant60-color]))
 
 (defn row-item-on-press [file-name db-file-path found locked]
   (cond
@@ -466,7 +472,7 @@
 
 (defn open-page-content []
   (let [recent-uses @(cmn-events/recently-used)]
-    [rn-safe-area-view {:style {:flex 1}}
+    [rn-safe-area-view {:style {:flex 1 :background-color @rnc/page-background-color}}
      [rn-view {:style {:flex 1 :justify-content "center" :align-items "center" :margin-top "10%"}}
       [rn-view {:style {:flex .1 :justify-content "center" :width "90%"}}
        [rnp-button {:mode "contained" :onPress ndb-events/new-database-dialog-show}

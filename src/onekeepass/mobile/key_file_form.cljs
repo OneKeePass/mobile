@@ -1,7 +1,7 @@
 (ns onekeepass.mobile.key-file-form
   (:require
    [reagent.core :as r] 
-   [onekeepass.mobile.rn-components :refer [cust-dialog
+   [onekeepass.mobile.rn-components :as rnc :refer [cust-dialog
                                             rnp-dialog-title
                                             rnp-dialog-content
                                             rnp-dialog-actions
@@ -83,7 +83,7 @@
 (defn list-header [title]
   [rn-view  {:style {:flexDirection "row"
                      :width "100%"
-                     :backgroundColor primary-container-color
+                     :backgroundColor @primary-container-color
                      :justify-content "space-around"
                      :margin-top 5
                      :min-height 38}}
@@ -96,7 +96,7 @@
   [rnp-list-item {:style {}
                   :onPress #(kf-events/set-selected-key-file-info key-file-info)
                   :title (r/as-element
-                          [rnp-text {:style {:color  primary-color}
+                          [rnp-text {:style {:color  @primary-color}
                                      :variant "titleMedium"} file-name])
 
                   :right (fn [_props] (r/as-element
@@ -157,7 +157,7 @@
      [key-files-list-content @(kf-events/imported-key-files)]]))
 
 (defn content []
-  [rn-safe-area-view {:style {:flex 1}}
+  [rn-safe-area-view {:style {:flex 1 :background-color @rnc/page-background-color}}
    [main-content]
    [rnp-portal
     [list-action-menu @list-menu-action-data]

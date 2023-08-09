@@ -3,9 +3,12 @@
    [reagent.core :as r]
    [onekeepass.mobile.rn-components :as rnc :refer [lstr
                                                     dots-icon-name
+                                                    
                                                     icon-color
                                                     primary-container-color
                                                     on-primary-color
+                                                    page-background-color
+                                                    
                                                     rnp-fab
                                                     rnp-menu
                                                     rnp-menu-item
@@ -14,6 +17,7 @@
                                                     rn-section-list
                                                     rnp-list-item
                                                     rnp-divider
+                                                    cust-rnp-divider
                                                     rnp-list-icon
                                                     rnp-icon-button
                                                     rnp-text]]
@@ -43,8 +47,7 @@
 (def fab-menu-action (menu-action-factory hide-fab-action-menu))
 
 (defn fab-action-menu [{:keys [show x y]} root-group]
-  [rnp-menu {:visible show :onDismiss hide-fab-action-menu :anchor (clj->js {:x x :y y})}
-   ;;:contentStyle {:backgroundColor  (on-primary-color)}
+  [rnp-menu {:visible show :onDismiss hide-fab-action-menu :anchor (clj->js {:x x :y y})} 
    [rnp-menu-item {:title (lstr "menu.labels.addEntry")
                    :onPress (fab-menu-action ecat-events/add-new-entry (select-keys root-group [:name :uuid]) const/UUID_OF_ENTRY_TYPE_LOGIN)}]
    [rnp-menu-item {:title (lstr "menu.labels.addCategory")
@@ -79,7 +82,7 @@
 
       [rnp-menu-item {:title (lstr "menu.labels.addEntry")
                       :onPress (fn [] (ecat-events/add-new-entry {:name (:title category-detail) :uuid (:uuid category-detail)} const/UUID_OF_ENTRY_TYPE_LOGIN))}]
-      [rnp-divider]
+      [cust-rnp-divider]
       [rnp-menu-item {:title (lstr "menu.labels.edit")
                       :onPress (fn [] (ecat-events/find-category-by-id (:uuid category-detail)))}]]
 
@@ -91,7 +94,7 @@
                       :onPress (fn [] (ecat-events/add-new-entry {:name (:title category-detail) :uuid (:uuid category-detail)} const/UUID_OF_ENTRY_TYPE_LOGIN))}]
       [rnp-menu-item {:title (lstr "menu.labels.addGroup")
                       :onPress #(ecat-events/initiate-new-blank-group-form (:uuid category-detail))}]
-      [rnp-divider]
+      [cust-rnp-divider]
       [rnp-menu-item {:title (lstr "menu.labels.edit")
                       :onPress (fn [] (ecat-events/find-group-by-id (:uuid category-detail)))}]]
 
@@ -171,7 +174,8 @@
     (let [display-name (if (nil? display-title) title display-title)
           icon-name (category-icon-name category-detail-m)
           items-count (if (= category-key "Groups") (+ entries-count groups-count) entries-count)]
-      [rnp-list-item {:onPress (fn [_e]
+      [rnp-list-item {;;:style {:background-color @rnc/background-color}
+                      :onPress (fn [_e]
                                  (ecat-events/load-selected-category-entry-items
                                   category-detail-m category-key))
                       
@@ -186,25 +190,24 @@
                                           :category-detail category-detail-m
                                           :root-group root-group})))
                       :title (r/as-element
-                              [rnp-text {:variant "titleMedium"} display-name])
+                              [rnp-text {  :variant "titleMedium"} display-name]) ;;:style {:color @rnc/on-background-color}
                       
                       :left (fn [_props] (r/as-element
                                           [rnp-list-icon {:style {:height 20}
                                                           :icon icon-name
-                                                          :color icon-color}]))
+                                                          :color @icon-color}]))
                       
                       :right (fn [_props] (r/as-element
                                            [rnp-text {:variant "titleMedium"} items-count]))}])))
 
-
 (defn category-header [title group-by]
   [rn-view  {:style {:flexDirection "row"
-                     :backgroundColor  primary-container-color
+                     :backgroundColor  @primary-container-color
                      :margin-top 5
                      :min-height 38}}
    [rnp-text {:style {:alignSelf "center" :width "85%" :padding-left 15} :variant "titleLarge"} title]
    [rnp-icon-button {:icon dots-icon-name
-                     :style {:height 38 :margin-right 0 :backgroundColor on-primary-color}
+                     :style {:height 38 :margin-right 0 :backgroundColor @on-primary-color}
                      :onPress #(show-group-by-menu % group-by)}]])
 
 (defn categories-content []
@@ -234,7 +237,7 @@
                     :key section-title
                     :data (if (nil? section-data) [] section-data) }]]
     [rn-section-list
-     {:style {}
+     {:style {} ;;:background-color @rnc/background-color
       :sections (clj->js sections)
       :renderItem (fn [props] ;; keys are (:item :index :section :separators)
                     (let [props (js->clj props :keywordize-keys true)]
@@ -248,7 +251,7 @@
                                  (r/as-element [category-header title group-by]))))}]))
 
 (defn entry-category-content []
-  [rn-safe-area-view {:style {:flex 1}}
+  [rn-safe-area-view {:style {:flex 1 :background-color @page-background-color}}
    [categories-content]
    [fab-action-menu @fab-action-menu-data @(ecat-events/root-group)]
    [category-long-press-menu @category-long-press-menu-data]

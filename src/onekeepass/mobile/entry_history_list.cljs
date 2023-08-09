@@ -2,7 +2,10 @@
   (:require
    [reagent.core :as r]
    [onekeepass.mobile.rn-components :as rnc :refer [lstr
+                                                    
                                                     icon-color
+                                                    page-background-color
+                                                    
                                                     rnp-menu
                                                     rnp-menu-item
                                                     rn-safe-area-view
@@ -75,7 +78,7 @@
                                           [rnp-list-icon
                                            {:style {:align-self "center"}
                                             :icon icon-name
-                                            :color icon-color}]))}])))
+                                            :color @icon-color}]))}])))
 
 (defn main-content []
   (let [sections  [{:title "Entries"
@@ -92,7 +95,7 @@
 
 
 (defn content []
-  [rn-safe-area-view {:style {:flex 1}}
+  [rn-safe-area-view {:style {:flex 1 :background-color @page-background-color}}
    [main-content]
    [delete-dialog]
    [delete-all-dialog]
