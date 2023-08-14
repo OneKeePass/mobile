@@ -45,6 +45,9 @@
 
 (def rn-keyboard ^js/RNKeyboard rn/Keyboard)
 
+(def rn-back-handler ^js/RNBackHandler rn/BackHandler)
+
+;; React native components
 (declare-comp-classes [ActivityIndicator
                        Button
                        SafeAreaView
@@ -187,19 +190,7 @@
     (reset! error-color (.-error colors))
     (reset! inverse-onsurface-color (.-inverseOnSurface colors))))
 
-
 ;;;;;;;;;;
-
-
-;; Additional colors that are specifc to MD3/MD2 
-(def md2-colors ^js/MD2Color rnp/MD2Colors)
-(def md3-colors ^js/MD3Colors rnp/MD3Colors)
-
-
-(def neutral50-color ^js/N50Color (.-neutral50 md3-colors))
-(def neutral-variant60-color ^js/NV60Color (.-neutralVariant60 md3-colors))
-(def neutral-variant20-color ^js/NV20Color (.-neutralVariant20 md3-colors))
-;;;;
 
 
 (def dots-icon-name (if (is-iOS) "dots-horizontal" "dots-vertical"))
@@ -245,6 +236,15 @@
   ;; translator should have been set before the first calling of this fn in any component
   ((.-t ^js/Translator @translator) s))
 
+
+;; Additional colors that are specifc to MD3/MD2 
+;; (def md2-colors ^js/MD2Color rnp/MD2Colors)
+;; (def md3-colors ^js/MD3Colors rnp/MD3Colors)
+;; (def neutral50-color ^js/N50Color (.-neutral50 md3-colors))
+;; (def neutral-variant60-color ^js/NV60Color (.-neutralVariant60 md3-colors))
+;; (def neutral-variant20-color ^js/NV20Color (.-neutralVariant20 md3-colors))
+;;;;
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  All example components ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Following are some sample React Native components in Javascript based examples that
@@ -262,42 +262,3 @@
 
 (comment
   (in-ns 'onekeepass.mobile.rn-components))
-
-
-
-#_(defn get-theme-color [color-kw theme-name]
-    (let [theme (if (= "dark" theme-name) dark-theme light-theme)]
-      (cond
-        (or (= color-kw :primary-color) (= color-kw :icon-color))
-        (.-primary theme)
-
-        (= color-kw :on-primary-color)
-        (.-onPrimary theme)
-
-        (= color-kw :primary-container-color)
-        (.-primaryContainer theme)
-
-        (= color-kw :inverse-onsurface-color)
-        (.-inverseOnSurface theme)
-
-        (= color-kw :tertiary-color)
-        (.-tertiary theme)
-
-        (= color-kw :background-color)
-        (.-background theme)
-
-        (= color-kw :outline-color)
-        (.-outline theme)
-
-        (= color-kw :on-background-color)
-        (.-onBackground theme))))
-
-;; (def primary-container-color-a (r/atom nil))
-;; (def on-primary-color-a (r/atom nil))
-
-;; (defn reset-colors [theme-name]
-;;   (let [theme (if (= "dark" theme-name) dark-theme light-theme)
-;;         colors (.-colors theme)]
-;;     (println "theme is " theme-name " (.-onPrimary theme) " (.-onPrimary colors))
-;;     (reset! primary-container-color-a (.-primaryContainer colors))
-;;     (reset! on-primary-color-a (.-onPrimary colors))))

@@ -18,7 +18,7 @@
             [onekeepass.mobile.events.entry-form :as ef-events]
             [onekeepass.mobile.events.search :as search-events]
             [onekeepass.mobile.events.password-generator :as pg-events]
-            [onekeepass.mobile.events.settings :as stgs-events] 
+            [onekeepass.mobile.events.settings :as stgs-events]
             [onekeepass.mobile.common-components :as cc :refer [menu-action-factory]]
             [onekeepass.mobile.entry-form :as entry-form]
             [onekeepass.mobile.group-form :as group-form]
@@ -35,6 +35,51 @@
             [onekeepass.mobile.utils :as u]))
 
 (set! *warn-on-infer* true)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Used in Android mobiles
+(defn back-action 
+  "Called when user presses the hardware or os provided back button 
+   This is somewhat similar to the app back action - see inside appbar-header-content
+   Returns 
+      true - the app handles the back action and the event will not be bubbled up
+      false - the system's default back action to be executed
+   "
+  [{:keys [page]}]
+  (cond
+    (= page :home)
+    false
+
+    (= page :entry-list)
+    (do
+      (elist-events/entry-list-back-action)
+      true)
+
+    (or (= page :entry-history-list)
+        (= page :icons-list)
+        (= page :search)
+        (= page :settings)
+        (= page :key-file-form)
+        (= page :password-generator)
+        (= page :entry-category)
+        (= page :entry-form)
+        (= page :group-form))
+    (do
+      (cmn-events/to-previous-page)
+      true)
+
+    :else
+    (do
+      (println "Else page " page)
+      false)))
+
+;; holds additional copy of the current page
+(def ^:private current-page-info (atom nil))
+
+(defn hardware-back-pressed []
+  (back-action @current-page-info))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; header menu ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def ^:private header-menu-data (r/atom  {:show false :x 0 :y 0}))
@@ -185,48 +230,52 @@
     [positioned-title :page page]
     #_[rnp-appbar-content {:style appbar-content-style :title (r/as-element [pg/appbar-title])}]))
 
-(defn appbar-header-content [{:keys [page title] :as page-info}]
-  ;; AppbarHeader contains three components : BackAction, AppbarContent(which has title), AppbarAction menus
-  [rnp-appbar-header {:style {:backgroundColor @primary-color}}
+(defn appbar-header-content [page-info] 
+  (let [{:keys [page]} page-info]
+    
+    (reset! current-page-info page-info)
+    
+    ;; AppbarHeader contains three components : BackAction, AppbarContent(which has title), AppbarAction menus
+    [rnp-appbar-header {:style {:backgroundColor @primary-color}}
 
-   ;; Component for the back icon with onpress event handlers
-   (cond
-     (= page :entry-list)
-     [rnp-appbar-back-action {:style {}
-                              :color @background-color
-                              :onPress (fn [] (elist-events/entry-list-back-action))}]
+     ;; Component for the back icon with onpress event handlers
+     (cond
+       (= page :entry-list)
+       [rnp-appbar-back-action {:style {}
+                                :color @background-color
+                                :onPress (fn [] (elist-events/entry-list-back-action))}]
 
-     (or (= page :entry-history-list)
-         (= page :icons-list)
-         (= page :search)
-         (= page :settings)
-         (= page :key-file-form))
-     [rnp-appbar-back-action {:color @background-color
-                              :onPress cmn-events/to-previous-page}])
+       (or (= page :entry-history-list)
+           (= page :icons-list)
+           (= page :search)
+           (= page :settings)
+           (= page :key-file-form))
+       [rnp-appbar-back-action {:color @background-color
+                                :onPress cmn-events/to-previous-page}])
 
    ;; Title component
-   (appbar-title page-info) ;; [appbar-titlet m] does not work
-
-   ;; The right side action icons compoent (dots icon, search icon .. ) and are shown for certain pages only
-   (when (or (= page :entry-category)
-             (= page :entry-list)
-             (and (= page :entry-form) (not @(ef-events/deleted-category-showing))) ;; Do not show in deleted entry form 
-             (= page :entry-history-list))
-     [:<>
-      [header-menu @header-menu-data page-info]
-      (when-not (or (= page :entry-form) (= page :entry-history-list))
-        [rnp-appbar-action {:style {:backgroundColor @primary-color
+     (appbar-title page-info) ;; [appbar-titlet m] does not work
+     
+   ;; The right side action icons component (dots icon, search icon .. ) and are shown for certain pages only
+     (when (or (= page :entry-category)
+               (= page :entry-list)
+               (and (= page :entry-form) (not @(ef-events/deleted-category-showing))) ;; Do not show in deleted entry form 
+               (= page :entry-history-list))
+       [:<>
+        [header-menu @header-menu-data page-info]
+        (when-not (or (= page :entry-form) (= page :entry-history-list))
+          [rnp-appbar-action {:style {:backgroundColor @primary-color
                                     ;;:position "absolute" :right 50
-                                    :margin-right -9}
-                            :color @on-primary-color
-                            :icon "magnify"
-                            :onPress search-events/to-search-page}])
-      [rnp-appbar-action {:style {:backgroundColor @primary-color
+                                      :margin-right -9}
+                              :color @on-primary-color
+                              :icon "magnify"
+                              :onPress search-events/to-search-page}])
+        [rnp-appbar-action {:style {:backgroundColor @primary-color
                                   ;;:position "absolute" :right 0 
-                                  }
-                          :color @on-primary-color
-                          :icon dots-icon-name
-                          :onPress #(header-menu-show %)}]])])
+                                    }
+                            :color @on-primary-color
+                            :icon dots-icon-name
+                            :onPress #(header-menu-show %)}]])]))
 
 (defn appbar-body-content
   "The page body content based on the page info set"

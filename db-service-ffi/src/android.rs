@@ -2,13 +2,13 @@ use std::io::{Read, Seek, Write};
 use std::path::Path;
 use std::{fs::File, os::fd::IntoRawFd};
 
-use crate::commands;
 use crate::{
     app_state::AppState,
     as_api_response,
     commands::{remove_app_files, CommandArg, InvokeResult},
     util, ApiResponse, OkpError, OkpResult,
 };
+use crate::{commands, open_backup_file,return_api_response_failure};
 use onekeepass_core::db_service::{self, KdbxLoaded};
 use regex::{Error, RegexSet};
 
@@ -86,7 +86,27 @@ impl AndroidSupportService {
                 new_db.file_name = AppState::global()
                     .common_device_service
                     .uri_to_file_name(full_file_name_uri.clone());
-                let r = db_service::create_and_write_to_writer(&mut file, new_db);
+
+                // Need to create a backup file for this newly created database    
+                let Some(file_name) = new_db.file_name.as_ref() else {
+                    return_api_response_failure!("No valid file name formed from the full file uri");
+                    //return as_api_response::<()>(Err(OkpError::DataError("No valid file name formed from the full file uri")));
+                };
+                let backup_file_name =
+                    util::generate_backup_file_name(&full_file_name_uri, file_name);
+                let backup_file = open_backup_file(backup_file_name);
+
+                let Some(mut bf_writer) = backup_file else {
+                    return_api_response_failure!("Backup file could not be opened to write the new database backup");
+                    //return as_api_response::<()>(Err(OkpError::DataError("Backup file could not be opened to write the new database backup")));
+                };
+
+                let r = db_service::create_and_write_to_writer(&mut bf_writer, new_db);
+                let rewind_r = bf_writer.sync_all().and(bf_writer.rewind());
+                log::debug!("Syncing and rewinding of new db backup file result {:?}", rewind_r);
+
+                let _n = std::io::copy(&mut bf_writer, &mut file);
+                log::debug!("Copied the backup to the new db file ");
                 // sync_all ensures the file is created and synced in case of dropbbox and one drive
                 let _ = file.sync_all();
 
@@ -127,13 +147,19 @@ impl AndroidSupportService {
         api_response
     }
 
-    pub fn save_key_file(&self, file_descriptor: u64, full_key_file_name:String) -> String {
-        log::debug!("AndroidSupportService save_key_file is called with full_key_file_name {}",&full_key_file_name);
-        
+    pub fn save_key_file(&self, file_descriptor: u64, full_key_file_name: String) -> String {
+        log::debug!(
+            "AndroidSupportService save_key_file is called with full_key_file_name {}",
+            &full_key_file_name
+        );
+
         let inner = || -> OkpResult<()> {
             let p = Path::new(&full_key_file_name);
             if !p.exists() {
-                return Err(OkpError::Other(format!("Key file {:?} is not found", p.file_name())));
+                return Err(OkpError::Other(format!(
+                    "Key file {:?} is not found",
+                    p.file_name()
+                )));
             }
 
             let mut reader = File::open(p)?;
@@ -174,10 +200,9 @@ impl AndroidSupportService {
         unimplemented!();
     }
 
-    pub fn save_key_file(&self, _file_descriptor: u64, _full_key_file_name:String) -> String {
+    pub fn save_key_file(&self, _file_descriptor: u64, _full_key_file_name: String) -> String {
         unimplemented!();
     }
-    
 }
 
 #[cfg(target_os = "android")]

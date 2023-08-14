@@ -204,7 +204,11 @@ class OkpDbService: NSObject {
         } catch let error as NSFileProviderError where error.code == .noSuchItem {
           logger.error("readKdbx:resolvingBookmarkData NSFileProviderError is \(error)")
           reject(E_FILE_NOT_FOUND, "\(error.localizedDescription)", error)
-        } catch {
+        } catch let error as NSError {
+          // See https://developer.apple.com/documentation/foundation/1448136-nserror_codes/nsfilereadnopermissionerror
+          // The actual error we see is
+          // Error Domain=NSCocoaErrorDomain Code=257 "The file couldn’t be opened because you don’t have permission to view it."
+          // Typically this happens when user tries press on a database file on the home page databases list
           logger.error("readKdbx:resolvingBookmarkData other Error is \(error)")
           reject(E_PERMISSION_REQUIRED_TO_READ, "\(error.localizedDescription)", error)
         }

@@ -2,8 +2,12 @@ alias cljc := clj-compile
 alias clj-clean-c := clj-clean-compile
 alias cljr := clj-repl
 alias cljnr := clj-nrepl
+
 alias cljcr := clj-compile-repl
-alias cljb  := clj-main-build
+# Default is simple build
+# Use 'just cljb advanced' for advanced build of cljs files
+alias cljb  := clj-main-build  
+
 alias rns := npx-rn-start
 alias rni := npx-rn-ios
 alias rna := npx-rn-android

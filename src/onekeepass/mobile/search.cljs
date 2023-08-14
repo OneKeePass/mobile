@@ -3,6 +3,7 @@
    [reagent.core :as r]
    [onekeepass.mobile.rn-components :as rnc :refer [
                                                     background-color
+                                                    icon-color
                                                     
                                                     rn-view
                                                     rn-safe-area-view
@@ -24,7 +25,8 @@
                       :description secondary-title
                       :left (fn [_props] (r/as-element 
                                           [rnp-list-icon
-                                           {:style {:align-self "center"} 
+                                           {:style {:margin-left 5 :align-self "center"} 
+                                            :color @icon-color
                                             :icon icon-name }]))}])))
 
 #_(defn search-list []

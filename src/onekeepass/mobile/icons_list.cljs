@@ -7,6 +7,8 @@
                                             rn-safe-area-view]]
    [onekeepass.mobile.events.common :as cmn-events]))
 
+;; All icons are from MaterialCommunityIcons. This will use the react-native-vector-icons library to display the icon.
+;; See the https://pictogrammers.com/library/mdi/ for MaterialCommunityIcons
 (def standard-icons '[key-variant
                       earth
                       alert-rhombus

@@ -7,9 +7,9 @@
                      primary-color
                      primary-container-color
                      divider-color-1
-                     
+
                      dots-icon-name
-                     
+
                      rn-keyboard
                      rn-view
                      rn-safe-area-view
@@ -61,7 +61,7 @@
       [rn-view {:style {:flexDirection "column"  :justify-content "center"}}
        [rnp-text-input {:label (lstr "name")
                         ;;:value database-name
-                        :defaultValue database-name 
+                        :defaultValue database-name
                         :autoCapitalize "none" ;; this starts with the lowercase keyboard 
                         :autoComplete "off"
                         :onChangeText #(ndb-events/database-field-update :database-name %)}]
@@ -82,6 +82,7 @@
                         :label (lstr "masterPassword")
                         ;;:value password
                         :defaultValue password
+                        :autoCapitalize "none"
                         :autoComplete "off"
                         :secureTextEntry (not password-visible)
                         :right (r/as-element
@@ -100,8 +101,13 @@
          [rnp-text-input {:style {:margin-top 10}
                           :label "Key File"
                           :defaultValue key-file-name-part
-                          :readOnly (if (is-iOS) true false) 
+                          :readOnly (if (is-iOS) true false)
                           :onPressIn #(ndb-events/show-key-file-form true)
+                          :right (r/as-element [rnp-text-input-icon
+                                         {:icon const/ICON-CLOSE
+                                          :onPress (fn []
+                                                     (ndb-events/database-field-update :key-file-name-part nil)
+                                                     (ndb-events/database-field-update :key-file-name nil))}])
                           :onChangeText nil}]
          [rnp-text {:style {:margin-top 15
                             :textDecorationLine "underline"
@@ -222,6 +228,7 @@
                         ;;:value password
                         :defaultValue password
                         :autoComplete "off"
+                        :autoCapitalize "none"
                         :autoCorrect false
                         :secureTextEntry (not password-visible)
                         :right (r/as-element
@@ -386,13 +393,23 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn message-repick-database-file-dialog [{:keys [dialog-show file-name]}]
-  [cc/confirm-dialog  {:dialog-show dialog-show
-                       :title "Pick database file"
-                       :confirm-text (str "Please pick the database file " file-name)
-                       :actions [{:label "Continue"
-                                  :on-press (fn []
-                                              (opndb-events/repick-confirm-close))}]}])
+(defn message-repick-database-file-dialog [{:keys [dialog-show file-name reason-code]}]
+  (let [[title text] (if (= reason-code const/PERMISSION_REQUIRED_TO_READ)
+                       [(str "Reopen " file-name),(str "Read permission is required again to load this database."
+                                                  " Please open the database file " 
+                                                  file-name " again from its original location")]
+                       ;; in iOS, seen this happening when we try to open (pressing on the home page dabase list) a database 
+                       ;; file stored in iCloud and file is not synched to the mobile yet  
+                       ["Reopen", (str "The database could not be opened with the old reference." 
+                                       " Please open the database file " file-name " again from its original location")])]
+    [cc/confirm-dialog  {:dialog-show dialog-show
+                         :title title
+                         :confirm-text text
+                         :actions [{:label (lstr "button.labels.cancel")
+                                    :on-press #(opndb-events/repick-confirm-cancel)}
+                                   {:label (lstr "button.labels.continue")
+                                    :on-press (fn []
+                                                (opndb-events/repick-confirm-close))}]}]))
 
 (defn authenticate-biometric-confirm-dialog [{:keys [dialog-show]}]
   [cc/confirm-dialog  {:dialog-show dialog-show
@@ -413,10 +430,10 @@
     [const/ICON-LOCKED-DATABASE  @primary-color]  ;;"#477956" green tint
 
     found
-    [const/ICON-DATABASE @rnc/tertiary-color #_rnc/neutral-variant20-color]
+    [const/ICON-DATABASE-EYE @rnc/tertiary-color]
 
     :else
-    [const/ICON-DATABASE-OUTLINE @rnc/secondary-color #_rnc/neutral-variant60-color]))
+    [const/ICON-DATABASE-OUTLINE @rnc/secondary-color]))
 
 (defn row-item-on-press [file-name db-file-path found locked]
   (cond

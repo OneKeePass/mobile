@@ -3,11 +3,11 @@
   (:require
    [reagent.core :as r]
    [onekeepass.mobile.rn-components :as rnc :refer [lstr
-                                                    
+
                                                     appbar-text-color
                                                     page-background-color
                                                     inverse-onsurface-color
-                                                    
+
                                                     page-title-text-variant
                                                     rn-view
                                                     rn-safe-area-view
@@ -21,9 +21,7 @@
                                                     rnp-divider
                                                     rnp-list-icon
                                                     rnp-portal
-                                                    rnp-text
-                                                    
-                                                    neutral50-color]]
+                                                    rnp-text]]
    [clojure.string :as str]
    [onekeepass.mobile.background :refer [is-iOS]]
    [onekeepass.mobile.utils  :refer [str->int]]
@@ -88,11 +86,9 @@
 (defn form-header [title]
   [rn-view  {:style {:flexDirection "row"
                      :width "100%"
-                     ;;:backgroundColor @inverse-onsurface-color
                      :margin-top 0
                      :min-height 38}}
-   [rnp-text {:style {;;:color neutral50-color
-                      :alignSelf "center"
+   [rnp-text {:style {:alignSelf "center"
                       ;;:width "85%"
                       :text-align "center"
                       :padding-left 5} :variant "titleSmall"} title]])
@@ -104,7 +100,7 @@
 (defn general-content []
   (let [{:keys [database-name database-description]} (-> @(stgs-events/db-settings-data) :meta)
         error-text (:database-name @(stgs-events/db-settings-validation-errors))]
-    [rn-view {:flex 1 :backgroundColor @page-background-color } ;;
+    [rn-view {:flex 1 :backgroundColor @page-background-color} ;;
      [form-header "Database Details"]
      [rn-view {:style form-style}
       [rnp-text-input {:label "Database Name"
@@ -142,7 +138,7 @@
                          ;; on-change-text is a single argument function
                          :onChangeText password-changed #_#(stgs-events/db-settings-data-field-update :password %)}]]
 
-       [rn-view { :style {:backgroundColor @page-background-color}}  ;;
+       [rn-view {:style {:backgroundColor @page-background-color}}  ;;
         [rnp-icon-button {:style {}
                           :icon const/ICON-CACHED
                            ;; This function is called when the generated passed is selected in Generator page
@@ -154,7 +150,7 @@
                          :defaultValue key-file-name-part
                          :readOnly (if (is-iOS) true false)
                          :onPressIn #(stgs-events/show-key-file-form)
-                         :onChangeText nil 
+                         :onChangeText nil
                          :placeholder "Pick an optional key file"
                          :right (r/as-element [rnp-text-input-icon
                                                {:icon const/ICON-CLOSE
@@ -177,7 +173,7 @@
         {:keys [memory iterations parallelism]} Argon2
         errors @(stgs-events/db-settings-validation-errors)]
 
-    [rn-view {:flex 1 :backgroundColor @page-background-color }  ;;
+    [rn-view {:flex 1 :backgroundColor @page-background-color}  ;;
      [form-header "Security"]
      [rn-view {:style form-style}
       [select-field {:text-label "Encription Algorithm"
@@ -230,10 +226,7 @@
                      :backgroundColor @inverse-onsurface-color
                      :margin-top 0
                      :min-height 38}}
-   [rnp-text {:style {
-                      ;;:color neutral50-color
-                      ;; :color "red"
-                      :textTransform "uppercase"
+   [rnp-text {:style {:textTransform "uppercase"
                       :alignSelf "center"
                       ;;:width "85%"
                       :text-align "center"

@@ -54,7 +54,14 @@ public class OkpExport: NSObject {
         resolve("{}")
       }
       
-      activityViewController.modalPresentationStyle = UIModalPresentationStyle.popover
+      if UIDevice.current.userInterfaceIdiom == .pad {
+        activityViewController.popoverPresentationController?.sourceView = controller?.view
+        activityViewController.popoverPresentationController?.permittedArrowDirections = []
+        activityViewController.modalPresentationStyle = .pageSheet
+      } else {
+        activityViewController.modalPresentationStyle = .popover
+      }
+      
       controller?.present(activityViewController, animated: true, completion: nil)
     }
   }

@@ -167,7 +167,7 @@
                       :left (fn [_props] (r/as-element 
                                           [rnp-list-icon {:icon icon-name
                                                           :color @icon-color
-                                                          :style {:align-self "center"}}]))}])))
+                                                          :style {:margin-left 5 :align-self "center"}}]))}])))
 
 (defn subgroup-row-item
   "category-detail-m is a map representing struct 'CategoryDetail'
