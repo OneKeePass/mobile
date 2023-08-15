@@ -32,6 +32,9 @@
 (defn repick-confirm-close []
   (dispatch [:repick-confirm-close]))
 
+(defn repick-confirm-cancel []
+  (dispatch [:repick-confirm-cancel]))
+
 (defn repick-confirm-data []
   (subscribe [:repick-confirm-data]))
 
@@ -91,7 +94,7 @@
 ;; An event to be called (from key file related page) after user selects a key file 
 (reg-event-fx
  :open-database-key-file-selected
- (fn [{:keys [db]} [_event-id {:keys [file-name full-file-name] :as m}]] 
+ (fn [{:keys [db]} [_event-id {:keys [file-name full-file-name] :as m}]]
    {:db (-> db (assoc-in [:open-database :key-file-name-part] file-name)
             (assoc-in [:open-database :key-file-name] full-file-name))}))
 
@@ -121,6 +124,18 @@
                                   #(dispatch [:database-file-pick-error %]))]
         (dispatch [:open-database/database-file-picked picked-response]))))))
 
+;; Called for repicking the database file when user presses the database file in the home page list
+;; Similar to 'bg-pick-database-file'
+(reg-fx
+ :bg-repick-database-file
+ (fn []
+   (bg/pick-database-to-read-write
+    (fn [api-response]
+      (when-let [picked-response (on-ok
+                                  api-response
+                                  #(dispatch [:database-file-pick-error %]))]
+        (dispatch [:database-file-repicked picked-response]))))))
+
 ;; This will make dialog open status true
 (reg-event-fx
  :open-database/database-file-picked
@@ -131,6 +146,24 @@
             (assoc-in [:open-database :database-file-name] file-name)
             (assoc-in [:open-database :database-full-file-name] full-file-name-uri)
             (assoc-in [:open-database :dialog-show] true))}))
+
+(reg-event-fx
+ :database-file-repicked
+ (fn [{:keys [db]} [_event-id {:keys [full-file-name-uri] :as picked-response}]]
+   (let [{:keys [database-full-file-name]} (get db :open-database)]
+     ;; There is a possiilty user might have picked up another database file instead of repicking the original database file
+     (if (= database-full-file-name full-file-name-uri)
+       ;; User picked up the same database file 
+       {:db (-> db
+                (assoc-in [:open-database :dialog-show] true)
+                (assoc-in [:open-database :status] :in-progress))
+        :fx [[:bg-load-kdbx [(get-in db [:open-database :database-full-file-name])
+                             (get-in db [:open-database :password])
+                             (get-in db [:open-database :key-file-name])]]]}
+       ;; User picked up a different database and it is then treated as similar to pressing 'Open databse' button
+       ;; The Open database dialog is shown to enter new credentials
+       ;; Do we need show some message about this to the user before proceeding this action?
+       {:fx [[:dispatch [:open-database/database-file-picked picked-response]]]}))))
 
 (reg-event-fx
  :database-file-pick-error
@@ -157,13 +190,14 @@
 (reg-fx
  :bg-load-kdbx
  (fn [[db-file-name password key-file-name]]
-   (bg/load-kdbx db-file-name password key-file-name (fn [api-response]
-                                                       (when-let [kdbx-loaded
-                                                                  (on-ok
-                                                                   api-response
-                                                                   (fn [error]
-                                                                     (dispatch [:open-database-read-kdbx-error error])))]
-                                                         (dispatch [:open-database-db-opened kdbx-loaded]))))))
+   (bg/load-kdbx db-file-name password key-file-name
+                 (fn [api-response]
+                   (when-let [kdbx-loaded
+                              (on-ok
+                               api-response
+                               (fn [error]
+                                 (dispatch [:open-database-read-kdbx-error error])))]
+                     (dispatch [:open-database-db-opened kdbx-loaded]))))))
 
 (reg-event-fx
  :open-database-read-kdbx-error
@@ -174,13 +208,13 @@
     ;; PERMISSION_REQUIRED_TO_READ may happen if the File Manager decides 
     ;; that the existing uri should be refreshed by asking user to pick the database again 
     ;; FILE_NOT_FOUND happens when the uri we have no more points to a valid file as that file 
-    ;; might have been changed by other program
-    :fx (cond (= (:code error) "PERMISSION_REQUIRED_TO_READ")
-              [[:dispatch [:repick-confirm-show]]
-               [:dispatch [:open-database-dialog-hide]]]
-              (= (:code error) "FILE_NOT_FOUND")
+    ;; might have been changed by other program.In iOS, typically the error is "NSFileProviderErrorDomain Code=-1005 "The file doesn’t exist."
+    :fx (cond (= (:code error) const/PERMISSION_REQUIRED_TO_READ)
+              [[:dispatch [:repick-confirm-show const/PERMISSION_REQUIRED_TO_READ]]
+               [:dispatch [:open-database-dialog-hide]]] 
+              (= (:code error) const/FILE_NOT_FOUND)
               [[:dispatch [:open-database-dialog-hide]]
-               [:dispatch [:common/error-box-show "Database Open Error" (str "The database is no longer in that location." " You may open another one")]]]
+               [:dispatch [:repick-confirm-show const/FILE_NOT_FOUND]]]
               :else
               [[:dispatch [:common/error-box-show "Database Open Error" error]]])}))
 
@@ -194,17 +228,28 @@
 
 (reg-event-db
  :repick-confirm-show
- (fn [db [_event-id]]
+ (fn [db [_event-id reason-code]]
    (let [file-name (get-in db [:open-database :database-file-name])]
      (-> db
          (assoc-in [:open-database :repick-confirm :dialog-show] true)
-         (assoc-in [:open-database :repick-confirm :file-name] file-name)))))
+         (assoc-in [:open-database :repick-confirm :file-name] file-name)
+         (assoc-in [:open-database :repick-confirm :reason-code] reason-code)))))
 
 (reg-event-fx
  :repick-confirm-close
  (fn [{:keys [db]} [_event-id]]
-   {:db (-> db (assoc-in [:open-database :repick-confirm] {:dialog-show false :file-name nil}))
-    :fx [[:dispatch [:pick-database-file]]]}))
+   {:db (-> db 
+            (assoc-in [:open-database :repick-confirm] 
+                      {:dialog-show false :file-name nil}))
+    :fx [[:bg-repick-database-file]]}))
+
+(reg-event-db
+ :repick-confirm-cancel 
+ (fn [db [_event-id]]
+   (-> db
+       (assoc-in [:open-database :repick-confirm :dialog-show] false)
+       (assoc-in [:open-database :repick-confirm :file-name] nil)
+       (assoc-in [:open-database :repick-confirm :reason-code] nil))))
 
 (reg-sub
  :repick-confirm-data

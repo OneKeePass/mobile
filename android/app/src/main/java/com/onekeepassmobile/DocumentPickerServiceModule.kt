@@ -47,12 +47,14 @@ class DocumentPickerServiceModule(reactContext: ReactApplicationContext) : React
                                 Activity.RESULT_OK -> {
                                     // TODO: Need to include check ClipData and get the first uri
                                     // See https://github.com/rnmods/react-native-document-picker/blob/0311eb6cf8d7eb9bb7d7b73a1345a47c8601f245/android/src/main/java/com/reactnativedocumentpicker/DocumentPickerModule.java#L190
+
                                     val uri = intent?.data
                                     uri?.let {
                                         FileUtils.getMetaInfo(contentResolver, it)
                                         //Need to ensure the required permissions taken for the future use of this document
-                                        val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION and
-                                                Intent.FLAG_GRANT_WRITE_URI_PERMISSION  //and Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+                                        //IMPORTANT: We need to use kotlin bitwise or operator to get both READ and WRITE permissions
+                                        val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                                                Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                                         contentResolver.takePersistableUriPermission(uri, takeFlags)
                                     }
                                     pickerPromise?.resolve(DbServiceAPI.formJsonWithFileName(uri.toString()))

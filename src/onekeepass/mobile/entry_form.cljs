@@ -4,10 +4,15 @@
             [onekeepass.mobile.rn-components
              :as rnc
              :refer [lstr
-                     rn-keyboard
-                     dots-icon-name
                      icon-color
                      on-primary-color
+                     primary-container-color 
+                     page-background-color
+                     appbar-text-color
+                     
+                     rn-keyboard
+                     dots-icon-name 
+                     
                      page-title-text-variant
                      rn-view
                      rn-scroll-view
@@ -55,11 +60,11 @@
                         ;; We need to use "center" whenever we have 'rnp-appbar-action' 
                         :justify-content "center"}}
        [rnp-button {:style {}
-                    :textColor "white"
+                    :textColor @appbar-text-color
                     :mode "text"
                     :onPress form-events/cancel-entry-form}
         (lstr "button.labels.cancel")]
-       [rnp-text {:style {:color "white"
+       [rnp-text {:style {:color @appbar-text-color
                           :max-width 100
                           :margin-right 20 :margin-left 20}
                   :ellipsizeMode "tail"
@@ -67,7 +72,7 @@
                   :variant page-title-text-variant}
         (lstr "page.titles.entry")]
        [rnp-button {:style {}
-                    :textColor "white"
+                    :textColor @appbar-text-color
                     :disabled (not @(form-events/form-modified))
                     :mode "text"
                     :onPress (fn []
@@ -80,13 +85,13 @@
                         ;; See the above comment for using "center"
                         :justify-content "center"}}
        [rnp-button {:style {}
-                    :textColor "white"
+                    :textColor @on-primary-color
                     :mode "text"
                     :onPress (if is-history-entry
                                form-events/cancel-history-entry-form
                                form-events/cancel-entry-form)}
         (lstr "button.labels.close")]
-       [rnp-text {:style {:color "white"
+       [rnp-text {:style {:color @on-primary-color
                           :max-width "75%"
                           :margin-right 20 :margin-left 20}
                   :ellipsizeMode "tail"
@@ -95,7 +100,7 @@
         (if is-history-entry (lstr "page.titles.historyEntry")
             (lstr "page.titles.entry"))]
        [rnp-button {:style {}
-                    :textColor "white"
+                    :textColor @on-primary-color
                     :disabled (or @(form-events/deleted-category-showing)
                                   is-history-entry)
                     :mode "text" :onPress form-events/edit-mode-on-press}
@@ -223,7 +228,7 @@
   ;; (-> event .-nativeEvent .-pageY) and (-> event .-nativeEvent .-pageX) and use that 
   ;; in achor's coordinate 
   [rnp-menu {:visible show :onDismiss #(swap! section-menu-dialog-data assoc :show false)
-             :anchor (clj->js {:x x :y y})} ;;:contentStyle {:backgroundColor  (-> rnc/custom-theme .-colors .-onPrimary)}
+             :anchor (clj->js {:x x :y y})} ;;:contentStyle {:backgroundColor  "red"}
    [rnp-menu-item {:title (lstr "menu.labels.changename") :disabled is-standard-section
                    :onPress (fn []
                               (form-events/open-section-name-modify-dialog section-name)
@@ -342,7 +347,7 @@
                    :label (str "Title" "*")
                    :autoCapitalize "none"
                    :defaultValue title
-                   :ref (fn [ref]
+                   :ref (fn [^js/Ref ref]
                                ;; Keys found in ref for textinput
                                ;; are #js ["focus" "clear" "setNativeProps" "isFocused" "blur" "forceFocus"]
                                ;; Need to call clear directly as the previous value is not getting cleared 
@@ -350,7 +355,7 @@
                           (when (and (not (nil? ref)) (str/blank? title)) (.clear ref)))
                    :onChangeText #(form-events/entry-form-data-update-field-value :title %)
                    :right (r/as-element
-                           [rnp-text-input-icon {:iconColor icon-color
+                           [rnp-text-input-icon {:iconColor @icon-color
                                                  :icon icon-name
                                                  :onPress #(cmn-events/show-icons-to-select on-entry-icon-selection)}])}])
 
@@ -361,7 +366,7 @@
                    :value title
                    :onChangeText #(form-events/entry-form-data-update-field-value :title %)
                    :right (r/as-element
-                           [rnp-text-input-icon {:iconColor icon-color
+                           [rnp-text-input-icon {:iconColor @icon-color
                                                  :icon icon-name
                                                  :onPress #(cmn-events/show-icons-to-select on-entry-icon-selection)}])}])
 
@@ -379,7 +384,7 @@
          [rnp-helper-text {:type "error" :visible (contains? error-fields :title)}
           (:title error-fields)])]
       [rn-view {:style {:flexDirection "row" :justify-content "center" :alignItems "center"}}
-       [rnp-list-icon {:style {} :icon icon-name :color icon-color}]
+       [rnp-list-icon {:style {} :icon icon-name :color @icon-color}]
        [rn-view {:style {:width 10}}] ;; gap
        [rnp-text {:variant "titleLarge"} title]])))
 
@@ -390,7 +395,7 @@
 (defn field-focus-action [key flag]
   (swap! field-focused assoc :field-name key :focused flag))
 
-;; Android text input compinent issue - inputing slow and if any character changed in the middle of text 
+;; Android text input component issue - inputing slow and if any character changed in the middle of text 
 ;; the cursor moves to the left
 ;; Solution:
 ;;   Need to use defaultValue. Also we need to use ref clear fn so that any previous default value shown is cleared
@@ -407,15 +412,16 @@
                                        edit
                                        on-change-text]} is-password-edit? custom-field-edit-focused?]
 
-  [rnp-text-input {:label (if required (str key "*") key)
+  ;;(println "protected " protected " visible " visible " , " (if (or (not protected) visible) false true))
+  ^{:key (str key protected)}[rnp-text-input {:label (if required (str key "*") key)
                    :defaultValue value
                        ;;:value value
                        ;;:editable edit
                    :showSoftInputOnFocus edit
-                   :ref (fn [ref]
+                   :ref (fn [^js/Ref ref]
                           (when (and (not (nil? ref)) (str/blank? value)) (.clear ref)))
                    :autoCapitalize "none" 
-                   :keyboardType "email-address"
+                   :keyboardType (if-not protected "email-address" "default") 
                    :autoComplete "off"
                    :autoCorrect false
                    :style {:width (if (or is-password-edit? custom-field-edit-focused?)  "90%" "100%")}
@@ -497,7 +503,8 @@
          on-change-text #(println (str "No on change text handler yet registered for " key))
          required false}
     :as kvm}]
-  (let [is-password-edit? (and edit (= key "Password"))
+  (let [cust-color @page-background-color 
+        is-password-edit? (and edit (= key "Password"))
         custom-field-edit-focused? (if (is-iOS)
                                      (and
                                       edit
@@ -508,7 +515,7 @@
                                       ;; the pressing on custom icon works. But first time when press Soft KB hides and then
                                       ;; again we need to press for menu popup
                                       ;;(:focused @field-focused)   <- See above comments
-
+                                      
                                       (not standard-field))
                                      ;; In Android, we cannot use :focused as onBlur sets false and dot-icon is hidden
                                      (and
@@ -521,8 +528,8 @@
         [ios-form-text-input kvm is-password-edit? custom-field-edit-focused?]
         [android-form-text-input kvm is-password-edit? custom-field-edit-focused?])
       (when is-password-edit?
-        [rn-view {:style {:backgroundColor "white"}}
-         [rnp-icon-button {:style {}
+        [rn-view {:style {:margin-left -5 :backgroundColor cust-color }}
+         [rnp-icon-button {:style {:margin-right 0}
                            :icon "cached"
                            ;; on-change-text is a single argument function
                            ;; This function is called when the generated password is selected in Generator page
@@ -531,8 +538,8 @@
      ;; In Android, when we press this dot-icon, the custom field first loses focus and the keyborad dimiss takes place 
      ;; and then menu pops up only when we press second time the dot-icon
       (when custom-field-edit-focused?
-        [rn-view {:style {:backgroundColor "white"}}
-         [rnp-icon-button {:style {}
+        [rn-view {:style {:margin-left -5 :backgroundColor cust-color}}
+         [rnp-icon-button {:style {:margin-right 0}
                            :icon dots-icon-name
                            :onPress #(custom-field-menu-show % section-name key protected required)}]])]
 
@@ -552,7 +559,7 @@
 (def notes-ref (atom nil))
 
 (defn clear-notes []
-  (when @notes-ref (.clear  @notes-ref)))
+  (when @notes-ref (.clear ^js/Ref  @notes-ref)))
 
 (defn notes [edit]
   (let [value @(form-events/entry-form-data-fields :notes)]
@@ -560,7 +567,7 @@
       [rn-view {:style {:padding-right 5 :padding-left 5 :borderWidth .20 :borderRadius 4}}
        [rnp-text-input {:style {:width "100%"} :multiline true :label (lstr "notes")
                         :defaultValue value
-                        :ref (fn [ref]
+                        :ref (fn [^js/Ref ref]
                                (reset! notes-ref ref)
                                (when (and (is-Android) (not (nil? ref)) (str/blank? value)) (.clear ref)))
                         :showSoftInputOnFocus edit
@@ -570,14 +577,14 @@
   (let [edit @(form-events/entry-form-field :edit)
         standard-sections @(form-events/entry-form-data-fields :standard-section-names)]
     [rn-view {:style {:flexDirection "row"
-                      :backgroundColor  (-> rnc/custom-theme .-colors .-primaryContainer)
+                      :backgroundColor  @primary-container-color
                       :margin-top 5
                       :min-height 35}}
      [rnp-text {:style {:alignSelf "center" :width "85%" :padding-left 15} :variant "titleMedium"} section-name]
      (when edit
        [rnp-icon-button {:icon dots-icon-name :style {:height 35
                                                       :margin-right 0
-                                                      :backgroundColor on-primary-color}
+                                                      :backgroundColor @on-primary-color}
                          :onPress (fn [^js/PEvent event]
                                     (swap! section-menu-dialog-data assoc
                                            :section-name section-name
@@ -585,9 +592,6 @@
                                            :show true
                                            :x (-> event .-nativeEvent .-pageX)
                                            :y (-> event .-nativeEvent .-pageY)))}])]))
-
-#_(defn field-nam-k [key]
-    key)
 
 (defn section-content [edit section-name section-data]
   (let [errors @(form-events/entry-form-field :error-fields)]
@@ -651,10 +655,10 @@
     ;;(println "entry-tags empty-tags " entry-tags tags-availble edit)
     (when (or edit tags-availble)
       [rn-view {:style {:flexDirection "column" :justify-content "center"  :min-height 50  :margin-top 5 :padding 5 :borderWidth .20 :borderRadius 4}}
-       [rn-view {:style {:flexDirection "row" :backgroundColor  (-> rnc/custom-theme .-colors .-primaryContainer) :min-height 25}}
+       [rn-view {:style {:flexDirection "row" :backgroundColor  @primary-container-color :min-height 25}}
         [rnp-text {:style {:alignSelf "center" :width "85%" :padding-left 15} :variant "titleMedium"} "Tags"]
         (when edit
-          [rnp-icon-button {:icon "plus" :style {:height 35 :margin-right 0 :backgroundColor on-primary-color}
+          [rnp-icon-button {:icon "plus" :style {:height 35 :margin-right 0 :backgroundColor @on-primary-color}
                             :onPress (fn [] (cmn-events/tags-dialog-init-selected-tags entry-tags))}])]
        [rn-view {:style {:flexDirection "column" :padding-top 10}}
         [rn-view {:style {:flexDirection "row" :flexWrap "wrap"}}
@@ -715,7 +719,7 @@
 (defn content []
   [rn-keyboard-avoiding-view {:style {:flex 1}
                               :behavior (if (is-iOS) "padding" nil)}
-   [rn-scroll-view {:contentContainerStyle {:flexGrow 1}}
+   [rn-scroll-view {:contentContainerStyle {:flexGrow 1 :background-color @page-background-color}}
     [main-content]]])
 
 (comment

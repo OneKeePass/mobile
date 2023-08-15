@@ -158,7 +158,7 @@ impl AppState {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct RecentlyUsed {
     pub(crate) file_name: String,
-    // This is url str. In case of android, it will start with "content://" and in case of ios, it will
+    // This is full file url str. In case of android, it will start with "content://" and in case of ios, it will
     // start with "file://".  This is also db_key
     pub(crate) db_file_path: String,
 }
@@ -183,6 +183,7 @@ impl Preference {
         let pref_file_name = Path::new(app_home_dir).join("preference.json");
         info!("pref_file_name is {:?} ", &pref_file_name);
         let json_str = fs::read_to_string(pref_file_name).unwrap_or("".into());
+        //debug!("Pref json_str is {}", &json_str);
         if json_str.is_empty() {
             info!("Preference is empty and default used ");
             Self::default()

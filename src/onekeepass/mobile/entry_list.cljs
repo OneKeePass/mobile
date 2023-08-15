@@ -2,7 +2,11 @@
   (:require
    [reagent.core :as r]
    [onekeepass.mobile.rn-components :as rnc :refer [lstr
+                                                    
                                                     icon-color
+                                                    primary-container-color
+                                                    page-background-color
+                                                    
                                                     rnp-button
                                                     rnp-fab
                                                     rnp-menu
@@ -162,8 +166,8 @@
                       :description secondary-title
                       :left (fn [_props] (r/as-element 
                                           [rnp-list-icon {:icon icon-name
-                                                          :color icon-color
-                                                          :style {:align-self "center"}}]))}])))
+                                                          :color @icon-color
+                                                          :style {:margin-left 5 :align-self "center"}}]))}])))
 
 (defn subgroup-row-item
   "category-detail-m is a map representing struct 'CategoryDetail'
@@ -182,13 +186,13 @@
                       :title (r/as-element
                               [rnp-text {:variant "titleMedium"} display-name])
                       :left (fn [_props] (r/as-element 
-                                          [rnp-list-icon {:style {:height 20} :icon icon-name :color icon-color}]))
+                                          [rnp-list-icon {:style {:height 20} :icon icon-name :color @icon-color}]))
                       :right (fn [_props] (r/as-element 
                                            [rnp-text {:variant "titleMedium"} items-count]))}])))
 
 (defn section-header [title]
   [rn-view  {:style {:flexDirection "row"
-                     :backgroundColor rnc/primary-container-color
+                     :backgroundColor @primary-container-color
                      :margin-top 5
                      :min-height 38}}
    [rnp-text {:style {:alignSelf "center" :width "85%" :padding-left 15} :variant "titleLarge"} title]])
@@ -251,7 +255,7 @@
                               :on-press #(reset! delete-all-entries-permanent-confirm false)}]}])
 
 (defn entry-list-content []
-  [rn-safe-area-view {:style {:flex 1}}
+  [rn-safe-area-view {:style {:flex 1 :background-color @page-background-color}}
    [main-content]
    [fab-action-menu @fab-action-menu-data]
    [entry-long-press-menu @entry-long-press-menu-data]

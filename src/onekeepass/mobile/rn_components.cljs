@@ -6,9 +6,9 @@
    [clojure.string :as str]
    [reagent.core :as r]
    [react]
-   [react-native :as rn ]
+   [react-native :as rn]
    [onekeepass.mobile.background :refer [is-iOS]]
-   ["react-i18next" :as ri18n] 
+   ["react-i18next" :as ri18n]
    ["react-native-paper" :as rnp]
    ["react-native-modal-selector" :as rnms]
    ["@react-native-community/slider" :as rnc-slider]
@@ -28,6 +28,8 @@
 ;; it runs both after the first render and after every update
 (def react-use-effect (.-useEffect ^js/React react))
 
+(def use-color-scheme rn/useColorScheme)
+
 ;; At this moment, these are not used
 #_(def react-use-state (.-useState ^js/React react))
 #_(def react-use-ref (.-useRef ^js/React react))
@@ -43,6 +45,9 @@
 
 (def rn-keyboard ^js/RNKeyboard rn/Keyboard)
 
+(def rn-back-handler ^js/RNBackHandler rn/BackHandler)
+
+;; React native components
 (declare-comp-classes [ActivityIndicator
                        Button
                        SafeAreaView
@@ -113,7 +118,7 @@
 ;; It seems no support is vailable for this in react native paper 
 ;; Finally the solution is based on https://github.com/callstack/react-native-paper/issues/2172
 ;; In Android, the overlapping of Keyboard over Dialog does not happen. So we can continue using the Dialog
-(def cust-dialog 
+(def cust-dialog
   (if (is-iOS)
     (r/adapt-react-class (.-default ^js/CustD (js/require "../js/components/KeyboardAvoidingDialog.js")))
     rnp-dialog))
@@ -123,30 +128,71 @@
 
 (def rnp-menu (r/adapt-react-class (.-RNPMenu rnp-customization)))
 (def rnp-text-input (r/adapt-react-class (.-RNPTextInput rnp-customization)))
+(def cust-rnp-divider (r/adapt-react-class (.-RNPDivider rnp-customization)))
 
-(def custom-theme (.-theme4 ^js/Theme4 rnp-customization))
-(def theme-colors (->  ^js/Theme4Colors custom-theme .-colors))
-;; Some useful custom colors
-(def primary-color (.-primary theme-colors))
-(def on-primary-color (.-onPrimary theme-colors)) ;; whiteish
-(def primary-container-color (.-primaryContainer theme-colors ))
-(def tertiary-color (.-tertiary theme-colors)) ;; slight reddish
-(def outline-color (.-outline theme-colors))
-(def background-color (.-background theme-colors))  ;; white
-(def inverse-onsurface-color (.-inverseOnSurface theme-colors)) ;; very dim on white
-#_(def on-background-color (.-onBackground theme-colors)) ;; primary color ?
+;;;;;;
+(def dark-theme (.-custDarkTheme ^js/CustomDarkTheme rnp-customization))
+(def light-theme (.-custLightTheme ^js/CustomLightTheme rnp-customization))
 
-;; Additional colors that are specifc to MD3/MD2 
-(def md2-colors ^js/MD2Color rnp/MD2Colors)
-(def md3-colors ^js/MD3Colors rnp/MD3Colors)
+;; In case we want to use theme in any of the reagent component, this can be used
+(def current-theme (r/atom nil))
 
+;;;; Some standard colors based on the theme selected
+;; blue (in light theme), light blue (in dark theme)
+(def primary-color (r/atom nil))   
 
-(def neutral50-color ^js/N50Color (.-neutral50 md3-colors))
-(def neutral-variant60-color ^js/NV60Color (.-neutralVariant60 md3-colors))
-(def neutral-variant20-color ^js/NV20Color (.-neutralVariant20 md3-colors))
-;;;;
+;; white (in light theme), blue (in dark theme)
+(def on-primary-color (r/atom nil)) 
+(def primary-container-color (r/atom nil))
 
+(def secondary-color (r/atom nil))
+(def on-secondary-color (r/atom nil))
+(def secondary-container-color (r/atom nil))
+
+;; white (in light theme), black (in dark theme)
+(def background-color (r/atom nil))  
+(def on-background-color (r/atom nil))
+
+;; slight reddish (in light theme), 
+(def tertiary-color (r/atom nil)) 
+(def outline-color (r/atom nil))
+;; very dim on white 
+(def inverse-onsurface-color (r/atom nil)) 
+
+(def error-color (r/atom nil))
+
+;; Component specific colors
+;; TODO: Need to use only these colors instead of refering the above standard colors
 (def icon-color primary-color)
+(def appbar-text-color on-primary-color)
+(def message-modal-background-color secondary-container-color)
+(def modal-selector-colors {:background-color secondary-container-color 
+                            :selected-text-color primary-color})
+(def page-background-color background-color)
+(def divider-color-1 outline-color)
+
+(defn reset-colors [theme-name]
+  (let [^js/CurrentTheme theme (if (= "dark" theme-name) dark-theme light-theme)
+        ^js/CurrentThemeColors colors (.-colors theme)]
+    (reset! current-theme theme)
+    (reset! primary-color (.-primary colors))
+    (reset! on-primary-color (.-onPrimary colors))
+    (reset! primary-container-color (.-primaryContainer colors))
+    
+    (reset! secondary-color (.-secondary colors))
+    (reset! on-secondary-color (.-onSecondary colors))
+    (reset! secondary-container-color (.-secondaryContainer colors))
+    
+    (reset! background-color (.-background colors))
+    (reset! on-background-color (.-onBackground colors))
+    (reset! tertiary-color (.-tertiary colors))
+    (reset! outline-color (.-outline colors))
+    (reset! error-color (.-error colors))
+    (reset! inverse-onsurface-color (.-inverseOnSurface colors))))
+
+;;;;;;;;;;
+
+
 (def dots-icon-name (if (is-iOS) "dots-horizontal" "dots-vertical"))
 (def page-title-text-variant "titleLarge") ;;"titleLarge" "titleMedium"
 
@@ -175,12 +221,12 @@
 (def ^:private translator (atom nil)) ;; (Object.keys  @translator) => #js ["0" "1" "2" "t" "i18n" "ready"]
 
 (defn set-translator
- " Needs to be called as hook in a functional react/reagent component" 
+  " Needs to be called as hook in a functional react/reagent component"
   []
   ;; (println "set-translator is called")
   (reset! translator (ri18n/useTranslation)))
 
-(defn lstr 
+(defn lstr
   "Called to get the language specific text based 
    if any translation is available for the current active language
    IMPORTANT:
@@ -189,6 +235,15 @@
   [s]
   ;; translator should have been set before the first calling of this fn in any component
   ((.-t ^js/Translator @translator) s))
+
+
+;; Additional colors that are specifc to MD3/MD2 
+;; (def md2-colors ^js/MD2Color rnp/MD2Colors)
+;; (def md3-colors ^js/MD3Colors rnp/MD3Colors)
+;; (def neutral50-color ^js/N50Color (.-neutral50 md3-colors))
+;; (def neutral-variant60-color ^js/NV60Color (.-neutralVariant60 md3-colors))
+;; (def neutral-variant20-color ^js/NV20Color (.-neutralVariant20 md3-colors))
+;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  All example components ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

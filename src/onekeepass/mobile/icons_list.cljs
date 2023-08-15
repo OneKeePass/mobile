@@ -1,11 +1,14 @@
 (ns onekeepass.mobile.icons-list
   (:require
    [onekeepass.mobile.rn-components :refer [icon-color
-                                            rn-view 
-                                            rnp-icon-button 
+                                            page-background-color
+                                            rn-view
+                                            rnp-icon-button
                                             rn-safe-area-view]]
    [onekeepass.mobile.events.common :as cmn-events]))
 
+;; All icons are from MaterialCommunityIcons. This will use the react-native-vector-icons library to display the icon.
+;; See the https://pictogrammers.com/library/mdi/ for MaterialCommunityIcons
 (def standard-icons '[key-variant
                       earth
                       alert-rhombus
@@ -79,16 +82,17 @@
 
 (def icons-count (count standard-icons))
 
-(defn icon-id->name [index] 
+(defn icon-id->name [index]
   (name (nth standard-icons (if (< index icons-count) index 0))))
 
-(defn main-content [] 
-  [rn-view {:style {:flexDirection "row" :flexWrap "wrap" }}
-   (for [[index icon-name] (keep-indexed (fn [i v] [i (name v)]) standard-icons)]
-     ^{:key index} [rnp-icon-button {:icon icon-name 
-                                     :iconColor icon-color
-                                     :onPress #(cmn-events/icon-selected icon-name index)}])])
+(defn main-content []
+  [rn-view {:style {:flexDirection "row" :flexWrap "wrap"}}
+   (doall
+    (for [[index icon-name] (keep-indexed (fn [i v] [i (name v)]) standard-icons)]
+      ^{:key index} [rnp-icon-button {:icon icon-name
+                                      :iconColor @icon-color
+                                      :onPress #(cmn-events/icon-selected icon-name index)}]))])
 
 (defn content []
-  [rn-safe-area-view {:style {:flex 1}}
+  [rn-safe-area-view {:style {:flex 1 :background-color @page-background-color}}
    [main-content]])

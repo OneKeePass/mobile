@@ -5,7 +5,9 @@
              :refer [rnms-modal-selector
                      lstr
                      tertiary-color
-                     primary-color
+                     modal-selector-colors
+                     message-modal-background-color
+                     on-background-color 
                      rn-view
                      rn-scroll-view
                      rnp-button
@@ -35,9 +37,9 @@
                :onDismiss #()}
    [rnp-dialog-icon {:icon (if (= category :error) "alert" "information")
                      :color (if (= category :error)
-                              ^js/Error50Color (.-error50 rnc/md3-colors)
-                              rnc/outline-color)}]
-   [rnp-dialog-title {:style {:color ^js/Error20Color (.-error20 rnc/md3-colors)}} title]
+                              @rnc/error-color
+                              @rnc/outline-color)}]
+   [rnp-dialog-title {:style {:color @rnc/error-color}} title]
    [rnp-dialog-content
     [rn-view {:style {:flexDirection "column" :justify-content "center"}}
      [rnp-paragraph message]]]
@@ -51,14 +53,14 @@
     [cust-dialog {:style {} :dismissable true :visible show :onDismiss #()}
      [rnp-dialog-title [rn-view {}
                         [rnp-text  {:variant "titleLarge"} "All Tags"]
-                        [rnp-text {:style {:color tertiary-color}}
+                        [rnp-text {:style {:color @tertiary-color}}
                          "Select or Deselect one or more tags"]]]
      [rnp-dialog-content
       [rn-view {:flexDirection "column"}
        [rn-view {:style {:min-height 100 :max-height 250} :flexDirection "column"}
-        [rn-scroll-view {:style {:borderWidth .20 :borderRadius 4}
+        [rn-scroll-view {:style {:borderWidth .20 :borderRadius 4 :border-color @on-background-color }
                          ;; Need to use flexGrow for the Scroll View to show its content
-                         :contentContainerStyle {:flexGrow 1}
+                         :contentContainerStyle {:flexGrow 1 }
                          :ref (fn [ref] (reset! sv-ref ref))
                          :onContentSizeChange (fn [_h] (when-not (nil? @sv-ref)
                                                          (.scrollToEnd ^js/SV @sv-ref)))}
@@ -76,7 +78,7 @@
                           :value new-tags-str
                           :onChangeText #(cmn-events/tags-dialog-update-new-tags-str %)
                           :right (r/as-element [rnp-text-input-icon {:icon "plus" :onPress cmn-events/tags-dialog-add-tags}])}]
-        [rnp-text {:style {:color tertiary-color}}  "Press + to add tags"]]]]
+        [rnp-text {:style {:color @tertiary-color}}  "Press + to add tags"]]]]
      [rnp-dialog-actions
       [rnp-button {:mode "text" :onPress  (fn []
                                             ;; Send the current selected tags to the caller in entry form or group form
@@ -91,11 +93,13 @@
   [rnms-modal-selector {;; data can also include additional custom keys which are passed to the onChange callback
                         ;; in addition to required ones - key, label
                         ;; For example uuid can also be passed
+                        ;;:optionStyle {:background-color "red"}
+                        :optionContainerStyle {:background-color @(:background-color modal-selector-colors)}
                         :data options
                         :initValue value
                         ;;:selectedKey (get options value)
                         :disabled disabled
-                        :selectedItemTextStyle {:color primary-color}
+                        :selectedItemTextStyle {:color @(:selected-text-color modal-selector-colors) :fontWeight "bold"}
                         :onChange on-change}
    [rnp-text-input {:style {:width "100%"} :editable false :label text-label :value value}]])
 
@@ -126,7 +130,7 @@
   [rnp-modal {:visible dialog-show
               :dismissable false
               ;;:onDismiss #() 
-              :contentContainerStyle {:backgroundColor "white" :padding 20}}
+              :contentContainerStyle {:backgroundColor @message-modal-background-color :padding 20}}
    [rn-view {:style {:height 100 :justify-content "center" :align-items "center"}}
     [rnp-text (lstr message)]]])
 

@@ -49,8 +49,8 @@
    [rn-scroll-view {:centerContent "true" :style {:backgroundColor "white"}}
     [rn-view {:style {:height "100%" :backgroundColor "white"}}
      [rn-view {:style {:flex .1  :justify-content "center" :align-items "center"}}
-      [rnp-text {:style {:color tertiary-color} :variant "titleLarge"} "Database Save Error"]
-      [rnp-text {:style {:color tertiary-color} :variant "titleSmall"} file-name]]
+      [rnp-text {:style {:color @tertiary-color} :variant "titleLarge"} "Database Save Error"]
+      [rnp-text {:style {:color @tertiary-color} :variant "titleSmall"} file-name]]
 
      [rn-view {:style {:flex .2  :min-height 50 :justify-content "center" :align-items "center"}}
       (if (= error-type :content-change-detected)

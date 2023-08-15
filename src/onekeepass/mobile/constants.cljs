@@ -8,9 +8,15 @@
 (def CAT_SECTION_TITLE "Categories")
 (def GROUP_SECTION_TITLE "Groups")
 
+(def PERMISSION_REQUIRED_TO_READ "PERMISSION_REQUIRED_TO_READ")
+(def FILE_NOT_FOUND "FILE_NOT_FOUND")
+
 
 (def BIOMETRIC-AUTHENTICATION-SUCCESS "AuthenticationSucceeded")
 (def BIOMETRIC-AUTHENTICATION-FAILED "AuthenticationFailed")
+
+(def DARK-THEME "dark")
+(def LIGHT-THEME "light")
 
 ;;;;;;; Icon names ;;;;;
 
@@ -18,7 +24,7 @@
 ;; We need to get the name of icons from https://materialdesignicons.com/ ( new url https://pictogrammers.com/library/mdi/)
 ;; Need to use the lower case name with "-" 
 
-;; See onekeepass.mobile.icons-list where the Entry and Group Icons listed
+;; Also see onekeepass.mobile.icons-list where the Entry and Group Icons listed
 
 (def ICON-DATABASE "database")
 (def ICON-DATABASE-OUTLINE "database-outline")
@@ -26,6 +32,9 @@
 (def ICON-DATABASE-CHECK  "database-check")
 (def ICON-DATABASE-ALERT  "database-alert")
 (def ICON-DATABASE-EYE  "database-eye")
+(def ICON-DATABASE-REMOVE "database-remove")
+(def ICON-DATABASE-OFF "database-off")
+(def ICON-DATABASE-OFF-OUTLINE "database-off-outline")
 
 (def ICON-CHEVRON-RIGHT  "chevron-right")
 (def ICON-CACHED  "cached")

@@ -47,6 +47,7 @@ pub struct KeyFileInfo {
     pub file_size: Option<i64>,
 }
 
+#[macro_export]
 macro_rules! return_api_response_failure {
     ($error:expr) => {
         return ApiResponse::Failure {

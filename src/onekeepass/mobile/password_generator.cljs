@@ -1,6 +1,7 @@
 (ns onekeepass.mobile.password-generator
   (:require
-   [onekeepass.mobile.rn-components :refer [page-title-text-variant
+   [onekeepass.mobile.rn-components :as rnc :refer [page-title-text-variant
+                                            appbar-text-color
                                             rn-view
                                             rnp-button
                                             rnp-divider
@@ -17,17 +18,17 @@
             :style {:alignItems "center"
                     :justify-content "space-between"}}
    [rnp-button {:style {}
-                :textColor "white"
+                :textColor @appbar-text-color
                 :mode "text"
                 :onPress cmn-events/to-previous-page} "Cancel"]
-   [rnp-text {:style {:color "white"
+   [rnp-text {:style {:color @appbar-text-color
                       :max-width 100
                       :margin-right 20 :margin-left 20}
               :ellipsizeMode "tail"
               :numberOfLines 1
               :variant page-title-text-variant} "Generator"]
    [rnp-button {:style {}
-                :textColor "white"
+                :textColor @appbar-text-color
                 :disabled (not @(pg-events/on-selection-available))
                 :mode "text"
                 :onPress pg-events/generated-password-selected} "Select"]])
@@ -94,5 +95,5 @@
                    :onValueChange #(pg-events/password-options-update :symbols (not symbols))}]]]))
 
 (defn content []
-  [rn-safe-area-view {:style {:flex 1}}
+  [rn-safe-area-view {:style {:flex 1 :background-color @rnc/page-background-color}}
    [main-content]])

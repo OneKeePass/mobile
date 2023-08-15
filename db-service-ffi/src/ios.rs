@@ -168,7 +168,7 @@ impl IosSupportService {
         unimplemented!();
     }
 
-    pub fn delete_book_mark_data(&self, full_file_name_uri: &str) {
+    pub fn delete_book_mark_data(&self, _full_file_name_uri: &str) {
         unimplemented!();
     }
 

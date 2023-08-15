@@ -393,22 +393,6 @@ impl Commands {
         Ok(util::list_key_files())
     }
 
-    // fn delete_key_file(args:&str) -> String {
-    //     if let Ok(CommandArg::GenericArg { key_vals }) = serde_json::from_str(args) {
-    //         let Some(file_name) = key_vals.get("file_name") else {
-    //             return error_json_str("Key file name to delete is not found");
-    //         };
-    //         util::delete_key_file(file_name);
-    //         // Latest list of key files after delete
-    //         ok_json_str(util::list_key_files())
-    //     } else {
-    //         error_json_str(&format!(
-    //             "Unexpected args passed to remove db from list {}",
-    //             args
-    //         ))
-    //     }
-    // }
-
     fn prepare_export_kdbx_data(args: &str) -> String {
         if let Ok(CommandArg::DbKey { db_key }) = serde_json::from_str(args) {
             // Check whether the db is opened now
@@ -517,11 +501,6 @@ impl Commands {
     fn app_preference() -> String {
         let pref = AppState::global().preference.lock().unwrap();
         ok_json_str(pref.clone())
-        // let json_str = match serde_json::to_string_pretty(&InvokeResult::with_ok(pref.clone())) {
-        //     Ok(s) => s,
-        //     Err(e) => error_json_str(&format!("{}", e)),
-        // };
-        // json_str
     }
 }
 
