@@ -7,7 +7,7 @@ license = ""
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
-crate-type = ["lib", "staticlib","cdylib"]
+crate-type = ["lib", "staticlib"]
 name = "db_service_ffi"
 
 [dependencies]
@@ -27,9 +27,9 @@ serde_json = "1.0.81"
 urlencoding = "2.1.2"
 
 ## using from the local crate 
-## onekeepass-core = {path = "../../onekeepass-core", version = "0.7.1"}
+onekeepass-core = {path = "../../onekeepass-core", version = "0.9.0"}
 
-onekeepass-core = {git = "https://github.com/OneKeePass/onekeepass-core.git" , tag="v0.7.1" }
+##onekeepass-core = {git = "https://github.com/OneKeePass/onekeepass-core.git" , tag="v0.8.0" }
 
 [target.'cfg(target_os = "android")'.dependencies]
 android_logger = "0.13.1"

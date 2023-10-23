@@ -40,9 +40,29 @@ build-ios-sim-lib-release:
     cargo build --target x86_64-apple-ios --release
     cargo build --target aarch64-apple-ios-sim --release
 
-build-ios-sim-lib-debug:
-    cargo build --target x86_64-apple-ios 
-    cargo build --target aarch64-apple-ios-sim 
+
+## export BOTAN_CONFIGURE_MINIMIZED_BUILD="yes"
+build-ios-sim-lib-debug-1:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+    export BOTAN_CONFIGURE_OS='ios'
+    export BOTAN_CONFIGURE_CC_ABI_FLAGS='-arch arm64'
+    export BOTAN_CONFIGURE_CC='clang'
+    export BOTAN_CONFIGURE_CPU='arm64'
+    cargo build --target aarch64-apple-ios-sim
+
+build-ios-sim-lib-debug-2:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+    export BOTAN_CONFIGURE_OS='ios'
+    export BOTAN_CONFIGURE_CC_ABI_FLAGS='-arch x86_64'
+    export BOTAN_CONFIGURE_CC='clang'
+    export BOTAN_CONFIGURE_CPU='x86_64'
+    cargo build --target x86_64-apple-ios
+
+build-ios-sim-lib-debug:build-ios-sim-lib-debug-1 build-ios-sim-lib-debug-2
+    #cargo build --target x86_64-apple-ios 
+    #cargo build --target aarch64-apple-ios-sim 
 
 build-ios-device-lib-debug:
     cargo build --target aarch64-apple-ios 
@@ -123,3 +143,33 @@ build-android-lib-d:
 cp-android-ffi-lib-src-d:build-android-lib-d generate-kotlin
     cp -R {{kotlin-src-dir}}/ {{android-db-service-src-dir}}
     cp -R {{android-lib-output-dir}} {{android-db-service-lib-dir}}
+
+
+
+##ios-aarch64-env = --config "env.BOTAN_CONFIGURE_OS='ios'" --config  "env.BOTAN_CONFIGURE_CC_ABI_FLAGS='-arch arm64'" 
+
+## 
+build-test1:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+    export BOTAN_CONFIGURE_OS='ios'
+    export BOTAN_CONFIGURE_CC_ABI_FLAGS='-arch arm64'
+    export BOTAN_CONFIGURE_CC='clang'
+    export BOTAN_CONFIGURE_CPU='arm64'
+    export BOTAN_CONFIGURE_MINIMIZED_BUILD="yes"
+    cargo build --target aarch64-apple-ios
+
+
+## export CXX="/Users/jeyasankar/Library/Android/sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android31-clang++"
+   
+build-test2:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+    export BOTAN_CONFIGURE_OS='android'
+    export BOTAN_CONFIGURE_CC_ABI_FLAGS='-arch arm64'
+    export BOTAN_CONFIGURE_CC='clang'
+    export BOTAN_CONFIGURE_CPU='arm64'
+    export AR="/Users/jeyasankar/Library/Android/sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ar"
+    export CXX="/Users/jeyasankar/Library/Android/sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android31-clang++"
+   
+    cargo ndk -t armv7-linux-androideabi  -o ./target/jniLibs build

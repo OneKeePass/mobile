@@ -49,7 +49,7 @@ pub enum CommandArg {
     },
     OpenDbArg {
         db_file_name: String,
-        password: String,
+        password: Option<String>,
         key_file_name: Option<String>,
     },
     NewDbArgWithFileName {
@@ -160,7 +160,7 @@ impl Commands {
 
             "unlock_kdbx" => {
                 service_call!(args, OpenDbArg{db_file_name,password,key_file_name} => 
-                    Self unlock_kdbx(&db_file_name,&password,key_file_name.as_deref()))
+                    Self unlock_kdbx(&db_file_name,password.as_deref(),key_file_name.as_deref()))
             }
 
             "unlock_kdbx_on_biometric_authentication" => {
@@ -343,7 +343,7 @@ impl Commands {
 
     fn unlock_kdbx(
         db_key: &str,
-        password: &str,
+        password: Option<&str>,
         key_file_name: Option<&str>,
     ) -> OkpResult<KdbxLoaded> {
         let mut kdbx_loaded = db_service::unlock_kdbx(db_key, password, key_file_name)?;

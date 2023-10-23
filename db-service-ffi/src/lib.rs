@@ -148,7 +148,7 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
     let kdbx_loaded = db_service::read_kdbx(
         &mut backup_file,
         &db_file_name,
-        &password,
+        password.as_deref(),
         key_file_name.as_deref(),
         Some(&file_name),
     )?;
