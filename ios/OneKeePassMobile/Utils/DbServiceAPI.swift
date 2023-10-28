@@ -66,6 +66,11 @@ class DbServiceAPI {
     return OneKeePassMobile.copyPickedKeyFile(fileArgs)
   }
   
+  static func uploadAttachment(_ fullFileName: String,_ jsonArgs: String) -> String {
+    let fileArgs = FileArgs.fullFileName(fullFileName: fullFileName)
+    return OneKeePassMobile.uploadAttachment(fileArgs, jsonArgs)
+  }
+  
   static func completeSaveAsOnError(_ jsonArgs: String) -> String {
     _iosSupportService.completeSaveAsOnError(jsonArgs)
   }

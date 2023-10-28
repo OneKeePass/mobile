@@ -104,6 +104,28 @@
   [obj]
   (js->clj (-> obj js/JSON.stringify js/JSON.parse) :keywordize-keys true))
 
+(def KB 1024)
+
+(def MB 1048576) ;;1,048,576
+
+(def GB 1073741824) ;;1,073,741,824
+
+;;1,099,511,627,776 Terabyte
+
+(defn to-file-size-str [^js/Number number]
+  (cond
+    (< number KB)
+    (str (.toFixed number 2) " B")
+
+    (and (> number KB) (< number MB))
+    (str (.toFixed (/ number KB) 2) " KiB")
+
+    (and (> number MB) (< number GB))
+    (str (.toFixed (/ number MB) 2) " MiB")
+
+    :else
+    (str (.toFixed (/ number GB) 2) " GiB")))
+
 (comment
   (in-ns 'onekeepass.mobile.utils)
   ;; daf114d0-a518-4e13-b75b-fbe893e69a9d 8bd81fe1-f786-46c3-b0e4-d215f8247a10

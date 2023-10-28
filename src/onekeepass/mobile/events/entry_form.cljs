@@ -13,7 +13,6 @@
                           dispatch
                           reg-fx
                           subscribe]]
-
    [clojure.string :as str]
    [onekeepass.mobile.utils :as u :refer [contains-val?]]
    [onekeepass.mobile.background :as bg]))
@@ -753,7 +752,7 @@
    (bg/insert-entry db-key
                     new-entry-form-data
                     (fn [api-response]
-                      (when-not (on-error api-response 
+                      (when-not (on-error api-response
                                           (fn [error]
                                             (dispatch [:insert-update-entry-form-data-error error])))
                         (dispatch [:insert-update-entry-form-data-complete]))))))
@@ -764,7 +763,7 @@
    (bg/update-entry db-key
                     entry-form-data
                     (fn [api-response]
-                      (when-not (on-error api-response 
+                      (when-not (on-error api-response
                                           (fn [error]
                                             (dispatch [:insert-update-entry-form-data-error error])))
                         (dispatch [:insert-update-entry-form-data-complete]))))))
@@ -774,10 +773,10 @@
  (fn [{:keys [_db]} [_event-id]]
    {:fx [;; Need to save after inserting or updating an entry data 
          [:dispatch [:save/save-current-kdbx
-                              {:error-title "Entry form save error"
-                               :save-message "Saving entry form..."
-                               :on-save-ok (fn [] 
-                                             (dispatch [:entry-insert-update-save-complete]))}]]]}))
+                     {:error-title "Entry form save error"
+                      :save-message "Saving entry form..."
+                      :on-save-ok (fn []
+                                    (dispatch [:entry-insert-update-save-complete]))}]]]}))
 
 (reg-event-fx
  :insert-update-entry-form-data-error
@@ -959,7 +958,7 @@
            ;; reload the histories to reflect the delete
            [:dispatch [:load-history-entries-summary entry-id]]
            [:dispatch [:save/save-current-kdbx {:error-title "Save entry history delete"
-                                                  :save-message "Saving entry history delete...."}]]]})))
+                                                :save-message "Saving entry history delete...."}]]]})))
 
 
 ;;; Delete all histories
@@ -989,11 +988,11 @@
  (fn [{:keys [_db]} [_event-id entry-id]]
    {:fx [[:dispatch [:history-entry-delete-all-confirm-open false]]
          [:dispatch [:save/save-current-kdbx {:error-title "Deleting and saving histories"
-                                                :save-message "Deleting all histories and saving"
-                                                :on-save-ok (fn []
-                                                              (dispatch [:reload-entry-by-id entry-id])
-                                                              (dispatch [:common/message-snackbar-open "snackbar.messages.historiesDeleted"])
-                                                              (dispatch [:common/previous-page]))}]]]}))
+                                              :save-message "Deleting all histories and saving"
+                                              :on-save-ok (fn []
+                                                            (dispatch [:reload-entry-by-id entry-id])
+                                                            (dispatch [:common/message-snackbar-open "snackbar.messages.historiesDeleted"])
+                                                            (dispatch [:common/previous-page]))}]]]}))
 
 
 (reg-event-db
@@ -1069,6 +1068,105 @@
  :<- [:history-entries-summary-list]
  (fn [list _query-vec]
    (:uuid (first list))))
+
+;;;;;;;;;;;;;;;;;;;;;  Attachment  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn view-attachment [name attachment-hash]
+  (dispatch [:attachment-view-start name attachment-hash]))
+
+(defn upload-attachment []
+  (dispatch [:pick-upload-attachment]))
+
+(defn delete-attachment [data-hash]
+  (dispatch [:attachment-delete data-hash]))
+
+(defn save-attachment [name attachment-hash]
+  (dispatch [:attachment-save-as-start name attachment-hash]))
+
+(reg-event-fx
+ :attachment-view-start
+ (fn [{:keys [db]} [_event-id name attachment-hash]]
+   {:fx [[:bg-save-attachment-to-view [(active-db-key db) name attachment-hash]]]}))
+
+(reg-fx
+ :bg-save-attachment-to-view
+ (fn [[db-key name attachment-hash]]
+   (bg/save-attachment-to-view db-key name attachment-hash
+                               (fn [api-response]
+                                 (when-let [temp-file-name (on-ok api-response)]
+                                   (bg/view-file temp-file-name
+                                                 (fn [api-response]
+                                                   (on-error api-response))))))))
+
+(defn- bg-upload-attachment
+  "Called to pick a file to uploads"
+  [db-key]
+  ;; We make first backend api call 'bg/pick-upload-attachment' followed 
+  ;; by the second backend api call 'bg/upload-attachment' based on the response from first
+  (bg/pick-upload-attachment (fn [api-response]
+                               (when-let [full-file-name
+                                          (on-ok
+                                           api-response
+                                           #(dispatch [:key-file-pick-error %]))]
+                                ;; User picked a key file and needs to be uploaded
+                                 (bg/upload-attachment
+                                  db-key
+                                  full-file-name
+                                  (fn [res]
+                                    (when-let [attachment-info (on-ok
+                                                                res
+                                                                #(dispatch [:common/default-error "File upload Error" %]))]
+                                      (dispatch [:attachment-uploaded attachment-info]))))))))
+
+(reg-event-fx
+ :pick-upload-attachment
+ (fn [{:keys [db]} [_event-id]]
+   ;; side effect
+   (bg-upload-attachment (active-db-key db))
+   {}))
+
+;; Handle the attachment upload
+;; This will attach the uploaded file content with the currrent entry form
+(reg-event-fx
+ :attachment-uploaded
+ (fn [{:keys [db]} [_event-id {:keys [data-hash data-size name]}]]
+   (let [attachments (get-in-key-db db [entry-form-key :data :binary-key-values])
+         bkv {:data-hash data-hash :data-size data-size :key name :value "" :index_ref 0}
+         existing (filterv (fn [{:keys [data-hash key]}] (if (and (= data-hash data-hash) (= key name)) true false)) attachments)
+         existing (boolean (seq existing))]
+     (if existing
+       {:fx [[:dispatch [:common/message-box-show "Upload status" "The uploaded attachment is the same as the existing one"]]]}
+       {:db (-> db (assoc-in-key-db [entry-form-key :data :binary-key-values] (conj attachments bkv)))}))))
+
+
+(reg-event-fx
+ :attachment-delete
+ (fn [{:keys [db]} [_event-id attachment-hash]]
+   (let [attachments (get-in-key-db db [entry-form-key :data :binary-key-values])
+         updated (filterv (fn [{:keys [data-hash] :as m}]
+                            (if (= attachment-hash data-hash)
+                              false true)) attachments)]
+     {:db (-> db (assoc-in-key-db [entry-form-key :data :binary-key-values] updated))})))
+
+
+(reg-event-fx
+ :attachment-save-as-start
+ (fn [{:keys [db]} [_event-id name attachment-hash]]
+   {:fx [[:bg-save-attachment-to-save [(active-db-key db) name attachment-hash]]]}))
+
+(reg-fx
+ :bg-save-attachment-to-save
+ (fn [[db-key name attachment-hash]]
+   (bg/save-attachment-to-view db-key name attachment-hash
+                               (fn [api-response]
+                                 (when-let [temp-file-name (on-ok api-response)]
+                                   (bg/pick-attachment-file-to-save temp-file-name name
+                                                 (fn [api-response]
+                                                   (on-error api-response))))))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 (comment
   (in-ns 'onekeepass.mobile.events.entry-form)

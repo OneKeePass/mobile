@@ -26,6 +26,7 @@
                      rnp-text-input
                      rnp-text-input-icon]]
             [onekeepass.mobile.utils :as u] 
+            [onekeepass.mobile.constants :as const]
             [onekeepass.mobile.events.common :as cmn-events]))
 
 (set! *warn-on-infer* true)
@@ -77,7 +78,7 @@
                           :placeholder "Comma separated tags"
                           :value new-tags-str
                           :onChangeText #(cmn-events/tags-dialog-update-new-tags-str %)
-                          :right (r/as-element [rnp-text-input-icon {:icon "plus" :onPress cmn-events/tags-dialog-add-tags}])}]
+                          :right (r/as-element [rnp-text-input-icon {:icon const/ICON-PLUS :onPress cmn-events/tags-dialog-add-tags}])}]
         [rnp-text {:style {:color @tertiary-color}}  "Press + to add tags"]]]]
      [rnp-dialog-actions
       [rnp-button {:mode "text" :onPress  (fn []

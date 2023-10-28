@@ -101,11 +101,13 @@
         "pwdGenerator": "Password Generator",
         "putback": "Put Back",
         "remove": "Remove",
+        "rename": "Rename",
         "restore": "Restore",
         "saveAs":"Save As",
         "select": "Select",
         "settings": "Settings",
         "types": "Types",
-        "unlockdb":"Unlock Database"
+        "unlockdb":"Unlock Database",
+        "view": "View"
     }
 }

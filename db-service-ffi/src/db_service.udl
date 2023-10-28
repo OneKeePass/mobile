@@ -14,6 +14,9 @@ namespace db_service {
 
     string copy_picked_key_file(FileArgs file_args);
 
+    // The arg 'json_args' is '[ByRef] string' and that  ensures we can use &str instead of String in args
+    string upload_attachment(FileArgs file_args,[ByRef] string json_args);
+
     string extract_file_provider(string full_file_name_uri);
     string invoke_command(string command_name, string args);
 };

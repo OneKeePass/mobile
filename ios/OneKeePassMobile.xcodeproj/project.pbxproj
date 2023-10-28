@@ -16,6 +16,7 @@
 		F92CB0FF28FDCABF00A79F60 /* OkpDocumentPickerServiceBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = F92CB0FE28FDCABF00A79F60 /* OkpDocumentPickerServiceBridge.m */; };
 		F92CB10128FDCBC400A79F60 /* OkpDocumentPickerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F92CB10028FDCBC400A79F60 /* OkpDocumentPickerService.swift */; };
 		F92CB10328FF7A7500A79F60 /* DbServiceAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = F92CB10228FF7A7500A79F60 /* DbServiceAPI.swift */; };
+		F94CD9A92AE7364E00649D28 /* libbotan-3.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F94CD9A82AE7360B00649D28 /* libbotan-3.a */; };
 		F969C3F128D4C8D90020FA62 /* OkpDbService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F969C3EF28D4C8D90020FA62 /* OkpDbService.swift */; };
 		F969C3F228D4C8D90020FA62 /* OkpDbServiceBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = F969C3F028D4C8D90020FA62 /* OkpDbServiceBridge.m */; };
 		F9AD1B6729B63B6C00BED32A /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9AD1B6629B63B6C00BED32A /* SceneDelegate.swift */; };
@@ -77,6 +78,7 @@
 		F92CB0FE28FDCABF00A79F60 /* OkpDocumentPickerServiceBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OkpDocumentPickerServiceBridge.m; sourceTree = "<group>"; };
 		F92CB10028FDCBC400A79F60 /* OkpDocumentPickerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OkpDocumentPickerService.swift; sourceTree = "<group>"; };
 		F92CB10228FF7A7500A79F60 /* DbServiceAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DbServiceAPI.swift; sourceTree = "<group>"; };
+		F94CD9A82AE7360B00649D28 /* libbotan-3.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libbotan-3.a"; path = "OneKeePassMobile/DbServiceFFILib/libbotan-3.a"; sourceTree = "<group>"; };
 		F969C3EF28D4C8D90020FA62 /* OkpDbService.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OkpDbService.swift; sourceTree = "<group>"; };
 		F969C3F028D4C8D90020FA62 /* OkpDbServiceBridge.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OkpDbServiceBridge.m; sourceTree = "<group>"; };
 		F969C3F528D4CC570020FA62 /* OneKeePassMobile-Bridging-Header.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "OneKeePassMobile-Bridging-Header.h"; sourceTree = "<group>"; };
@@ -125,6 +127,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				0C80B921A6F3F58F76C31292 /* libPods-OneKeePassMobile.a in Frameworks */,
+				F94CD9A92AE7364E00649D28 /* libbotan-3.a in Frameworks */,
 				F9E4235D29E62B3400A8F366 /* libdb_service_ffi.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -171,6 +174,7 @@
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				F94CD9A82AE7360B00649D28 /* libbotan-3.a */,
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
 				5DCACB8F33CDC322A6C60F78 /* libPods-OneKeePassMobile.a */,
 				19F6CBCC0A4E27FBF8BF4A61 /* libPods-OneKeePassMobile-OneKeePassMobileTests.a */,

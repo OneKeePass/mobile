@@ -85,7 +85,7 @@ class OkpDbService: NSObject {
   }
 
   // Called when user picked a file to save the changed kdbx during the 'Save As' call
-  // This is used by user after a change detected on the previously read database 
+  // This is used by user after a change detected on the previously read database
   @objc
   func completeSaveAsOnError(_ args: String,
                              resolve: @escaping RCTPromiseResolveBlock,
@@ -220,30 +220,47 @@ class OkpDbService: NSObject {
     }
   }
 
-  /**
-      Called to copy the selected key file from the app's private area to any user selected location.
-      The location and uri to save is completed in 'pickKeyFileToSave' func of OkpDocumentPickerService
-   */
+  // Called to copy the selected key file from the app's private area to any user selected location.
+  // The location and uri to save is completed in 'pickKeyFileToSave' func of OkpDocumentPickerService
   @objc
   func copyKeyFile(_ fullFileNameUri: String,
                    resolve: @escaping RCTPromiseResolveBlock,
-                   reject: @escaping RCTPromiseRejectBlock) {
-    
+                   reject: @escaping RCTPromiseRejectBlock)
+  {
+    bookmarkedFileHandler(fullFileNameUri, reject) { url in
+      resolve(DbServiceAPI.copyPickedKeyFile(url.absoluteString))
+    }
+  }
+
+  // Called to upload any file as entry's attachment
+  // Here the 'fullFileNameUri' is the file picked by the user to read
+  @objc
+  func uploadAttachment(_ fullFileNameUri: String, jsonArgs: String,
+                        resolve: @escaping RCTPromiseResolveBlock,
+                        reject: @escaping RCTPromiseRejectBlock)
+  {
+    bookmarkedFileHandler(fullFileNameUri, reject) { url in
+      resolve(DbServiceAPI.uploadAttachment(url.absoluteString, jsonArgs))
+    }
+  }
+
+  // TODO: Verify the use of  bookmarkedFileHandler in 'copyKeyFile' and 'uploadAttachment' works for both on sim and devices
+  func bookmarkedFileHandler(_ fullFileNameUri: String, _ reject: @escaping RCTPromiseRejectBlock, _ handler: (URL) -> Void) {
     let keyFileUrl = URL(string: fullFileNameUri)
     guard keyFileUrl != nil else {
       reject(E_DB_SERVICE_MODULE_ERROR, "fullFileNameUri cannot be nil", nil)
       return
     }
-    
+
     // Previously stored bookmark
     let byteArray: [UInt8] = DbServiceAPI.iosSupportService().loadBookMarkData(keyFileUrl!.absoluteString)
-    
+
     guard byteArray.count > 0 else {
-      self.logger.error("No bookmark data is found for the url \(String(describing: keyFileUrl?.absoluteString))")
+      logger.error("No bookmark data is found for the url \(String(describing: keyFileUrl?.absoluteString))")
       reject(E_BOOK_MARK_NOT_FOUND, "No bookmark data is found for the url \(String(describing: keyFileUrl?.absoluteString))", nil)
       return
     }
-    
+
     let bookmarkData = Data(_: byteArray)
     var isStale = false
     do {
@@ -255,9 +272,10 @@ class OkpDbService: NSObject {
         defer { if isAccessed { burl.stopAccessingSecurityScopedResource() }}
 
         var error: NSError?
-        NSFileCoordinator().coordinate(readingItemAt: burl, error: &error) { _ in
-          resolve(DbServiceAPI.copyPickedKeyFile(keyFileUrl!.absoluteString))
-        }
+
+        // Rational for the need to use NSFileCoordinator though somewhat old
+        // https://karmeye.com/2014/12/18/uidocumentpicker-nsfilecoordinator/
+        NSFileCoordinator().coordinate(readingItemAt: burl, error: &error, byAccessor: handler)
 
         if error != nil {
           logger.error("In copyKeyFile NSFileCoordinator().coordinate call error \(String(describing: error?.localizedDescription))")
@@ -271,119 +289,65 @@ class OkpDbService: NSObject {
       logger.error("copyKeyFile:resolvingBookmarkData other Error is \(error)")
       reject(E_PERMISSION_REQUIRED_TO_READ, "\(error.localizedDescription)", error)
     }
-    
+
     // Need to delete the bookmark as we do not require this key file uri bookmark anymore
     DbServiceAPI.iosSupportService().deleteBookMarkData(keyFileUrl!.absoluteString)
-    
-    /*
-    if byteArray.count > 0 {
-      let bookmarkData = Data(_: byteArray)
-      var isStale = false
-      do {
-        let burl = try URL(resolvingBookmarkData: bookmarkData, bookmarkDataIsStale: &isStale)
-        if isStale {
-          reject(E_BOOK_MARK_STALE, "Existing bookmark is stale.File selection is required before use", nil)
-        } else {
-          let isAccessed = burl.startAccessingSecurityScopedResource()
-          defer { if isAccessed { burl.stopAccessingSecurityScopedResource() }}
-
-          var error: NSError?
-          NSFileCoordinator().coordinate(readingItemAt: burl, error: &error) { _ in
-            resolve(DbServiceAPI.copyPickedKeyFile(keyFileUrl!.absoluteString))
-          }
-
-          if error != nil {
-            logger.error("In copyKeyFile NSFileCoordinator().coordinate call error \(String(describing: error?.localizedDescription))")
-            reject(E_COORDINATOR_CALL_FAILED, "\(String(describing: error?.localizedDescription))", error)
-          }
-        }
-      } catch let error as NSFileProviderError where error.code == .noSuchItem {
-        logger.error("copyKeyFile:resolvingBookmarkData NSFileProviderError is \(error)")
-        reject(E_FILE_NOT_FOUND, "\(error.localizedDescription)", error)
-      } catch {
-        logger.error("copyKeyFile:resolvingBookmarkData other Error is \(error)")
-        reject(E_PERMISSION_REQUIRED_TO_READ, "\(error.localizedDescription)", error)
-      }
-      
-    } else {
-      self.logger.error("No bookmark data is found for the url \(String(describing: keyFileUrl?.absoluteString))")
-      reject(E_BOOK_MARK_NOT_FOUND, "No bookmark data is found for the url \(String(describing: keyFileUrl?.absoluteString))", nil)
-    }
-     */
-    
-//    // Rational for the need to use NSFileCoordinator though somewhat old
-//    // http://karmeye.com/2014/12/18/uidocumentpicker-nsfilecoordinator/
-//
-//    let isAccessed =  keyFileUrl!.startAccessingSecurityScopedResource()
-//    defer { if isAccessed {  keyFileUrl!.stopAccessingSecurityScopedResource() }}
-//
-//    var error: NSError?
-//    NSFileCoordinator().coordinate(readingItemAt: keyFileUrl!, error: &error) { _ in
-//      resolve(DbServiceAPI.copyPickedKeyFile(keyFileUrl!.absoluteString))
-//    }
-//
-//    if error != nil {
-//      logger.error("In readKdbx NSFileCoordinator().coordinate call error \(String(describing: error?.localizedDescription))")
-//      reject(E_COORDINATOR_CALL_FAILED, "\(String(describing: error?.localizedDescription))", error)
-//    }
   }
-  
+
   @objc
   func authenticateWithBiometric(_ resolve: @escaping RCTPromiseResolveBlock,
-                             reject: @escaping RCTPromiseRejectBlock) {
-    
+                                 reject _: @escaping RCTPromiseRejectBlock)
+  {
     DispatchQueue.global(qos: .userInteractive).async { [unowned self] in
       let localAuthenticationContext = LAContext()
       let reason = "Authentication is required to unlock database"
-      
+
       localAuthenticationContext.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { success, evaluationError in
-          if success {
-              //authenticated = success
-            resolve(DbServiceAPI.jsonService().okJsonString("AuthenticationSucceeded"))
-          } else {
-            self.logger.error("Error \(evaluationError!)")
-              if let errorObj = evaluationError {
-                let messageToDisplay = self.getAuthenticationErrorDescription(errorCode: errorObj._code)
-                self.logger.error(messageToDisplay)
-              }
-            // For now, we use "AuthenticationFailed" whether user cancels the bio auth or any error in bio api call
-            resolve(DbServiceAPI.jsonService().okJsonString("AuthenticationFailed"))
+        if success {
+          // authenticated = success
+          resolve(DbServiceAPI.jsonService().okJsonString("AuthenticationSucceeded"))
+        } else {
+          self.logger.error("Error \(evaluationError!)")
+          if let errorObj = evaluationError {
+            let messageToDisplay = self.getAuthenticationErrorDescription(errorCode: errorObj._code)
+            self.logger.error(messageToDisplay)
           }
+          // For now, we use "AuthenticationFailed" whether user cancels the bio auth or any error in bio api call
+          resolve(DbServiceAPI.jsonService().okJsonString("AuthenticationFailed"))
+        }
       }
-      
     }
-    
   }
-  
+
   func getAuthenticationErrorDescription(errorCode: Int) -> String {
-      switch errorCode {
-      case LAError.authenticationFailed.rawValue:
-          return "Authentication was not successful, because user failed to provide valid credentials."
-          
-      case LAError.appCancel.rawValue:
-          return "Authentication was canceled by application (e.g. invalidate was called while authentication was in progress)."
-          
-      case LAError.invalidContext.rawValue:
-          return "LAContext passed to this call has been previously invalidated."
-          
-      case LAError.notInteractive.rawValue:
-          return "Authentication failed, because it would require showing UI which has been forbidden by using interactionNotAllowed property."
-          
-      case LAError.passcodeNotSet.rawValue:
-          return "Authentication could not start, because passcode is not set on the device."
-          
-      case LAError.systemCancel.rawValue:
-          return "Authentication was canceled by system (e.g. another application went to foreground)."
-          
-      case LAError.userCancel.rawValue:
-          return "Authentication was canceled by user (e.g. tapped Cancel button)."
-          
-      case LAError.userFallback.rawValue:
-          return "Authentication was canceled, because the user tapped the fallback button (Enter Password)."
-          
-      default:
-          return "Error code \(errorCode) not found"
-      }
+    switch errorCode {
+    case LAError.authenticationFailed.rawValue:
+      return "Authentication was not successful, because user failed to provide valid credentials."
+
+    case LAError.appCancel.rawValue:
+      return "Authentication was canceled by application (e.g. invalidate was called while authentication was in progress)."
+
+    case LAError.invalidContext.rawValue:
+      return "LAContext passed to this call has been previously invalidated."
+
+    case LAError.notInteractive.rawValue:
+      return "Authentication failed, because it would require showing UI which has been forbidden by using interactionNotAllowed property."
+
+    case LAError.passcodeNotSet.rawValue:
+      return "Authentication could not start, because passcode is not set on the device."
+
+    case LAError.systemCancel.rawValue:
+      return "Authentication was canceled by system (e.g. another application went to foreground)."
+
+    case LAError.userCancel.rawValue:
+      return "Authentication was canceled by user (e.g. tapped Cancel button)."
+
+    case LAError.userFallback.rawValue:
+      return "Authentication was canceled, because the user tapped the fallback button (Enter Password)."
+
+    default:
+      return "Error code \(errorCode) not found"
+    }
   }
 
   func writeToBackupOnError(_ fullFileNameUri: String) {
@@ -437,22 +401,130 @@ class OkpDbService: NSObject {
 }
 
 /*
- 
+
+  Before reusing common functionality with copyKeyFile and uploadAttachment with
+  @objc
+  func copyKeyFile(_ fullFileNameUri: String,
+                   resolve: @escaping RCTPromiseResolveBlock,
+                   reject: @escaping RCTPromiseRejectBlock)
+  {
+    let keyFileUrl = URL(string: fullFileNameUri)
+    guard keyFileUrl != nil else {
+      reject(E_DB_SERVICE_MODULE_ERROR, "fullFileNameUri cannot be nil", nil)
+      return
+    }
+
+    // Previously stored bookmark
+    let byteArray: [UInt8] = DbServiceAPI.iosSupportService().loadBookMarkData(keyFileUrl!.absoluteString)
+
+    guard byteArray.count > 0 else {
+      logger.error("No bookmark data is found for the url \(String(describing: keyFileUrl?.absoluteString))")
+      reject(E_BOOK_MARK_NOT_FOUND, "No bookmark data is found for the url \(String(describing: keyFileUrl?.absoluteString))", nil)
+      return
+    }
+
+    let bookmarkData = Data(_: byteArray)
+    var isStale = false
+    do {
+      let burl = try URL(resolvingBookmarkData: bookmarkData, bookmarkDataIsStale: &isStale)
+      if isStale {
+        reject(E_BOOK_MARK_STALE, "Existing bookmark is stale.File selection is required before use", nil)
+      } else {
+        let isAccessed = burl.startAccessingSecurityScopedResource()
+        defer { if isAccessed { burl.stopAccessingSecurityScopedResource() }}
+
+        var error: NSError?
+        NSFileCoordinator().coordinate(readingItemAt: burl, error: &error) { _ in
+          resolve(DbServiceAPI.copyPickedKeyFile(keyFileUrl!.absoluteString))
+        }
+
+        if error != nil {
+          logger.error("In copyKeyFile NSFileCoordinator().coordinate call error \(String(describing: error?.localizedDescription))")
+          reject(E_COORDINATOR_CALL_FAILED, "\(String(describing: error?.localizedDescription))", error)
+        }
+      }
+    } catch let error as NSFileProviderError where error.code == .noSuchItem {
+      logger.error("copyKeyFile:resolvingBookmarkData NSFileProviderError is \(error)")
+      reject(E_FILE_NOT_FOUND, "\(error.localizedDescription)", error)
+    } catch {
+      logger.error("copyKeyFile:resolvingBookmarkData other Error is \(error)")
+      reject(E_PERMISSION_REQUIRED_TO_READ, "\(error.localizedDescription)", error)
+    }
+
+    // Need to delete the bookmark as we do not require this key file uri bookmark anymore
+    DbServiceAPI.iosSupportService().deleteBookMarkData(keyFileUrl!.absoluteString)
+
+    /*
+     if byteArray.count > 0 {
+       let bookmarkData = Data(_: byteArray)
+       var isStale = false
+       do {
+         let burl = try URL(resolvingBookmarkData: bookmarkData, bookmarkDataIsStale: &isStale)
+         if isStale {
+           reject(E_BOOK_MARK_STALE, "Existing bookmark is stale.File selection is required before use", nil)
+         } else {
+           let isAccessed = burl.startAccessingSecurityScopedResource()
+           defer { if isAccessed { burl.stopAccessingSecurityScopedResource() }}
+
+           var error: NSError?
+           NSFileCoordinator().coordinate(readingItemAt: burl, error: &error) { _ in
+             resolve(DbServiceAPI.copyPickedKeyFile(keyFileUrl!.absoluteString))
+           }
+
+           if error != nil {
+             logger.error("In copyKeyFile NSFileCoordinator().coordinate call error \(String(describing: error?.localizedDescription))")
+             reject(E_COORDINATOR_CALL_FAILED, "\(String(describing: error?.localizedDescription))", error)
+           }
+         }
+       } catch let error as NSFileProviderError where error.code == .noSuchItem {
+         logger.error("copyKeyFile:resolvingBookmarkData NSFileProviderError is \(error)")
+         reject(E_FILE_NOT_FOUND, "\(error.localizedDescription)", error)
+       } catch {
+         logger.error("copyKeyFile:resolvingBookmarkData other Error is \(error)")
+         reject(E_PERMISSION_REQUIRED_TO_READ, "\(error.localizedDescription)", error)
+       }
+
+     } else {
+       self.logger.error("No bookmark data is found for the url \(String(describing: keyFileUrl?.absoluteString))")
+       reject(E_BOOK_MARK_NOT_FOUND, "No bookmark data is found for the url \(String(describing: keyFileUrl?.absoluteString))", nil)
+     }
+      */
+
+ //    // Rational for the need to use NSFileCoordinator though somewhat old
+ //    // http://karmeye.com/2014/12/18/uidocumentpicker-nsfilecoordinator/
+ //
+ //    let isAccessed =  keyFileUrl!.startAccessingSecurityScopedResource()
+ //    defer { if isAccessed {  keyFileUrl!.stopAccessingSecurityScopedResource() }}
+ //
+ //    var error: NSError?
+ //    NSFileCoordinator().coordinate(readingItemAt: keyFileUrl!, error: &error) { _ in
+ //      resolve(DbServiceAPI.copyPickedKeyFile(keyFileUrl!.absoluteString))
+ //    }
+ //
+ //    if error != nil {
+ //      logger.error("In readKdbx NSFileCoordinator().coordinate call error \(String(describing: error?.localizedDescription))")
+ //      reject(E_COORDINATOR_CALL_FAILED, "\(String(describing: error?.localizedDescription))", error)
+ //    }
+  }
+
+  */
+
+/*
+
  @objc
  func copyKeyFile(_ fullFileNameUri: String,
                   resolve: @escaping RCTPromiseResolveBlock,
                   reject: @escaping RCTPromiseRejectBlock) {
-   
+
    let keyFileUrl = URL(string: fullFileNameUri)
    guard keyFileUrl != nil else {
      reject(E_DB_SERVICE_MODULE_ERROR, "fullFileNameUri cannot be nil", nil)
      return
    }
-   
-   
+
    // Rational for the need to use NSFileCoordinator though somewhat old
    // http://karmeye.com/2014/12/18/uidocumentpicker-nsfilecoordinator/
-   
+
    let isAccessed =  keyFileUrl!.startAccessingSecurityScopedResource()
    defer { if isAccessed {  keyFileUrl!.stopAccessingSecurityScopedResource() }}
 

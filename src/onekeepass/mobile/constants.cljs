@@ -43,7 +43,19 @@
 (def ICON-EYE  "eye")
 (def ICON-EYE-OFF  "eye-off")
 
+(def ICON-PLUS  "plus")
+
 (def ICON-FILE  "file")
+
+(def ICON-PDF "file-pdf-box")
+(def ICON-FILE-PNG  "file-png-box")
+(def ICON-FILE-JPG  "file-jpg-box")
+(def ICON-FILE-GIF  "file-gif-box")
+(def ICON-NOTE-TEXT-OUTLINE "note-text-outline")
+(def ICON-FILE-DOC-OUTLINE "file-document-outline")
+(def ICON-FILE-QUESTION-OUTLINE  "file-question-outline")
+
+(def ICON-UPLOAD-OUTLINE  "upload-outline")
 
 
 

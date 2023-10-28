@@ -8,11 +8,16 @@ mod udl_types;
 mod util;
 
 use app_state::{AppState, RecentlyUsed};
-use commands::{error_json_str, full_path_file_to_create, CommandArg, Commands, InvokeResult};
-use onekeepass_core::{db_service, error::Error};
+use commands::{
+    error_json_str, full_path_file_to_create, CommandArg, Commands, InvokeResult, ResponseJson,
+};
+use onekeepass_core::{
+    db_service::{self, AttachmentUploadInfo},
+    error::Error,
+};
 use udl_types::{
-    ApiCallbackError, ApiResponse, CommonDeviceService, FileArgs, FileInfo,
-    JsonService, KdbxCreated, SecureKeyOperation, SecureKeyOperationError,
+    ApiCallbackError, ApiResponse, CommonDeviceService, FileArgs, FileInfo, JsonService,
+    KdbxCreated, SecureKeyOperation, SecureKeyOperationError,
 };
 
 use log::{debug, logger};
@@ -121,8 +126,12 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
         db_file_name,
         password,
         key_file_name,
-    } = serde_json::from_str(json_args)? else {
-        return Err(OkpError::Other(format!( "Unexpected argument {:?} for readkdbx api call", json_args)));
+    } = serde_json::from_str(json_args)?
+    else {
+        return Err(OkpError::Other(format!(
+            "Unexpected argument {:?} for readkdbx api call",
+            json_args
+        )));
     };
 
     let file_name = AppState::global().uri_to_file_name(&db_file_name);
@@ -337,42 +346,135 @@ fn verify_db_file_checksum(file_args: FileArgs) -> ApiResponse {
     }
 }
 
-// Copies the picked key file to app dir and returns key file info json  or error 
+// Copies the picked key file to app dir and returns key file info json  or error
 fn copy_picked_key_file(file_args: FileArgs) -> String {
-
-    debug!("copy_picked_key_file: file_args received is {:?}", file_args);
+    debug!(
+        "copy_picked_key_file: file_args received is {:?}",
+        file_args
+    );
 
     let inner = || -> OkpResult<KeyFileInfo> {
-        let (mut file,file_name) = match file_args {
-            // For Android
-            FileArgs::FileDecriptorWithFullFileName { fd,file_name,.. } => {
-                (unsafe { util::get_file_from_fd(fd) },file_name)
-            },
-            // For iOS
-            FileArgs::FullFileName { full_file_name } => {
-                let name = AppState::global().uri_to_file_name(&full_file_name);
-                let ux_file_path = util::url_to_unix_file_name(&full_file_name);
-                debug!("copy_picked_key_file:ux_file_path is {}",&ux_file_path);
-                let r = File::open(ux_file_path);
-                debug!("copy_picked_key_file:File::open return is {:?}",&r);
-                (r?,name)
-            }
-            _ => return Err(OkpError::Other("Unsupported file args passed".into()))   
-        };
+        // let (mut file, file_name) = match file_args {
+        //     // For Android
+        //     FileArgs::FileDecriptorWithFullFileName { fd, file_name, .. } => {
+        //         (unsafe { util::get_file_from_fd(fd) }, file_name)
+        //     }
+        //     // For iOS
+        //     FileArgs::FullFileName { full_file_name } => {
+        //         let name = AppState::global().uri_to_file_name(&full_file_name);
+        //         let ux_file_path = util::url_to_unix_file_name(&full_file_name);
+        //         debug!("copy_picked_key_file:ux_file_path is {}", &ux_file_path);
+        //         let r = File::open(ux_file_path);
+        //         debug!("copy_picked_key_file:File::open return is {:?}", &r);
+        //         (r?, name)
+        //     }
+        //     _ => return Err(OkpError::Other("Unsupported file args passed".into())),
+        // };
+
+        let OpenedFile {
+            mut file,
+            file_name,
+            ..
+        } = OpenedFile::open_to_read(file_args)?;
 
         let key_file_full_path = AppState::global().key_files_dir_path.join(&file_name);
-        debug!("copy_picked_key_file:key_file_full_path is {:?}",key_file_full_path);
-        
+        debug!(
+            "copy_picked_key_file:key_file_full_path is {:?}",
+            key_file_full_path
+        );
+
         if key_file_full_path.exists() {
-            return Err(OkpError::DuplicateKeyFileName(format!("Key file with the same name exists")))
+            return Err(OkpError::DuplicateKeyFileName(format!(
+                "Key file with the same name exists"
+            )));
         }
 
         let mut target_file = File::create(&key_file_full_path)?;
         std::io::copy(&mut file, &mut target_file).and(target_file.sync_all())?;
-        debug!("Copied the key file {} locally",&file_name);
+        debug!("Copied the key file {} locally", &file_name);
 
         let full_file_name = key_file_full_path.as_os_str().to_string_lossy().to_string();
-        Ok(KeyFileInfo {full_file_name,file_name,file_size:None})
+        Ok(KeyFileInfo {
+            full_file_name,
+            file_name,
+            file_size: None,
+        })
+    };
+
+    commands::result_json_str(inner())
+}
+
+struct OpenedFile {
+    file: File,
+    file_name: String,
+    full_file_name: String,
+}
+
+impl OpenedFile {
+    fn open_to_read(file_args: FileArgs) -> OkpResult<OpenedFile> {
+        Self::open(file_args, false)
+    }
+
+    fn open_to_create(file_args: FileArgs) -> OkpResult<OpenedFile> {
+        Self::open(file_args, true)
+    }
+
+    // Only for iOS, create flag is relevant as file read,write or create is set in Kotlin layer for android
+    fn open(file_args: FileArgs, create: bool) -> OkpResult<OpenedFile> {
+        let (file, file_name, full_file_name) = match file_args {
+            // For Android
+            FileArgs::FileDecriptorWithFullFileName {
+                fd,
+                file_name,
+                full_file_name,
+            } => (
+                unsafe { util::get_file_from_fd(fd) },
+                file_name,
+                full_file_name,
+            ),
+            // For iOS
+            FileArgs::FullFileName { full_file_name } => {
+                let name = AppState::global().uri_to_file_name(&full_file_name);
+                let ux_file_path = util::url_to_unix_file_name(&full_file_name);
+
+                let file = if create {
+                    full_path_file_to_create(&full_file_name)?
+                } else {
+                    File::open(ux_file_path)?
+                };
+
+                (file, name, full_file_name)
+            }
+            _ => return Err(OkpError::Other("Unsupported file args passed".into())),
+        };
+        let r = OpenedFile {
+            file,
+            file_name,
+            full_file_name,
+        };
+
+        Ok(r)
+    }
+}
+
+fn upload_attachment(file_args: FileArgs, json_args: &str) -> ResponseJson {
+    let inner = || -> OkpResult<AttachmentUploadInfo> {
+        let OpenedFile {
+            mut file,
+            file_name,
+            ..
+        } = OpenedFile::open_to_read(file_args)?;
+
+        let CommandArg::DbKey { db_key } = serde_json::from_str(json_args)? else {
+            return Err(OkpError::Other(format!(
+                "Unexpected argument {:?} for upload_attachment api call",
+                json_args
+            )));
+        };
+
+        let info = db_service::read_entry_attachment(&db_key, &file_name, &mut file)?;
+
+        Ok(info)
     };
 
     commands::result_json_str(inner())

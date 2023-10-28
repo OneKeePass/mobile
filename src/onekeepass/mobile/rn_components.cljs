@@ -13,7 +13,7 @@
    ["react-native-modal-selector" :as rnms]
    ["@react-native-community/slider" :as rnc-slider]
    ["react-native-gesture-handler" :as gh]
-   ["react-native-vector-icons" :as vec-icons]
+   ["react-native-vector-icons" :as vec-icons] 
    ["@date-io/date-fns" :as DateAdapter]))
 
 (set! *warn-on-infer* true)
@@ -22,6 +22,7 @@
 ;; ./target/npm_deps.js and ./target/krell_npm_deps.js generated
 ;; All the require calls above of NPM packages will have an entry in npm_deps.js
 ;; All (js/require "../js/.....") calls will result an entry in krell_npm_deps.js
+
 
 ;; See https://react.dev/reference/react/useEffect
 ;; useEffect is called after a component is rendered
@@ -171,7 +172,11 @@
 (def page-background-color background-color)
 (def divider-color-1 outline-color)
 
-(defn reset-colors [theme-name]
+(defn reset-colors 
+  "Called to set all colors that are used in many components.
+   The arg theme-name is passed when main root component is formed - see core.cljs
+   "
+  [theme-name]
   (let [^js/CurrentTheme theme (if (= "dark" theme-name) dark-theme light-theme)
         ^js/CurrentThemeColors colors (.-colors theme)]
     (reset! current-theme theme)

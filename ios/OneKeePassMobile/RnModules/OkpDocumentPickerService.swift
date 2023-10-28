@@ -15,6 +15,9 @@ class OkpDocumentPickerService: NSObject {
   //var promiseWrapper: PromiseWrapper?
   var readFilePickDelegate: ReadFilePickDelegate?
   var keyFilePickDelegate: KeyFilePickDelegate?
+  var dummyDocumentPickDelegate:DummyDocumentPickDelegate?
+  
+  
   
   @objc static func requiresMainQueueSetup() -> Bool {
     return false
@@ -94,8 +97,48 @@ class OkpDocumentPickerService: NSObject {
       //documentPicker.modalPresentationStyle = .pageSheet
       
       // We are reusing the same Delegate that we have used for 'pickKeyFileToCopy'
+      // TODO: Is it required to create bookmark for this "Save as" call?
+      // In case of 'pickKeyFileToCopy', we do need the bookmark for copyKeyFile to work and it is deleetd there
+      // Here it is not used
       self.keyFilePickDelegate = KeyFilePickDelegate(resolve, reject)
       documentPicker.delegate = self.keyFilePickDelegate
+    
+      controller?.present(documentPicker, animated: true, completion: nil)
+    }
+  }
+  
+  
+  // Called to save the selected attachment file from an entry's attachment data to a location picked by the user
+  @objc
+  func pickAttachmentFileToSave(_ fullTempAttachmentFileName: String,
+                         attachmentName: String,
+                         resolve: @escaping (RCTPromiseResolveBlock),
+                         reject: @escaping (RCTPromiseRejectBlock))
+  {
+    DispatchQueue.main.async {
+      
+      // In rust side, file path should not have file:// prefix.
+      // The fullTempAttachmentFileName returned from earlier call to UI  does not start with file://
+      // UIDocumentPickerView expects proper file scheme URL
+      
+      let fileUrl = URL(fileURLWithPath: fullTempAttachmentFileName)
+      
+      // For the file with non zero bytes of data needs to exist before user is presented with UIDocumentPickerView to use 'Save'
+      guard FileManager.default.fileExists(atPath:fileUrl.path) else {
+        reject("ATTACHMENT_FILE_IS_NOT_FOUND", "No temporary attachment file is found at the url \(fullTempAttachmentFileName)", nil)
+        return
+      }
+      
+      let controller = RCTPresentedViewController()
+      // When we use this option, the UIDocumentPickerView shows "Save" on the top right side
+      let documentPicker = UIDocumentPickerViewController(forExporting: [fileUrl], asCopy: true) // to export or copy
+      
+      documentPicker.allowsMultipleSelection = false
+      //documentPicker.modalPresentationStyle = .pageSheet
+      
+      
+      self.dummyDocumentPickDelegate = DummyDocumentPickDelegate(resolve, reject)
+      documentPicker.delegate = self.dummyDocumentPickDelegate
     
       controller?.present(documentPicker, animated: true, completion: nil)
     }
@@ -188,9 +231,29 @@ class OkpDocumentPickerService: NSObject {
     }
   }
   
+
+}
+
+// Used mainly when we want to do "Save As" of an attachment
+class DummyDocumentPickDelegate : NSObject, UIDocumentPickerDelegate{
+  private let logger = OkpLogger(tag: "DummyDocumentPickDelegate")
+  var resolve: RCTPromiseResolveBlock
+  var reject: RCTPromiseRejectBlock
+  init(_ resolve: @escaping RCTPromiseResolveBlock, _ reject: @escaping RCTPromiseRejectBlock) {
+    self.resolve = resolve
+    self.reject = reject
+  }
+  
+  func documentPicker(_: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+  }
+  
+  func documentPickerWasCancelled(_: UIDocumentPickerViewController) {
+    reject(OkpDocumentPickerService.E_DOCUMENT_PICKER_CANCELED, "User cancelled the picking a directory or a document", nil)
+  }
 }
 
 // A delegate used in 'pickKdbxFileToOpen' when user selects the db file to read
+// Also used for 'pickAndSaveNewKdbxFile' and 'pickOnSaveErrorSaveAs'
 class ReadFilePickDelegate: NSObject, UIDocumentPickerDelegate {
   private let logger = OkpLogger(tag: "ReadFilePickDelegate")
   var resolve: RCTPromiseResolveBlock
@@ -266,7 +329,6 @@ class ReadFilePickDelegate: NSObject, UIDocumentPickerDelegate {
   }
 }
 
-
 class KeyFilePickDelegate: NSObject, UIDocumentPickerDelegate {
   private let logger = OkpLogger(tag: "KeyFilePickDelegate")
   var resolve: RCTPromiseResolveBlock
@@ -326,6 +388,10 @@ class KeyFilePickDelegate: NSObject, UIDocumentPickerDelegate {
     }
   }
   
+  func documentPickerWasCancelled(_: UIDocumentPickerViewController) {
+    reject(OkpDocumentPickerService.E_DOCUMENT_PICKER_CANCELED, "User cancelled the picking a directory or a document", nil)
+  }
+  
   /*
   
    // This did not work as we have not read the file here itself or created a bookmark.
@@ -362,10 +428,6 @@ class KeyFilePickDelegate: NSObject, UIDocumentPickerDelegate {
     }
   }
    */
-  
-  func documentPickerWasCancelled(_: UIDocumentPickerViewController) {
-    reject(OkpDocumentPickerService.E_DOCUMENT_PICKER_CANCELED, "User cancelled the picking a directory or a document", nil)
-  }
 }
 
 

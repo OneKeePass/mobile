@@ -6,19 +6,21 @@
              :refer [lstr
                      icon-color
                      on-primary-color
-                     primary-container-color 
+                     primary-container-color
                      page-background-color
                      appbar-text-color
-                     
+
                      rn-keyboard
-                     dots-icon-name 
-                     
+                     dots-icon-name
+
+
                      page-title-text-variant
                      rn-view
                      rn-scroll-view
                      rn-keyboard-avoiding-view
                      rnp-chip
                      rnp-checkbox
+                     rnp-divider
                      rnp-menu
                      rnp-menu-item
                      rnp-text-input
@@ -33,10 +35,13 @@
                      rnp-dialog-title
                      rnp-dialog-content
                      rnp-dialog-actions
+                     rnp-list-item
+                     rn-section-list
                      rnp-list-icon]]
             [onekeepass.mobile.common-components :as cc :refer [confirm-dialog
                                                                 select-field
                                                                 select-tags-dialog]]
+            [onekeepass.mobile.constants :as const]
             [onekeepass.mobile.icons-list :as icons-list]
             [onekeepass.mobile.utils :as u]
             [onekeepass.mobile.date-utils :refer [utc-str-to-local-datetime-str]]
@@ -47,6 +52,15 @@
             [onekeepass.mobile.events.common :as cmn-events]))
 
 ;;(set! *warn-on-infer* true)
+
+(def box-style-1 {:flexDirection "column"
+                  :padding-right 5
+                  :padding-left 5
+                  :margin-bottom 5
+                  :borderWidth .20
+                  :borderRadius 4})
+
+(def box-style-2 (merge box-style-1 {:padding-bottom 10 :padding-top 5}))
 
 (defn appbar-title
   "Entry form specific title to display"
@@ -274,6 +288,82 @@
                               (form-events/field-delete section-name field-name)
                               (custom-field-menu-action-on-dismiss))}]])
 
+
+(def ^:private attachment-long-press-menu-data (r/atom {:show false
+                                                        :edit false
+                                                        :name nil
+                                                        :data-hash nil
+                                                        :x 0 :y 0}))
+
+(defn show-attachment-long-press-menu [^js/PEvent event edit name data-hash]
+  (swap! attachment-long-press-menu-data assoc
+         :edit edit
+         :name name
+         :data-hash data-hash
+         :show true
+         :x (-> event .-nativeEvent .-pageX) :y (-> event .-nativeEvent .-pageY)))
+
+(defn dismiss-attachment-long-press-menu []
+  (swap! attachment-long-press-menu-data assoc
+         :show false
+         :edit false
+         :name nil
+         :data-hash nil
+         :x 0 :y 0))
+
+(declare show-delete-attachment-dialog)
+
+(defn attachment-long-press-menu [{:keys [show x y edit name data-hash]}]
+  [rnp-menu {:visible show
+             :onDismiss dismiss-attachment-long-press-menu
+             :anchor (clj->js {:x x :y y})}
+
+   [rnp-menu-item {:title "View"
+                   :onPress (fn [_e]
+                              (form-events/view-attachment name data-hash)
+                              (dismiss-attachment-long-press-menu))}]
+
+   [rnp-menu-item {:title (lstr "menu.labels.saveAs")
+                   :onPress (fn [_e]
+                              (form-events/save-attachment name data-hash)
+                              (dismiss-attachment-long-press-menu))}]
+
+   [rnp-divider]
+   [rnp-menu-item {:title (lstr "menu.labels.rename")
+                   :disabled (not edit)
+                   :onPress (fn [_e]
+                              (dismiss-attachment-long-press-menu))}]
+   [rnp-menu-item {:title (lstr "menu.labels.delete")
+                   :disabled (not edit)
+                   :onPress (fn [_e]
+                              (show-delete-attachment-dialog
+                               (lstr "menu.labels.delete") "Do you want to delete this attachment?"
+                               #(form-events/delete-attachment data-hash))
+                              (dismiss-attachment-long-press-menu))}]])
+
+;; Following menu may be used if we addd Menu action to to attachment header 
+#_(def ^:private attachment-menu-data (r/atom {:show false :x 0 :y 0}))
+
+#_(defn show-attachment-menu [^js/PEvent event]
+    (swap! attachment-menu-data assoc
+           :show true
+           :x (-> event .-nativeEvent .-pageX) :y (-> event .-nativeEvent .-pageY)))
+
+#_(defn dismiss-attachment-menu []
+    (swap! attachment-menu-data assoc :show false))
+
+#_(defn attachment-menu [{:keys [show x y]}]
+    [rnp-menu {:visible show
+               :onDismiss dismiss-attachment-menu
+               :anchor (clj->js {:x x :y y})}
+     [rnp-menu-item {:title "Upload"
+                     :onPress (fn [_e]
+                                #_(form-events/field-delete section-name field-name)
+                                (dismiss-attachment-menu))}]])
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (declare clear-notes)
 
 (defn entry-type-selection []
@@ -321,14 +411,14 @@
 (defn entry-type-selection-box []
   (let [is-new-entry @(form-events/new-entry-form?)]
     (when is-new-entry
-      [rn-view {:style {:flexDirection "column" :padding-right 5 :padding-left 5 :margin-bottom 5 :borderWidth .20 :borderRadius 4}}
+      [rn-view {:style box-style-1}
        [entry-type-selection]])))
 
 (defn title-group-selection-box []
   (let [edit @(form-events/form-edit-mode)
         is-new-entry @(form-events/new-entry-form?)]
     (if edit
-      [rn-view {:style {:flexDirection "column" :padding-right 5 :padding-left 5 :margin-bottom 5 :borderWidth .20 :borderRadius 4}}
+      [rn-view {:style box-style-1}
        [title-with-icon]
        (when is-new-entry
          [:<>
@@ -413,34 +503,34 @@
                                        on-change-text]} is-password-edit? custom-field-edit-focused?]
 
   ;;(println "protected " protected " visible " visible " , " (if (or (not protected) visible) false true))
-  ^{:key (str key protected)}[rnp-text-input {:label (if required (str key "*") key)
-                   :defaultValue value
+  ^{:key (str key protected)} [rnp-text-input {:label (if required (str key "*") key)
+                                               :defaultValue value
                        ;;:value value
                        ;;:editable edit
-                   :showSoftInputOnFocus edit
-                   :ref (fn [^js/Ref ref]
-                          (when (and (not (nil? ref)) (str/blank? value)) (.clear ref)))
-                   :autoCapitalize "none" 
-                   :keyboardType (if-not protected "email-address" "default") 
-                   :autoComplete "off"
-                   :autoCorrect false
-                   :style {:width (if (or is-password-edit? custom-field-edit-focused?)  "90%" "100%")}
-                   :onFocus #(field-focus-action key true)
-                   :onBlur #(field-focus-action key false)
-                   :onChangeText (if edit on-change-text nil)
-                   :onPressOut (if-not edit
-                                 #(cmn-events/write-string-to-clipboard {:field-name key
-                                                                         :protected protected
-                                                                         :value value})
-                                 nil)
-                   :secureTextEntry (if (or (not protected) visible) false true)
+                                               :showSoftInputOnFocus edit
+                                               :ref (fn [^js/Ref ref]
+                                                      (when (and (not (nil? ref)) (str/blank? value)) (.clear ref)))
+                                               :autoCapitalize "none"
+                                               :keyboardType (if-not protected "email-address" "default")
+                                               :autoComplete "off"
+                                               :autoCorrect false
+                                               :style {:width (if (or is-password-edit? custom-field-edit-focused?)  "90%" "100%")}
+                                               :onFocus #(field-focus-action key true)
+                                               :onBlur #(field-focus-action key false)
+                                               :onChangeText (if edit on-change-text nil)
+                                               :onPressOut (if-not edit
+                                                             #(cmn-events/write-string-to-clipboard {:field-name key
+                                                                                                     :protected protected
+                                                                                                     :value value})
+                                                             nil)
+                                               :secureTextEntry (if (or (not protected) visible) false true)
                    ;; It looks like we can have only one icon
-                   :right (when protected
-                            (if visible
-                              (r/as-element [rnp-text-input-icon {:icon "eye"
-                                                                  :onPress #(form-events/entry-form-field-visibility-toggle key)}])
-                              (r/as-element [rnp-text-input-icon {:icon "eye-off"
-                                                                  :onPress #(form-events/entry-form-field-visibility-toggle key)}])))}])
+                                               :right (when protected
+                                                        (if visible
+                                                          (r/as-element [rnp-text-input-icon {:icon "eye"
+                                                                                              :onPress #(form-events/entry-form-field-visibility-toggle key)}])
+                                                          (r/as-element [rnp-text-input-icon {:icon "eye-off"
+                                                                                              :onPress #(form-events/entry-form-field-visibility-toggle key)}])))}])
 
 ;; In iOS, we do not see the same issue as seen with the use of text input in android 
 (defn ios-form-text-input [{:keys [key
@@ -503,7 +593,7 @@
          on-change-text #(println (str "No on change text handler yet registered for " key))
          required false}
     :as kvm}]
-  (let [cust-color @page-background-color 
+  (let [cust-color @page-background-color
         is-password-edit? (and edit (= key "Password"))
         custom-field-edit-focused? (if (is-iOS)
                                      (and
@@ -515,7 +605,7 @@
                                       ;; the pressing on custom icon works. But first time when press Soft KB hides and then
                                       ;; again we need to press for menu popup
                                       ;;(:focused @field-focused)   <- See above comments
-                                      
+
                                       (not standard-field))
                                      ;; In Android, we cannot use :focused as onBlur sets false and dot-icon is hidden
                                      (and
@@ -528,7 +618,7 @@
         [ios-form-text-input kvm is-password-edit? custom-field-edit-focused?]
         [android-form-text-input kvm is-password-edit? custom-field-edit-focused?])
       (when is-password-edit?
-        [rn-view {:style {:margin-left -5 :backgroundColor cust-color }}
+        [rn-view {:style {:margin-left -5 :backgroundColor cust-color}}
          [rnp-icon-button {:style {:margin-right 0}
                            :icon "cached"
                            ;; on-change-text is a single argument function
@@ -635,12 +725,7 @@
          {:keys [section-names section-fields]} :data} @(form-events/entry-form)]
     ;; section-names is a list of section names
     ;; section-fields is a list of map - one map for each field in that section
-    [rn-view {:style {:flexDirection "column"
-                      :padding-top 5
-                      :padding-right 5
-                      :padding-left 5
-                      :padding-bottom 10
-                      :margin-bottom 5 :borderWidth .20 :borderRadius 4}}
+    [rn-view {:style box-style-2}
      (doall
       (for [section-name section-names]
         ^{:key section-name} [section-content edit section-name (get section-fields section-name)]))]))
@@ -658,7 +743,7 @@
        [rn-view {:style {:flexDirection "row" :backgroundColor  @primary-container-color :min-height 25}}
         [rnp-text {:style {:alignSelf "center" :width "85%" :padding-left 15} :variant "titleMedium"} "Tags"]
         (when edit
-          [rnp-icon-button {:icon "plus" :style {:height 35 :margin-right 0 :backgroundColor @on-primary-color}
+          [rnp-icon-button {:icon const/ICON-PLUS :style {:height 35 :margin-right 0 :backgroundColor @on-primary-color}
                             :onPress (fn [] (cmn-events/tags-dialog-init-selected-tags entry-tags))}])]
        [rn-view {:style {:flexDirection "column" :padding-top 10}}
         [rn-view {:style {:flexDirection "row" :flexWrap "wrap"}}
@@ -667,12 +752,17 @@
             ^{:key tag} [rnp-chip {:style {:margin 5}
                                    :onClose (when edit
                                               (fn []
-                                                (form-events/entry-form-data-update-field-value :tags (filterv #(not= tag %) entry-tags))))} tag]))]]])))
+                                                (form-events/entry-form-data-update-field-value
+                                                 :tags (filterv #(not= tag %) entry-tags))))} tag]))]]])))
 
-(defn entry-times []
-  (let [{:keys [last-modification-time creation-time]} @(form-events/entry-form-data-fields
-                                                         [:last-modification-time :creation-time])]
+(defn uuid-times-content []
+  (let [{:keys [uuid last-modification-time creation-time]} @(form-events/entry-form-data-fields
+                                                              [:uuid :last-modification-time :creation-time])]
     [rn-view {:style {:margin-top 20}}
+     [rn-view {:style {:justify-content "space-between"} :flexDirection "row"}
+      [rnp-text "Uuid"]
+      [rnp-text uuid]]
+     [rn-view {:style {:height 15}}]
      [rn-view {:style {:justify-content "space-between"} :flexDirection "row"}
       [rnp-text "Creation Time"]
       [rnp-text (utc-str-to-local-datetime-str creation-time)]]
@@ -680,6 +770,89 @@
      [rn-view {:style {:justify-content "space-between"} :flexDirection "row"}
       [rnp-text "Last Modification Time"]
       [rnp-text (utc-str-to-local-datetime-str last-modification-time)]]]))
+
+;;;;;;;;;;;;;;;;;;;;  Attachment ;;;;;;;;;;;;;;;;;;;;
+
+(def delete-attachment-confirm-dialog-data (r/atom {:dialog-show false
+                                                    :title nil
+                                                    :confirm-text nil
+                                                    :call-on-ok-fn #(println %)}))
+
+(def delete-attachment-dialog-info (cc/confirm-dialog-factory delete-attachment-confirm-dialog-data))
+
+(defn show-delete-attachment-dialog [title confirm-text call-on-ok-fn]
+  (swap! delete-attachment-confirm-dialog-data assoc
+         :title title :confirm-text confirm-text :call-on-ok-fn call-on-ok-fn)
+  ((:show delete-attachment-dialog-info)))
+
+(def attachment-icons {"pdf" const/ICON-PDF
+                       "jpg" const/ICON-FILE-JPG
+                       "gif" const/ICON-FILE-JPG
+                       "png" const/ICON-FILE-PNG})
+
+(defn attachment-icon [file-name]
+  (let [name (-> file-name (str/split ".") last str/lower-case)]
+    (get attachment-icons name const/ICON-FILE-QUESTION-OUTLINE)))
+
+(defn attachment-content-header [edit]
+  [rn-view {:style {:flexDirection "row"
+                    :backgroundColor  @primary-container-color
+                    :margin-top 5
+                    :min-height 35}}
+   [rnp-text {:style {:alignSelf "center" :width "85%" :padding-left 15} :variant "titleMedium"} "Attachment"]
+   (when edit
+     [rnp-icon-button {:icon const/ICON-PLUS :style {:height 35
+                                                     :margin-right 0
+                                                     :backgroundColor @on-primary-color}
+                       :onPress (fn [^js/PEvent _event]
+                                  (form-events/upload-attachment)
+                                  ;; Instead of the above action, use menu pop ups if we require more that upload action
+                                  #_(show-attachment-menu event))}])])
+
+(defn attachment-row-item [{:keys [key data-size data-hash]} edit]
+  (let [att-icon (attachment-icon key)
+        size-str (u/to-file-size-str data-size)]
+    [rnp-list-item
+     {:onPress #(form-events/view-attachment key data-hash)
+      :onLongPress  (fn [e]
+                      (show-attachment-long-press-menu e edit key data-hash))
+      :title (r/as-element
+              [rnp-text {:variant "titleSmall"} key])
+      :description size-str
+      :left (fn [_props] (r/as-element
+                          [rnp-list-icon
+                           {:style {:align-self "center"}
+                            :icon att-icon
+                            :color @rnc/tertiary-color}]))}]))
+
+(defn attachment-content []
+  (let [{:keys [edit]
+         {:keys [binary-key-values]} :data} @(form-events/entry-form)
+        sections [{:title "Attachments"
+                   :key "Attachments"
+                   :data binary-key-values}]]
+
+    (when (or edit (boolean (seq binary-key-values)))
+      [rn-view {:style (merge box-style-1 {:margin-top 5})}
+       [attachment-content-header edit]
+
+           ;; We may see the warning/error in the console: 
+           ;; VirtualizedLists should never be nested inside plain ScrollViews with the same orientation because 
+           ;; it can break windowing and other functionality - use another VirtualizedList-backed container instead
+           ;; :scrollEnabled false (from RN 0.71)  removes that error
+           ;; See https://stackoverflow.com/questions/58243680/react-native-another-virtualizedlist-backed-container
+           ;; https://stackoverflow.com/questions/67623952/error-virtualizedlists-should-never-be-nested-inside-plain-scrollviews-with-th
+
+       [rn-section-list {:scrollEnabled false
+                         :sections (clj->js sections)
+                         :renderItem (fn [props]
+                                       (let [props (js->clj props :keywordize-keys true)]
+                                         (r/as-element [attachment-row-item (-> props :item) edit])))
+                         :ItemSeparatorComponent (fn [_p] (r/as-element [rnp-divider]))
+                         :stickySectionHeadersEnabled false
+                         :renderSectionHeader nil}]])))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn main-content []
   (let [edit @(form-events/form-edit-mode)]
@@ -692,13 +865,17 @@
      ;; Tags
      [tags edit]
 
-     (when-not edit [entry-times])
+     ;; Attachments panel will come here 
+     [attachment-content]
 
-     ;; Attachments panel will come here  
+     (when-not edit [uuid-times-content])
+
+
 
      ;; Setup the menus. This ensures these menu components are called only once to initiate
      [section-menu @section-menu-dialog-data]
      [custom-field-menu @custom-field-menu-data]
+     [attachment-long-press-menu @attachment-long-press-menu-data]
 
      ;; All entry form related dialogs
      [rnp-portal
@@ -712,6 +889,7 @@
          :on-press #(form-events/field-delete-confirm false)}]]
       [history-entry-delete-dialog]
       [history-entry-restore-dialog]
+      (:dialog delete-attachment-dialog-info)
       [cc/entry-delete-confirm-dialog form-events/delete-entry]]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
