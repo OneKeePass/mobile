@@ -27,9 +27,12 @@
             (js/console.log (ex-cause err))
             (callback-fn nil)))))
 
-
 ;; Use (.open file-viewer "full file path")
 (def file-viewer ^js/FileViewer (.-default ^js/NFileViewer native-file-viewer))
+
+;; TODO: Need to replace all places where DOCUMENT_PICKER_CANCELED checks are used with this fn
+(defn document-pick-cancelled [error-m]
+  (= "DOCUMENT_PICKER_CANCELED" (:code error-m)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

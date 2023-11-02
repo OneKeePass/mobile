@@ -1,6 +1,5 @@
 (ns onekeepass.mobile.events.open-database
-  (:require
-   [clojure.string :as str]
+  (:require 
    [onekeepass.mobile.events.common :refer [on-ok]]
    [re-frame.core :refer [reg-event-db
                           reg-event-fx
@@ -76,7 +75,7 @@
 
 (defn- validate-required-fields
   [db]
-  (let [error-fields (cond-> {}
+  (let [error-fields {} #_(cond-> {}
                        (str/blank? (get-in db [:open-database :password]))
                        (assoc :password "A valid password is required"))]
     error-fields))

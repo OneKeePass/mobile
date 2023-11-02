@@ -426,6 +426,8 @@ internal interface _UniFFILib : Library {
     ): RustBuffer.ByValue
     fun uniffi_db_service_fn_func_copy_picked_key_file(`fileArgs`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_db_service_fn_func_upload_attachment(`fileArgs`: RustBuffer.ByValue,`jsonArgs`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_db_service_fn_func_extract_file_provider(`fullFileNameUri`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_db_service_fn_func_invoke_command(`commandName`: RustBuffer.ByValue,`args`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
@@ -453,6 +455,8 @@ internal interface _UniFFILib : Library {
     fun uniffi_db_service_checksum_func_write_to_backup_on_error(
     ): Short
     fun uniffi_db_service_checksum_func_copy_picked_key_file(
+    ): Short
+    fun uniffi_db_service_checksum_func_upload_attachment(
     ): Short
     fun uniffi_db_service_checksum_func_extract_file_provider(
     ): Short
@@ -527,6 +531,9 @@ private fun uniffiCheckApiChecksums(lib: _UniFFILib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_checksum_func_copy_picked_key_file() != 36212.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_checksum_func_upload_attachment() != 21821.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_checksum_func_extract_file_provider() != 57962.toShort()) {
@@ -2143,6 +2150,14 @@ fun `copyPickedKeyFile`(`fileArgs`: FileArgs): String {
     return FfiConverterString.lift(
     rustCall() { _status ->
     _UniFFILib.INSTANCE.uniffi_db_service_fn_func_copy_picked_key_file(FfiConverterTypeFileArgs.lower(`fileArgs`),_status)
+})
+}
+
+
+fun `uploadAttachment`(`fileArgs`: FileArgs, `jsonArgs`: String): String {
+    return FfiConverterString.lift(
+    rustCall() { _status ->
+    _UniFFILib.INSTANCE.uniffi_db_service_fn_func_upload_attachment(FfiConverterTypeFileArgs.lower(`fileArgs`),FfiConverterString.lower(`jsonArgs`),_status)
 })
 }
 

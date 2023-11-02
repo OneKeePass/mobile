@@ -1080,6 +1080,9 @@
 (defn delete-attachment [data-hash]
   (dispatch [:attachment-delete data-hash]))
 
+(defn rename-attachment [name data-hash]
+  (dispatch [:attachment-rename name data-hash]))
+
 (defn save-attachment [name attachment-hash]
   (dispatch [:attachment-save-as-start name attachment-hash]))
 
@@ -1138,7 +1141,6 @@
        {:fx [[:dispatch [:common/message-box-show "Upload status" "The uploaded attachment is the same as the existing one"]]]}
        {:db (-> db (assoc-in-key-db [entry-form-key :data :binary-key-values] (conj attachments bkv)))}))))
 
-
 (reg-event-fx
  :attachment-delete
  (fn [{:keys [db]} [_event-id attachment-hash]]
@@ -1148,6 +1150,16 @@
                               false true)) attachments)]
      {:db (-> db (assoc-in-key-db [entry-form-key :data :binary-key-values] updated))})))
 
+(reg-event-fx
+ :attachment-rename
+ (fn [{:keys [db]} [_event-id name attachment-hash]]
+   (let [attachments (get-in-key-db db [entry-form-key :data :binary-key-values])
+         ;; Important: Name of attachment is set to the ':key' key in binary-key-value map
+         updated (mapv (fn [{:keys [data-hash] :as m}]
+                         (if (= attachment-hash data-hash)
+                           (assoc m :key name) m)) attachments)]
+     {:db (-> db (assoc-in-key-db [entry-form-key :data :binary-key-values] updated))
+      :fx [[:dispatch [:common/message-snackbar-open "Attachment renamed"]]]})))
 
 (reg-event-fx
  :attachment-save-as-start
@@ -1156,14 +1168,22 @@
 
 (reg-fx
  :bg-save-attachment-to-save
- (fn [[db-key name attachment-hash]]
+ (fn [[db-key name attachment-hash]] 
    (bg/save-attachment-to-view db-key name attachment-hash
-                               (fn [api-response]
+                               (fn [api-response] 
                                  (when-let [temp-file-name (on-ok api-response)]
                                    (bg/pick-attachment-file-to-save temp-file-name name
-                                                 (fn [api-response]
-                                                   (on-error api-response))))))))
-
+                                                                    (fn [api-response]
+                                                                      (on-error api-response #(dispatch [:pick-save-attachment-to-cancelled %])))))))))
+(reg-event-fx
+ :pick-save-attachment-to-cancelled
+ (fn [{:keys [_db]} [_event-id error]]
+   ;; When user cancels the picking document, we receive the error with
+   ;; DOCUMENT_PICKER_CANCELED and in that case, we will continue show the save error dialog 
+   ;; Any other error will be shown in the error dialog 
+   (if (bg/document-pick-cancelled error)
+     {}
+     {:fx [[:dispatch [:common/error-box-show "Save as Error" error]]]})))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

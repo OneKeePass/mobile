@@ -6,9 +6,16 @@ license = ""
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+
+#iOS for botan3 build as we need .a file
 [lib]
-crate-type = ["lib", "staticlib"]
+crate-type = ["lib", "staticlib"] 
 name = "db_service_ffi"
+
+# Android for botan3 build - needs "cdylib" as we need .so file
+#[lib]
+#crate-type = ["lib", "staticlib","cdylib"] 
+#name = "db_service_ffi"
 
 [dependencies]
 uniffi = "0.24.1"

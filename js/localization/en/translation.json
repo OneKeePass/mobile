@@ -4,10 +4,12 @@
         "title": "i18next is Great!",
         "description": "Everyone understands me!"
     },
+    "additionalProtection":"Additional Protection",
     "databases":"Databases",
     "databaseFile":"Database File",
     "description":"Description",
     "importedKeyFiles":"Imported Key Files",
+    "keyFile":"Key File",
     "keyFileName":"Key File Name",
     "name":"Name",
     "notes":"Notes",
@@ -60,7 +62,9 @@
         "settings": "Settings"
     },
     "button.labels": {
+        "addPassword":"Add password",
         "browse":"Browse",
+        "changePassword":"Change password",
         "close": "Close",
         "cancel": "Cancel",
         "continue": "Continue",
@@ -71,6 +75,7 @@
         "no": "No",
         "ok": "Ok",
         "opendb": "Open Database",
+        "removePassword":"Remove password",
         "select": "Select",
         "save": "Save",
         "yes": "Yes"

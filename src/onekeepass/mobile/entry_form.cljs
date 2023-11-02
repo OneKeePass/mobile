@@ -313,6 +313,8 @@
 
 (declare show-delete-attachment-dialog)
 
+(declare show-rename-attachment-name-dialog)
+
 (defn attachment-long-press-menu [{:keys [show x y edit name data-hash]}]
   [rnp-menu {:visible show
              :onDismiss dismiss-attachment-long-press-menu
@@ -332,6 +334,7 @@
    [rnp-menu-item {:title (lstr "menu.labels.rename")
                    :disabled (not edit)
                    :onPress (fn [_e]
+                              (show-rename-attachment-name-dialog name data-hash)
                               (dismiss-attachment-long-press-menu))}]
    [rnp-menu-item {:title (lstr "menu.labels.delete")
                    :disabled (not edit)
@@ -358,9 +361,7 @@
                :anchor (clj->js {:x x :y y})}
      [rnp-menu-item {:title "Upload"
                      :onPress (fn [_e]
-                                #_(form-events/field-delete section-name field-name)
                                 (dismiss-attachment-menu))}]])
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -773,6 +774,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;  Attachment ;;;;;;;;;;;;;;;;;;;;
 
+;; delete dialog
 (def delete-attachment-confirm-dialog-data (r/atom {:dialog-show false
                                                     :title nil
                                                     :confirm-text nil
@@ -784,6 +786,49 @@
   (swap! delete-attachment-confirm-dialog-data assoc
          :title title :confirm-text confirm-text :call-on-ok-fn call-on-ok-fn)
   ((:show delete-attachment-dialog-info)))
+
+;; rename dialog
+(def rename-attachment-name-dialog-data (r/atom {:dialog-show false
+                                                 :name nil
+                                                 :data-hash nil
+                                                 :error-text nil}))
+
+(defn show-rename-attachment-name-dialog [name data-hash]
+  (swap! rename-attachment-name-dialog-data assoc :dialog-show true :name name :data-hash data-hash))
+
+(defn close-rename-attachment-name-dialog []
+  (reset! rename-attachment-name-dialog-data {}))
+
+(defn change-attachment-name [value]
+  (swap! rename-attachment-name-dialog-data assoc :name value)
+  (if  (str/blank? value)
+    (swap! rename-attachment-name-dialog-data assoc :error-text "Valid name is required")
+    (swap! rename-attachment-name-dialog-data assoc :error-text nil)))
+
+(defn rename-attachment-name-dialog [{:keys [dialog-show
+                                             name
+                                             data-hash
+                                             error-text]}]
+  [cust-dialog {:style {} :dismissable true :visible dialog-show :onDismiss #()}
+   [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1}
+    "Change name"]
+   [rnp-dialog-content
+    [rn-view {:flexDirection "column"}
+     [rnp-text-input {:label "Name"
+                      :defaultValue name
+                      :onChangeText change-attachment-name}]
+     (when error-text
+       [rnp-helper-text {:type "error" :visible true}
+        error-text])]]
+
+   [rnp-dialog-actions
+    [rnp-button {:mode "text"
+                 :onPress close-rename-attachment-name-dialog} (lstr "button.labels.cancel")]
+    [rnp-button {:mode "text"
+                 :disabled (not (nil? error-text))
+                 :onPress (fn []
+                            (form-events/rename-attachment name data-hash)
+                            (close-rename-attachment-name-dialog))} (lstr "button.labels.ok")]]])
 
 (def attachment-icons {"pdf" const/ICON-PDF
                        "jpg" const/ICON-FILE-JPG
@@ -890,6 +935,7 @@
       [history-entry-delete-dialog]
       [history-entry-restore-dialog]
       (:dialog delete-attachment-dialog-info)
+      [rename-attachment-name-dialog @rename-attachment-name-dialog-data]
       [cc/entry-delete-confirm-dialog form-events/delete-entry]]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  

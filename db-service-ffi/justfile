@@ -40,7 +40,7 @@ build-ios-sim-lib-release:
     cargo build --target aarch64-apple-ios-sim --release
 
 build-ios-sim-lib-debug:
-    cargo build --target aarch64-apple-ios-sim
+    cargo build --target aarch64-apple-ios-sim 
 
 build-ios-device-lib-debug:
     cargo build --target aarch64-apple-ios 
@@ -143,7 +143,7 @@ build-test1:
 
 ## export CXX="/Users/jeyasankar/Library/Android/sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android31-clang++"
    
-build-test2:
+build-android-1:
     #!/usr/bin/env bash
     set -euxo pipefail
     export BOTAN_CONFIGURE_OS='android'
@@ -153,10 +153,30 @@ build-test2:
     export AR="/Users/jeyasankar/Library/Android/sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ar"
     export CXX="/Users/jeyasankar/Library/Android/sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android31-clang++"
    
-    cargo ndk -t armv7-linux-androideabi  -o ./target/jniLibs build
+    #cargo ndk -t aarch64-linux-android -t armv7-linux-androideabi  -o ./target/jniLibs build
+    cargo ndk -t aarch64-linux-android   -o ./target/jniLibs build
 
 
+build-android-3:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+    export BOTAN_CONFIGURE_OS='android'
+    export BOTAN_CONFIGURE_CC_ABI_FLAGS='-arch armv7'
+    export BOTAN_CONFIGURE_CC='clang'
+    export BOTAN_CONFIGURE_CPU='armv7'
+    export AR="/Users/jeyasankar/Library/Android/sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ar"
+    export CXX="/Users/jeyasankar/Library/Android/sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android31-clang++"
+   
+    cargo ndk -t aarch64-linux-android  -o ./target/jniLibs build
+    #cargo ndk -t aarch64-linux-android -t armv7-linux-androideabi  -o ./target/jniLibs build
+    #cargo ndk -t armv7-linux-androideabi   -o ./target/jniLibs build
 
 
+build-test-android-2:build-android-1 generate-kotlin
+    cp -R {{kotlin-src-dir}}/ {{android-db-service-src-dir}}
+    cp -R {{android-lib-output-dir}} {{android-db-service-lib-dir}}
 
 
+build-test-android-3:generate-kotlin
+    cp -R {{kotlin-src-dir}}/ {{android-db-service-src-dir}}
+    cp -R {{android-lib-output-dir}} {{android-db-service-lib-dir}}
