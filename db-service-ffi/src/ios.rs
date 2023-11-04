@@ -5,6 +5,7 @@ use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
+use onekeepass_core::db_content::AttachmentHashValue;
 use onekeepass_core::db_service::{self, string_to_simple_hash};
 use regex::{Regex, RegexSet};
 
@@ -24,7 +25,7 @@ impl IosSupportService {
     // Note: At this time both kdbx and the key file uri bookmarking use the same way
     pub fn save_book_mark_data(&self, url: String, data: Vec<u8>) -> bool {
         let file_name = string_to_simple_hash(&url).to_string();
-        
+
         let book_mark_file_root = Path::new(&AppState::global().app_home_dir).join("bookmarks");
         // Ensure that the parent dir exists
         if !book_mark_file_root.exists() {
@@ -85,8 +86,8 @@ impl IosSupportService {
         }
     }
 
-    // Called to delete any previous bookmark data. 
-    // For now mainly used after saving any key file to a user selected location 
+    // Called to delete any previous bookmark data.
+    // For now mainly used after saving any key file to a user selected location
     pub fn delete_book_mark_data(&self, full_file_name_uri: &str) {
         delete_book_mark_data(&full_file_name_uri);
     }
@@ -287,4 +288,12 @@ pub fn parse_bookmark_data(data: Vec<u8>) -> String {
         .map_or("Cloud storage / Another app", |s| s);
 
     location_name.to_string()
+}
+
+pub fn save_attachment_as_temp_file(
+    db_key: &str,
+    name: &str,
+    data_hash: &AttachmentHashValue,
+) -> OkpResult<String> {
+    db_service::save_attachment_as_temp_file(db_key, name, data_hash)
 }

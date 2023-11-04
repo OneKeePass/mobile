@@ -230,6 +230,10 @@
                   dispatch-fn
                   :error-transform true))
 
+;; Both pick-key-file-to-copy and pick-upload-attachment uses the same 
+;; RN backend api 'pickKeyFileToCopy'
+;; TODO: Rename pickKeyFileToCopy -> pickFileToCopy ??
+
 ;; This works for both iOS and Android
 (defn pick-key-file-to-copy
   "Called to pick a kdbx file using platform specific File Manager. The 'dispatch-fn' called with a full uri
@@ -237,9 +241,11 @@
    "
   [dispatch-fn]
   (call-api-async (fn []
+                    ;; This call is followed by copy-key-file 
                     (.pickKeyFileToCopy okp-document-pick-service))
                   dispatch-fn
                   :error-transform true))
+
 
 ;; This works for both iOS and Android
 (defn pick-key-file-to-save
@@ -251,23 +257,29 @@
   (call-api-async (fn [] (.pickKeyFileToSave okp-document-pick-service full-file-name file-name))
                   dispatch-fn :error-transform true))
 
-;; Works with iOS ; Android yet to be tested
+;; This works for both iOS and Android
 (defn pick-upload-attachment
-  "Called to pick a kdbx file using platform specific File Manager. The 'dispatch-fn' called with a full uri
-   of a file picked and the file is read and loaded in the subsequent call
+  "Called to pick any file using platform specific File Manager. The 'dispatch-fn' called with a full uri
+   of a file picked and the file is read and loaded in the subsequent call in 'upload-attachment'
    "
   [dispatch-fn]
   (call-api-async (fn []
                     ;; For now we are using the same RN function that is used for key file pickup
-                    ;; This call is followed by upload-attachment
+                    ;; This call is followed by upload-attachment from DbService RN module
                     (.pickKeyFileToCopy okp-document-pick-service))
                   dispatch-fn
                   :error-transform true))
 
-(defn pick-attachment-file-to-save [full-file-name attachment-name dispatch-fn]
-  (call-api-async (fn [] (.pickAttachmentFileToSave okp-document-pick-service full-file-name attachment-name))
+;; This works for both iOS and Android 
+(defn pick-attachment-file-to-save
+  "Called to save the selected key file to a user chosen location
+     The arg 'full-file-name' is the fey file absolute path (locally inside the app's temp stored file path)
+     The arg 'attachment-name' is the just attachment name part
+     "
+  [full-file-name attachment-name dispatch-fn]
+  (call-api-async (fn [] (.pickAttachmentFileToSave
+                          okp-document-pick-service full-file-name attachment-name))
                   dispatch-fn :error-transform true))
-
 
 ;;;;;;;;
 
@@ -594,7 +606,7 @@
   [file-name dispatch-fn]
   (invoke-api "generate_key_file"  {:key_vals {"file_name" file-name}} dispatch-fn :convert-request false))
 
-(defn save-attachment-to-view 
+(defn save-attachment-to-view
   "Called to save an entry's attachment to a temp file"
   [db-key name data-hash-str dispatch-fn]
   (invoke-api "save_attachment_as_temp_file" {:db-key db-key :name name :data-hash-str data-hash-str} dispatch-fn :no-response-conversion true))

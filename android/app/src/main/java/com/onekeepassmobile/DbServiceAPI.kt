@@ -88,6 +88,11 @@ object DbServiceAPI {
         return onekeepass.mobile.ffi.copyPickedKeyFile(fileArgs)
     }
 
+    fun uploadAttachment(fd: ULong, fullFileName: String, fileName: String,jsonArgs: String):String {
+        val fileArgs = onekeepass.mobile.ffi.FileArgs.FileDecriptorWithFullFileName(fd, fullFileName, fileName)
+        return onekeepass.mobile.ffi.uploadAttachment(fileArgs,jsonArgs)
+    }
+
     fun formJsonWithFileName(fullFileName: String): String {
         return jsonService.formWithFileName(fullFileName)
     }
@@ -100,6 +105,14 @@ object DbServiceAPI {
 class CommonDeviceServiceImpl(val reactContext: ReactApplicationContext) : CommonDeviceService {
     override fun appHomeDir(): String {
         return reactContext.filesDir.absolutePath
+    }
+
+    override fun cacheDir(): String {
+        return reactContext.cacheDir.absolutePath
+    }
+
+    override fun tempDir(): String {
+        return reactContext.cacheDir.absolutePath
     }
 
     override fun uriToFileName(fullFileNameUri: String): String? {

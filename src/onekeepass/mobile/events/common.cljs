@@ -726,6 +726,7 @@
  (fn [db [_event-id message]]
    (-> db
        (assoc-in [:message-snackbar-data :open] true)
+       ;; lstr is used in 'common-components/message-snackbar' to provide a language specific message
        (assoc-in [:message-snackbar-data :message] message))))
 
 (reg-event-db

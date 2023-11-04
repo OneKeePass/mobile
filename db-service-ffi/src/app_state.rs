@@ -17,6 +17,8 @@ use crate::{udl_types::SecureKeyOperation, util};
 // Any mutable field needs to be behind Mutex
 pub struct AppState {
     pub app_home_dir: String,
+    pub cache_dir: String,
+    pub temp_dir: String,
     pub backup_dir_path: PathBuf,
     pub export_data_dir_path: PathBuf,
     pub key_files_dir_path:PathBuf,
@@ -39,6 +41,11 @@ impl AppState {
         secure_key_operation: Box<dyn SecureKeyOperation>,
     ) {
         let app_dir = util::url_to_unix_file_name(&common_device_service.app_home_dir());
+        let cache_dir = util::url_to_unix_file_name(&common_device_service.cache_dir());
+        let temp_dir = util::url_to_unix_file_name(&common_device_service.temp_dir());
+
+        debug!("app_dir {}, cache_dir {}, temp_dir {}",&app_dir,&cache_dir,&temp_dir);
+
         let pref = Preference::read(&app_dir);
 
         let export_data_dir_path = util::create_sub_dir(&app_dir, "export_data");
@@ -52,6 +59,8 @@ impl AppState {
 
         let app_state = AppState {
             app_home_dir: app_dir.into(),
+            cache_dir,
+            temp_dir,
             backup_dir_path,
             export_data_dir_path,
             key_files_dir_path,

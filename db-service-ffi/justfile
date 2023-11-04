@@ -94,7 +94,7 @@ cp-android-ffi-lib-src release="": (build-android-lib release) generate-kotlin
 ######## 
 
 ## Do not build x86_64-linux-android and i686-linux-android during dev to speed things up
-alias bca-d := cp-android-ffi-lib-src-d
+# alias bca-d := cp-android-ffi-lib-src-d
 
 build-android-lib-d:
     cargo ndk -t aarch64-linux-android -t armv7-linux-androideabi -o ./target/jniLibs build
@@ -103,6 +103,34 @@ cp-android-ffi-lib-src-d:build-android-lib-d generate-kotlin
     cp -R {{kotlin-src-dir}}/ {{android-db-service-src-dir}}
     cp -R {{android-lib-output-dir}} {{android-db-service-lib-dir}}
 
+#################### New #############
+
+ndk_botan_build_home := env_var('ANDROID_NDK_HOME') + "/../26.1.10909125"
+ndk_ar := ndk_botan_build_home + "/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ar"
+ndk_cxx := ndk_botan_build_home + "/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android31-clang++"
+
+## Need to ensure to use 'crate-type = ["lib", "staticlib","cdylib"]' in Cargo.toml
+build-android-lib-aarch64:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+    export BOTAN_CONFIGURE_OS='android'
+    export BOTAN_CONFIGURE_CC_ABI_FLAGS='-arch arm64'
+    export BOTAN_CONFIGURE_CC='clang'
+    export BOTAN_CONFIGURE_CPU='arm64'
+    export AR={{ndk_ar}}
+    export CXX={{ndk_cxx}}
+
+    cargo ndk -t aarch64-linux-android   -o ./target/jniLibs build
+
+build-android-lib-all:
+    just build-android-lib-aarch64
+    cargo ndk -t armv7-linux-androideabi  -o ./target/jniLibs build
+
+build-android-lib-cp-src:build-android-lib-all generate-kotlin
+    cp -R {{kotlin-src-dir}}/ {{android-db-service-src-dir}}
+    cp -R {{android-lib-output-dir}} {{android-db-service-lib-dir}}
+
+alias bca-d := build-android-lib-cp-src
 
 ########################  botan lib build experiment ###############
 
@@ -142,7 +170,8 @@ build-test1:
 
 
 ## export CXX="/Users/jeyasankar/Library/Android/sdk/ndk/26.1.10909125/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android31-clang++"
-   
+
+
 build-android-1:
     #!/usr/bin/env bash
     set -euxo pipefail

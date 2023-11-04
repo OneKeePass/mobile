@@ -1139,7 +1139,8 @@
          existing (boolean (seq existing))]
      (if existing
        {:fx [[:dispatch [:common/message-box-show "Upload status" "The uploaded attachment is the same as the existing one"]]]}
-       {:db (-> db (assoc-in-key-db [entry-form-key :data :binary-key-values] (conj attachments bkv)))}))))
+       {:db (-> db (assoc-in-key-db [entry-form-key :data :binary-key-values] (conj attachments bkv)))
+        :fx [[:dispatch [:common/message-snackbar-open "attachmentAdded"]]]}))))
 
 (reg-event-fx
  :attachment-delete
@@ -1148,7 +1149,8 @@
          updated (filterv (fn [{:keys [data-hash] :as m}]
                             (if (= attachment-hash data-hash)
                               false true)) attachments)]
-     {:db (-> db (assoc-in-key-db [entry-form-key :data :binary-key-values] updated))})))
+     {:db (-> db (assoc-in-key-db [entry-form-key :data :binary-key-values] updated))
+      :fx [[:dispatch [:common/message-snackbar-open "attachmentDeleted"]]]})))
 
 (reg-event-fx
  :attachment-rename
@@ -1159,7 +1161,7 @@
                          (if (= attachment-hash data-hash)
                            (assoc m :key name) m)) attachments)]
      {:db (-> db (assoc-in-key-db [entry-form-key :data :binary-key-values] updated))
-      :fx [[:dispatch [:common/message-snackbar-open "Attachment renamed"]]]})))
+      :fx [[:dispatch [:common/message-snackbar-open "attachmentRenamed"]]]})))
 
 (reg-event-fx
  :attachment-save-as-start
@@ -1168,9 +1170,9 @@
 
 (reg-fx
  :bg-save-attachment-to-save
- (fn [[db-key name attachment-hash]] 
+ (fn [[db-key name attachment-hash]]
    (bg/save-attachment-to-view db-key name attachment-hash
-                               (fn [api-response] 
+                               (fn [api-response]
                                  (when-let [temp-file-name (on-ok api-response)]
                                    (bg/pick-attachment-file-to-save temp-file-name name
                                                                     (fn [api-response]

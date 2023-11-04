@@ -831,6 +831,7 @@
                             (close-rename-attachment-name-dialog))} (lstr "button.labels.ok")]]])
 
 (def attachment-icons {"pdf" const/ICON-PDF
+                       "txt" const/ICON-FILE 
                        "jpg" const/ICON-FILE-JPG
                        "gif" const/ICON-FILE-JPG
                        "png" const/ICON-FILE-PNG})
@@ -878,7 +879,7 @@
                    :data binary-key-values}]]
 
     (when (or edit (boolean (seq binary-key-values)))
-      [rn-view {:style (merge box-style-1 {:margin-top 5})}
+      [rn-view {:style (merge box-style-1 {:margin-top 5 :min-height 60})}
        [attachment-content-header edit]
 
            ;; We may see the warning/error in the console: 

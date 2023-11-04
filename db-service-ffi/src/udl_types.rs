@@ -46,6 +46,8 @@ pub enum ApiCallbackError {
 // We need to implement this interface in Swift and Kotlin for the rust side use
 pub trait CommonDeviceService: Send + Sync {
     fn app_home_dir(&self) -> String;
+    fn cache_dir(&self) -> String;
+    fn temp_dir(&self) -> String;
     fn uri_to_file_name(&self, full_file_name_uri: String) -> Option<String>;
     fn uri_to_file_info(&self, full_file_name_uri: String) -> Option<FileInfo>;
 }

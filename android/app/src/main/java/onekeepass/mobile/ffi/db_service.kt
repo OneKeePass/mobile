@@ -1627,6 +1627,8 @@ public abstract class FfiConverterCallbackInterface<CallbackInterface>(
 
 public interface CommonDeviceService {
     fun `appHomeDir`(): String
+    fun `cacheDir`(): String
+    fun `tempDir`(): String
     fun `uriToFileName`(`fullFileNameUri`: String): String?
     fun `uriToFileInfo`(`fullFileNameUri`: String): FileInfo?
     
@@ -1664,7 +1666,7 @@ internal class ForeignCallbackTypeCommonDeviceService : ForeignCallback {
                 // Call the method, write to outBuf and return a status code
                 // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs` for info
                 try {
-                    this.`invokeUriToFileName`(cb, argsData, argsLen, outBuf)
+                    this.`invokeCacheDir`(cb, argsData, argsLen, outBuf)
                 } catch (e: Throwable) {
                     // Unexpected error
                     try {
@@ -1677,6 +1679,38 @@ internal class ForeignCallbackTypeCommonDeviceService : ForeignCallback {
                 }
             }
             3 -> {
+                // Call the method, write to outBuf and return a status code
+                // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs` for info
+                try {
+                    this.`invokeTempDir`(cb, argsData, argsLen, outBuf)
+                } catch (e: Throwable) {
+                    // Unexpected error
+                    try {
+                        // Try to serialize the error into a string
+                        outBuf.setValue(FfiConverterString.lower(e.toString()))
+                    } catch (e: Throwable) {
+                        // If that fails, then it's time to give up and just return
+                    }
+                    UNIFFI_CALLBACK_UNEXPECTED_ERROR
+                }
+            }
+            4 -> {
+                // Call the method, write to outBuf and return a status code
+                // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs` for info
+                try {
+                    this.`invokeUriToFileName`(cb, argsData, argsLen, outBuf)
+                } catch (e: Throwable) {
+                    // Unexpected error
+                    try {
+                        // Try to serialize the error into a string
+                        outBuf.setValue(FfiConverterString.lower(e.toString()))
+                    } catch (e: Throwable) {
+                        // If that fails, then it's time to give up and just return
+                    }
+                    UNIFFI_CALLBACK_UNEXPECTED_ERROR
+                }
+            }
+            5 -> {
                 // Call the method, write to outBuf and return a status code
                 // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs` for info
                 try {
@@ -1712,6 +1746,32 @@ internal class ForeignCallbackTypeCommonDeviceService : ForeignCallback {
     private fun `invokeAppHomeDir`(kotlinCallbackInterface: CommonDeviceService, argsData: Pointer, argsLen: Int, outBuf: RustBufferByReference): Int {
         fun makeCall() : Int {
             val returnValue = kotlinCallbackInterface.`appHomeDir`(
+            )
+            outBuf.setValue(FfiConverterString.lowerIntoRustBuffer(returnValue))
+            return UNIFFI_CALLBACK_SUCCESS
+        }
+        fun makeCallAndHandleError() : Int = makeCall()
+
+        return makeCallAndHandleError()
+    }
+    
+    @Suppress("UNUSED_PARAMETER")
+    private fun `invokeCacheDir`(kotlinCallbackInterface: CommonDeviceService, argsData: Pointer, argsLen: Int, outBuf: RustBufferByReference): Int {
+        fun makeCall() : Int {
+            val returnValue = kotlinCallbackInterface.`cacheDir`(
+            )
+            outBuf.setValue(FfiConverterString.lowerIntoRustBuffer(returnValue))
+            return UNIFFI_CALLBACK_SUCCESS
+        }
+        fun makeCallAndHandleError() : Int = makeCall()
+
+        return makeCallAndHandleError()
+    }
+    
+    @Suppress("UNUSED_PARAMETER")
+    private fun `invokeTempDir`(kotlinCallbackInterface: CommonDeviceService, argsData: Pointer, argsLen: Int, outBuf: RustBufferByReference): Int {
+        fun makeCall() : Int {
+            val returnValue = kotlinCallbackInterface.`tempDir`(
             )
             outBuf.setValue(FfiConverterString.lowerIntoRustBuffer(returnValue))
             return UNIFFI_CALLBACK_SUCCESS

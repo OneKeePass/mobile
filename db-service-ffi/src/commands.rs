@@ -1,5 +1,5 @@
 use crate::app_state::{AppState, RecentlyUsed};
-use crate::{as_api_response, ios, KeyFileInfo};
+use crate::{as_api_response, ios, KeyFileInfo, android};
 use crate::{open_backup_file, util, OkpError, OkpResult, };
 use onekeepass_core::db_content::AttachmentHashValue;
 use onekeepass_core::db_service::{
@@ -108,7 +108,7 @@ pub enum CommandArg {
         db_key: String,
         db_settings: DbSettings,
     },
-    AttachmentViewArg {
+    AttachmentArg {
         db_key: String,
         name:String,
         data_hash_str: String,
@@ -283,7 +283,7 @@ impl Commands {
             }
 
              "save_attachment_as_temp_file"  => {
-                 service_call! (args, AttachmentViewArg{db_key,name,data_hash_str} => Self save_attachment_as_temp_file(&db_key,&name,&data_hash_str))
+                 service_call! (args, AttachmentArg{db_key,name,data_hash_str} => Self save_attachment_as_temp_file(&db_key,&name,&data_hash_str))
             }
 
             "generate_key_file" => {
@@ -408,9 +408,12 @@ impl Commands {
 
     fn save_attachment_as_temp_file(db_key: &str,name: &str,data_hash_str: &str,) ->  OkpResult<String>  {
         let data_hash = db_service::parse_attachment_hash(data_hash_str)?;
-        Ok(db_service::save_attachment_as_temp_file(
-            db_key, name, &data_hash,
-          )?)
+
+        if cfg!(target_os = "android") {
+            android::save_attachment_as_temp_file(db_key, name, &data_hash)
+        } else {
+            ios::save_attachment_as_temp_file(db_key, name, &data_hash)
+        }
     }
 
     fn prepare_export_kdbx_data(args: &str) -> String {

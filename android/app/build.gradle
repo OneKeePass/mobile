@@ -83,6 +83,17 @@ android {
 
     compileSdkVersion rootProject.ext.compileSdkVersion
 
+    //TODO: (Custom-Jey) Added for ABI based build
+    //      Based on https://reactnative.dev/docs/signed-apk-android#publishing-to-other-stores (0.72 doc)
+    splits {
+        abi {
+            reset()
+            enable true
+            universalApk false
+            include "armeabi-v7a", "arm64-v8a"
+        }
+    }
+    //
     namespace "com.onekeepassmobile"
     defaultConfig {
         applicationId "com.onekeepassmobile"

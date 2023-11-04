@@ -5,6 +5,9 @@
         "description": "Everyone understands me!"
     },
     "additionalProtection":"Additional Protection",
+    "attachmentAdded":"Attachment added",
+    "attachmentDeleted":"Attachment deleted",
+    "attachmentRenamed":"Attachment renamed",
     "databases":"Databases",
     "databaseFile":"Database File",
     "description":"Description",
