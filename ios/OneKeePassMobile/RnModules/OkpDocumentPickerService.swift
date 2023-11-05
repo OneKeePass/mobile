@@ -61,6 +61,7 @@ class OkpDocumentPickerService: NSObject {
   }
   
   // Called to save the selected key file from app's private area to any user picked location
+  // fullKeyFileName is an existing file's full url
   @objc
   func pickKeyFileToSave(_ fullKeyFileName: String,
                          keyFileName: String,
@@ -85,7 +86,7 @@ class OkpDocumentPickerService: NSObject {
       
       // For the file with non zero bytes of data needs to exist before user is presented with UIDocumentPickerView to use 'Save' 
       guard FileManager.default.fileExists(atPath:keyFileUrl.path) else {
-        reject("KEY_FILE_IS_NOT_FOUND", "No key file is found at the url \(fullKeyFileName)", nil)
+        reject("FILE_IS_NOT_FOUND", "No file is found at the url \(fullKeyFileName)", nil)
         return
       }
       
@@ -100,14 +101,30 @@ class OkpDocumentPickerService: NSObject {
       // TODO: Is it required to create bookmark for this "Save as" call?
       // In case of 'pickKeyFileToCopy', we do need the bookmark for copyKeyFile to work and it is deleetd there
       // Here it is not used
-      self.keyFilePickDelegate = KeyFilePickDelegate(resolve, reject)
-      documentPicker.delegate = self.keyFilePickDelegate
+      
+      // self.keyFilePickDelegate = KeyFilePickDelegate(resolve, reject)
+      // documentPicker.delegate = self.keyFilePickDelegate
+      
+      // We can use DummyDocumentPickDelegate instead of KeyFilePickDelegate as we need not bookmark the url
+      self.dummyDocumentPickDelegate = DummyDocumentPickDelegate(resolve, reject)
+      documentPicker.delegate = self.dummyDocumentPickDelegate
     
       controller?.present(documentPicker, animated: true, completion: nil)
     }
   }
   
+  // Called to save the selected attachment file from an entry's attachment data to a location picked by the user
+  // This works the same way as 'pickKeyFileToSave'
+  @objc
+  func pickAttachmentFileToSave(_ fullTempAttachmentFileName: String,
+                         attachmentName: String,
+                         resolve: @escaping (RCTPromiseResolveBlock),
+                         reject: @escaping (RCTPromiseRejectBlock))
+  {
+    pickKeyFileToSave(fullTempAttachmentFileName,keyFileName: attachmentName,resolve: resolve,reject: reject)
+  }
   
+  /*
   // Called to save the selected attachment file from an entry's attachment data to a location picked by the user
   @objc
   func pickAttachmentFileToSave(_ fullTempAttachmentFileName: String,
@@ -143,7 +160,7 @@ class OkpDocumentPickerService: NSObject {
       controller?.present(documentPicker, animated: true, completion: nil)
     }
   }
-  
+  */
   
   // Used to create a new kdbx file followed by a readKdbx call
   // fileName is the suggested kdbx file name to use and user can change the name in the document picker
@@ -245,6 +262,11 @@ class DummyDocumentPickDelegate : NSObject, UIDocumentPickerDelegate{
   }
   
   func documentPicker(_: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+    let pickedFileUrl = urls.first!
+    // Just return the ok value. No book mark etc done as we do not need this url for any other use
+    // We do not bookmark this url because the data is copied to the selected file from the existing file in
+    // 'pickKeyFileToSave' and 'pickAttachmentFileToSave'
+    resolve(DbServiceAPI.jsonService().okJsonString(pickedFileUrl.absoluteString))
   }
   
   func documentPickerWasCancelled(_: UIDocumentPickerViewController) {

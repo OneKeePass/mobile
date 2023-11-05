@@ -118,12 +118,14 @@
   ([{:keys [open message]}]
    [rnp-snackbar {:visible  open
                   :onDismiss cmn-events/close-message-snackbar
-                  :action (fn [] (clj->js {:label "Undo" :onPress #()}))
-                  :duration 7000
+                  ;; label 'Close' is not seen
+                  :action (fn [] (clj->js {:label "Close" })) ;;:onPress #()
+                  :duration 4000 
+                  ;;:theme {:colors {:inverseOnSurface "red"}} ;; only inverseOnSurface works
                   :style {} ;;:zIndex 10 this works in android and not in iOs
                   ;; zIndex in wrapperStyle makes the snackbar to appear on top fab in iOS. 
                   ;; Need to check on android
-                  :wrapperStyle {:bottom 20 :zIndex 10}} (lstr message)])
+                  :wrapperStyle {:bottom 20 :zIndex 10 }} (lstr message)])
   ([]
    [message-snackbar @(cmn-events/message-snackbar-data)]))
 

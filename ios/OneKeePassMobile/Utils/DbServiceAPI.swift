@@ -89,6 +89,15 @@ class CommonDeviceServiceImpl: CommonDeviceService {
   func appHomeDir() -> String {
     return NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).first!
   }
+  
+  func cacheDir() -> String {
+    NSSearchPathForDirectoriesInDomains(.cachesDirectory, .userDomainMask, true).first!
+  }
+  
+  func tempDir() -> String {
+    let tempDirectoryPath = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+    return tempDirectoryPath.absoluteString
+  }
 
   func uriToFileName(_ fullFileNameUri: String) -> String? {
     let file_url = URL(string: fullFileNameUri)

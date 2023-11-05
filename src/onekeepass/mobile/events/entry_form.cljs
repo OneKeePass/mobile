@@ -1163,6 +1163,8 @@
      {:db (-> db (assoc-in-key-db [entry-form-key :data :binary-key-values] updated))
       :fx [[:dispatch [:common/message-snackbar-open "attachmentRenamed"]]]})))
 
+;; Called when user wants to save any attachment data as external file
+;; First attachment saved to a temp file and then user picks the location to save
 (reg-event-fx
  :attachment-save-as-start
  (fn [{:keys [db]} [_event-id name attachment-hash]]
@@ -1171,12 +1173,20 @@
 (reg-fx
  :bg-save-attachment-to-save
  (fn [[db-key name attachment-hash]]
-   (bg/save-attachment-to-view db-key name attachment-hash
-                               (fn [api-response]
-                                 (when-let [temp-file-name (on-ok api-response)]
-                                   (bg/pick-attachment-file-to-save temp-file-name name
-                                                                    (fn [api-response]
-                                                                      (on-error api-response #(dispatch [:pick-save-attachment-to-cancelled %])))))))))
+   ;; First we store the selected attachment data to a temp file (iOS and Android)
+   (bg/save-attachment-to-view
+    db-key name attachment-hash (fn [api-response]
+                                  (when-let [temp-file-name (on-ok api-response)]
+                                    ;; The user picks a file to save. 
+                                    ;; The attachment data saved to a temp file 'temp-file-name' is copied to this picked file
+                                    (bg/pick-attachment-file-to-save
+                                     temp-file-name name
+                                     (fn [api-response]
+                                       (when-not (on-error api-response #(dispatch [:pick-save-attachment-to-cancelled %]))
+                                         (dispatch [:common/message-snackbar-open "Attachment file saved"])))
+                                     #_(fn [api-response]
+                                         (on-error api-response #(dispatch [:pick-save-attachment-to-cancelled %])))))))))
+
 (reg-event-fx
  :pick-save-attachment-to-cancelled
  (fn [{:keys [_db]} [_event-id error]]
