@@ -23,22 +23,20 @@ You can install OneKeePass for Android from Google Play store and OneKeePass for
 OneKeePass is also available for **Windows, macOS and Linux desktops** can be downloaded from [here](https://github.com/OneKeePass/desktop/releases)
 
 ## Features
-- Modern UI
 - Entries are grouped as Types or Categories or the standard Group tree
 - Any number of custom fields can be added
 - Custom fields can be organized as section
 - Any number of databases can be created and used
 - Fully offline 
+- Optional additional security of using of a key file 
+- Database quick unlock using biometrics (fingerprint)
+- Upload attachments to an entry
 
 ## Todo
-- [ ] Upload attachments to an entry 
-- [ ] AutoFill support
-- [ ] Optional additional security of using of a key file 
-- [ ] Integrate with biometrics (fingerprint)
+- [ ] AutoFill support 
 - [ ] Merge changed entries
 - [ ] TOTP storage and generation 
 - [ ] Multi-language support
-- [ ] Support YubiKey 
 
 ## FAQ
 Common FAQ about the application can be found [here](./docs/FAQ.md)

@@ -9,9 +9,18 @@ license = ""
 
 
 [lib]
-crate-type = ["lib", "staticlib"] # Use this for iOS  botan3 build as we need .a file
-#crate-type = ["lib", "staticlib","cdylib"] # Use this for Android botan3 build - needs "cdylib" as we need .so file
 name = "db_service_ffi"
+crate-type = ["lib", "staticlib","cdylib"]
+
+# If we use 'botan = {version = "0.10.7", features = ["botan3"] } '
+# for iOS target in onekeepass-core, then use this for iOS  botan3 build as we need .a file
+# We need add the prebuilt libbotan-3.a to Xcode
+#crate-type = ["lib", "staticlib"] 
+
+# But Android target botan3 build to create dynamic lib .so file (requires "cdylib" for that) 
+ 
+
+
 
 
 
