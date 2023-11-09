@@ -2,10 +2,24 @@
 	"folders": [
 		{
 			"path": "db-service-ffi"
+		},
+		{
+			"path": "uniffi-bindgen"
 		}
 	],
 	"settings": {
 		"rust-analyzer.diagnostics.disabled":["unresolved-proc-macro"],
+
+		"rust-analyzer.check.targets": [
+			"aarch64-apple-darwin",
+			"aarch64-linux-android",
+			"aarch64-apple-ios-sim",
+			"aarch64-apple-ios"
+		],
+
+		"rust-analyzer.cargo.target": "aarch64-apple-ios-sim",
+
+		// "rust-analyzer.cargo.target": "aarch64-linux-android",
 
 		"editor.semanticTokenColorCustomizations": {
 	        "enabled": true,

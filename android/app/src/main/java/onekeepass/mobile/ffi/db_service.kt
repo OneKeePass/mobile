@@ -426,6 +426,8 @@ internal interface _UniFFILib : Library {
     ): RustBuffer.ByValue
     fun uniffi_db_service_fn_func_copy_picked_key_file(`fileArgs`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_db_service_fn_func_upload_attachment(`fileArgs`: RustBuffer.ByValue,`jsonArgs`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_db_service_fn_func_extract_file_provider(`fullFileNameUri`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_db_service_fn_func_invoke_command(`commandName`: RustBuffer.ByValue,`args`: RustBuffer.ByValue,_uniffi_out_err: RustCallStatus, 
@@ -453,6 +455,8 @@ internal interface _UniFFILib : Library {
     fun uniffi_db_service_checksum_func_write_to_backup_on_error(
     ): Short
     fun uniffi_db_service_checksum_func_copy_picked_key_file(
+    ): Short
+    fun uniffi_db_service_checksum_func_upload_attachment(
     ): Short
     fun uniffi_db_service_checksum_func_extract_file_provider(
     ): Short
@@ -527,6 +531,9 @@ private fun uniffiCheckApiChecksums(lib: _UniFFILib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_checksum_func_copy_picked_key_file() != 36212.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_checksum_func_upload_attachment() != 21821.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_checksum_func_extract_file_provider() != 57962.toShort()) {
@@ -1620,6 +1627,8 @@ public abstract class FfiConverterCallbackInterface<CallbackInterface>(
 
 public interface CommonDeviceService {
     fun `appHomeDir`(): String
+    fun `cacheDir`(): String
+    fun `tempDir`(): String
     fun `uriToFileName`(`fullFileNameUri`: String): String?
     fun `uriToFileInfo`(`fullFileNameUri`: String): FileInfo?
     
@@ -1657,7 +1666,7 @@ internal class ForeignCallbackTypeCommonDeviceService : ForeignCallback {
                 // Call the method, write to outBuf and return a status code
                 // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs` for info
                 try {
-                    this.`invokeUriToFileName`(cb, argsData, argsLen, outBuf)
+                    this.`invokeCacheDir`(cb, argsData, argsLen, outBuf)
                 } catch (e: Throwable) {
                     // Unexpected error
                     try {
@@ -1670,6 +1679,38 @@ internal class ForeignCallbackTypeCommonDeviceService : ForeignCallback {
                 }
             }
             3 -> {
+                // Call the method, write to outBuf and return a status code
+                // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs` for info
+                try {
+                    this.`invokeTempDir`(cb, argsData, argsLen, outBuf)
+                } catch (e: Throwable) {
+                    // Unexpected error
+                    try {
+                        // Try to serialize the error into a string
+                        outBuf.setValue(FfiConverterString.lower(e.toString()))
+                    } catch (e: Throwable) {
+                        // If that fails, then it's time to give up and just return
+                    }
+                    UNIFFI_CALLBACK_UNEXPECTED_ERROR
+                }
+            }
+            4 -> {
+                // Call the method, write to outBuf and return a status code
+                // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs` for info
+                try {
+                    this.`invokeUriToFileName`(cb, argsData, argsLen, outBuf)
+                } catch (e: Throwable) {
+                    // Unexpected error
+                    try {
+                        // Try to serialize the error into a string
+                        outBuf.setValue(FfiConverterString.lower(e.toString()))
+                    } catch (e: Throwable) {
+                        // If that fails, then it's time to give up and just return
+                    }
+                    UNIFFI_CALLBACK_UNEXPECTED_ERROR
+                }
+            }
+            5 -> {
                 // Call the method, write to outBuf and return a status code
                 // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs` for info
                 try {
@@ -1705,6 +1746,32 @@ internal class ForeignCallbackTypeCommonDeviceService : ForeignCallback {
     private fun `invokeAppHomeDir`(kotlinCallbackInterface: CommonDeviceService, argsData: Pointer, argsLen: Int, outBuf: RustBufferByReference): Int {
         fun makeCall() : Int {
             val returnValue = kotlinCallbackInterface.`appHomeDir`(
+            )
+            outBuf.setValue(FfiConverterString.lowerIntoRustBuffer(returnValue))
+            return UNIFFI_CALLBACK_SUCCESS
+        }
+        fun makeCallAndHandleError() : Int = makeCall()
+
+        return makeCallAndHandleError()
+    }
+    
+    @Suppress("UNUSED_PARAMETER")
+    private fun `invokeCacheDir`(kotlinCallbackInterface: CommonDeviceService, argsData: Pointer, argsLen: Int, outBuf: RustBufferByReference): Int {
+        fun makeCall() : Int {
+            val returnValue = kotlinCallbackInterface.`cacheDir`(
+            )
+            outBuf.setValue(FfiConverterString.lowerIntoRustBuffer(returnValue))
+            return UNIFFI_CALLBACK_SUCCESS
+        }
+        fun makeCallAndHandleError() : Int = makeCall()
+
+        return makeCallAndHandleError()
+    }
+    
+    @Suppress("UNUSED_PARAMETER")
+    private fun `invokeTempDir`(kotlinCallbackInterface: CommonDeviceService, argsData: Pointer, argsLen: Int, outBuf: RustBufferByReference): Int {
+        fun makeCall() : Int {
+            val returnValue = kotlinCallbackInterface.`tempDir`(
             )
             outBuf.setValue(FfiConverterString.lowerIntoRustBuffer(returnValue))
             return UNIFFI_CALLBACK_SUCCESS
@@ -2143,6 +2210,14 @@ fun `copyPickedKeyFile`(`fileArgs`: FileArgs): String {
     return FfiConverterString.lift(
     rustCall() { _status ->
     _UniFFILib.INSTANCE.uniffi_db_service_fn_func_copy_picked_key_file(FfiConverterTypeFileArgs.lower(`fileArgs`),_status)
+})
+}
+
+
+fun `uploadAttachment`(`fileArgs`: FileArgs, `jsonArgs`: String): String {
+    return FfiConverterString.lift(
+    rustCall() { _status ->
+    _UniFFILib.INSTANCE.uniffi_db_service_fn_func_upload_attachment(FfiConverterTypeFileArgs.lower(`fileArgs`),FfiConverterString.lower(`jsonArgs`),_status)
 })
 }
 

@@ -1,6 +1,7 @@
 use crate::app_state::{AppState, RecentlyUsed};
-use crate::{as_api_response, ios, KeyFileInfo};
+use crate::{as_api_response, ios, KeyFileInfo, android};
 use crate::{open_backup_file, util, OkpError, OkpResult, };
+use onekeepass_core::db_content::AttachmentHashValue;
 use onekeepass_core::db_service::{
     self, DbSettings, EntryCategory, EntryFormData, Group, KdbxLoaded, NewDatabase,
     PasswordGenerationOptions,
@@ -49,7 +50,7 @@ pub enum CommandArg {
     },
     OpenDbArg {
         db_file_name: String,
-        password: String,
+        password: Option<String>,
         key_file_name: Option<String>,
     },
     NewDbArgWithFileName {
@@ -107,6 +108,11 @@ pub enum CommandArg {
         db_key: String,
         db_settings: DbSettings,
     },
+    AttachmentArg {
+        db_key: String,
+        name:String,
+        data_hash_str: String,
+    },
     // This variant needs to come last so that other variants starting with db_key is matched before this
     // and this will be matched only if db_key is passed. A kind of descending order with the same field names
     // in diffrent variant. If this variant put before any other variant with db_key field,
@@ -120,6 +126,9 @@ pub enum CommandArg {
     },
 
 }
+
+pub type ResponseJson = String;
+
 pub struct Commands {}
 
 macro_rules! service_call  {
@@ -160,7 +169,7 @@ impl Commands {
 
             "unlock_kdbx" => {
                 service_call!(args, OpenDbArg{db_file_name,password,key_file_name} => 
-                    Self unlock_kdbx(&db_file_name,&password,key_file_name.as_deref()))
+                    Self unlock_kdbx(&db_file_name,password.as_deref(),key_file_name.as_deref()))
             }
 
             "unlock_kdbx_on_biometric_authentication" => {
@@ -273,6 +282,10 @@ impl Commands {
                 db_service_call! (args, PasswordGeneratorArg{password_options} => analyzed_password(password_options))
             }
 
+             "save_attachment_as_temp_file"  => {
+                 service_call! (args, AttachmentArg{db_key,name,data_hash_str} => Self save_attachment_as_temp_file(&db_key,&name,&data_hash_str))
+            }
+
             "generate_key_file" => {
                 service_call!(args, GenericArg { key_vals } => Self generate_key_file(key_vals))
             }
@@ -343,7 +356,7 @@ impl Commands {
 
     fn unlock_kdbx(
         db_key: &str,
-        password: &str,
+        password: Option<&str>,
         key_file_name: Option<&str>,
     ) -> OkpResult<KdbxLoaded> {
         let mut kdbx_loaded = db_service::unlock_kdbx(db_key, password, key_file_name)?;
@@ -391,6 +404,16 @@ impl Commands {
         };
         util::delete_key_file(key_file_name);
         Ok(util::list_key_files())
+    }
+
+    fn save_attachment_as_temp_file(db_key: &str,name: &str,data_hash_str: &str,) ->  OkpResult<String>  {
+        let data_hash = db_service::parse_attachment_hash(data_hash_str)?;
+
+        if cfg!(target_os = "android") {
+            android::save_attachment_as_temp_file(db_key, name, &data_hash)
+        } else {
+            ios::save_attachment_as_temp_file(db_key, name, &data_hash)
+        }
     }
 
     fn prepare_export_kdbx_data(args: &str) -> String {
@@ -493,15 +516,16 @@ impl Commands {
     }
 
     // Gets the recent files list
-    fn recently_used_dbs_info() -> String {
+    fn recently_used_dbs_info() -> ResponseJson {
         let pref = AppState::global().preference.lock().unwrap();
         ok_json_str(pref.recent_dbs_info.clone())
     }
 
-    fn app_preference() -> String {
+    fn app_preference() -> ResponseJson {
         let pref = AppState::global().preference.lock().unwrap();
         ok_json_str(pref.clone())
     }
+
 }
 
 pub fn remove_app_files(db_key: &str) {
@@ -522,15 +546,15 @@ pub fn remove_app_files(db_key: &str) {
     ios::delete_book_mark_data(&db_key);
 }
 
-fn ok_json_str<T: serde::Serialize>(val: T) -> String {
+fn ok_json_str<T: serde::Serialize>(val: T) -> ResponseJson {
     InvokeResult::with_ok(val).json_str()
 }
 
-pub fn error_json_str(val: &str) -> String {
+pub fn error_json_str(val: &str) -> ResponseJson {
     InvokeResult::<()>::with_error(val).json_str()
 }
 
-pub fn result_json_str<T: serde::Serialize>(val: db_service::Result<T>) -> String {
+pub fn result_json_str<T: serde::Serialize>(val: db_service::Result<T>) -> ResponseJson {
     match val {
         Ok(t) => InvokeResult::with_ok(t).json_str(),
         // Need to use "{}" not "{:?}" for the thiserror display call to work

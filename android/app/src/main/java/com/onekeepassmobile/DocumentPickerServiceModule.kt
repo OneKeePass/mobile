@@ -25,6 +25,7 @@ class DocumentPickerServiceModule(reactContext: ReactApplicationContext) : React
                 override fun onActivityResult(activity: Activity?, requestCode: Int, resultCode: Int, intent: Intent?) {
                     Log.d(TAG, "requestCode code is $requestCode resultCode $resultCode intent $intent for activity $activity")
                     when (requestCode) {
+
                         PICK_DIR_REQUEST_CODE -> {
                             pickerPromise?.let { promise ->
                                 when (resultCode) {
@@ -39,6 +40,7 @@ class DocumentPickerServiceModule(reactContext: ReactApplicationContext) : React
                                 pickerPromise = null
                             }
                         }
+
                         // PICK_KDBX_FILE_CODES includes PICK_KDBX_FILE_CREATE_REQUEST_CODE, PICK_KDBX_FILE_OPEN_REQUEST_CODE
                         in PICK_KDBX_FILE_CODES -> {
                             when (resultCode) {
@@ -62,6 +64,7 @@ class DocumentPickerServiceModule(reactContext: ReactApplicationContext) : React
                             }
                             pickerPromise = null
                         }
+
                         PICK_KEY_FILE_OPEN_REQUEST_CODE -> {
                             when (resultCode) {
                                 Activity.RESULT_CANCELED ->
@@ -80,6 +83,7 @@ class DocumentPickerServiceModule(reactContext: ReactApplicationContext) : React
                             }
                             pickerPromise = null
                         }
+
                         PICK_KEY_FILE_SAVE_AS_REQUEST_CODE -> {
                             when (resultCode) {
                                 Activity.RESULT_CANCELED ->
@@ -119,6 +123,7 @@ class DocumentPickerServiceModule(reactContext: ReactApplicationContext) : React
                             }
                             pickerPromise = null
                         }
+
                     }
                 }
             }
@@ -222,7 +227,10 @@ class DocumentPickerServiceModule(reactContext: ReactApplicationContext) : React
     }
 
     /**
-     * Provides an UI view for the user to select any file to copy as key file
+     * Provides an UI view for the user to select any file to copy as key file or select a file
+     * to attach to an entry
+     *
+     * TODO: Rename pickKeyFileToCopy to pickFileToCopy to reflect its general use?
      */
     @ReactMethod
     fun pickKeyFileToCopy(promise: Promise) {
@@ -275,6 +283,11 @@ class DocumentPickerServiceModule(reactContext: ReactApplicationContext) : React
         } catch (e: Exception) {
             promise.reject(E_FAILED_TO_SHOW_PICKER, "Failed to create document picker", e)
         }
+    }
+
+    @ReactMethod
+    fun pickAttachmentFileToSave(fullTempAttachmentFileName:String,attachmentName:String,promise:Promise) {
+        pickKeyFileToSave(fullTempAttachmentFileName,attachmentName,promise)
     }
 
     /**
@@ -342,6 +355,8 @@ class DocumentPickerServiceModule(reactContext: ReactApplicationContext) : React
         private const val PICK_KEY_FILE_OPEN_REQUEST_CODE =  40
         private const val PICK_KEY_FILE_SAVE_AS_REQUEST_CODE =  41
 
+        //private const val PICK_ATTACHMENT_FILE_SAVE_AS_REQUEST_CODE =  45
+
         private const val E_ACTIVITY_DOES_NOT_EXIST = "ACTIVITY_DOES_NOT_EXIST"
         private const val E_FAILED_TO_SHOW_PICKER = "FAILED_TO_SHOW_PICKER"
         private const val E_DOCUMENT_PICKER_CANCELED = "DOCUMENT_PICKER_CANCELED"
@@ -353,3 +368,84 @@ class DocumentPickerServiceModule(reactContext: ReactApplicationContext) : React
         private val PICK_KDBX_FILE_CODES = arrayOf(PICK_KDBX_FILE_CREATE_REQUEST_CODE, PICK_KDBX_FILE_OPEN_REQUEST_CODE)
     }
 }
+
+
+////TODO: Combine PICK_KEY_FILE_SAVE_AS_REQUEST_CODE
+////      and PICK_ATTACHMENT_FILE_SAVE_AS_REQUEST_CODE handling
+//PICK_ATTACHMENT_FILE_SAVE_AS_REQUEST_CODE -> {
+//    when (resultCode) {
+//        Activity.RESULT_CANCELED ->
+//            pickerPromise?.reject(DocumentPickerServiceModule.E_DOCUMENT_PICKER_CANCELED, "Document to save was cancelled")
+//        Activity.RESULT_OK -> {
+//            // See https://github.com/rnmods/react-native-document-picker/blob/0311eb6cf8d7eb9bb7d7b73a1345a47c8601f245/android/src/main/java/com/reactnativedocumentpicker/DocumentPickerModule.java#L190
+//            val uri = intent?.data
+//            uri?.let {
+//                //Need to ensure the required permissions taken for the future use of this document
+//                val takeFlags: Int = Intent.FLAG_GRANT_READ_URI_PERMISSION and
+//                        Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+//                contentResolver.takePersistableUriPermission(uri, takeFlags)
+//            }
+//
+//            pickerPromise?.let {
+//
+//                if (attachmentJsonArgs != null) {
+//                    it.resolve(saveAttachment(uri.toString(),attachmentJsonArgs!!, it))
+//                } else {
+//                    Log.e("INTERNAL_ERROR","attachmentJsonArgs is null and it should have a valid value")
+//                    it.reject("INTERNAL_ERROR","Attachment args passed should have a non null valid value")
+//                }
+//            }
+//            attachmentJsonArgs = null
+//        }
+//    }
+//    pickerPromise = null
+//}
+
+
+////TODO: Need to refactor some commanality between saveKeyFile and saveAttachment
+//fun saveAttachment(pickedFullFileNameUri:String,attachmentJsonArgs:String, promise:Promise) {
+//    Log.i(TAG, "Received fullFileName is $pickedFullFileNameUri")
+//    val uri = Uri.parse(pickedFullFileNameUri);
+//    Log.i(TAG, "Parsed uri is $uri")
+//    try {
+//        // Here it is assumed the fileNameUri starts with content:// for which there will be
+//        // a resolver. If we use internal file path, we need to do something similar to readKdbx
+//
+//        // See rational to use mode:rwt here https://issuetracker.google.com/issues/180526528
+//        // Our requirement is at least "rw"
+//        val fd: ParcelFileDescriptor? = contentResolver.openFileDescriptor(uri, "rwt");
+//        // Log.d(TAG, "After FileDescriptor.${fd}")
+//        if (fd != null) {
+//
+//            // Rust side the file should not be closed. So fd.detachFd() is not used.
+//            // if we use fd.detachFd(), then writing did not work for some cases (Gdrive ?)
+//            // If the rust side fails to transfer the ownership of this fd, the app may crash
+//            // See comments in creat_kdbx, save_key_file methods accordingly
+//            val response = DbServiceAPI.androidSupportService().saveAttachment(fd.fd.toULong(),attachmentJsonArgs)
+//            promise.resolve(response)
+//
+//            // IMPORTANT:
+//            // The caller is responsible for closing the file using its file descriptor
+//            // as the file is not yet closed
+//            fd.close()
+//
+//        } else {
+//            // Do we need to ask the user select the kdbx again to read ?
+//            promise.reject("CREATE_FIE_DESCRIPTOR_ERROR", "Invalid file descriptor in saveKeyFile")
+//        }
+//    } catch (e: SecurityException) {
+//        // This will happen, if we try to create the kdbx file without proper read and write permissions
+//        // We need to obtain while selecting the file. See DocumentPickerServiceModule
+//        Log.e(TAG, "SecurityException due to in sufficient permission")
+//        promise.reject("PERMISSION_REQUIRED_TO_WRITE", e)
+//    } catch (e: FileNotFoundException) {
+//        // Need to add logic in UI layer to handle this
+//        Log.e(TAG, "Error in createKdbx ${e}")
+//        // e.printStackTrace()
+//        promise.reject("FILE_NOT_FOUND", e)
+//    } catch (e: Exception) {
+//        // e.printStackTrace()
+//        Log.e(TAG, "Error in createKdbx ${e}")
+//        promise.reject("KEY_FILE_SAVE_CALL_FAILED", e)
+//    }
+//}

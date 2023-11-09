@@ -14,6 +14,9 @@ namespace db_service {
 
     string copy_picked_key_file(FileArgs file_args);
 
+    // The arg 'json_args' is '[ByRef] string' and that  ensures we can use &str instead of String in args
+    string upload_attachment(FileArgs file_args,[ByRef] string json_args);
+
     string extract_file_provider(string full_file_name_uri);
     string invoke_command(string command_name, string args);
 };
@@ -22,6 +25,8 @@ namespace db_service {
 // From Rust to Swift or Kotlin
 callback interface CommonDeviceService {
     string app_home_dir();
+    string cache_dir();
+    string temp_dir();
     string? uri_to_file_name(string full_file_name_uri);
     FileInfo? uri_to_file_info(string full_file_name_uri);
 };
@@ -85,6 +90,7 @@ interface AndroidSupportService {
     ApiResponse create_kdbx(u64 file_descriptor, string json_args);
     ApiResponse complete_save_as_on_error(u64 file_descriptor, string old_full_file_name_uri,string new_full_file_name_uri);
     string save_key_file(u64 file_descriptor, string full_key_file_name);
+    // string save_attachment(u64 file_descriptor, string json_args);
 };
 
 // Called from middle layer (Swift or Kotlin side) to form a json string and  return to UI layer

@@ -1,6 +1,6 @@
 (ns
  onekeepass.mobile.start-page
-  (:require [reagent.core :as r]
+  (:require [reagent.core :as r] 
             [onekeepass.mobile.rn-components
              :as rnc
              :refer [lstr
@@ -53,7 +53,7 @@
                              key-file-name-part
                              error-fields
                              status]}]
-  (let [in-progress? (= :in-progress status)]
+  (let [in-progress? (= :in-progress status)] 
     [cust-dialog
      {:style {} :dismissable false :visible dialog-show :onDismiss #()}
      [rnp-dialog-title (lstr "dialog.titles.newDatabase")]
@@ -90,7 +90,10 @@
                                  {:icon (if password-visible "eye" "eye-off")
                                   :onPress #(ndb-events/database-field-update
                                              :password-visible (not password-visible))}])
-                        :onChangeText #(ndb-events/database-field-update :password %)}]
+                        :onChangeText (fn [v] 
+                                        ;; After entering some charaters and delete is used to remove those charaters
+                                        ;; password will have a string value "" resulting in a non visible password. Need to use nil instead
+                                        (ndb-events/database-field-update :password (if (empty? v) nil v)))}]
        (when (contains? error-fields :password)
          [rnp-helper-text {:type "error" :visible true}
           (:password error-fields)])
@@ -99,20 +102,20 @@
 
        (if key-file-name-part
          [rnp-text-input {:style {:margin-top 10}
-                          :label "Key File"
+                          :label (lstr "keyFile")
                           :defaultValue key-file-name-part
                           :readOnly (if (is-iOS) true false)
                           :onPressIn #(ndb-events/show-key-file-form true)
                           :right (r/as-element [rnp-text-input-icon
-                                         {:icon const/ICON-CLOSE
-                                          :onPress (fn []
-                                                     (ndb-events/database-field-update :key-file-name-part nil)
-                                                     (ndb-events/database-field-update :key-file-name nil))}])
+                                                {:icon const/ICON-CLOSE
+                                                 :onPress (fn []
+                                                            (ndb-events/database-field-update :key-file-name-part nil)
+                                                            (ndb-events/database-field-update :key-file-name nil))}])
                           :onChangeText nil}]
          [rnp-text {:style {:margin-top 15
                             :textDecorationLine "underline"
                             :text-align "center"}
-                    :onPress #(ndb-events/show-key-file-form true)} "Additional Protection"])]
+                    :onPress #(ndb-events/show-key-file-form true)} (lstr "additionalProtection")])]
 
       [rnp-progress-bar {:style {:margin-top 10} :visible in-progress?
                          :indeterminate true}]]
@@ -126,77 +129,6 @@
 
 ;; open-db-dialog is called after user pick a database file open 
 ;; or the database is locked and user needs to use password and keyfile based authentication
-#_(defn open-db-dialog
-    ([{:keys [dialog-show
-              database-file-name
-              database-full-file-name
-              password
-              password-visible
-              key-file-name-part
-              error-fields
-              status]}]
-
-     (let [locked? @(cmn-events/locked? database-full-file-name)
-           in-progress? (= :in-progress status)
-           dlg-title (if locked? (lstr "dialog.titles.unlockDatabase") (lstr "dialog.titles.openDatabase"))]
-       [cust-dialog {:style {}
-                     :visible dialog-show
-                     :dismissable false
-                   ;;:onDismiss opndb-events/cancel-on-press
-                     }
-        [rnp-dialog-title dlg-title]
-        [rnp-dialog-content
-
-         [rn-view {:style {:flexDirection "column"  :justify-content "center"}}
-          [rnp-text-input {:label (lstr "databaseFile")
-                           :value database-file-name
-                           :editable false
-                           :onChangeText #()}]
-          [rnp-text-input {:style {:margin-top 10}
-                           :label (lstr "masterPassword")
-                        ;;:value password
-                           :defaultValue password
-                           :autoComplete "off"
-                           :autoCorrect false
-                           :secureTextEntry (not password-visible)
-                           :right (r/as-element
-                                   [rnp-text-input-icon
-                                    {:icon (if password-visible "eye" "eye-off")
-                                     :onPress #(opndb-events/database-field-update
-                                                :password-visible (not password-visible))}])
-                           :onChangeText #(opndb-events/database-field-update :password %)}]
-          (when (contains? error-fields :password)
-            [rnp-helper-text {:type "error" :visible (contains? error-fields :password)}
-             (:password error-fields)])
-
-          [rnp-divider {:style {:margin-top 10 :margin-bottom 10 :backgroundColor "grey"}}]
-
-          (if  key-file-name-part
-            [rnp-text-input {:style {:margin-top 10}
-                             :label "Key File"
-                             :value key-file-name-part
-                             :readOnly true
-                             :onPressIn #(println "pressed in...")
-                             :onChangeText nil}]
-            [rnp-text {:style {:margin-top 15
-                               :textDecorationLine "underline"
-                               :text-align "center"}
-                       :onPress #(opndb-events/show-key-file-form)} "Add Key File"])]
-
-         [rnp-progress-bar {:style {:margin-top 10} :visible in-progress? :indeterminate true}]]
-
-
-        [rnp-dialog-actions
-         [rnp-button {:mode "text" :disabled in-progress?
-                      :onPress  opndb-events/cancel-on-press}
-          (lstr "button.labels.cancel")]
-         [rnp-button {:mode "text" :disabled in-progress?
-                      :onPress (fn [] ^js/RNKeyboard (.dismiss rn-keyboard)
-                                 (if locked?
-                                   (opndb-events/authenticate-with-credential)
-                                   (opndb-events/open-database-read-db-file)))}
-          (lstr "button.labels.continue")]]]))
-    ([] [open-db-dialog @(opndb-events/dialog-data)]))
 
 (defn open-db-dialog  [{:keys [dialog-show
                                database-file-name
@@ -206,7 +138,7 @@
                                key-file-name-part
                                error-fields
                                status]}]
-
+  
   (let [locked? @(cmn-events/locked? database-full-file-name)
         in-progress? (= :in-progress status)
         dlg-title (if locked? (lstr "dialog.titles.unlockDatabase") (lstr "dialog.titles.openDatabase"))]
@@ -220,7 +152,7 @@
 
       [rn-view {:style {:flexDirection "column"  :justify-content "center"}}
        [rnp-text-input {:label (lstr "databaseFile")
-                        :value database-file-name
+                        :value database-file-name 
                         :editable false
                         :onChangeText #()}]
        [rnp-text-input {:style {:margin-top 10}
@@ -236,7 +168,10 @@
                                  {:icon (if password-visible "eye" "eye-off")
                                   :onPress #(opndb-events/database-field-update
                                              :password-visible (not password-visible))}])
-                        :onChangeText #(opndb-events/database-field-update :password %)}]
+                        :onChangeText (fn [v]
+                                        ;; After entering some charaters and delete is used to remove those charaters
+                                        ;; password will have a string value "" resulting in a non visible password. Need to use nil instead
+                                        (opndb-events/database-field-update :password (if (empty? v) nil v)))}]
        (when (contains? error-fields :password)
          [rnp-helper-text {:type "error" :visible (contains? error-fields :password)}
           (:password error-fields)])

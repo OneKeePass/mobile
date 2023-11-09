@@ -66,6 +66,11 @@ class DbServiceAPI {
     return OneKeePassMobile.copyPickedKeyFile(fileArgs)
   }
   
+  static func uploadAttachment(_ fullFileName: String,_ jsonArgs: String) -> String {
+    let fileArgs = FileArgs.fullFileName(fullFileName: fullFileName)
+    return OneKeePassMobile.uploadAttachment(fileArgs, jsonArgs)
+  }
+  
   static func completeSaveAsOnError(_ jsonArgs: String) -> String {
     _iosSupportService.completeSaveAsOnError(jsonArgs)
   }
@@ -83,6 +88,15 @@ enum CallbackErrors: Error {
 class CommonDeviceServiceImpl: CommonDeviceService {
   func appHomeDir() -> String {
     return NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).first!
+  }
+  
+  func cacheDir() -> String {
+    NSSearchPathForDirectoriesInDomains(.cachesDirectory, .userDomainMask, true).first!
+  }
+  
+  func tempDir() -> String {
+    let tempDirectoryPath = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+    return tempDirectoryPath.absoluteString
   }
 
   func uriToFileName(_ fullFileNameUri: String) -> String? {

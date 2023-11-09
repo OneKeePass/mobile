@@ -1,14 +1,19 @@
+use std::fs::OpenOptions;
 use std::io::{Read, Seek, Write};
 use std::path::Path;
+use std::process::CommandArgs;
 use std::{fs::File, os::fd::IntoRawFd};
 
+use crate::commands::ResponseJson;
 use crate::{
     app_state::AppState,
     as_api_response,
     commands::{remove_app_files, CommandArg, InvokeResult},
     util, ApiResponse, OkpError, OkpResult,
 };
-use crate::{commands, open_backup_file,return_api_response_failure};
+use crate::{commands, open_backup_file, return_api_response_failure};
+use log::debug;
+use onekeepass_core::db_content::AttachmentHashValue;
 use onekeepass_core::db_service::{self, KdbxLoaded};
 use regex::{Error, RegexSet};
 
@@ -87,9 +92,11 @@ impl AndroidSupportService {
                     .common_device_service
                     .uri_to_file_name(full_file_name_uri.clone());
 
-                // Need to create a backup file for this newly created database    
+                // Need to create a backup file for this newly created database
                 let Some(file_name) = new_db.file_name.as_ref() else {
-                    return_api_response_failure!("No valid file name formed from the full file uri");
+                    return_api_response_failure!(
+                        "No valid file name formed from the full file uri"
+                    );
                     //return as_api_response::<()>(Err(OkpError::DataError("No valid file name formed from the full file uri")));
                 };
                 let backup_file_name =
@@ -97,13 +104,18 @@ impl AndroidSupportService {
                 let backup_file = open_backup_file(backup_file_name);
 
                 let Some(mut bf_writer) = backup_file else {
-                    return_api_response_failure!("Backup file could not be opened to write the new database backup");
+                    return_api_response_failure!(
+                        "Backup file could not be opened to write the new database backup"
+                    );
                     //return as_api_response::<()>(Err(OkpError::DataError("Backup file could not be opened to write the new database backup")));
                 };
 
                 let r = db_service::create_and_write_to_writer(&mut bf_writer, new_db);
                 let rewind_r = bf_writer.sync_all().and(bf_writer.rewind());
-                log::debug!("Syncing and rewinding of new db backup file result {:?}", rewind_r);
+                log::debug!(
+                    "Syncing and rewinding of new db backup file result {:?}",
+                    rewind_r
+                );
 
                 let _n = std::io::copy(&mut bf_writer, &mut file);
                 log::debug!("Copied the backup to the new db file ");
@@ -179,6 +191,36 @@ impl AndroidSupportService {
         };
         commands::result_json_str(inner())
     }
+   
+    /*
+     
+    pub fn save_attachment(&self, file_descriptor: u64, json_args: String) -> ResponseJson {
+        let inner = || -> OkpResult<()> {
+            let mut file = unsafe { util::get_file_from_fd(file_descriptor) };
+            let Ok(CommandArg::AttachmentArg {
+                db_key,
+                name,
+                data_hash_str,
+            }) = serde_json::from_str(&json_args)
+            else {
+                return Err(OkpError::Other(format!(
+                    "Save attachment api call argument parsing failed for the args {} ",
+                    &json_args
+                )));
+            };
+
+            let data_hash = db_service::parse_attachment_hash(&data_hash_str)?;
+            db_service::save_attachment_to_writter(&db_key, &data_hash, &mut file)?;
+
+            debug!("Attachment saved to the selected file ");
+
+            Ok(())
+        };
+
+        commands::result_json_str(inner())
+    }
+    */
+
 }
 
 #[cfg(target_os = "ios")]
@@ -203,6 +245,10 @@ impl AndroidSupportService {
     pub fn save_key_file(&self, _file_descriptor: u64, _full_key_file_name: String) -> String {
         unimplemented!();
     }
+
+    // pub fn save_attachment(&self, _file_descriptor: u64, _json_args: String) -> ResponseJson {
+    //     unimplemented!();
+    // }
 }
 
 #[cfg(target_os = "android")]
@@ -235,4 +281,28 @@ pub fn extract_file_provider(full_file_name_uri: &str) -> String {
         .map_or("Cloud storage / Another app", |s| s);
 
     location_name.to_string()
+}
+
+// Saves the attachment data to a temp file in the app's cache dir
+// using db_service one tries to create the file in /data/local/cache'
+// and that results in Permission denied error
+pub fn save_attachment_as_temp_file(
+    db_key: &str,
+    name: &str,
+    data_hash: &AttachmentHashValue,
+) -> OkpResult<String> {
+    let path = Path::new(&AppState::global().cache_dir).join(name);
+    let mut file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .open(&path)?;
+
+    db_service::save_attachment_to_writter(db_key, data_hash, &mut file)?;
+
+    let full_file_name = path.to_string_lossy().to_string();
+
+    debug!("Attachment saved to the temp file {}", &full_file_name);
+
+    Ok(full_file_name)
 }

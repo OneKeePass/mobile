@@ -15,6 +15,8 @@ RCT_EXTERN_METHOD(pickKeyFileToCopy:(RCTPromiseResolveBlock)resolve reject:(RCTP
 
 RCT_EXTERN_METHOD(pickKeyFileToSave:(NSString *)fullKeyFileName keyFileName:(NSString *)keyFileName resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 
+RCT_EXTERN_METHOD(pickAttachmentFileToSave:(NSString *)fullTempAttachmentFileName attachmentName:(NSString *)attachmentName resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+
 RCT_EXTERN_METHOD(pickKdbxFileToCreate:(NSString *)fileName resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 
 RCT_EXTERN_METHOD(pickAndSaveNewKdbxFile:(NSString *)fileName jsonArgs:(NSString *)jsonArgs resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)

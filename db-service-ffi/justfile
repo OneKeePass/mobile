@@ -1,10 +1,9 @@
-alias ba := build-android-lib
+
 alias gk := generate-kotlin
-alias bca := cp-android-ffi-lib-src
-# Use bca-d for development time - See below for target use
+alias bca := build-android-lib-cp-src
 
 alias gs := generate-swift
-alias bcis := cp-ios-ffi-fat-sim-debug-lib-src
+alias bcis := cp-ios-ffi-sim-debug-lib-src
 alias bcid := cp-ios-ffi-device-debug-lib-src
 alias bcid-r := cp-ios-ffi-device-release-lib-src
 
@@ -16,6 +15,7 @@ ios-db-service-ffi-dir  := "../ios/OneKeePassMobile/DbServiceFFI"
 ios-db-service-ffi-lib-dir  := "../ios/OneKeePassMobile/DbServiceFFILib"
 ios-lib-output := "target/libdb_service_ffi.a"
 
+
 ## cargo install uniffi_bindgen 
 ## installed already and version 0.20.0 should match that is used in Cargo.toml)
 
@@ -26,54 +26,67 @@ ios-lib-output := "target/libdb_service_ffi.a"
 
 generate-rs:
     ../uniffi-bindgen/target/release/uniffi-bindgen scaffolding {{udl_src}} -o ./target/  --no-format
-    #cargo run --features=uniffi/cli --bin uniffi-bindgen scaffolding {{udl_src}} -o ./target/  --no-format
-    #uniffi-bindgen scaffolding {{udl_src}} --no-format --out-dir ./target/
+
+######################### iOS specific ######################
+
+ios_sim_sdk_root := `xcrun --sdk iphonesimulator  --show-sdk-path`
+
+ios_sdk_root := `xcrun --sdk iphoneos --show-sdk-path`
+
 
 generate-swift:
     mkdir  -p {{swift-src-dir}}
     ../uniffi-bindgen/target/release/uniffi-bindgen generate -l swift {{udl_src}} --out-dir {{swift-src-dir}}
 
-build-ios-device-lib-release:
-    cargo build --target aarch64-apple-ios --release
 
-build-ios-sim-lib-release:
-    cargo build --target x86_64-apple-ios --release
-    cargo build --target aarch64-apple-ios-sim --release
+# build-ios-device-lib-release:
+#     cargo build --target aarch64-apple-ios --release
 
-build-ios-sim-lib-debug:
-    cargo build --target x86_64-apple-ios 
-    cargo build --target aarch64-apple-ios-sim 
+# build-ios-sim-lib-release:
+#     cargo build --target aarch64-apple-ios-sim --release
 
-build-ios-device-lib-debug:
-    cargo build --target aarch64-apple-ios 
+build-ios-sim-lib-release: (build-ios-sim-lib "true")
 
-## Builds the release ios fat static lib for simulator
-ios-fat-lib-sim-release: build-ios-sim-lib-release
-    lipo -create target/aarch64-apple-ios-sim/release/libdb_service_ffi.a \
-                 target/x86_64-apple-ios/release/libdb_service_ffi.a \
-                 -output {{ios-lib-output}}
+build-ios-sim-lib-debug:build-ios-sim-lib
 
-## Builds the debug ios fat static lib for simulator
-ios-fat-lib-sim-debug: build-ios-sim-lib-debug
-    lipo -create target/aarch64-apple-ios-sim/debug/libdb_service_ffi.a \
-                 target/x86_64-apple-ios/debug/libdb_service_ffi.a \
-                 -output {{ios-lib-output}}
+build-ios-sim-lib release="":
+    set -euxo pipefail
+    export SDKROOT={{ios_sim_sdk_root}}
+    export BOTAN_CONFIGURE_OS='ios'
+    export BOTAN_CONFIGURE_CC_ABI_FLAGS='-arch arm64'
+    export BOTAN_CONFIGURE_CC='clang'
+    export BOTAN_CONFIGURE_CPU='arm64'
+    
+    cargo build --target aarch64-apple-ios-sim {{ if release == "true" {"--release" } else {""}  }}
 
+build-ios-device-lib-debug:build-ios-device-lib
 
-## Builds the release ios static lib for simulator and copies that lib file and the swift bindings generated
-cp-ios-ffi-fat-sim-release-lib-src: ios-fat-lib-sim-release generate-swift
+build-ios-device-lib-release:(build-ios-device-lib "true")
+
+build-ios-device-lib release="": 
+    #!/usr/bin/env bash
+    set -euxo pipefail
+    export SDKROOT={{ios_sdk_root}}
+    export BOTAN_CONFIGURE_OS='ios'
+    export BOTAN_CONFIGURE_CC_ABI_FLAGS='-arch arm64'
+    export BOTAN_CONFIGURE_CC='clang'
+    export BOTAN_CONFIGURE_CPU='armv8-a'
+    
+    cargo build --target aarch64-apple-ios {{ if release == "true" {"--release" } else {""}  }}
+
+## Call 'just bcis'
+cp-ios-ffi-sim-debug-lib-src: build-ios-sim-lib-debug generate-swift
     cp -R {{swift-src-dir}}/ {{ios-db-service-ffi-dir}}
-    cp {{ios-lib-output}} {{ios-db-service-ffi-lib-dir}}
-
-## Builds the debug ios static lib for simulator and copies that lib file and the swift bindings generated
-cp-ios-ffi-fat-sim-debug-lib-src: ios-fat-lib-sim-debug generate-swift
-    cp -R {{swift-src-dir}}/ {{ios-db-service-ffi-dir}}
-    cp {{ios-lib-output}} {{ios-db-service-ffi-lib-dir}} 
+    cp target/aarch64-apple-ios-sim/debug/libdb_service_ffi.a {{ios-db-service-ffi-lib-dir}} 
+      
 
 ## Builds the debug ios static lib for device and copies that lib file and the swift bindings generated 
+## Used during dev time device testing
+## Call 'just bcid'
 cp-ios-ffi-device-debug-lib-src: build-ios-device-lib-debug generate-swift
     cp -R {{swift-src-dir}}/ {{ios-db-service-ffi-dir}}
     cp target/aarch64-apple-ios/debug/libdb_service_ffi.a {{ios-db-service-ffi-lib-dir}} 
+    
 
 ## Builds the release ios static lib for device and copies that lib file and the swift bindings generated
 ## Call 'just bcid-r'
@@ -81,7 +94,7 @@ cp-ios-ffi-device-release-lib-src:build-ios-device-lib-release generate-swift
     cp -R {{swift-src-dir}}/ {{ios-db-service-ffi-dir}}
     cp target/aarch64-apple-ios/release/libdb_service_ffi.a {{ios-db-service-ffi-lib-dir}} 
 
-### Android related
+###############################   Android related ############################### 
 
 ## cargo build --target aarch64-linux-android did not work and cargo-ndk works nice
 ## Needs to do one time 'cargo install cargo-ndk' and use that instead of cargo build directly for this target
@@ -89,14 +102,6 @@ cp-ios-ffi-device-release-lib-src:build-ios-device-lib-release generate-swift
 ## 'cargo ndk --version' prints 'cargo-ndk 2.12.6'
 ## ANDROID_NDK_HOME environment variable should be set to the same version of NDK version used in 
 ## ".... android/build.gradle" 
-
-build-android-lib release="" :
-    #cargo build --target aarch64-linux-android
-    cargo ndk \
-    -t aarch64-linux-android \
-    -t armv7-linux-androideabi \
-    -t x86_64-linux-android \
-    -t i686-linux-android  -o ./target/jniLibs build {{ if release == "true" {"--release" } else {""}  }}
 
 generate-kotlin:
     mkdir  -p {{kotlin-src-dir}}
@@ -106,20 +111,31 @@ android-db-service-src-dir  := "../android/app/src/main/java"
 android-db-service-lib-dir  := "../android/app/src/main"
 android-lib-output-dir := "target/jniLibs"
 
-## For release build, call 'just bca true '
-cp-android-ffi-lib-src release="": (build-android-lib release) generate-kotlin
-    cp -R {{kotlin-src-dir}}/ {{android-db-service-src-dir}}
-    cp -R {{android-lib-output-dir}} {{android-db-service-lib-dir}} 
+ndk_botan_build_home := env_var('ANDROID_NDK_HOME') + "/../26.1.10909125"
+ndk_ar := ndk_botan_build_home + "/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ar"
+ndk_cxx := ndk_botan_build_home + "/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android31-clang++"
 
+## Need to ensure to use 'crate-type = ["lib", "staticlib","cdylib"]' in Cargo.toml
+build-android-lib-aarch64 release="":
+    #!/usr/bin/env bash
+    set -euxo pipefail
+    export BOTAN_CONFIGURE_OS='android'
+    export BOTAN_CONFIGURE_CC_ABI_FLAGS='-arch arm64'
+    export BOTAN_CONFIGURE_CC='clang'
+    export BOTAN_CONFIGURE_CPU='arm64'
+    export BOTAN_CONFIGURE_DISABLE_MODULES='tls,pkcs11,sodium,filters'
+    export AR={{ndk_ar}}
+    export CXX={{ndk_cxx}}
 
-######## 
+    cargo ndk -t aarch64-linux-android  -o ./target/jniLibs build {{ if release == "true" {"--release" } else {""}  }}
 
-## Do not build x86_64-linux-android and i686-linux-android during dev to speed things up
-alias bca-d := cp-android-ffi-lib-src-d
+build-android-lib-all release="":
+    just build-android-lib-aarch64 {{release}}
+    cargo ndk -t armv7-linux-androideabi  -o ./target/jniLibs build {{ if release == "true" {"--release" } else {""}  }}
 
-build-android-lib-d:
-    cargo ndk -t aarch64-linux-android -t armv7-linux-androideabi -o ./target/jniLibs build
-
-cp-android-ffi-lib-src-d:build-android-lib-d generate-kotlin
+## Dev time used 
+## Call 'just bca' or "just bca true"
+build-android-lib-cp-src release="":(build-android-lib-all release) generate-kotlin
     cp -R {{kotlin-src-dir}}/ {{android-db-service-src-dir}}
     cp -R {{android-lib-output-dir}} {{android-db-service-lib-dir}}
+

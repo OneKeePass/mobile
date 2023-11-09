@@ -42,8 +42,8 @@
    "
   [{:keys [full-file-name file-name]}]
   (bg/pick-key-file-to-save full-file-name file-name
-                            (fn [api-response]
-                              (when-not (on-error api-response #(dispatch [:key-file-save-error %]))
+                            (fn [api-response] 
+                              (when-not (on-error api-response #(dispatch [:key-file-save-error %])) 
                                 (dispatch [:common/message-snackbar-open "Key file saved"])))))
 
 (defn delete-key-file

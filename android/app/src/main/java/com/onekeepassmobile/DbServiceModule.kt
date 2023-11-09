@@ -332,15 +332,52 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
             } catch (e: FileNotFoundException) {
                 // Need to add logic in UI layer to handle this
                 // e.printStackTrace()
-                Log.e(TAG, "Error in readKdbx ${e}")
+                Log.e(TAG, "Error in copyKeyFile ${e}")
                 promise.reject(E_FILE_NOT_FOUND, e)
             } catch (e: Exception) {
                 // e.printStackTrace()
-                Log.e(TAG, "Error in readKdbx ${e}")
+                Log.e(TAG, "Error in copyKeyFile ${e}")
                 promise.reject(E_READ_CALL_FAILED, e)
             }
         }
     }
+
+    @ReactMethod
+    fun uploadAttachment(fullKeyFileNameUri: String, jsonArgs:String,promise: Promise) {
+        Log.d(TAG, "uploadAttachment is called with fullFileNameUri $fullKeyFileNameUri and jsonArgs $jsonArgs ")
+        executorService.execute {
+            val uri = Uri.parse(fullKeyFileNameUri);
+            try {
+                val fd: ParcelFileDescriptor? = contentResolver.openFileDescriptor(uri, "r");
+                val fileName = FileUtils.getMetaInfo(contentResolver, uri)?.filename ?: ""
+                //fd will be null if the provider recently crashed
+                if (fd != null) {
+                    // detachFd call should be used so that the file is closed in the rust code automatically
+                    promise.resolve(DbServiceAPI.uploadAttachment(fd.detachFd().toULong(),fullKeyFileNameUri,fileName,jsonArgs))
+                } else {
+                    promise.reject(E_READ_FIE_DESCRIPTOR_ERROR, "Invalid file descriptor")
+                }
+
+            } catch (e: SecurityException) {
+                // UI layer needs to handle this with apprpriate message to the user
+                // This will happen, if we try to read the kdbx file without proper permissions
+                // We need to obtain while selecting the file.
+                // See 'pickKdbxFileToOpen'
+                Log.e(TAG, "SecurityException due to in sufficient permission")
+                promise.reject(E_PERMISSION_REQUIRED_TO_READ, e)
+            } catch (e: FileNotFoundException) {
+                // Need to add logic in UI layer to handle this
+                // e.printStackTrace()
+                Log.e(TAG, "Error in uploadAttachment ${e}")
+                promise.reject(E_FILE_NOT_FOUND, e)
+            } catch (e: Exception) {
+                // e.printStackTrace()
+                Log.e(TAG, "Error in uploadAttachment ${e}")
+                promise.reject(E_READ_CALL_FAILED, e)
+            }
+        }
+    }
+
 
     private fun resolveResponse(response: ApiResponse, promise: Promise) {
         when (response) {

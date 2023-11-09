@@ -37,9 +37,13 @@
 (defn dialog-data []
   (subscribe [:new-database-dialog-data]))
 
-(def newdb-fields [:database-name :database-description
-                   :password :database-file-name :cipher-id
-                   :kdf :key-file-name])
+(def newdb-fields [:database-name
+                   :database-description
+                   :password
+                   :database-file-name
+                   :cipher-id
+                   :kdf
+                   :key-file-name])
 
 (def blank-new-db  {;;All fields matching 'NewDatabase' struct
                     :database-name nil
@@ -64,6 +68,29 @@
 (defn- init-new-database-data [app-db]
   (assoc app-db :new-database blank-new-db))
 
+(defn- validate-required-fields
+  [db kw-field]
+  (let [{:keys [database-name password key-file-name]} (get-in db [:new-database])
+        error-fields (cond
+                       (and (= kw-field :password) (empty? password) (empty? key-file-name))
+                       (assoc {} :password "Please use a valid password or/and key file")
+
+                       (and (= kw-field :database-name) (str/blank? database-name))
+                       (assoc {} :database-name "A valid database name is required")
+
+                       (= kw-field :all)
+                       (cond-> {}
+                         (str/blank? database-name)
+                         (assoc :database-name "A valid database name is required")
+
+                         (and (empty? password) (empty? key-file-name))
+                         (assoc :password "Please use a valid password or/and key file"))
+
+                       :else
+                       {})]
+    error-fields))
+
+
 (reg-event-fx
  :new-database-dialog-show
  (fn [{:keys [db]} [_event-id]]
@@ -77,31 +104,27 @@
 ;; An event to be called (from key file related page) after user selects a key file 
 (reg-event-fx
  :new-database-key-file-selected
- (fn [{:keys [db]} [_event-id {:keys [file-name full-file-name] :as m}]] 
-   {:db (-> db (assoc-in [:new-database :key-file-name-part] file-name)
-            (assoc-in [:new-database :key-file-name] full-file-name))}))
+ (fn [{:keys [db]} [_event-id {:keys [file-name full-file-name] :as m}]]
+   (let [db (-> db (assoc-in [:new-database :key-file-name-part] file-name)
+                (assoc-in [:new-database :key-file-name] full-file-name))
+         error-fields (validate-required-fields db :password)
+         db (assoc-in db [:new-database :error-fields] error-fields)]
+     {:db db})))
 
 (reg-event-db
  :new-database-field-update
  ;; kw-field-name is single kw or a vec of kws
  (fn [db [_event-id kw-field-name value]]
-   (-> db
-       (assoc-in (into [:new-database]
-                       (if (vector? kw-field-name)
-                         kw-field-name
-                         [kw-field-name])) value)
-       ;; Hide any previous api-error-text
-       (assoc-in [:new-database :api-error-text] nil))))
-
-(defn- validate-required-fields
-  [db]
-  (let [error-fields (cond-> {}
-                       (str/blank? (get-in db [:new-database :database-name]))
-                       (assoc :database-name "A valid database name is required")
-
-                       (str/blank? (get-in db [:new-database :password]))
-                       (assoc :password "A valid password is required"))]
-    error-fields))
+   (let [db (-> db
+                (assoc-in (into [:new-database]
+                                (if (vector? kw-field-name)
+                                  kw-field-name
+                                  [kw-field-name])) value)
+                        ;; Hide any previous api-error-text
+                (assoc-in [:new-database :api-error-text] nil))
+         error-fields (validate-required-fields db kw-field-name)
+         db (-> db (assoc-in [:new-database :error-fields] error-fields))]
+     db)))
 
 ;;;;;;;;;;;;;;;;;;;;;  Used only for Android ;;;;;;;;;;;;;;;;
 ;; In iOS we need to have separate set of steps this to work 
@@ -113,7 +136,7 @@
 (reg-event-fx
  :new-database-create
  (fn [{:keys [db]} [_event-id]]
-   (let [error-fields (validate-required-fields db)
+   (let [error-fields (validate-required-fields db :all)
          errors-found (boolean (seq error-fields))]
      (if errors-found
        {:db (assoc-in db [:new-database :error-fields] error-fields)}
@@ -197,7 +220,7 @@
 (reg-event-fx
  :new-database-create-ios
  (fn [{:keys [db]} [_event-id]]
-   (let [error-fields (validate-required-fields db)
+   (let [error-fields (validate-required-fields db :all)
          errors-found (boolean (seq error-fields))
          db (assoc-in db [:new-database :database-file-name] "TEMP")]
      (if errors-found
@@ -220,6 +243,9 @@
 (reg-fx
  :bg-pick-and-save-new-kdbxFile
  (fn [[file-name new-db]]
+   #_(let [sf (select-keys new-db newdb-fields)]
+     (println "(select-keys newdb-fields):  " sf)
+     (println "Password type and count is " (type (:password sf)) ", " (count (:password sf))))
    (bg/pick-and-save-new-kdbxFile file-name
                                   (-> new-db
                                       (update-in [:kdf :Argon2 :iterations] str->int)

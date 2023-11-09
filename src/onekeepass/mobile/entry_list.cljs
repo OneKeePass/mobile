@@ -270,6 +270,6 @@
      (when (contains-val? [const/TYPE_SECTION_TITLE 
                            const/GROUP_SECTION_TITLE 
                            const/CAT_SECTION_TITLE] selected-category-key)
-       [rnp-fab {:style {:position "absolute" :margin 16 :right 0 :bottom 0} :icon "plus"
+       [rnp-fab {:style {:position "absolute" :margin 16 :right 0 :bottom 0} :icon const/ICON-PLUS
                  :onPress (fn [e]
                             (show-fab-action-menu e selected-category-key selected-category-detail))}]))])

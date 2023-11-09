@@ -13,7 +13,7 @@
 (defn load-db-settings []
   (dispatch [:db-settings-read]))
 
-(defn load-db-settings-with-active-db 
+(defn load-db-settings-with-active-db
   "Called from the home page to load the settings for the selected db
    The arg 'full-file-name-uri' is any one of the db that is already opened 
   "
@@ -24,7 +24,7 @@
     ;; events happen in sequence
     ;; TODO: We need to ensure the db is made active first and then reading of 
     ;;  settings done. We can do by sending additional arg for event ":common/set-active-db-key"
-    (dispatch [:common/set-active-db-key full-file-name-uri]) 
+    (dispatch [:common/set-active-db-key full-file-name-uri])
     (dispatch [:db-settings-read])))
 
 (defn cancel-db-settings-form []
@@ -43,6 +43,15 @@
   [kw-field-name value]
   (dispatch [:db-settings-field-update kw-field-name value]))
 
+(defn db-settings-password-updated [pwd]
+  (dispatch [:db-settings-password-updated pwd]))
+
+(defn db-settings-password-removed []
+  (dispatch [:db-settings-password-removed]))
+
+(defn db-settings-password-added []
+  (dispatch [:db-settings-password-added]))
+
 (defn save-db-settings []
   (dispatch [:db-settings-write]))
 
@@ -51,11 +60,19 @@
   ;; to send back the selected key file 
   (dispatch [:key-file-form/show :settings-key-file-selected true]))
 
+(defn clear-key-file-field []
+  (dispatch [:settings-key-file-selected {:file-name nil :full-file-name nil}]))
+
 (defn db-settings-data []
   (subscribe [:db-settings-data]))
 
+(defn db-settings-main
+  "Returns the whole db-settings including data"
+  []
+  (subscribe [:db-settings-main]))
+
 #_(defn db-settings-panel-id []
-  (subscribe [:db-settings-panel-id]))
+    (subscribe [:db-settings-panel-id]))
 
 (defn master-password-visible? []
   (subscribe [:master-password-visible]))
@@ -67,6 +84,7 @@
   (subscribe [:db-settings-modified]))
 
 (defn- validate-security-fields
+  "Validates panel specific fields and returns errors map if any"
   [app-db]
   (let [{:keys [iterations memory parallelism]} (get-in-key-db app-db [:db-settings :data :kdf :Argon2])
         [iterations memory parallelism] (mapv str->int [iterations memory parallelism])
@@ -81,31 +99,26 @@
 
     errors))
 
+(defn- validate-credential-fields
+  "Validates password and key file fields and returns errors map"
+  [app-db]
+  (let [{:keys [password-used key-file-used]} (get-in-key-db app-db [:db-settings :data])
+        errors (if (and (not password-used) (not key-file-used))
+                 {:in-sufficient-credentials "Need to set a password or key file name or both to form a master key"} {})]
+    errors))
+
 (defn- validate-required-fields
-  [db panel] 
+  [db panel]
   (cond
     (= panel :settings-general)
     (when (str/blank? (get-in-key-db db [:db-settings :data :meta :database-name]))
       {:database-name "A valid database name is required"})
 
-    ;; (= panel :settings-credentials)
-    ;; (let [p (get-in-key-db db [:db-settings :data :password])
-    ;;       cp (get-in-key-db db [:db-settings :password-confirm])
-    ;;       visible  (get-in-key-db db [:db-settings :password-visible])]
-    ;;   ;;(println "p cp visible " p cp visible)
-    ;;   ;;(println "(not (str/blank? p))" (not (str/blank? p)) " (not visible)"  (not visible) " (not= p cp)" (not= p cp))
-    ;;   (cond
-    ;;     (and (not (str/blank? p)) (not visible) (not= p cp))
-    ;;     {:password-confirm "Password and Confirm password are not matching"}
-
-    ;;     (and (str/blank? p) (not (str/blank? cp)) (not visible))
-    ;;     {:password-confirm "Password and Confirm password are not matching"}))
+    (= panel :settings-credentials)
+    (validate-credential-fields db)
 
     (= panel :settings-security)
-    (validate-security-fields db)
-
-    ;;(= panel :file-info)
-    ))
+    (validate-security-fields db)))
 
 (reg-event-fx
  :db-settings-read
@@ -127,12 +140,14 @@
  :db-settings-read-completed
  (fn [{:keys [db]} [_event-id {:keys [_key-file-name] :as settings}]]
    ;; Need to convert memory value from bytes to MB. And we need to convert back bytes before saving back
-   ;; See event ':bg-set-db-settings'
+   ;; See event ':bg-set-db-settings' 
    (let [data (-> settings
-                  (update-in [:kdf :Argon2 :memory] #(Math/floor (/ % 1048576))))] 
+                  (update-in [:kdf :Argon2 :memory] #(Math/floor (/ % 1048576))))]
      {:db (-> db (assoc-in-key-db  [:db-settings :data] data)
               (assoc-in-key-db  [:db-settings :undo-data] data)
               (assoc-in-key-db [:db-settings :password-visible] false)
+              (assoc-in-key-db [:db-settings :password-use-removed] false)
+              (assoc-in-key-db [:db-settings :password-use-added] false)
               (assoc-in-key-db  [:db-settings :errors] nil)
               (assoc-in-key-db [:db-settings :status] :completed))
 
@@ -151,10 +166,66 @@
  (fn [{:keys [db]} [_event-id]]
    {:db (-> db
             (assoc-in-key-db  [:db-settings :data] (get-in-key-db db [:db-settings :undo-data]))
-            (assoc-in-key-db [:db-settings :errors] nil))
+            (assoc-in-key-db [:db-settings :errors] nil)
+            (assoc-in-key-db [:db-settings :password-visible] false)
+            (assoc-in-key-db [:db-settings :password-use-removed] false)
+            (assoc-in-key-db [:db-settings :password-use-added] false))
     :fx [[:dispatch [:common/previous-page]]
          ;; For now whether the db name was changed or not, we call the db name update in the opened db list to undo
          [:dispatch [:common/database-name-update (get-in-key-db db [:db-settings :undo-data :meta :database-name])]]]}))
+
+(reg-event-fx
+ :db-settings-password-removed
+ (fn [{:keys [db]} [_event-id]]
+   (let [db (-> db  (assoc-in-key-db [:db-settings :data :password-changed] true)
+                (assoc-in-key-db  [:db-settings :data :password-used] false)
+                (assoc-in-key-db [:db-settings :password-use-removed] true))
+         errors (validate-credential-fields db)
+         db (-> db (assoc-in-key-db [:db-settings :errors] errors))]
+     {:db db})))
+
+(reg-event-fx
+ :db-settings-password-added
+ (fn [{:keys [db]} [_event-id]]
+   {:db (-> db
+            (assoc-in-key-db [:db-settings :password-use-added] true)
+            (assoc-in-key-db [:db-settings :password-use-removed] false))}))
+
+(reg-event-fx
+ :db-settings-password-updated
+ (fn [{:keys [db]} [_event-id pwd]]
+   (let [{:keys [password-used password-changed]} (get-in-key-db db [:db-settings :undo-data])
+         ;; By using empty? fn, we can allow nnly space charaters as password
+         db (if (empty? pwd)
+              (-> db
+                  (assoc-in-key-db [:db-settings :data :password] nil)
+                  (assoc-in-key-db [:db-settings :data :password-used] password-used)
+                  (assoc-in-key-db [:db-settings :data :password-changed] password-changed))
+              (-> db
+                  (assoc-in-key-db [:db-settings :data :password] pwd)
+                  (assoc-in-key-db [:db-settings :data :password-used] true)
+                  (assoc-in-key-db [:db-settings :data :password-changed] true)))
+         errors (validate-credential-fields db)
+         db (-> db (assoc-in-key-db [:db-settings :errors] errors))]
+     {:db db})))
+
+;; This event called (from key file related page) after user selects a key file 
+;; Also used when user removes the use of key file as master key with nil values for file-name and full-file-name
+(reg-event-fx
+ :settings-key-file-selected
+ (fn [{:keys [db]} [_event-id {:keys [file-name full-file-name]}]]
+   (let [{:keys [key-file-name-part key-file-name]}  (get-in-key-db db [:db-settings :undo-data])
+         changed (if (and (= key-file-name full-file-name) (= key-file-name-part file-name)) false true)
+         used (if (nil? file-name) false true)
+
+         db (-> db
+                (assoc-in-key-db [:db-settings :data :key-file-used] used)
+                (assoc-in-key-db [:db-settings :data :key-file-changed] changed)
+                (assoc-in-key-db [:db-settings :data :key-file-name-part] file-name)
+                (assoc-in-key-db [:db-settings :data :key-file-name] full-file-name))
+         errors (validate-credential-fields db)
+         db (-> db (assoc-in-key-db [:db-settings :errors] errors))]
+     {:db db})))
 
 (reg-event-fx
  :db-settings-data-field-update
@@ -198,25 +269,27 @@
                        (update-in [:kdf :Argon2 :memory] * 1048576)
                        (update-in [:password] #(if (str/blank? %) nil %))
                        (update-in [:key-file-name] #(if (str/blank? %) nil %)))]
-     (bg/set-db-settings db-key settings (fn [api-response] 
+     (bg/set-db-settings db-key settings (fn [api-response]
                                            (when-not (on-error api-response)
                                              (dispatch [:db-settings-write-completed])))))))
+
 (reg-event-fx
  :db-settings-write-completed
  (fn [{:keys [_db]} [_event-id]]
-   {:fx [[:dispatch [:save/save-current-kdbx 
+   {:fx [[:dispatch [:save/save-current-kdbx
                      {:error-title "Settings Save Error"
                       :save-message "Saving database settings..."
                       :on-save-ok (fn []
-                                    (dispatch [:common/previous-page])
-                                    (dispatch [:common/message-snackbar-open "Database Settings saved"]))}]]]}))
+                                    (dispatch [:db-settings-saved])
+                                    #_(dispatch [:common/previous-page])
+                                    #_(dispatch [:common/message-snackbar-open "Database Settings saved"]))}]]]}))
 
-;; An event to be called (from key file related page) after user selects a key file 
 (reg-event-fx
- :settings-key-file-selected
- (fn [{:keys [db]} [_event-id {:keys [file-name full-file-name]}]]
-   {:db (-> db (assoc-in-key-db [:db-settings :data :key-file-name-part] file-name)
-            (assoc-in-key-db [:db-settings :data :key-file-name] full-file-name))}))
+ :db-settings-saved
+ (fn [{:keys [_db]} [_event-id]]
+   {:fx [[:dispatch [:db-settings-read]] ;; Need to reload the updated db-settings before navigating to previous page
+         [:dispatch [:common/previous-page]]
+         [:dispatch [:common/message-snackbar-open "Database Settings saved"]]]}))
 
 (reg-sub
  :master-password-visible
@@ -237,6 +310,11 @@
  (fn [db]
    (get-in-key-db db [:db-settings :data])))
 
+(reg-sub
+ :db-settings-main
+ (fn [db]
+   (get-in-key-db db [:db-settings])))
+
 ;;Determines whether any data is changed
 (reg-sub
  :db-settings-modified
@@ -253,4 +331,6 @@
   (in-ns 'onekeepass.mobile.events.settings)
 
   (def db-key (-> @re-frame.db/app-db :current-db-file-name))
-  (-> @re-frame.db/app-db (get db-key) keys))
+  (-> @re-frame.db/app-db (get db-key) keys)
+
+  (-> @re-frame.db/app-db (get db-key) :db-settings keys))

@@ -1,5 +1,7 @@
 fn main() {
     uniffi::generate_scaffolding("./src/db_service.udl").unwrap();
+    
+    
     /* 
     // uniffi_build::generate_scaffolding("./src/db_service.udl").unwrap();
     // This results in error something like

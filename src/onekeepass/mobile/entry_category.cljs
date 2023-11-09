@@ -257,4 +257,4 @@
    [category-long-press-menu @category-long-press-menu-data]
    [group-by-menu @group-by-menu-data]
    [rnp-fab {:style {:position "absolute" :margin 16 :right 0 :bottom 0} 
-             :icon "plus" :onPress (fn [e] (show-fab-action-menu e))}]])
+             :icon const/ICON-PLUS :onPress (fn [e] (show-fab-action-menu e))}]])
