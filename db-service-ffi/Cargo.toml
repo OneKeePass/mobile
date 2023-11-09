@@ -17,13 +17,8 @@ crate-type = ["lib", "staticlib","cdylib"]
 # We need add the prebuilt libbotan-3.a to Xcode
 #crate-type = ["lib", "staticlib"] 
 
-# But Android target botan3 build to create dynamic lib .so file (requires "cdylib" for that) 
+# Android target requires "cdylib" for to create dynamic lib .so file  
  
-
-
-
-
-
 
 [dependencies]
 uniffi = "0.24.1"
@@ -42,9 +37,9 @@ serde_json = "1.0.81"
 urlencoding = "2.1.2"
 
 ## using from the local crate 
-onekeepass-core = {path = "../../onekeepass-core", version = "0.9.0"}
+## onekeepass-core = {path = "../../onekeepass-core", version = "0.9.0"}
 
-##onekeepass-core = {git = "https://github.com/OneKeePass/onekeepass-core.git" , tag="v0.8.0" }
+onekeepass-core = {git = "https://github.com/OneKeePass/onekeepass-core.git" , tag="v0.9.0" }
 
 [target.'cfg(target_os = "android")'.dependencies]
 android_logger = "0.13.1"
