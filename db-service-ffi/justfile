@@ -1,10 +1,13 @@
 
 alias gk := generate-kotlin
 alias bca := build-android-lib-cp-src
+## Android release
+alias bca-r := build-android-lib-cp-src-release 
 
 alias gs := generate-swift
 alias bcis := cp-ios-ffi-sim-debug-lib-src
 alias bcid := cp-ios-ffi-device-debug-lib-src
+## iOS release
 alias bcid-r := cp-ios-ffi-device-release-lib-src
 
 udl_src := "./src/db_service.udl"
@@ -134,8 +137,11 @@ build-android-lib-all release="":
     cargo ndk -t armv7-linux-androideabi  -o ./target/jniLibs build {{ if release == "true" {"--release" } else {""}  }}
 
 ## Dev time used 
-## Call 'just bca' or "just bca true"
+## Call 'just bca' 
+## "just bca true" for release; Instead call 'just bca-r' - See alias for 'build-android-lib-cp-src-release'
 build-android-lib-cp-src release="":(build-android-lib-all release) generate-kotlin
     cp -R {{kotlin-src-dir}}/ {{android-db-service-src-dir}}
     cp -R {{android-lib-output-dir}} {{android-db-service-lib-dir}}
 
+
+build-android-lib-cp-src-release:(build-android-lib-cp-src "true")

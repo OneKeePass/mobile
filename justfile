@@ -40,6 +40,7 @@ clj-nrepl:
 
 # use 'just cljb advanced' for advanced compilation
 clj-main-build type="simple" :
+    rm -rf target
     clj -M -m krell.main -O {{type}}  -co build.edn -c
 
 
