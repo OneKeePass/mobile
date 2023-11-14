@@ -6064,10 +6064,10 @@ react-native-bootsplash@^4.7.5:
     picocolors "^1.0.0"
     sharp "^0.32.1"
 
-react-native-device-info@^10.1.2:
-  version "10.6.0"
-  resolved "https://registry.yarnpkg.com/react-native-device-info/-/react-native-device-info-10.6.0.tgz#51f1b2ec98abc32747149b0a5b7fb662b44d50e4"
-  integrity sha512-/MmINdojWdw2/9rwYpH/dX+1gFP0o78p8yYPjwxiPhoySSL2rZaNi+Mq9VwC+zFi/yQmJUvHntkKSw2KUc7rFw==
+react-native-device-info@^10.11.0:
+  version "10.11.0"
+  resolved "https://registry.yarnpkg.com/react-native-device-info/-/react-native-device-info-10.11.0.tgz#2c9f378f1c3c5eb9aafa803d015b84325991a9aa"
+  integrity sha512-qRzhuYOm5ZXQi5dhfJFjDq157oipxcEW/fo0QyMm5+TI6V6/+P/tju+Hif6z0rpLCf7MV7iDVRv2Kqha4D/yvQ==
 
 react-native-file-viewer@^2.1.5:
   version "2.1.5"
@@ -6116,7 +6116,7 @@ react-native-safe-area-context@^4.7.1:
   resolved "https://registry.yarnpkg.com/react-native-safe-area-context/-/react-native-safe-area-context-4.7.1.tgz#b7be2d68dee909717cfa439bb5c7966042d231e8"
   integrity sha512-X2pJG2ttmAbiGlItWedvDkZg1T1ikmEDiz+7HsiIwAIm2UbFqlhqn+B1JF53mSxPzdNaDcCQVHRNPvj8oFu6Yg==
 
-react-native-tcp-socket@^6.0.1:
+react-native-tcp-socket@^6.0.6:
   version "6.0.6"
   resolved "https://registry.yarnpkg.com/react-native-tcp-socket/-/react-native-tcp-socket-6.0.6.tgz#8e124e5d347b0ef4ea6dc6d38b8f1771f47bfbce"
   integrity sha512-FIFSP+3S5OnJRjl7ddD7G9NfVbVEiQ4WROEmOBei1cKE0pDz2R/Kcm4XkFlnMd5sdoG6Wbv830Yd/ZsmOjkEKw==
