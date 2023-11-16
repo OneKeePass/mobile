@@ -28,7 +28,7 @@ OneKeePass is also available for **Windows, macOS and Linux desktops** can be do
 - Custom fields can be organized as section
 - Any number of databases can be created and used
 - Fully offline 
-- Optional additional security by using a key file with or without master password
+- Optional additional security by using a key file with or without a master password
 - Database quick unlock using biometrics (fingerprint)
 - Upload attachments to an entry
 
