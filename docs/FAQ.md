@@ -25,7 +25,7 @@ You can open many databases at the same time.
 OneKeePass does not do any automatic synchronization at this time. As the password database is a single file, you can use any of the cloud storage service for the synchronization between devices and also for the backup
 
 ## Are file attachments supported?
-Yes. You can attach any number of files to an entry. In the entry form screen, you can upload, view and delete. Any previously attahed file can be copied to a location outside the database.
+Yes. You can attach any number of files to an entry. In the entry form screen, you can upload, view and delete. Any previously attached file can be copied to a location outside the database.
 
 It is recommended to use this feature only to store few/small files.
  
@@ -33,14 +33,14 @@ As these attached file contents are encrypted and stored within the database, at
 
 
 ## How are entries organized ?
-Entries are organized so that you can view them as  Entry types or Categories or Group tree. 
+Entries are organized so that you can view them as Entry types or Categories or Group tree. 
 
 ## What are the entry categories ?
 It is just the flattened list of keepass groups instead of a tree/folder like structure
 
 
 ## What is an entry type?
-Each entry type has certain set of fields. For example *Login* entry type include fields like username, password, url etc.
+Each entry type is a template that has certain set of fields. For example *Login* entry type include fields like username, password, url etc.
 OneKeePass supports some built-in standard entry types: Login, Credit/Debit Card, Bank Account and Wireless Router.
 More standard entry types will be added. 
 
