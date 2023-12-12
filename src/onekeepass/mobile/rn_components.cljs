@@ -13,7 +13,8 @@
    ["react-native-modal-selector" :as rnms]
    ["@react-native-community/slider" :as rnc-slider]
    ["react-native-gesture-handler" :as gh]
-   ["react-native-vector-icons" :as vec-icons] 
+   ["react-native-vector-icons" :as vec-icons]
+   ["react-native-safe-area-context" :as sa-context]
    ["@date-io/date-fns" :as DateAdapter]))
 
 (set! *warn-on-infer* true)
@@ -36,6 +37,8 @@
 #_(def react-use-ref (.-useRef ^js/React react))
 #_(def react-forward-ref (.-forwardRef ^js/React react))
 #_(def window (-> rn/Dimensions ^js/Dim (.get "window")))
+
+(def use-safe-area-insets (.-useSafeAreaInsets ^js/SAInsets sa-context))
 
 ;; https://github.com/dmtrKovalenko/date-io
 ;;DateAdapter is #object[DateFnsUtils] 
@@ -70,6 +73,7 @@
 ;; See RNPCustomization.js for the customization of some of the React Native Paper components
 (declare-comp-classes [Button
                        BottomNavigation
+                       BottomNavigation.Bar
                        Checkbox
                        Checkbox.Item
                        Chip
@@ -140,10 +144,10 @@
 
 ;;;; Some standard colors based on the theme selected
 ;; blue (in light theme), light blue (in dark theme)
-(def primary-color (r/atom nil))   
+(def primary-color (r/atom nil))
 
 ;; white (in light theme), blue (in dark theme)
-(def on-primary-color (r/atom nil)) 
+(def on-primary-color (r/atom nil))
 (def primary-container-color (r/atom nil))
 
 (def secondary-color (r/atom nil))
@@ -151,28 +155,32 @@
 (def secondary-container-color (r/atom nil))
 
 ;; white (in light theme), black (in dark theme)
-(def background-color (r/atom nil))  
+(def background-color (r/atom nil))
 (def on-background-color (r/atom nil))
 
 ;; slight reddish (in light theme), 
-(def tertiary-color (r/atom nil)) 
+(def tertiary-color (r/atom nil))
 (def outline-color (r/atom nil))
 ;; very dim on white 
-(def inverse-onsurface-color (r/atom nil)) 
+(def inverse-onsurface-color (r/atom nil))
 
 (def error-color (r/atom nil))
+(def on-error-container (r/atom nil))
+
+(def surface-variant (r/atom nil))
+(def outline-variant (r/atom nil))
 
 ;; Component specific colors
 ;; TODO: Need to use only these colors instead of refering the above standard colors
 (def icon-color primary-color)
 (def appbar-text-color on-primary-color)
 (def message-modal-background-color secondary-container-color)
-(def modal-selector-colors {:background-color secondary-container-color 
+(def modal-selector-colors {:background-color secondary-container-color
                             :selected-text-color primary-color})
 (def page-background-color background-color)
 (def divider-color-1 outline-color)
 
-(defn reset-colors 
+(defn reset-colors
   "Called to set all colors that are used in many components.
    The arg theme-name is passed when main root component is formed - see core.cljs
    "
@@ -183,17 +191,21 @@
     (reset! primary-color (.-primary colors))
     (reset! on-primary-color (.-onPrimary colors))
     (reset! primary-container-color (.-primaryContainer colors))
-    
+
     (reset! secondary-color (.-secondary colors))
     (reset! on-secondary-color (.-onSecondary colors))
     (reset! secondary-container-color (.-secondaryContainer colors))
-    
+
     (reset! background-color (.-background colors))
     (reset! on-background-color (.-onBackground colors))
     (reset! tertiary-color (.-tertiary colors))
     (reset! outline-color (.-outline colors))
     (reset! error-color (.-error colors))
-    (reset! inverse-onsurface-color (.-inverseOnSurface colors))))
+    (reset! inverse-onsurface-color (.-inverseOnSurface colors))
+    (reset! surface-variant (.-surfaceVariant colors))
+    (reset! outline-variant (.-outlineVariant colors))
+    (reset! on-error-container (.-onErrorContainer colors))))
+
 
 ;;;;;;;;;;
 

@@ -681,7 +681,7 @@
 (defn entry-save []
   (dispatch [:entry-save]))
 
-;; Creates a blank New Entry Form with the given type and group are preselected 
+;; Creates a blank New Entry Form with the given entry type and group are preselected 
 ;; group-info is a map with keys :name, :uuid
 (reg-event-fx
  :entry-form/add-new-entry

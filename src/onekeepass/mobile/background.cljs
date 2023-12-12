@@ -358,6 +358,11 @@
 (defn categories-to-show [db-key dispatch-fn]
   (invoke-api "categories_to_show" {:db-key db-key} dispatch-fn))
 
+(defn combined-category-details
+  [db-key grouping-kind dispatch-fn]
+  (invoke-api "combined_category_details" {:db-key db-key
+                                           :grouping-kind grouping-kind} dispatch-fn))
+
 (defn transform-request-entry-category
   "Called to convert entry-category to the deserilaizable format expected as in EnteryCategory"
   [entry-category]

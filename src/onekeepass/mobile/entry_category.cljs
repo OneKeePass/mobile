@@ -25,13 +25,34 @@
    [onekeepass.mobile.utils :refer [str->int]]
    [onekeepass.mobile.common-components  :refer [menu-action-factory]]
    [onekeepass.mobile.events.entry-category :as ecat-events]
-   [onekeepass.mobile.constants :as const]))
+   [onekeepass.mobile.constants :as const :refer [TYPE_SECTION_TITLE
+                                                  TAG_SECTION_TITLE
+                                                  GROUP_SECTION_TITLE
+                                                  CAT_SECTION_TITLE
+                                                  
+                                                  CATEGORY_ALL_ENTRIES
+                                                  CATEGORY_FAV_ENTRIES
+                                                  CATEGORY_DELETED_ENTRIES
+                                                  
+                                                  LOGIN_TYPE_NAME
+                                                  CREDIT_DEBIT_CARD_TYPE_NAME
+                                                  WIRELESS_ROUTER_TYPE_NAME 
+                                                  BANK_ACCOUNT_TYPE_NAME
+                                                  
+                                                  ICON-TAGS
+                                                  ICON-PLUS
+                                                  ICON-CHECKBOX-OUTLINE
+                                                  ICON-CHECKBOX-BLANK-OUTLINE
+                                                  
+                                                  UUID_OF_ENTRY_TYPE_LOGIN
+                                                  ]]))
 
 (set! *warn-on-infer* true)
 
-(def group-by->section-titles {:type "Types"
-                               :group-category "Categories"
-                               :group-tree "Groups"})
+(def group-by->section-titles {:type TYPE_SECTION_TITLE
+                               :tag TAG_SECTION_TITLE
+                               :group-category CAT_SECTION_TITLE
+                               :group-tree GROUP_SECTION_TITLE})
 
 ;;;;;;;;;;;;;;;;;;;; Menus ;;;;;;;;;;;;;;;;;;
 
@@ -49,7 +70,7 @@
 (defn fab-action-menu [{:keys [show x y]} root-group]
   [rnp-menu {:visible show :onDismiss hide-fab-action-menu :anchor (clj->js {:x x :y y})} 
    [rnp-menu-item {:title (lstr "menu.labels.addEntry")
-                   :onPress (fab-menu-action ecat-events/add-new-entry (select-keys root-group [:name :uuid]) const/UUID_OF_ENTRY_TYPE_LOGIN)}]
+                   :onPress (fab-menu-action ecat-events/add-new-entry (select-keys root-group [:name :uuid]) UUID_OF_ENTRY_TYPE_LOGIN)}]
    [rnp-menu-item {:title (lstr "menu.labels.addCategory")
                    :onPress (fab-menu-action ecat-events/initiate-new-blank-category-form (:uuid root-group))}]
    [rnp-menu-item {:title (lstr "menu.labels.addGroup")
@@ -69,29 +90,32 @@
          :category-detail category-detail
          :root-group root-group))
 
-
 (defn category-long-press-menu [{:keys [show x y category-detail category-key]}]
   [rnp-menu {:visible show :onDismiss hide-category-long-press-menu :anchor (clj->js {:x x :y y})}
    (cond
-     (= category-key "Types")
+     (= category-key TYPE_SECTION_TITLE)
      [rnp-menu-item {:title (lstr "menu.labels.addEntry")
                      :onPress (fn [] (ecat-events/add-new-entry nil (:entry-type-uuid category-detail)))}]
+     
+     (= category-key TAG_SECTION_TITLE)
+     [rnp-menu-item {:title (lstr "menu.labels.addEntry")
+                     :onPress (fn [] (ecat-events/add-new-entry nil UUID_OF_ENTRY_TYPE_LOGIN))}]
 
-     (= category-key "Categories")
+     (= category-key CAT_SECTION_TITLE)
      [:<>
 
       [rnp-menu-item {:title (lstr "menu.labels.addEntry")
-                      :onPress (fn [] (ecat-events/add-new-entry {:name (:title category-detail) :uuid (:uuid category-detail)} const/UUID_OF_ENTRY_TYPE_LOGIN))}]
+                      :onPress (fn [] (ecat-events/add-new-entry {:name (:title category-detail) :uuid (:uuid category-detail)} UUID_OF_ENTRY_TYPE_LOGIN))}]
       [cust-rnp-divider]
       [rnp-menu-item {:title (lstr "menu.labels.edit")
                       :onPress (fn [] (ecat-events/find-category-by-id (:uuid category-detail)))}]]
 
 
-     (= category-key "Groups")
+     (= category-key GROUP_SECTION_TITLE)
      [:<>
 
       [rnp-menu-item {:title (lstr "menu.labels.addEntry")
-                      :onPress (fn [] (ecat-events/add-new-entry {:name (:title category-detail) :uuid (:uuid category-detail)} const/UUID_OF_ENTRY_TYPE_LOGIN))}]
+                      :onPress (fn [] (ecat-events/add-new-entry {:name (:title category-detail) :uuid (:uuid category-detail)} UUID_OF_ENTRY_TYPE_LOGIN))}]
       [rnp-menu-item {:title (lstr "menu.labels.addGroup")
                       :onPress #(ecat-events/initiate-new-blank-group-form (:uuid category-detail))}]
       [cust-rnp-divider]
@@ -120,13 +144,16 @@
 (defn group-by-menu [{:keys [show group-by x y]}]
   [rnp-menu {:visible show :onDismiss hide-group-by-menu :anchor (clj->js {:x x :y y})}
    [rnp-menu-item {:title (lstr "menu.labels.types")
-                   :leadingIcon (if (= group-by :type) "checkbox-outline" "checkbox-blank-outline")
+                   :leadingIcon (if (= group-by :type) ICON-CHECKBOX-OUTLINE ICON-CHECKBOX-BLANK-OUTLINE)
                    :onPress #(change-entries-grouping-method :type)}]
+   [rnp-menu-item {:title (lstr "menu.labels.tags")
+                   :leadingIcon (if (= group-by :tag) ICON-CHECKBOX-OUTLINE ICON-CHECKBOX-BLANK-OUTLINE)
+                   :onPress #(change-entries-grouping-method :tag)}]
    [rnp-menu-item {:title (lstr "menu.labels.categories")
-                   :leadingIcon (if (= group-by :group-category) "checkbox-outline" "checkbox-blank-outline")
+                   :leadingIcon (if (= group-by :group-category) ICON-CHECKBOX-OUTLINE ICON-CHECKBOX-BLANK-OUTLINE)
                    :onPress #(change-entries-grouping-method :group-category)}]
    [rnp-menu-item {:title (lstr "menu.labels.groups")
-                   :leadingIcon (if (= group-by :group-tree) "checkbox-outline" "checkbox-blank-outline")
+                   :leadingIcon (if (= group-by :group-tree) ICON-CHECKBOX-OUTLINE ICON-CHECKBOX-BLANK-OUTLINE)
                    :onPress #(change-entries-grouping-method :group-tree)}]])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -136,18 +163,18 @@
 
 ;; TODO: Move Icon names to 'onekeepass.mobile.constants'
 (def category-icons {;; General categories
-                     "AllEntries" "check-all"
-                     "Favorites" "heart-outline"
-                     "Deleted" "trash-can-outline"
+                     CATEGORY_ALL_ENTRIES const/ICON-CHECK-ALL
+                     CATEGORY_FAV_ENTRIES const/ICON-HEART-OUTLINE
+                     CATEGORY_DELETED_ENTRIES const/ICON-TRASH-CAN-OUTLINE
                      ;; Following are hard coded entry type icon names
-                     "Login" "login"
-                     "Bank Account" "bank-outline"
-                     "Wireless Router" "router-wireless"
-                     "Credit/Debit Card" "credit-card-outline"})
+                     LOGIN_TYPE_NAME const/ICON-LOGIN
+                     BANK_ACCOUNT_TYPE_NAME const/ICON-BANK-OUTLINE
+                     WIRELESS_ROUTER_TYPE_NAME const/ICON-ROUTER-WIRELESS
+                     CREDIT_DEBIT_CARD_TYPE_NAME const/ICON-CREDIT-CARD-OUTLINE})
 
 (defn category-icon-name 
   "Called to get icon name for General categories or Entry types category or Group as Category or Group "
-  [{:keys [title icon-name icon-id uuid] } ] 
+  [{:keys [title icon-name icon-id uuid tag-id] } ] 
   (let [icon (get category-icons title)]
     (cond 
       ;; General categories or Standard entry types only
@@ -156,6 +183,10 @@
       ;; Group tree root or Group category will have non nil uuid and valid icon-id int value
       (not (nil? uuid))
       (icon-id->name icon-id) 
+
+      (not (nil? tag-id))
+      ICON-TAGS
+
       ;; custom entry type will have icon-name convertable to an int
       :else 
       (let [cust-entry-type-icon-id (str->int icon-name)]
@@ -173,7 +204,7 @@
   (fn [{:keys [title display-title entries-count groups-count] :as category-detail-m}]
     (let [display-name (if (nil? display-title) title display-title)
           icon-name (category-icon-name category-detail-m)
-          items-count (if (= category-key "Groups") (+ entries-count groups-count) entries-count)]
+          items-count (if (= category-key GROUP_SECTION_TITLE) (+ entries-count groups-count) entries-count)]
       [rnp-list-item {;;:style {:background-color @rnc/background-color}
                       :onPress (fn [_e]
                                  (ecat-events/load-selected-category-entry-items
@@ -222,6 +253,9 @@
         section-data (cond
                        (= group-by :type)
                        @(ecat-events/type-categories)
+                       
+                       (= group-by :tag)
+                       @(ecat-events/tag-categories)
 
                        (= group-by :group-category)
                        @(ecat-events/group-categories)
@@ -257,4 +291,4 @@
    [category-long-press-menu @category-long-press-menu-data]
    [group-by-menu @group-by-menu-data]
    [rnp-fab {:style {:position "absolute" :margin 16 :right 0 :bottom 0} 
-             :icon const/ICON-PLUS :onPress (fn [e] (show-fab-action-menu e))}]])
+             :icon ICON-PLUS :onPress (fn [e] (show-fab-action-menu e))}]])
