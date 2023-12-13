@@ -3,20 +3,44 @@
 ;; This is the default Entry type to use 
 (def UUID_OF_ENTRY_TYPE_LOGIN "ffef5f51-7efc-4373-9eb5-382d5b501768")
 
+;; Standard Entry Type Names
+;; These should match names used in 'standard_entry_types.rs'
+
+(def LOGIN_TYPE_NAME "Login")
+(def CREDIT_DEBIT_CARD_TYPE_NAME "Credit/Debit Card")
+(def WIRELESS_ROUTER_TYPE_NAME "Wireless Router")
+(def PASSPORT_TYPE_NAME "Passport")
+(def BANK_ACCOUNT_TYPE_NAME "Bank Account")
+
+;; Based on the enum 'EntryCategory'
+(def CATEGORY_ALL_ENTRIES "AllEntries")
+(def CATEGORY_FAV_ENTRIES "Favorites")
+(def CATEGORY_DELETED_ENTRIES "Deleted")
+
+;; Labels used for entry grouping section title 
 (def GEN_SECTION_TITLE "General")
 (def TYPE_SECTION_TITLE "Types")
+(def TAG_SECTION_TITLE "Tags")
 (def CAT_SECTION_TITLE "Categories")
 (def GROUP_SECTION_TITLE "Groups")
 
 (def PERMISSION_REQUIRED_TO_READ "PERMISSION_REQUIRED_TO_READ")
 (def FILE_NOT_FOUND "FILE_NOT_FOUND")
 
-
 (def BIOMETRIC-AUTHENTICATION-SUCCESS "AuthenticationSucceeded")
 (def BIOMETRIC-AUTHENTICATION-FAILED "AuthenticationFailed")
 
 (def DARK-THEME "dark")
 (def LIGHT-THEME "light")
+
+;; Sorting related 
+(def TITLE "Title")
+(def MODIFIED_TIME "Modified Time")
+(def CREATED_TIME "Created Time")
+
+(def ASCENDING "Ascending")
+(def DESCENDING "Descending")
+
 
 ;;;;;;; Icon names ;;;;;
 
@@ -35,6 +59,11 @@
 (def ICON-DATABASE-REMOVE "database-remove")
 (def ICON-DATABASE-OFF "database-off")
 (def ICON-DATABASE-OFF-OUTLINE "database-off-outline")
+
+(def ICON-COG "cog")
+(def ICON-COG-OUTLINE "cog-outline")
+(def ICON-SORT "sort")
+
 
 (def ICON-CHEVRON-RIGHT  "chevron-right")
 (def ICON-CACHED  "cached")
@@ -57,7 +86,23 @@
 
 (def ICON-UPLOAD-OUTLINE  "upload-outline")
 
+(def ICON-TAGS  "tag-multiple")
 
+;; Icons used for general entry categories
+(def ICON-CHECK-ALL  "check-all")
+(def ICON-HEART-OUTLINE  "heart-outline")
+(def ICON-TRASH-CAN-OUTLINE  "trash-can-outline")
+
+;; Entry Types' icons
+(def ICON-LOGIN  "login")
+(def ICON-BANK-OUTLINE  "bank-outline")
+(def ICON-ROUTER-WIRELESS  "router-wireless")
+(def ICON-CREDIT-CARD-OUTLINE  "credit-card-outline")
+
+;;"checkbox-outline" "checkbox-blank-outline"
+
+(def ICON-CHECKBOX-OUTLINE  "checkbox-outline")
+(def ICON-CHECKBOX-BLANK-OUTLINE  "checkbox-blank-outline")
 
 ;; (def ICON-  "")
 ;; (def ICON-  "")

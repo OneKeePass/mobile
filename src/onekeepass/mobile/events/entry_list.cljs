@@ -43,6 +43,12 @@
 (defn delete-all-entries-permanently []
   (dispatch [:move-delete/delete-all-entries-start]))
 
+(defn entry-list-sort-key-changed [key-name]
+  (dispatch [:entry-list-sort-key-changed key-name]))
+
+(defn entry-list-sort-direction-changed [direction]
+  (dispatch [:entry-list-sort-direction-changed direction]))
+
 (defn selected-entry-items []
   (subscribe [:selected-entry-items]))
 
@@ -67,11 +73,61 @@
 (defn current-page-title []
   (subscribe [:current-page-title]))
 
+(defn entry-list-sort-criteria []
+  (subscribe [:entry-list-sort-criteria]))
+
+;;;;;;;;;;;;;;;;;;;;;;; Entry summary lists sorting support functions  ;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def sort-default-key-name const/TITLE)
+
+(def sort-default-direction const/ASCENDING)
+
+(defn list-sort-criteria
+  ([db]
+   (let [{:keys [key-name direction] :as el-sort} (get-in-key-db db [:entry-list :sort])]
+     (if (nil? key-name)
+       {:key-name sort-default-key-name
+        :direction (if (nil? direction) sort-default-direction direction)}
+       el-sort))))
+
+(defn sort-entries [{:keys [key-name direction]} entries]
+  (sort-by
+
+   ;; This is the key fn that provides keys for the comparion
+   (fn [{:keys [title modified-time created-time]}]
+     (cond
+       (= key-name const/TITLE)
+       title
+
+       (= key-name const/MODIFIED_TIME)
+       modified-time
+
+       (= key-name const/CREATED_TIME)
+       created-time
+
+       :else
+       title))
+
+   ;; This is comparater for the keys
+   (fn [v1 v2] (if (= direction const/ASCENDING)
+                 (compare v1 v2)
+                 (compare v2 v1)))
+   entries))
+
+(defn sort-entries-with-criteria
+  "Sorts the entry list based on the currrent sort criteria"
+  [db entries]
+  (let [sort-criteria (list-sort-criteria db)]
+    (sort-entries sort-criteria entries)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defn- to-category-source
   "Returns value matching EntryCategory enum based on the current selected-category-key"
   [selected-category-key {:keys [title uuid entry-type-uuid]}]
   (condp = selected-category-key
     const/GEN_SECTION_TITLE title
+    const/TAG_SECTION_TITLE {:tag title}
     const/TYPE_SECTION_TITLE {:entry-type-uuid entry-type-uuid}
     const/CAT_SECTION_TITLE {:group uuid}
     const/GROUP_SECTION_TITLE {:group uuid}))
@@ -102,13 +158,14 @@
 
 ;; Called to get all entry summary items for a selected category in entry category view.
 ;; This also sets the category source. The valid values 
-;; are AllEntries or Deleted or Favorites or a map for group or type category.
+;; are AllEntries or Deleted or Favorites or a map for group or type or tag category.
 ;; These match the EntryCategory enum in backend service
 (reg-event-fx
  :entry-list/load-entry-items
  (fn [{:keys [db]} [_event-id {:keys [uuid] :as category-detail} selected-category-key]]
-   ;; selected-category-key is one of Types, Groups or Categories 
-   (let [entry-category (to-category-source selected-category-key category-detail)
+   ;; selected-category-key is one of Types, Tags, Groups or Categories 
+   (let [;; entry-category is convertable to EntryCategory enum in the rust side
+         entry-category (to-category-source selected-category-key category-detail)
          ;; back-action-stack is a list (not vector)
          back-action-stack (get-in-key-db db [:entry-list :back-action-stack])
          ;; If the first member 'category-detail' of back-action-stack is the same as the incoming one, it is not added to the stack
@@ -156,12 +213,30 @@
            (when-not reloaded?
              [:dispatch [:common/next-page :entry-list page-title]])]})))
 
+(reg-event-fx
+ :entry-list-sort-key-changed
+ (fn [{:keys [db]} [_event-id key-name]]
+   {:db (assoc-in-key-db db [:entry-list :sort :key-name] key-name)
+    :fx [[:dispatch [:sort-entry-items]]]}))
+
+(reg-event-fx
+ :entry-list-sort-direction-changed
+ (fn [{:keys [db]} [_event-id direction]]
+   {:db (assoc-in-key-db db [:entry-list :sort :direction] direction)
+    :fx [[:dispatch [:sort-entry-items]]]}))
+
+(reg-event-fx
+ :sort-entry-items
+ (fn [{:keys [db]} [_event-id]]
+   (let [entries (get-in-key-db db [:entry-list :selected-entry-items])]
+     {:db (assoc-in-key-db db [:entry-list :selected-entry-items] (sort-entries-with-criteria db entries))})))
+
 ;; list of entry items returned by backend api when a category selected
 ;; or entry items returned in a search result - Work is yet to be done
 (reg-event-db
  :update-selected-entry-items
- (fn [db [_event-id  v]]
-   (assoc-in-key-db db [:entry-list :selected-entry-items] v)))
+ (fn [db [_event-id  entry-summaries]]
+   (assoc-in-key-db db [:entry-list :selected-entry-items] (sort-entries-with-criteria db entry-summaries))))
 
 ;; Sets the category-source that is selected in the category view
 #_(reg-event-db
@@ -189,7 +264,7 @@
                                         [nil entry-type-uuid]
 
                                         :else
-                                        [nil nil])] 
+                                        [nil const/UUID_OF_ENTRY_TYPE_LOGIN])] 
      (if-not (= [group-info entry-type-uuid] [nil nil])
        {:fx [[:dispatch [:entry-form/add-new-entry group-info entry-type-uuid]]]}
        {}))))
@@ -259,6 +334,12 @@
  :<- [:selected-category-title]
  (fn [cat-title _query-vec]
    (= cat-title "Deleted")))
+
+
+(reg-sub
+ :entry-list-sort-criteria
+ (fn [db _query-vec]
+   (list-sort-criteria db)))
 
 (comment
   (in-ns 'onekeepass.mobile.events.entry-list)

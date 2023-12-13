@@ -25,6 +25,7 @@
    [onekeepass.mobile.common-components :as cc :refer [select-field confirm-dialog]]
    [onekeepass.mobile.events.settings :as stgs-events :refer [cancel-db-settings-form]]
    [onekeepass.mobile.events.password-generator :as pg-events]
+   [onekeepass.mobile.events.common :as cmn-events]
    [onekeepass.mobile.constants :as const :refer [ICON-EYE ICON-EYE-OFF]]))
 
 ;;:settings-general :settings-credentials :settings-security 
@@ -128,9 +129,9 @@
          (when-not password-use-added
            [rn-view
             [rn-view {:style {:margin-top 20 :margin-bottom 20 :align-items "center"}}
-             [rnp-button {:style {:width "50%"} 
+             [rnp-button {:style {:width "50%"}
                           :mode "contained"
-                          :on-press stgs-events/db-settings-password-removed} (lstr "button.labels.removePassword")]] 
+                          :on-press stgs-events/db-settings-password-removed} (lstr "button.labels.removePassword")]]
             [rnp-divider {:bold true :style {:margin-top 5}}]])
 
          [rn-view {:style {:flexDirection "row"}}
@@ -192,7 +193,7 @@
    [key-file-credential @(stgs-events/db-settings-main)]
 
    (when-let [error-text (:in-sufficient-credentials @(stgs-events/db-settings-validation-errors))]
-     [rn-view {:style {:margin-top 20}} 
+     [rn-view {:style {:margin-top 20}}
       [rnp-helper-text {:style {:fontWeight "bold"}  :type "error" :visible true} error-text]])
    [rnp-portal
     [master-password-change-confirm-dialog]]])
@@ -296,279 +297,16 @@
 
 (defn main-content []
   [rn-view {:style {:flex 1}}
-   [db-settings-list-content]])
+   
+   [rn-view {:style {:flex .8}}
+    [db-settings-list-content]]
+   
+   [rn-view {:style {:flex .2}}
+    [rnp-text {:style {:textDecorationLine "underline"
+                       :text-align "center"}
+               :variant "titleMedium"
+               :onPress cmn-events/to-about-page} (lstr "appInfo")]]])
 
 (defn content []
   [rn-safe-area-view {:style {:flex 1 :backgroundColor @page-background-color}}
    [main-content]])
-
-#_(defn password-credential [{:keys [password-visible password-use-removed password-use-added]
-                              {:keys [password
-                                      password-used]} :data}]
-    (let [update-password #(stgs-events/db-settings-password-updated %)]
-      [rn-view {:style {:backgroundColor @page-background-color}}
-       [form-header "Password"]
-       [rn-view {:style form-style}
-        (cond
-
-        ;; password-use-removed
-        ;; [rn-view {:style {:margin-top 20 :margin-bottom 20 :align-items "center"}}
-        ;;  [rnp-text {:stryle {}} "No password will be used for the master key"]]
-
-        ;;
-          (or password-use-added (and password-used (not password-use-removed)))
-          [rn-view
-           (when-not password-use-added
-             [rn-view {:style {:margin-top 20 :margin-bottom 20 :align-items "center"}}
-              [rnp-button {:style {:width "50%"} ;;:labelStyle {:fontWeight "bold"}
-                           :mode "contained"
-                           :on-press stgs-events/db-settings-password-removed} "Remove password"]])
-
-           [rn-view {:style {:flexDirection "row"}}
-            [rn-view {:style {:width "85%"}}
-             [rnp-text-input {:style {}
-                              :label (if password-use-added "Add password" "Change Password")
-                              :value password
-                              :secureTextEntry (not password-visible)
-                              :right (r/as-element [rnp-text-input-icon
-                                                    {:icon  (if password-visible ICON-EYE ICON-EYE-OFF)
-                                                     :onPress #(stgs-events/db-settings-field-update
-                                                                :password-visible (not password-visible))}])
-                            ;; on-change-text is a single argument function
-                              :onChangeText update-password}]]
-
-            [rn-view {:style {:backgroundColor @page-background-color}}  ;;
-             [rnp-icon-button {:style {}
-                               :icon const/ICON-CACHED
-                             ;; This function is called when the generated passed is selected in Generator page
-                               :onPress #(pg-events/generate-password update-password)}]]]]
-
-        ;;
-          (not password-use-added)
-          [rn-view {:style {:margin-top 20 :margin-bottom 20 :align-items "center"}}
-           [rnp-button {:style {:width "50%"}
-                        :mode "contained"
-                        :on-press stgs-events/db-settings-password-added} "Add password"]
-           (when password-use-removed
-             [rnp-text {:style {:margin-top 10 :color @rnc/tertiary-color}} "The current password is removed and will not be used for the master key"])]
-
-
-          #_(and (not password-use-removed) (not password-use-added))
-          #_[rn-view {:style {:margin-top 20 :margin-bottom 20 :align-items "center"}}
-             [rnp-button {:style {:width "50%"}
-                          :mode "contained"
-                          :on-press stgs-events/db-settings-password-added} "Add password"]])]]))
-
-#_(defn credential-content []
-    (let [password (-> @(stgs-events/db-settings-data) :password)
-          password-visible @(stgs-events/master-password-visible?)
-          update-password #(stgs-events/db-settings-data-field-update :password (if (str/blank? %) nil %))
-          key-file-name-part (-> @(stgs-events/db-settings-data) :key-file-name-part)]
-      [rn-view {:style {:flex 1 :backgroundColor @page-background-color}} ;;
-       [form-header "Credentials"]
-       [rn-view {:style form-style}
-        [rn-view {:style {:flexDirection "row"}}
-         [rn-view {:style {:width "85%"}}
-          [rnp-text-input {:style {}
-                           :label "New Master Password"
-                           :value password
-                           :secureTextEntry (not password-visible)
-                           :right (r/as-element [rnp-text-input-icon
-                                                 {:icon  (if password-visible ICON-EYE ICON-EYE-OFF)
-                                                  :onPress #(stgs-events/db-settings-field-update
-                                                             :password-visible (not password-visible))}])
-                         ;; on-change-text is a single argument function
-                           :onChangeText update-password #_#(stgs-events/db-settings-data-field-update :password %)}]]
-
-         [rn-view {:style {:backgroundColor @page-background-color}}  ;;
-          [rnp-icon-button {:style {}
-                            :icon const/ICON-CACHED
-                           ;; This function is called when the generated passed is selected in Generator page
-                            :onPress #(pg-events/generate-password update-password)}]]]
-
-        (when key-file-name-part
-          [rnp-text-input {:style {:margin-top 10}
-                           :label "Key File"
-                           :defaultValue key-file-name-part
-                           :readOnly (if (is-iOS) true false)
-                           :onPressIn #(stgs-events/show-key-file-form)
-                           :onChangeText nil
-                           :placeholder "Pick an optional key file"
-                           :right (r/as-element [rnp-text-input-icon
-                                                 {:icon const/ICON-CLOSE
-                                                  :onPress (fn []
-                                                             (stgs-events/db-settings-data-field-update :key-file-name-part nil)
-                                                             (stgs-events/db-settings-data-field-update :key-file-name nil))}])}])
-        [rnp-text {:style {:margin-top 15
-                           :textDecorationLine "underline"
-                           :text-align "center"}
-                   :onPress #(stgs-events/show-key-file-form)} "Key File"]]
-
-       [rnp-portal
-        [master-password-change-confirm-dialog]]]))
-
-#_(defn credential-content []
-    (let [{:keys [password-visible password-use-removed password-use-added]
-           {:keys [password
-                   password-used
-                   password-changed
-                   key-file-name-part
-                   key-file-used
-                   key-file-changed]} :data}
-          @(stgs-events/db-settings-main)
-        ;; password-visible @(stgs-events/master-password-visible?)
-          update-password #(stgs-events/db-settings-data-field-update :password (if (str/blank? %) nil %))]
-
-      (println " password-use-removed is " password-use-removed)
-
-      [rn-view {:style {:flex 1 :backgroundColor @page-background-color}} ;;
-       [form-header "Credentials"]
-       [rn-view {:style form-style}
-
-        (if password-used
-          (when-not password-use-removed
-            [rn-view
-             [rn-view {:style {:margin-top 20 :margin-bottom 20 :align-items "center"}}
-              [rnp-button {:style {:width "50%"}
-                                                  ;;:labelStyle {:fontWeight "bold"}
-                           :mode "contained"
-                           :on-press #(stgs-events/db-settings-field-update :password-use-removed true)} "Remove password"]]
-
-             [rn-view {:style {:flexDirection "row"}}
-              [rn-view {:style {:width "85%"}}
-               [rnp-text-input {:style {}
-                                :label "New Master Password"
-                                :value password
-                                :secureTextEntry (not password-visible)
-                                :right (r/as-element [rnp-text-input-icon
-                                                      {:icon  (if password-visible ICON-EYE ICON-EYE-OFF)
-                                                       :onPress #(stgs-events/db-settings-field-update
-                                                                  :password-visible (not password-visible))}])
-                                                    ;; on-change-text is a single argument function
-                                :onChangeText update-password #_#(stgs-events/db-settings-data-field-update :password %)}]]
-
-              [rn-view {:style {:backgroundColor @page-background-color}}  ;;
-               [rnp-icon-button {:style {}
-                                 :icon const/ICON-CACHED
-                                                      ;; This function is called when the generated passed is selected in Generator page
-                                 :onPress #(pg-events/generate-password update-password)}]]]])
-
-
-          (if-not password-use-added
-            [rn-view {:style {:margin-top 20 :margin-bottom 20 :align-items "center"}}
-             [rnp-button {:style {:width "50%"}
-                          :mode "contained"
-                          :on-press #(stgs-events/db-settings-field-update :password-use-added true)} "Add password"]]
-
-            [rn-view {:style {:flexDirection "row"}}
-             [rn-view {:style {:width "85%"}}
-              [rnp-text-input {:style {}
-                               :label "New Master Password"
-                               :value password
-                               :secureTextEntry (not password-visible)
-                               :right (r/as-element [rnp-text-input-icon
-                                                     {:icon  (if password-visible ICON-EYE ICON-EYE-OFF)
-                                                      :onPress #(stgs-events/db-settings-field-update
-                                                                 :password-visible (not password-visible))}])
-                                                              ;; on-change-text is a single argument function
-                               :onChangeText update-password #_#(stgs-events/db-settings-data-field-update :password %)}]]
-
-             [rn-view {:style {:backgroundColor @page-background-color}}  ;;
-              [rnp-icon-button {:style {}
-                                :icon const/ICON-CACHED
-                                                                ;; This function is called when the generated passed is selected in Generator page
-                                :onPress #(pg-events/generate-password update-password)}]]]))
-
-
-        (when key-file-name-part
-          [rnp-text-input {:style {:margin-top 10}
-                           :label "Key File"
-                           :defaultValue key-file-name-part
-                           :readOnly (if (is-iOS) true false)
-                           :onPressIn #(stgs-events/show-key-file-form)
-                           :onChangeText nil
-                           :placeholder "Pick an optional key file"
-                           :right (r/as-element [rnp-text-input-icon
-                                                 {:icon const/ICON-CLOSE
-                                                  :onPress (fn []
-                                                             (stgs-events/db-settings-data-field-update :key-file-name-part nil)
-                                                             (stgs-events/db-settings-data-field-update :key-file-name nil))}])}])
-        [rnp-text {:style {:margin-top 15
-                           :textDecorationLine "underline"
-                           :text-align "center"}
-                   :onPress #(stgs-events/show-key-file-form)} "Key File"]]
-
-       [rnp-portal
-        [master-password-change-confirm-dialog]]]))
-
-#_(defn credential-content []
-    (let [{:keys [password-visible password-use-removed password-use-added]
-           {:keys [password
-                   password-used
-                   password-changed
-                   key-file-name-part
-                   key-file-used
-                   key-file-changed]} :data}
-          @(stgs-events/db-settings-main)
-          ;; password-visible @(stgs-events/master-password-visible?)
-          update-password #(stgs-events/db-settings-password-updated % #_(if (str/blank? %) nil %))]
-      [rn-view {:style {:flex 1 :backgroundColor @page-background-color}} ;;
-       [form-header "Credentials"]
-       [rn-view {:style form-style}
-        (cond
-          (or password-use-added (and password-used (not password-use-removed)))
-          [rn-view
-           (when-not password-use-added
-             [rn-view {:style {:margin-top 20 :margin-bottom 20 :align-items "center"}}
-              [rnp-button {:style {:width "50%"} ;;:labelStyle {:fontWeight "bold"}
-                           :mode "contained"
-                           :on-press stgs-events/db-settings-password-removed} "Remove password"]])
-
-
-           [rn-view {:style {:flexDirection "row"}}
-            [rn-view {:style {:width "85%"}}
-             [rnp-text-input {:style {}
-                              :label "New Master Password"
-                              :value password
-                              :secureTextEntry (not password-visible)
-                              :right (r/as-element [rnp-text-input-icon
-                                                    {:icon  (if password-visible ICON-EYE ICON-EYE-OFF)
-                                                     :onPress #(stgs-events/db-settings-field-update
-                                                                :password-visible (not password-visible))}])
-                                                                      ;; on-change-text is a single argument function
-                              :onChangeText update-password #_#(stgs-events/db-settings-data-field-update :password %)}]]
-
-            [rn-view {:style {:backgroundColor @page-background-color}}  ;;
-             [rnp-icon-button {:style {}
-                               :icon const/ICON-CACHED
-                                                                        ;; This function is called when the generated passed is selected in Generator page
-                               :onPress #(pg-events/generate-password update-password)}]]]]
-
-          (and (not password-use-removed) (not password-use-added))
-          [rnp-button {:style {:width "50%"}
-                       :mode "contained"
-                       :on-press stgs-events/db-settings-password-added} "Add password"])
-
-        (when key-file-name-part
-          [rnp-text-input {:style {:margin-top 10}
-                           :label "Key File"
-                           :defaultValue key-file-name-part
-                           :readOnly (if (is-iOS) true false)
-                           :onPressIn #(stgs-events/show-key-file-form)
-                           :onChangeText nil
-                           :placeholder "Pick an optional key file"
-                           :right (r/as-element [rnp-text-input-icon
-                                                 {:icon const/ICON-CLOSE
-                                                  :onPress (fn []
-                                                             (stgs-events/clear-key-file-field)
-                                                             #_(stgs-events/db-settings-data-field-update :key-file-name-part nil)
-                                                             #_(stgs-events/db-settings-data-field-update :key-file-name nil))}])}])
-
-        [rnp-text {:style {:margin-top 15
-                           :textDecorationLine "underline"
-                           :text-align "center"}
-                   :onPress #(stgs-events/show-key-file-form)} "Key File"]]
-
-       [rnp-portal
-        [master-password-change-confirm-dialog]]]))
-

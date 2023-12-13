@@ -2,31 +2,34 @@
   (:require
    [reagent.core :as r]
    [onekeepass.mobile.rn-components :as rnc :refer [lstr
-                                                    
+
                                                     icon-color
                                                     primary-container-color
                                                     page-background-color
-                                                    
+
                                                     rnp-button
                                                     rnp-fab
                                                     rnp-menu
                                                     rnp-menu-item
-                                                    rn-view 
+                                                    rn-view
                                                     rn-safe-area-view
-                                                    rn-section-list 
+                                                    rn-section-list
+
+                                                    rnp-bottom-navigation-bar
+                                                    rnp-icon-button
                                                     rnp-list-item
                                                     rnp-divider
-                                                    rnp-list-icon 
+                                                    rnp-list-icon
                                                     rnp-text
                                                     rnp-helper-text
                                                     cust-dialog
                                                     rnp-dialog-title
                                                     rnp-dialog-content
                                                     rnp-dialog-actions]]
-   [onekeepass.mobile.utils :as u :refer [contains-val?]]
-   [onekeepass.mobile.constants :as const]
-   [onekeepass.mobile.common-components :as cc :refer [select-field 
-                                                       confirm-dialog 
+   [onekeepass.mobile.background :refer [is-iOS is-Android]]
+   [onekeepass.mobile.constants :as const :refer [ICON-CHECKBOX-OUTLINE ICON-CHECKBOX-BLANK-OUTLINE]]
+   [onekeepass.mobile.common-components :as cc :refer [select-field
+                                                       confirm-dialog
                                                        menu-action-factory]]
    [onekeepass.mobile.icons-list :refer [icon-id->name]]
    [onekeepass.mobile.events.move-delete :as md-events]
@@ -45,6 +48,7 @@
          :selected-category-key selected-category-key
          :show true
          :x (-> event .-nativeEvent .-pageX) :y (-> event .-nativeEvent .-pageY)))
+
 ;; If we do not hide the menu explicitly, 
 ;; when entry form is canceled or closed, the appbar backaction onPress fails
 ;; This explicit hide fixes that issue
@@ -52,14 +56,14 @@
 (def fab-menu-action (menu-action-factory hide-fab-action-menu))
 
 (defn fab-action-menu [{:keys [show x y selected-category-key selected-category-detail]}]
-  [rnp-menu {:visible show :onDismiss hide-fab-action-menu :anchor (clj->js {:x x :y y})} 
+  [rnp-menu {:visible show :onDismiss hide-fab-action-menu :anchor (clj->js {:x x :y y})}
    [rnp-menu-item {:title (lstr "menu.labels.addEntry")
                    :onPress (fab-menu-action elist-events/add-entry)}]
    (when (= const/GROUP_SECTION_TITLE selected-category-key)
      [rnp-menu-item {:title (lstr "menu.labels.addGroup")
                      :onPress (fab-menu-action elist-events/add-group (:uuid selected-category-detail))}])])
 
-(def ^:private entry-long-press-menu-data (r/atom 
+(def ^:private entry-long-press-menu-data (r/atom
                                            {:show false :entry-summary nil :x 0 :y 0}))
 
 (defn hide-entry-long-press-menu []
@@ -71,7 +75,7 @@
          :entry-summary entry-summary
          :x (-> event .-nativeEvent .-pageX) :y (-> event .-nativeEvent .-pageY)))
 
-(def entry-long-press-menu-action (menu-action-factory hide-entry-long-press-menu)) 
+(def entry-long-press-menu-action (menu-action-factory hide-entry-long-press-menu))
 
 (defn entry-long-press-menu [{:keys [show x y entry-summary]}]
   (let [deleted-cat @(elist-events/deleted-category-showing)]
@@ -89,10 +93,10 @@
 
       [rnp-menu {:visible show :onDismiss hide-entry-long-press-menu :anchor (clj->js {:x x :y y})}
        [rnp-menu-item {:title (lstr "menu.labels.putback")
-                       :onPress (entry-long-press-menu-action 
+                       :onPress (entry-long-press-menu-action
                                  md-events/open-putback-dialog (:uuid entry-summary))}]
        [rnp-menu-item {:title (lstr "menu.labels.deletePermanently")
-                       :onPress (entry-long-press-menu-action 
+                       :onPress (entry-long-press-menu-action
                                  md-events/openn-delete-permanent-dialog (:uuid entry-summary))}]])))
 
 ;;; 
@@ -113,19 +117,57 @@
 (defn group-long-press-menu [{:keys [show x y category-detail]}]
   (let [group-uuid (:uuid category-detail)]
     [rnp-menu {:visible show :onDismiss hide-group-long-press-menu :anchor (clj->js {:x x :y y})}
-     [rnp-menu-item {:title (lstr "menu.labels.edit")  
+     [rnp-menu-item {:title (lstr "menu.labels.edit")
                      :onPress (group-long-press-menu-action elist-events/find-group-by-id group-uuid)}]
      [rnp-divider]
-     [rnp-menu-item {:title (lstr "menu.labels.addEntry") 
-                     :onPress (group-long-press-menu-action 
+     [rnp-menu-item {:title (lstr "menu.labels.addEntry")
+                     :onPress (group-long-press-menu-action
                                elist-events/add-entry-in-selected-group category-detail)}]
-     [rnp-menu-item {:title (lstr "menu.labels.addGroup") 
-                     :onPress (group-long-press-menu-action 
+     [rnp-menu-item {:title (lstr "menu.labels.addGroup")
+                     :onPress (group-long-press-menu-action
                                elist-events/add-group group-uuid)}]
      [rnp-divider]
-     [rnp-menu-item {:title (lstr "menu.labels.delete")  
-                     :onPress (group-long-press-menu-action 
+     [rnp-menu-item {:title (lstr "menu.labels.delete")
+                     :onPress (group-long-press-menu-action
                                cc/show-group-delete-confirm-dialog group-uuid)}]]))
+
+;;;; Sort menus
+(def ^:private sort-menu-data (r/atom {:show false :sort-criteria {:key-name const/TITLE :direction const/ASCENDING} :x 0 :y 0}))
+
+(defn hide-sort-menu []
+  (swap! sort-menu-data assoc :show false))
+
+(def sort-menu-action (menu-action-factory hide-sort-menu))
+
+(defn show-sort-menu [^js/PEvent event sort-criteria]
+  (swap! sort-menu-data assoc
+         :show true
+         :sort-criteria sort-criteria
+         :x (-> event .-nativeEvent .-pageX) :y (-> event .-nativeEvent .-pageY)))
+
+(defn sort-menus [{:keys [show x y]
+                   {:keys [key-name direction]} :sort-criteria}]
+  [rnp-menu {:visible show :onDismiss hide-sort-menu :anchor (clj->js {:x x :y y})}
+   [rnp-menu-item {:title const/TITLE
+                   :leadingIcon (if (= key-name const/TITLE) ICON-CHECKBOX-OUTLINE ICON-CHECKBOX-BLANK-OUTLINE)
+                   :onPress (sort-menu-action elist-events/entry-list-sort-key-changed const/TITLE)}]
+
+   [rnp-menu-item {:title const/MODIFIED_TIME
+                   :leadingIcon (if (= key-name const/MODIFIED_TIME) ICON-CHECKBOX-OUTLINE ICON-CHECKBOX-BLANK-OUTLINE)
+                   :onPress (sort-menu-action elist-events/entry-list-sort-key-changed const/MODIFIED_TIME)}]
+
+   [rnp-menu-item {:title const/CREATED_TIME
+                   :leadingIcon (if (= key-name const/CREATED_TIME) ICON-CHECKBOX-OUTLINE ICON-CHECKBOX-BLANK-OUTLINE)
+                   :onPress (sort-menu-action elist-events/entry-list-sort-key-changed const/CREATED_TIME)}]
+
+   [rnp-divider]
+   [rnp-menu-item {:title const/ASCENDING
+                   :leadingIcon (if (= direction const/ASCENDING) ICON-CHECKBOX-OUTLINE ICON-CHECKBOX-BLANK-OUTLINE)
+                   :onPress (sort-menu-action elist-events/entry-list-sort-direction-changed const/ASCENDING)}]
+
+   [rnp-menu-item {:title const/DESCENDING
+                   :leadingIcon (if (= direction const/DESCENDING) ICON-CHECKBOX-OUTLINE ICON-CHECKBOX-BLANK-OUTLINE)
+                   :onPress (sort-menu-action elist-events/entry-list-sort-direction-changed const/DESCENDING)}]])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -160,11 +202,11 @@
     (let [icon-name (icon-id->name icon-id)]
       [rnp-list-item {:onPress #(find-entry-by-id uuid)
                       :onLongPress (fn [e]
-                                      (show-entry-long-press-menu e entry-summary))
+                                     (show-entry-long-press-menu e entry-summary))
                       :title (r/as-element
                               [rnp-text {:variant "titleMedium"} title])
                       :description secondary-title
-                      :left (fn [_props] (r/as-element 
+                      :left (fn [_props] (r/as-element
                                           [rnp-list-icon {:icon icon-name
                                                           :color @icon-color
                                                           :style {:margin-left 5 :align-self "center"}}]))}])))
@@ -182,12 +224,12 @@
           items-count (+ entries-count groups-count)]
       [rnp-list-item {:onPress #(ecat-events/load-selected-category-entry-items category-detail-m category-key)
                       :onLongPress (fn [e]
-                                      (show-group-long-press-menu e category-detail-m))
+                                     (show-group-long-press-menu e category-detail-m))
                       :title (r/as-element
                               [rnp-text {:variant "titleMedium"} display-name])
-                      :left (fn [_props] (r/as-element 
+                      :left (fn [_props] (r/as-element
                                           [rnp-list-icon {:style {:height 20} :icon icon-name :color @icon-color}]))
-                      :right (fn [_props] (r/as-element 
+                      :right (fn [_props] (r/as-element
                                            [rnp-text {:variant "titleMedium"} items-count]))}])))
 
 (defn section-header [title]
@@ -214,9 +256,10 @@
                       :key "Entries"
                       :data entry-items}])]
 
-    [rn-section-list {:sections (clj->js sections)
-                      :renderItem (fn [props] 
-                                    ;; keys in props are (:item :index :section :separators)
+    [rn-section-list {:scrollEnabled false
+                      :sections (clj->js sections)
+                      :renderItem (fn [props]
+                                             ;; keys in props are (:item :index :section :separators)
                                     (let [props (js->clj props :keywordize-keys true)]
                                       (r/as-element (if (= "Groups" (-> props :section :key))
                                                       [subgroup-row-item (-> props :item) const/GROUP_SECTION_TITLE]
@@ -233,9 +276,9 @@
   [confirm-dialog (merge @(md-events/delete-permanent-dialog-data)
                          {:title "Delete permanently"
                           :confirm-text "Are you sure you want to delete this entry permanently?"
-                          :actions [{:label (lstr "button.labels.yes") 
+                          :actions [{:label (lstr "button.labels.yes")
                                      :on-press md-events/on-delete-permanent-dialog-ok}
-                                    {:label (lstr "button.labels.no") 
+                                    {:label (lstr "button.labels.no")
                                      :on-press md-events/hide-delete-permanent-dialog}]})])
 
 (def delete-all-entries-permanent-confirm (r/atom false))
@@ -254,9 +297,113 @@
                              {:label (lstr "button.labels.no")
                               :on-press #(reset! delete-all-entries-permanent-confirm false)}]}])
 
+(defn bottom-nav-bar 
+  "A functional reagent componnent that returns the custom bottom bar"
+  []
+  (fn []
+    (let [insets (rnc/use-safe-area-insets)
+          insets (js->clj insets :keywordize-keys true)
+          selected-category-key @(elist-events/selected-category-key)
+          selected-category-detail @(elist-events/selected-category-detail)
+          sort-criteria @(elist-events/entry-list-sort-criteria)]
+      [rn-view {:style {:width "100%"
+                        ;; Need to use the same background-color as the entry list content to make it opaque
+                        :background-color @page-background-color
+                        :padding-left 25
+                        :padding-right 25
+                        :borderTopWidth 1
+                        :borderTopColor  @rnc/outline-variant
+                        :min-height 50
+                        
+                        ;;:position "absolute"
+                        
+                        ;; In adndroid when we use absolute position, this bottom bar hides
+                        ;; the entries list content - particularly when the list has more entries
+                        ;; and even using the scroll does not work and it scrolls behind this component 
+                        
+                        ;; Not using absolute position works for both android in iOS
+                        
+                        :bottom (if (is-Android) (:bottom insets) 0)}}
+       
+       [rn-view {:flexDirection "row" :justifyContent "space-between"}
+        [rn-view {:align-items "center"}
+         [rnp-icon-button {:size 24
+                           :icon const/ICON-SORT
+                           :iconColor @rnc/on-error-container
+                           :onPress (fn [e]
+                                      (show-sort-menu e sort-criteria))}]
+         [rnp-text {:style {:margin-top -5}
+                    :text-align "center"} "Sort"]]
+
+        [rn-view {:align-items "center"}
+         [rnp-icon-button {:size 24
+                           :icon const/ICON-PLUS
+                           :iconColor @rnc/on-error-container
+                           :onPress (fn [e]
+                                      (show-fab-action-menu e selected-category-key selected-category-detail))}]
+         [rnp-text {:style {:margin-top -5}
+                    :text-align "center"} "Add"]]]])))
+
+(def idx (r/atom -1))
+
+(defn bottom-nav-bar1 []
+  (let [routes [{:key "sort" :title "Sort" :focusedIcon "heart" :unfocusedIcon "heart-outline"}
+                {:key "settings" :title "Settings" :focusedIcon "bell" :unfocusedIcon "bell-outline"}]
+
+        states {:index @idx
+                :routes routes}]
+
+    [rnp-bottom-navigation-bar {:safeAreaInsets {:bottom 0}
+                                :navigationState (clj->js states :keywordize-keys true)
+                                :onTabPress (fn [props]
+                                              (let [{:keys [route] :as p} (js->clj props :keywordize-keys true)
+                                                    _ (println "route is " route)
+                                                    {:keys [key preventDefault]} route]
+                                                (println "key is " key)
+                                                (println "p is " p)
+
+                                                (if (= key "sort")
+                                                  (reset! idx 0)
+                                                  (reset! idx 1)))
+                                              #_(println props))}]))
+
+(defn bottom-nav-bar2 []
+  (let [routes [{:key "sort" :title "Sort" :focusedIcon "heart" :unfocusedIcon "heart-outline"}
+                {:key "settings" :title "Settings" :focusedIcon "bell" :unfocusedIcon "bell-outline"}]
+
+        states {:index @idx
+                :routes routes}]
+
+    [rnp-bottom-navigation-bar {:safeAreaInsets {:bottom 0}
+                                :navigationState (clj->js states :keywordize-keys true)
+                                :onTabPress (fn [props]
+                                              (let [{:keys [route] :as p} (js->clj props :keywordize-keys true)
+                                                    _ (println "route is " route)
+                                                    {:keys [key preventDefault]} route]
+                                                (println "key is " key)
+                                                (println "p is " p)
+
+                                                (if (= key "sort")
+                                                  (reset! idx 0)
+                                                  (reset! idx 1)))
+                                              #_(println props))}]))
+
 (defn entry-list-content []
   [rn-safe-area-view {:style {:flex 1 :background-color @page-background-color}}
-   [main-content]
+
+   ;; When we use 'rn-scroll-view' and if main-content uses 'rn-section-list' we need to use ':scrollEnabled false' in rn-section-list
+   ;; Otherwise we may see error like 
+  ;; 'VirtualizedLists should never be nested inside plain ScrollViews with the same 
+  ;;  orientation because it can break windowing and other functionality - use another VirtualizedList-backed container instead'
+   
+   [rnc/rn-scroll-view {:style {} :contentContainerStyle {:flexGrow 1 :background-color @page-background-color}}
+    [main-content]]
+
+   [:f> bottom-nav-bar]
+   
+   #_[bottom-nav-bar1]
+   
+   [sort-menus @sort-menu-data]
    [fab-action-menu @fab-action-menu-data]
    [entry-long-press-menu @entry-long-press-menu-data]
    [group-long-press-menu @group-long-press-menu-data]
@@ -264,12 +411,13 @@
    [permanent-delete-dialog]
    [delete-all-entries-permanent-confirm-dialog]
    [cc/entry-delete-confirm-dialog elist-events/delete-entry]
-   [cc/group-delete-confirm-dialog elist-events/delete-group] 
-   (let [selected-category-key @(elist-events/selected-category-key)
-         selected-category-detail @(elist-events/selected-category-detail)]
-     (when (contains-val? [const/TYPE_SECTION_TITLE 
-                           const/GROUP_SECTION_TITLE 
-                           const/CAT_SECTION_TITLE] selected-category-key)
-       [rnp-fab {:style {:position "absolute" :margin 16 :right 0 :bottom 0} :icon const/ICON-PLUS
-                 :onPress (fn [e]
-                            (show-fab-action-menu e selected-category-key selected-category-detail))}]))])
+   [cc/group-delete-confirm-dialog elist-events/delete-group]
+
+   #_(let [selected-category-key @(elist-events/selected-category-key)
+           selected-category-detail @(elist-events/selected-category-detail)]
+       (when (contains-val? [const/TYPE_SECTION_TITLE
+                             const/GROUP_SECTION_TITLE
+                             const/CAT_SECTION_TITLE] selected-category-key)
+         [rnp-fab {:style {:position "absolute" :margin 16 :right 0 :bottom 0} :icon const/ICON-PLUS
+                   :onPress (fn [e]
+                              (show-fab-action-menu e selected-category-key selected-category-detail))}]))])

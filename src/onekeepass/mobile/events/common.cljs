@@ -418,12 +418,20 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  Page Navigation ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn to-home-page
-  "Called to naigate to the home page"
+  "Called to navigate to the home page"
   []
   (dispatch [:to-home-page]))
 
+(defn to-about-page
+  "Called to navigate to the about page"
+  []
+  (dispatch [:to-about-page]))
+
+(defn to-privacy-policy-page []
+  (dispatch [:to-privacy-policy-page]))
+
 (defn to-previous-page
-  "Called to go the previous page"
+  "Called to navigate to the previous page"
   []
   (dispatch [:common/previous-page]))
 
@@ -447,6 +455,16 @@
          ;; before or after the next-page is displayed
          [:dispatch [:load-app-preference]]
          [:dispatch [:common/next-page :home home-page-title]]]}))
+
+(reg-event-fx
+ :to-about-page
+ (fn [{:keys [db]} [_event-id]]
+   {:fx [[:dispatch [:common/next-page :about "page.titles.about"]]]}))
+
+(reg-event-fx
+ :to-privacy-policy-page
+ (fn [{:keys [db]} [_event-id]]
+   {:fx [[:dispatch [:common/next-page :privacy-policy "page.titles.privacyPolicy"]]]}))
 
 ;; Called when user navigates to the next page
 (reg-event-db
@@ -480,6 +498,9 @@
        {:page :home
         :title home-page-title}
        info))))
+
+
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  Icons ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -827,7 +848,13 @@
     (dispatch [:common/message-snackbar-open (str field-name " " "copied")])))
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;; Open URL ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn open-https-url [https-url]
+  (bg/open-https-url https-url  (fn [api-response]
+                                  (on-error api-response))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (comment
   (in-ns 'onekeepass.mobile.events.common)

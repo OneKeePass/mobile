@@ -32,6 +32,8 @@
             [onekeepass.mobile.key-file-form :as kf-form]
             [onekeepass.mobile.settings :as settings :refer [db-settings-form-content]]
 
+            [onekeepass.mobile.about :as about :refer [about-content privacy-policy-content]]
+
             [onekeepass.mobile.utils :as u]))
 
 (set! *warn-on-infer* true)
@@ -39,7 +41,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Used in Android mobiles
-(defn back-action 
+(defn back-action
   "Called when user presses the hardware or os provided back button 
    This is somewhat similar to the app back action - see inside appbar-header-content
    Returns 
@@ -56,15 +58,18 @@
       (elist-events/entry-list-back-action)
       true)
 
-    (or (= page :entry-history-list)
-        (= page :icons-list)
-        (= page :search)
-        (= page :settings)
-        (= page :key-file-form)
-        (= page :password-generator)
-        (= page :entry-category)
-        (= page :entry-form)
-        (= page :group-form))
+    (or
+     (= page :entry-category)
+     (= page :entry-form)
+     (= page :entry-history-list)
+     (= page :icons-list)
+     (= page :search)
+     (= page :password-generator)
+     (= page :group-form)
+     (= page :settings)
+     (= page :key-file-form)
+     (= page :about)
+     (= page :privacy-policy))
     (do
       (cmn-events/to-previous-page)
       true)
@@ -99,11 +104,11 @@
    (cond
      (= page :home)
      [:<>
-      [rnp-menu-item {:title (lstr "menu.labels.pwdGenerator")
-                      :onPress (header-menu-action pg-events/generate-password)}]
+      [rnp-menu-item {:title (lstr "menu.labels.about")
+                      :onPress (header-menu-action cmn-events/to-about-page)}]
       [cust-rnp-divider]
-      [rnp-menu-item {:title (lstr "menu.labels.settings")
-                      :onPress #()}]]
+      [rnp-menu-item {:title (lstr "menu.labels.privacyPolicy")
+                      :onPress (header-menu-action cmn-events/to-privacy-policy-page)}]]
 
      (and (= page :entry-list) @(elist-events/deleted-category-showing))
      (let [items @(elist-events/selected-entry-items)]
@@ -202,6 +207,8 @@
 (defn- appbar-title [{:keys [page title]}]
   (cond
     (or (= page :home)
+        (= page :about)
+        (= page :privacy-policy)
         (= page :entry-history-list)
         (= page :search)
         (= page :icons-list)
@@ -230,11 +237,11 @@
     [positioned-title :page page]
     #_[rnp-appbar-content {:style appbar-content-style :title (r/as-element [pg/appbar-title])}]))
 
-(defn appbar-header-content [page-info] 
+(defn appbar-header-content [page-info]
   (let [{:keys [page]} page-info]
-    
+
     (reset! current-page-info page-info)
-    
+
     ;; AppbarHeader contains three components : BackAction, AppbarContent(which has title), AppbarAction menus
     [rnp-appbar-header {:style {:backgroundColor @primary-color}}
 
@@ -245,25 +252,30 @@
                                 :color @background-color
                                 :onPress (fn [] (elist-events/entry-list-back-action))}]
 
-       (or (= page :entry-history-list)
-           (= page :icons-list)
-           (= page :search)
-           (= page :settings)
-           (= page :key-file-form))
+       (or
+        (= page :about)
+        (= page :privacy-policy)
+        (= page :entry-history-list)
+        (= page :icons-list)
+        (= page :search)
+        (= page :settings)
+        (= page :key-file-form))
        [rnp-appbar-back-action {:color @background-color
                                 :onPress cmn-events/to-previous-page}])
 
    ;; Title component
      (appbar-title page-info) ;; [appbar-titlet m] does not work
-     
+
    ;; The right side action icons component (dots icon, search icon .. ) and are shown for certain pages only
-     (when (or (= page :entry-category)
-               (= page :entry-list)
-               (and (= page :entry-form) (not @(ef-events/deleted-category-showing))) ;; Do not show in deleted entry form 
-               (= page :entry-history-list))
+     (when (or
+            (= page :home)
+            (= page :entry-category)
+            (= page :entry-list)
+            (and (= page :entry-form) (not @(ef-events/deleted-category-showing))) ;; Do not show in deleted entry form 
+            (= page :entry-history-list))
        [:<>
         [header-menu @header-menu-data page-info]
-        (when-not (or (= page :entry-form) (= page :entry-history-list))
+        (when-not (or (= page :home) (= page :entry-form) (= page :entry-history-list))
           [rnp-appbar-action {:style {:backgroundColor @primary-color
                                     ;;:position "absolute" :right 50
                                       :margin-right -9}
@@ -316,7 +328,13 @@
 
     (u/contains-val? [:settings-general :settings-credentials
                       :settings-security :settings-encryption :settings-kdf] page)
-    (db-settings-form-content page)))
+    (db-settings-form-content page)
+
+    (= page :about)
+    [about-content]
+
+    (= page :privacy-policy)
+    [privacy-policy-content]))
 
 (defn appbar-main-content
   "App bar header and the body combined"

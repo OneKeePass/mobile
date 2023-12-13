@@ -30,6 +30,11 @@
 ;; Use (.open file-viewer "full file path")
 (def file-viewer ^js/FileViewer (.-default ^js/NFileViewer native-file-viewer))
 
+;; This is React Native standard Linking component which is a native module
+;; See https://reactnative.dev/docs/0.72/linking
+;; We can use '(js/Object.entries rn-native-linking)' to see all methods and props
+(def rn-native-linking ^js/RNLinking rn/Linking)
+
 ;; TODO: Need to replace all places where DOCUMENT_PICKER_CANCELED checks are used with this fn
 (defn document-pick-cancelled [error-m]
   (= "DOCUMENT_PICKER_CANCELED" (:code error-m)))
@@ -146,6 +151,15 @@
     :or {convert-request true convert-response true}}]
   (call-api-async (fn [] (.invokeCommand okp-db-service name (api-args->json api-args convert-request)))
                   dispatch-fn :convert-response convert-response :convert-response-fn convert-response-fn))
+
+(defn open-https-url 
+  "Called to open a valid web url using the built-in browser
+   It is assumed the arg 'https-url' is a valid https url and no validation is done here for this
+   "
+  [https-url dispatch-fn] 
+  ;; .openURL returns a promise and it is resolved in call-api-async
+  (call-api-async 
+   (fn [] (.openURL rn-native-linking https-url)) dispatch-fn :no-response-conversion true))
 
 (defn view-file
   "Called to view any file using the native file viewer"
@@ -357,6 +371,11 @@
 
 (defn categories-to-show [db-key dispatch-fn]
   (invoke-api "categories_to_show" {:db-key db-key} dispatch-fn))
+
+(defn combined-category-details
+  [db-key grouping-kind dispatch-fn]
+  (invoke-api "combined_category_details" {:db-key db-key
+                                           :grouping-kind grouping-kind} dispatch-fn))
 
 (defn transform-request-entry-category
   "Called to convert entry-category to the deserilaizable format expected as in EnteryCategory"

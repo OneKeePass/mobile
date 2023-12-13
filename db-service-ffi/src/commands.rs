@@ -4,7 +4,7 @@ use crate::{open_backup_file, util, OkpError, OkpResult, };
 use onekeepass_core::db_content::AttachmentHashValue;
 use onekeepass_core::db_service::{
     self, DbSettings, EntryCategory, EntryFormData, Group, KdbxLoaded, NewDatabase,
-    PasswordGenerationOptions,
+    PasswordGenerationOptions, EntryCategoryGrouping,
 };
 
 use std::fmt::format;
@@ -66,6 +66,10 @@ pub enum CommandArg {
     EntrySummaryArg {
         db_key: String,
         entry_category: EntryCategory,
+    },
+    CategoryDetailArg {
+        db_key: String,
+        grouping_kind:EntryCategoryGrouping,
     },
     // Should come before DbKeyWithUUIDArg
     MoveArg {
@@ -178,6 +182,10 @@ impl Commands {
 
             "close_kdbx" => db_service_call!(args, DbKey{db_key} => close_kdbx(&db_key)),
 
+            "combined_category_details" => {
+                db_service_call! (args, CategoryDetailArg{db_key,grouping_kind} => combined_category_details(&db_key,grouping_kind)) 
+            }
+
             "categories_to_show" => {
                 db_service_call! (args, DbKey{db_key} => categories_to_show(&db_key))
             }
@@ -282,7 +290,7 @@ impl Commands {
                 db_service_call! (args, PasswordGeneratorArg{password_options} => analyzed_password(password_options))
             }
 
-             "save_attachment_as_temp_file"  => {
+            "save_attachment_as_temp_file"  => {
                  service_call! (args, AttachmentArg{db_key,name,data_hash_str} => Self save_attachment_as_temp_file(&db_key,&name,&data_hash_str))
             }
 

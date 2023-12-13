@@ -4,7 +4,9 @@
         "title": "i18next is Great!",
         "description": "Everyone understands me!"
     },
+    "about":"About",
     "additionalProtection":"Additional Protection",
+    "appInfo":"App Info",
     "attachmentAdded":"Attachment added",
     "attachmentDeleted":"Attachment deleted",
     "attachmentRenamed":"Attachment renamed",
@@ -18,6 +20,7 @@
     "notes":"Notes",
     "categoryMarked":"Marked as category",
     "masterPassword":"Master Password",
+    "privacyPolicy":"Privacy Policy",
     "dialog": {
         "titles": {
             "historyDelete": "Delete history entry",
@@ -49,6 +52,7 @@
     },
 
     "page.titles": {
+        "about":"About",
         "category": "Category",
         "entry": "Entry",
         "generator": "Generator",
@@ -61,6 +65,7 @@
         "historyEntries": "History Entries",
         "newCategory": "New Category",
         "newGroup": "New Group",
+        "privacyPolicy":"Privacy Policy",
         "search": "Search",
         "settings": "Settings"
     },
@@ -85,6 +90,7 @@
         
     },
     "menu.labels": {
+        "about": "About",
         "addEntry": "Add Entry",
         "addGroup": "Add Group",
         "addCategory": "Add Category",
@@ -106,6 +112,7 @@
         "history": "History",
         "lockdb": "Lock Database",
         "modifyCustomField": "Modify Custom Field",
+        "privacyPolicy":"Privacy Policy",
         "pwdGenerator": "Password Generator",
         "putback": "Put Back",
         "remove": "Remove",
@@ -114,6 +121,7 @@
         "saveAs":"Save As",
         "select": "Select",
         "settings": "Settings",
+        "tags": "Tags",
         "types": "Types",
         "unlockdb":"Unlock Database",
         "view": "View"
