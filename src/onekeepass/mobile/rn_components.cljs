@@ -56,7 +56,7 @@
                        Button
                        SafeAreaView
                        FlatList
-                       KeyboardAvoidingView
+                       KeyboardAvoidingView 
                        Pressable
                        TouchableWithoutFeedback
                        TouchableHighlight

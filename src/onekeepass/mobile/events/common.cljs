@@ -424,7 +424,7 @@
 
 (defn to-about-page
   "Called to navigate to the about page"
-  [] 
+  []
   (dispatch [:to-about-page]))
 
 (defn to-privacy-policy-page []
@@ -848,7 +848,13 @@
     (dispatch [:common/message-snackbar-open (str field-name " " "copied")])))
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;; Open URL ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn open-https-url [https-url]
+  (bg/open-https-url https-url  (fn [api-response]
+                                  (on-error api-response))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (comment
   (in-ns 'onekeepass.mobile.events.common)

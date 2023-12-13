@@ -2,7 +2,18 @@
   (:require [reagent.core :as r]
             [onekeepass.mobile.rn-components :as rnc :refer [rn-safe-area-view
                                                              rn-view
-                                                             rnp-text]]))
+                                                             rnp-text]]
+            [onekeepass.mobile.events.common :as cmn-events]))
+
+(defn link-text [url & opts]
+  [rnp-text {:style (merge {:margin-left 5
+                            :textDecorationLine "underline"
+                            :color @rnc/primary-color} opts)
+             :onPress #(cmn-events/open-https-url url)}
+   url])
+
+(defn privacy-link []
+  [link-text "https://onekeepass.github.io/privacy"])
 
 (defn privacy-policy-content []
   [rn-safe-area-view {:style {:flex 1 :background-color @rnc/page-background-color}}
@@ -21,8 +32,7 @@
       [rnp-text {:style {:margin-left 5}}
        "Please visit"]
 
-      [rnp-text {:style {:margin-left 5 :color @rnc/primary-color}}
-       "https://onekeepass.github.io/privacy"]
+      [privacy-link]
 
       [rnp-text {:style {:margin-left 5}}
        "to see for details"]]]]])
@@ -44,8 +54,8 @@
                 :variant "titleSmall"} "Support"]]
 
    [rn-view {:style {:margin-top 10 :justify-content "center" :align-items "center"}}
-    [rnp-text "https://github.com/OneKeePass/mobile/issues"]
-    [rnp-text {:style {:margin-top 5}} "https://onekeepass.github.io/"]
+    [link-text "https://github.com/OneKeePass/mobile/issues"]
+    [link-text "https://onekeepass.github.io/"]
     [rnp-text "onekeepass@gmail.com"]]
 
    [rn-view {:style {:margin-top 30
@@ -63,8 +73,7 @@
       [rnp-text {:style {:margin-left 5}}
        "Please visit"]
 
-      [rnp-text {:style {:margin-left 5 :color @rnc/primary-color}}
-       "https://onekeepass.github.io/privacy"]
+      [privacy-link]
 
       [rnp-text {:style {:margin-left 5}}
        "to see for details"]]]]])

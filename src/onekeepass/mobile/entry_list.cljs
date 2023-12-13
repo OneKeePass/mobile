@@ -321,9 +321,9 @@
                         ;; the entries list content - particularly when the list has more entries
                         ;; and even using the scroll does not work and it scrolls behind this component 
                         
-                        ;; Not using absolute position works for android (need checking iOS)
+                        ;; Not using absolute position works for both android in iOS
                         
-                        :bottom (if (is-Android) (:bottom insets) 15)}}
+                        :bottom (if (is-Android) (:bottom insets) 0)}}
        
        [rn-view {:flexDirection "row" :justifyContent "space-between"}
         [rn-view {:align-items "center"}
@@ -398,7 +398,6 @@
    
    [rnc/rn-scroll-view {:style {} :contentContainerStyle {:flexGrow 1 :background-color @page-background-color}}
     [main-content]]
-
 
    [:f> bottom-nav-bar]
    

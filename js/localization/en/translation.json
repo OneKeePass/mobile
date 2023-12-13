@@ -4,7 +4,9 @@
         "title": "i18next is Great!",
         "description": "Everyone understands me!"
     },
+    "about":"About",
     "additionalProtection":"Additional Protection",
+    "appInfo":"App Info",
     "attachmentAdded":"Attachment added",
     "attachmentDeleted":"Attachment deleted",
     "attachmentRenamed":"Attachment renamed",
@@ -18,6 +20,7 @@
     "notes":"Notes",
     "categoryMarked":"Marked as category",
     "masterPassword":"Master Password",
+    "privacyPolicy":"Privacy Policy",
     "dialog": {
         "titles": {
             "historyDelete": "Delete history entry",
