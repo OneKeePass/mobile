@@ -1091,7 +1091,9 @@ PODS:
     - React-Core
   - RNFileViewer (2.1.5):
     - React-Core
-  - RNGestureHandler (2.12.1):
+  - RNGestureHandler (2.14.1):
+    - glog
+    - RCT-Folly (= 2022.05.16.00)
     - React-Core
   - RNReanimated (3.6.1):
     - glog
@@ -1383,7 +1385,7 @@ SPEC CHECKSUMS:
   RNDateTimePicker: 65e1d202799460b286ff5e741d8baf54695e8abd
   RNDeviceInfo: 475a4c447168d0ad4c807e48ef5e0963a0f4eb1b
   RNFileViewer: ce7ca3ac370e18554d35d6355cffd7c30437c592
-  RNGestureHandler: c0d04458598fcb26052494ae23dda8f8f5162b13
+  RNGestureHandler: 25b969a1ffc806b9f9ad2e170d4a3b049c6af85e
   RNReanimated: 57f436e7aa3d277fbfed05e003230b43428157c0
   SocketRocket: f32cd54efbe0f095c4d7594881e52619cfe80b17
   Yoga: 2b33a7ac96c58cdaa7b810948fc6a2a76ed2d108
