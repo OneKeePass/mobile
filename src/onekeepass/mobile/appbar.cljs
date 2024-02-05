@@ -321,7 +321,7 @@
     (icons-list/content)
 
     (= page :settings)
-    (settings/content)
+    [settings/content]
 
     (= page :key-file-form)
     (kf-form/content)
@@ -336,9 +336,25 @@
     (= page :privacy-policy)
     [privacy-policy-content]))
 
+#_(defn appbar-main-content
+    "App bar header and the body combined"
+    []
+    [:<>
+     [appbar-header-content @(cmn-events/page-info)]
+     [appbar-body-content @(cmn-events/page-info)]])
+
+
+
 (defn appbar-main-content
   "App bar header and the body combined"
   []
-  [:<>
-   [appbar-header-content @(cmn-events/page-info)]
-   [appbar-body-content @(cmn-events/page-info)]])
+  (let [handler-fns-m {:onStartShouldSetPanResponderCapture (fn []
+                                                              #_(println "New capture is called")
+                                                              (cmn-events/user-action-detected)
+                                                              false)}
+
+        pan-handlers-m (-> (rnc/create-pan-responder handler-fns-m)
+                           (js->clj :keywordize-keys true) :panHandlers)]
+    [rnc/rn-view (merge {:style {:flex 1}} pan-handlers-m #_(-> (js->clj rnc/test-pr :keywordize-keys true) :panHandlers))
+     [appbar-header-content @(cmn-events/page-info)]
+     [appbar-body-content @(cmn-events/page-info)]]))

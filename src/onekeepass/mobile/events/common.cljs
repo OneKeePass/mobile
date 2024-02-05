@@ -2,7 +2,7 @@
   "All common events that are used across many pages"
   (:require
    [clojure.string :as str]
-   [cljs.core.async :refer [go timeout <!]]
+   [cljs.core.async :refer [go go-loop timeout <!]]
    [re-frame.core :refer [reg-event-db
                           reg-event-fx
                           reg-fx
@@ -10,7 +10,7 @@
                           dispatch
                           dispatch-sync
                           subscribe]]
-   [onekeepass.mobile.utils :as u :refer [tags->vec]]
+   [onekeepass.mobile.utils :as u :refer [tags->vec str->int]]
    [onekeepass.mobile.background :as bg]))
 
 (def home-page-title "page.titles.home")
@@ -117,13 +117,14 @@
         app-db (assoc app-db :opened-db-list dbs)]
     (-> app-db
         (assoc :current-db-file-name db-key)
-         ;; opened-db-list is a vec of map with keys :db-key :database-name
+         ;; opened-db-list is a vec of map with keys [db-key database-name file-name user-action-time]
          ;; :database-name is different from :file-name found in the the map Preference -> RecentlyUsed
          ;; See ':recently-used' subscription 
          ;; The latest opened db is last in the vector
         (update-in [:opened-db-list] conj {:db-key db-key
                                            :database-name database-name
                                            :file-name file-name
+                                           :user-action-time (js/Date.now)
                                            ;;:database-name (:database-name meta)
                                            }))))
 
@@ -387,6 +388,14 @@
     :fx [#_[:bg-lock-kdbx [(active-db-key db)]]
          [:dispatch [:to-home-page]]
          [:dispatch [:common/message-snackbar-open "Database locked"]]]}))
+
+(reg-event-fx
+ :lock-on-session-timeout
+ (fn [{:keys [db]} [_event-id db-key]]
+   (let [curr-dbkey  (:current-db-file-name db)]
+     {:db (assoc-in-selected-db db db-key [:locked] true)
+      :fx [(when (= curr-dbkey db-key)
+             [:dispatch [:to-home-page]])]})))
 
 ;; Need to make use of API call in case we want to do something for lock call
 ;; Currently nothing is done on the backend
@@ -854,8 +863,74 @@
   (bg/open-https-url https-url  (fn [api-response]
                                   (on-error api-response))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  Session timeout ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defn user-action-detected []
+  (dispatch [:user-action-detected]))
+
+(def db-session-timeout "Timeout in milliseconds" (atom 60000))
+
+(defn set-db-session-timeout
+  "Called to set a new timeout to use"
+  [time-in-seconds]
+  (let [in-timeout (str->int time-in-seconds)
+        in-timeout (if (nil? in-timeout) 10 in-timeout)
+        in-timeout (* in-timeout 1000)]
+    (reset! db-session-timeout in-timeout)))
+
+;; This is used during dev time to stop the tick loop
+;; Call (reset! continue-tick false) in repl
+(def continue-tick (atom true))
+
+;;The static Date.now() method returns the number of milliseconds elapsed since January 1, 1970 00:00:00 UTC
+
+(defn init-session-timeout-tick
+  "Needs to be called once to start the periodic ticking which is required for session timeout
+  Called in the main init function
+  "
+  []
+  (go-loop []
+    ;; Every 30 sec, we send the tick
+    (<! (timeout 5000))
+    (dispatch [:check-db-list-to-lock (js/Date.now)])
+    (when @continue-tick
+      (recur))))
+
+;; Called whenever user clicks on any of the content page of the current opened db
+(reg-event-fx
+ :user-action-detected
+ (fn [{:keys [db]} []]
+   (let [db-key (active-db-key db)
+         ;; Updates the user active time for the current active database
+         dbs (mapv (fn [m]
+                     (if (= db-key (:db-key m))
+                       (assoc m :user-action-time (js/Date.now))
+                       m))
+                   (:opened-db-list db))]
+     {:db (-> db (assoc-in [:opened-db-list] dbs))})))
+
+;; Locks all openned dbs whose last actions exceeds the timeout duration
+;; Called periodically in the go loop
+(reg-event-fx
+ :check-db-list-to-lock
+ (fn [{:keys [db]} [_event-id tick]]
+   ;; (:opened-db-list db) returns a vec of maps with keys [db-key database-name file-name user-action-time]
+   (let [_db (reduce (fn [db {:keys [db-key user-action-time database-name]}]
+                       (let [locked? (-> db (get db-key) :locked)]
+                        ;; If the user is not active for more than db-session-timeout time, the screen is locked
+                        ;; Lock all dbs that are timed out that are not yet locked 
+                        ;; 2 min = 120000 milli seconds , 5 min = 300000 
+                         (if  (and (not locked?)
+                                   (> (- tick user-action-time) @db-session-timeout))
+                           (do
+                             (println "Locking database.. " database-name)
+                             (dispatch [:lock-on-session-timeout db-key])
+                             db)
+                           db)))
+                     db (:opened-db-list db))]
+     {})))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (comment
   (in-ns 'onekeepass.mobile.events.common)
 
