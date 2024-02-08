@@ -400,6 +400,7 @@
     :fx [[:dispatch [:open-database-dialog-hide]]
          [:dispatch [:common/unlock-selected-db (:db-key kdbx-loaded)]]
          [:dispatch [:common/set-active-db-key (:db-key kdbx-loaded)]]
+         [:dispatch [:app-settings/update-user-active-time (:db-key kdbx-loaded)]]
          [:dispatch [:common/message-snackbar-open "Database unlocked"]]]}))
 
 (comment

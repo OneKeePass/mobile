@@ -13,6 +13,7 @@
                                                              rnp-appbar-content
                                                              rnp-appbar-action
                                                              rnp-appbar-back-action]]
+            [onekeepass.mobile.events.app-settings :as as-events]
             [onekeepass.mobile.events.common :as cmn-events]
             [onekeepass.mobile.events.entry-list :as elist-events]
             [onekeepass.mobile.events.entry-form :as ef-events]
@@ -30,6 +31,7 @@
             [onekeepass.mobile.icons-list :as icons-list]
             [onekeepass.mobile.password-generator :as pg]
             [onekeepass.mobile.key-file-form :as kf-form]
+            [onekeepass.mobile.app-settings :as app-settings]
             [onekeepass.mobile.settings :as settings :refer [db-settings-form-content]]
 
             [onekeepass.mobile.about :as about :refer [about-content privacy-policy-content]]
@@ -67,6 +69,7 @@
      (= page :password-generator)
      (= page :group-form)
      (= page :settings)
+     (= page :app-settings)
      (= page :key-file-form)
      (= page :about)
      (= page :privacy-policy))
@@ -104,9 +107,11 @@
    (cond
      (= page :home)
      [:<>
+      [rnp-menu-item {:title (lstr "menu.labels.appSettings")
+                      :onPress (header-menu-action as-events/to-app-settings-page)}]
+      #_[cust-rnp-divider]
       [rnp-menu-item {:title (lstr "menu.labels.about")
-                      :onPress (header-menu-action cmn-events/to-about-page)}]
-      [cust-rnp-divider]
+                      :onPress (header-menu-action cmn-events/to-about-page)}] 
       [rnp-menu-item {:title (lstr "menu.labels.privacyPolicy")
                       :onPress (header-menu-action cmn-events/to-privacy-policy-page)}]]
 
@@ -198,6 +203,9 @@
                                  (is-settings-page page)
                                  (r/as-element [settings/appbar-title page])
 
+                                 (= page :app-settings)
+                                 (r/as-element [app-settings/appbar-title])
+
                                  (string? title)
                                  (lstr title)
 
@@ -213,6 +221,7 @@
         (= page :search)
         (= page :icons-list)
         (= page :settings)
+        (= page :app-settings)
         (= page :key-file-form))
     [positioned-title :title title]
     #_[rnp-appbar-content {:style appbar-content-style :color background-color :title (lstr title)}]
@@ -225,6 +234,9 @@
 
     (is-settings-page page)
     [positioned-title :page page]
+
+    ;; (= page :app-settings)
+    ;; [positioned-title :page page]
 
     (= page :group-form)
     [positioned-title :page page :title title]
@@ -259,12 +271,13 @@
         (= page :icons-list)
         (= page :search)
         (= page :settings)
+        (= page :app-settings)
         (= page :key-file-form))
        [rnp-appbar-back-action {:color @background-color
                                 :onPress cmn-events/to-previous-page}])
 
-   ;; Title component
-     (appbar-title page-info) ;; [appbar-titlet m] does not work
+   ;; Title component 
+     (appbar-title page-info) ;; [appbar-titlet page-info] did not work. Why?
 
    ;; The right side action icons component (dots icon, search icon .. ) and are shown for certain pages only
      (when (or
@@ -309,19 +322,22 @@
     (group-form/content)
 
     (= page :entry-form)
-    (entry-form/content)
+    [entry-form/content]
 
     (= page :search)
-    (search/content)
+    [search/content]
 
     (= page :password-generator)
-    (pg/content)
+    [pg/content]
 
     (= page :icons-list)
-    (icons-list/content)
+    [icons-list/content]
 
     (= page :settings)
     [settings/content]
+
+    (= page :app-settings)
+    [app-settings/content]
 
     (= page :key-file-form)
     (kf-form/content)
@@ -350,7 +366,7 @@
   []
   (let [handler-fns-m {:onStartShouldSetPanResponderCapture (fn []
                                                               #_(println "New capture is called")
-                                                              (cmn-events/user-action-detected)
+                                                              (as-events/user-action-detected)
                                                               false)}
 
         pan-handlers-m (-> (rnc/create-pan-responder handler-fns-m)

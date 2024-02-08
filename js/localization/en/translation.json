@@ -10,8 +10,11 @@
     "attachmentAdded":"Attachment added",
     "attachmentDeleted":"Attachment deleted",
     "attachmentRenamed":"Attachment renamed",
+    "clipboardTimeout":"Clipboard Timeout",
     "databases":"Databases",
     "databaseFile":"Database File",
+    "dataProtection":"Data Protection",
+    "dbTimeout":"Database Timeout",
     "description":"Description",
     "importedKeyFiles":"Imported Key Files",
     "keyFile":"Key File",
@@ -53,6 +56,7 @@
 
     "page.titles": {
         "about":"About",
+        "appSettings":"App Settings",
         "category": "Category",
         "entry": "Entry",
         "generator": "Generator",
@@ -95,6 +99,7 @@
         "addGroup": "Add Group",
         "addCategory": "Add Category",
         "addCustomField": "Add Custom Field",
+        "appSettings":"App Settings",
         "categories": "Categories",
         "changename": "Change Name",
         "closedb": "Close Database",
