@@ -340,7 +340,9 @@
             ;; Set the biometric availablity info in db so that we can use it in a subscription
             (assoc :biometric-available (bg/is-biometric-available))
             (assoc-in [:app-preference :status] :loaded)
-            (assoc-in [:app-preference :data] pref))}))
+            (assoc-in [:app-preference :data] pref))
+    :fx [[:dispatch [:app-settings/app-preference-loaded]]]
+    }))
 
 (reg-sub
  :recently-used

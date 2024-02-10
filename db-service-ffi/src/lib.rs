@@ -129,7 +129,7 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
     } = serde_json::from_str(json_args)?
     else {
         return Err(OkpError::Other(format!(
-            "Unexpected argument {:?} for readkdbx api call",
+            "Argument 'json_args' {:?} parsing failed for readkdbx api call",
             json_args
         )));
     };

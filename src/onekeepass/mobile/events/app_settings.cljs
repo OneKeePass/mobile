@@ -1,9 +1,10 @@
 (ns onekeepass.mobile.events.app-settings
   (:require
-   [cljs.core.async :refer [go go-loop timeout <!]]
-   [re-frame.core :refer [reg-event-db reg-event-fx reg-fx reg-sub dispatch subscribe]]
-   [onekeepass.mobile.events.common :refer [set-clipboard-session-timeout
-                                            active-db-key]] 
+   [cljs.core.async :refer [go-loop timeout <!]]
+   [re-frame.core :refer [reg-event-fx reg-fx reg-sub dispatch subscribe]]
+   [onekeepass.mobile.events.common :as cmn-events :refer [on-error
+                                                           set-clipboard-session-timeout
+                                                           active-db-key]]
    [onekeepass.mobile.utils  :refer [str->int]]
    [onekeepass.mobile.background :as bg]))
 
@@ -16,12 +17,12 @@
 (def db-session-timeout "Timeout in milliseconds" (atom 15000))
 
 #_(defn set-db-session-timeout
-  "Called to set a new timeout to use"
-  [time-in-seconds]
-  (let [in-timeout (str->int time-in-seconds)
-        in-timeout (if (nil? in-timeout) 10 in-timeout)
-        in-timeout (* in-timeout 1000)]
-    (reset! db-session-timeout in-timeout)))
+    "Called to set a new timeout to use"
+    [time-in-seconds]
+    (let [in-timeout (str->int time-in-seconds)
+          in-timeout (if (nil? in-timeout) 10 in-timeout)
+          in-timeout (* in-timeout 1000)]
+      (reset! db-session-timeout in-timeout)))
 
 (defn set-db-session-timeout
   "Called to set a new timeout to use"
@@ -81,23 +82,23 @@
 (reg-event-fx
  :check-db-list-to-lock
  (fn [{:keys [db]} [_event-id tick]]
-   ;; (:opened-db-list db) returns a vec of maps with keys [db-key database-name file-name user-action-time]
-   (let [_db (reduce (fn [db {:keys [db-key user-action-time database-name]}]
-                       (let [locked? (-> db (get db-key) :locked)]
+   (if-not (= -1 @db-session-timeout)
+     ;; (:opened-db-list db) returns a vec of maps with keys [db-key database-name file-name user-action-time]
+     (let [_db (reduce (fn [db {:keys [db-key user-action-time _database-name]}]
+                         (let [locked? (-> db (get db-key) :locked)]
                         ;; If the user is not active for more than db-session-timeout time, the screen is locked
                         ;; Lock all dbs that are timed out that are not yet locked 
                         ;; 2 min = 120000 milli seconds , 5 min = 300000 
-                         (if  (and (not locked?)
-                                   (> (- tick user-action-time) @db-session-timeout))
-                           (do
-                             (println "Locking database.. " database-name)
-                             (dispatch [:lock-on-session-timeout db-key])
-                             db)
-                           db)))
-                     db (:opened-db-list db))]
+                           (if  (and (not locked?)
+                                     (> (- tick user-action-time) @db-session-timeout))
+                             (do
+                               #_(println "Locking database.. " database-name)
+                               (dispatch [:lock-on-session-timeout db-key])
+                               db)
+                             db)))
+                       db (:opened-db-list db))]
+       {})
      {})))
-
-
 
 ;;;;;;;;;;;;;;; 
 
@@ -113,7 +114,7 @@
 (defn update-clipboard-timeout [value-in-milli-seconds]
   (dispatch [:clipboard-timeout-update value-in-milli-seconds]))
 
-(defn db-session-timeout-value 
+(defn db-session-timeout-value
   "An atom that gives the db session timeout in milli seconds"
   []
   (subscribe [:db-session-timeout]))
@@ -123,30 +124,37 @@
 
 (reg-event-fx
  :to-app-settings
- (fn [{:keys [db]} [_event-id]]
+ (fn [{:keys [_db]} [_event-id]]
    {:fx [[:dispatch [:common/next-page :app-settings "page.titles.appSettings"]]]}))
-
-#_(reg-event-db
- :db-session-timeout-update
- (fn [db [_event-id value]]
-   (assoc-in db [:app-preference :data :db-session-timeout ] value)))
-
-#_(reg-event-db
-   :clipboard-timeout-update
-   (fn [db [_event-id value]]
-     (assoc-in db [:app-preference :data :clipboard-timeout] value)))
 
 (reg-event-fx
  :db-session-timeout-update
  (fn [{:keys [db]} [_event-id value]]
-   (set-db-session-timeout value)
-   {:db (assoc-in db [:app-preference :data :db-session-timeout] value)}))
+  ;;  (set-db-session-timeout value)
+   {:db (assoc-in db [:app-preference :data :db-session-timeout] value)
+    :fx [[:bg-update-db-session-timeout [value]]]}))
 
+(reg-fx
+ :bg-update-db-session-timeout
+ (fn [[db-session-timeout]]
+   (set-db-session-timeout db-session-timeout)
+   (bg/update-db-session-timeout db-session-timeout (fn [api-response]
+                                                      ;; Just show error message if any
+                                                      (on-error api-response)))))
 (reg-event-fx
  :clipboard-timeout-update
  (fn [{:keys [db]} [_event-id value]]
-   (set-clipboard-session-timeout value)
-   {:db (assoc-in db [:app-preference :data :clipboard-timeout] value)}))
+   ;;(set-clipboard-session-timeout value)
+   {:db (assoc-in db [:app-preference :data :clipboard-timeout] value)
+    :fx [[:bg-update-clipboard-timeout [value]]]}))
+
+(reg-fx
+ :bg-update-clipboard-timeout
+ (fn [[clipboard-timeout]]
+   (set-clipboard-session-timeout clipboard-timeout)
+   (bg/update-clipboard-timeout clipboard-timeout (fn [api-response]
+                                                      ;; Just show error message if any
+                                                    (on-error api-response)))))
 
 (reg-sub
  :db-session-timeout
@@ -160,10 +168,24 @@
    (let [r (get-in db [:app-preference :data :clipboard-timeout])]
      (if (nil? r) 10000 r))))
 
+;;;;;;;;;
+
+(reg-event-fx
+ :app-settings/app-preference-loaded
+ (fn [{:keys [db]} [_event-id]]
+   (let [dbt (get-in db [:app-preference :data :db-session-timeout])
+         cbt (get-in db [:app-preference :data :clipboard-timeout])]
+     {:fx [[:update-timeouts-from-pref [dbt cbt]]]})))
+
+(reg-fx
+ :update-timeouts-from-pref
+ (fn [[db-session-timeout clipboard-timeout]]
+   (set-db-session-timeout db-session-timeout)
+   (cmn-events/set-clipboard-session-timeout clipboard-timeout)))
+
 
 (comment
   (in-ns 'onekeepass.mobile.events.app-settings)
-  
+
   (def db-key (-> @re-frame.db/app-db :current-db-file-name))
-  (-> @re-frame.db/app-db (get db-key) keys)
-  )
+  (-> @re-frame.db/app-db (get db-key) keys))

@@ -513,7 +513,7 @@
   (invoke-api "get_group_by_id" {:db-key db-key :uuid group-uuid} dispatch-fn))
 
 (defn entry-type-headers
-  "Gets all entry types header information that are avaiable. 
+  "Gets all entry types header information that are available. 
    Returns a map that has standard and custom entry type names separately. 
    See EntryTypeHeasders struct
   "
@@ -631,6 +631,11 @@
   (invoke-api "save_attachment_as_temp_file" {:db-key db-key :name name :data-hash-str data-hash-str} dispatch-fn :no-response-conversion true))
 
 
+(defn update-db-session-timeout [db-session-timeout dispatch-fn] 
+  (invoke-api "update_session_timeout" {:timeout_type 1, :db-session-timeout db-session-timeout} dispatch-fn))
+
+(defn update-clipboard-timeout [clipboard-timeout dispatch-fn]
+  (invoke-api "update_session_timeout" {:timeout_type 1,:clipboard-timeout clipboard-timeout} dispatch-fn))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Native Events ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; While compiling with advanced option, if we use '(u/is-iOS)' to check platform
