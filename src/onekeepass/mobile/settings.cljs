@@ -282,7 +282,7 @@
                           {:title "security" :page-id :settings-security}]}
                   {:title "appSettings"
                    :key "AppSettings"
-                   :data [{:title "All app settings"}]}]]
+                   :data [{:title "allAppSettings"}]}]]
     [rn-section-list  {:style {}
                        :sections (clj->js sections)
                        :renderItem  (fn [props]
