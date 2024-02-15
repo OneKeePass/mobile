@@ -10,9 +10,8 @@ use std::{
 
 use onekeepass_core::db_service as kp_service;
 
-use crate::udl_types::{FileInfo, CommonDeviceService};
+use crate::udl_types::{CommonDeviceService, FileInfo};
 use crate::{udl_types::SecureKeyOperation, util};
-
 
 // Any mutable field needs to be behind Mutex
 pub struct AppState {
@@ -21,7 +20,7 @@ pub struct AppState {
     pub temp_dir: String,
     pub backup_dir_path: PathBuf,
     pub export_data_dir_path: PathBuf,
-    pub key_files_dir_path:PathBuf,
+    pub key_files_dir_path: PathBuf,
     pub common_device_service: Box<dyn CommonDeviceService>,
     pub secure_key_operation: Box<dyn SecureKeyOperation>,
     last_backup_on_error: Mutex<HashMap<String, String>>,
@@ -44,7 +43,10 @@ impl AppState {
         let cache_dir = util::url_to_unix_file_name(&common_device_service.cache_dir());
         let temp_dir = util::url_to_unix_file_name(&common_device_service.temp_dir());
 
-        debug!("app_dir {}, cache_dir {}, temp_dir {}",&app_dir,&cache_dir,&temp_dir);
+        debug!(
+            "app_dir {}, cache_dir {}, temp_dir {}",
+            &app_dir, &cache_dir, &temp_dir
+        );
 
         let pref = Preference::read(&app_dir);
 
@@ -172,17 +174,28 @@ pub struct RecentlyUsed {
     pub(crate) db_file_path: String,
 }
 
+// This struct matches any previous verion (0.0.1) of preference.json
+#[derive(Clone, Serialize, Deserialize)]
+pub struct Preference1 {
+    pub version: String,
+    pub recent_dbs_info: Vec<RecentlyUsed>,
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Preference {
     pub version: String,
     pub recent_dbs_info: Vec<RecentlyUsed>,
+    pub db_session_timeout: i64,
+    pub clipboard_timeout: i64,
 }
 
 impl Default for Preference {
     fn default() -> Self {
         Self {
-            version: "0.0.1".into(),
+            version: "0.0.2".into(),
             recent_dbs_info: vec![],
+            db_session_timeout: 1_800_000, // 30 minutes
+            clipboard_timeout: 10_000,  // 10 secondds
         }
     }
 }
@@ -192,16 +205,30 @@ impl Preference {
         let pref_file_name = Path::new(app_home_dir).join("preference.json");
         info!("pref_file_name is {:?} ", &pref_file_name);
         let json_str = fs::read_to_string(pref_file_name).unwrap_or("".into());
-        //debug!("Pref json_str is {}", &json_str);
+        debug!("Pref json_str is {}", &json_str);
         if json_str.is_empty() {
             info!("Preference is empty and default used ");
             Self::default()
         } else {
-            serde_json::from_str(&json_str).unwrap_or(Self::default())
+            serde_json::from_str(&json_str).unwrap_or_else(|_| {
+                let mut pref_new = Self::default();
+                match serde_json::from_str::<Preference1>(&json_str) {
+                    Ok(p) => {
+                        debug!("Returning the new pref with old pref values");
+                        pref_new.recent_dbs_info = p.recent_dbs_info;
+                        // Update the preference json with the copied values from old preference
+                        pref_new.write(app_home_dir);
+                    }
+                    Err(_) => {
+                        debug!("Returning the default pref");
+                    }
+                }
+                pref_new
+            })
         }
     }
 
-    fn write(&mut self, app_home_dir: &str) {
+    fn write(&self, app_home_dir: &str) {
         // Remove old file names from the list before writing
         //self.remove_old_db_use_info();
         let json_str_result = serde_json::to_string_pretty(self);
@@ -214,6 +241,10 @@ impl Preference {
                 );
             }
         }
+    }
+
+    pub fn write_to_app_dir(&self) {
+        self.write(&AppState::global().app_home_dir);
     }
 
     pub fn add_recent_db_use_info(

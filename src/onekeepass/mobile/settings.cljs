@@ -26,14 +26,8 @@
    [onekeepass.mobile.events.settings :as stgs-events :refer [cancel-db-settings-form]]
    [onekeepass.mobile.events.password-generator :as pg-events]
    [onekeepass.mobile.events.common :as cmn-events]
+   [onekeepass.mobile.events.app-settings :as as-events]
    [onekeepass.mobile.constants :as const :refer [ICON-EYE ICON-EYE-OFF]]))
-
-;;:settings-general :settings-credentials :settings-security 
-(def ^:private desc-page-id {"General" :settings-general
-                             "Credentials" :settings-credentials
-                             "Security" :settings-security
-                             "Encryption" :settings-encryption
-                             "Key Derivation Function" :settings-kdf})
 
 (def ^:private mp-confirm-dialog-data (r/atom false))
 
@@ -263,30 +257,38 @@
                       :alignSelf "center"
                       ;;:width "85%"
                       :text-align "center"
-                      :padding-left 5} :variant "titleSmall"} title]])
+                      :padding-left 5} :variant "titleSmall"} (lstr title)]])
 
 (defn row-item [_m]
-  (fn [{:keys [title]}]
+  (fn [{:keys [title page-id]} section-key] 
+    ;; page-id is string and need to be convereted to a keyword to get the settings panel id
     [rnp-list-item {:style {}
-                    :onPress #(stgs-events/select-db-settings-panel (get desc-page-id title))
+                    :onPress (fn []
+                               (if-not (= "AppSettings" section-key)
+                                 ;; Database settings pages
+                                 (stgs-events/select-db-settings-panel (keyword page-id))
+                                 ;; App level settings page
+                                 (as-events/to-app-settings-page)))
                     :title (r/as-element
                             [rnp-text {:style {}
-                                       :variant "titleMedium"} title])
+                                       :variant "titleMedium"} (lstr title)])
                     :right (fn [_props] (r/as-element [rnp-list-icon {:icon const/ICON-CHEVRON-RIGHT}]))}]))
 
 (defn db-settings-list-content []
-  (let [sections [{:title "Database Settings"
+  (let [sections [{:title "dbSettings"
                    :key "DbSettings"
-                   :data [{:title "General"}
-                          {:title "Credentials"}
-                          {:title "Security"}
-                          #_{:title "Key Derivation Function"}]}]]
+                   :data [{:title "general" :page-id :settings-general}
+                          {:title "credentials" :page-id :settings-credentials}
+                          {:title "security" :page-id :settings-security}]}
+                  {:title "appSettings"
+                   :key "AppSettings"
+                   :data [{:title "allAppSettings"}]}]]
     [rn-section-list  {:style {}
                        :sections (clj->js sections)
                        :renderItem  (fn [props]
                                       ;; keys are (:item :index :section :separators)
                                       (let [props (js->clj props :keywordize-keys true)]
-                                        (r/as-element [row-item (-> props :item)])))
+                                        (r/as-element [row-item (-> props :item) (-> props :section :key)])))
                        :ItemSeparatorComponent (fn [_p]
                                                  (r/as-element [rnp-divider]))
 
@@ -297,9 +299,9 @@
 
 (defn main-content []
   [rn-view {:style {:flex 1}}
-   
+
    [rn-view {:style {:flex .8}}
-    [db-settings-list-content]]
+    [db-settings-list-content]] 
    
    [rn-view {:style {:flex .2}}
     [rnp-text {:style {:textDecorationLine "underline"

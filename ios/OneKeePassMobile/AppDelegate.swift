@@ -36,7 +36,7 @@ class AppDelegate: RCTAppDelegate {
     self.moduleName = "OneKeePassMobile"
     self.initialProps = [:] // [AnyHashable:Any]
 
-    // Copied from the implemetation in RCTAppDelegate.mm after removing all new architecure related calls
+    // Copied from the implemetation in RCTAppDelegate.mm after removing all new architecure (cond RCT_NEW_ARCH_ENABLED) related calls
     RCTAppSetupPrepareApp(application, false)
 
     if self.bridge == nil {
@@ -52,7 +52,7 @@ class AppDelegate: RCTAppDelegate {
     }
 
     // UIViewController will be created in SceneDelegate using this rootView and we should not create it here
-    // Accordingly all that calls to create 'UIViewController' and seting the view etc in the parent class are not used here
+    // Accordingly all that calls to create 'UIViewController' and setting the view etc from the parent class are not used here
     // and moved to SceneDelegate
 
     // Keep a ref to RCTRootView to use in SceneDelegate
@@ -68,6 +68,21 @@ class AppDelegate: RCTAppDelegate {
     // Flags to add:
     // DEBUG
 
+    /* 
+    #if DEBUG
+      // Same as  return [[RCTBundleURLProvider sharedSettings] jsBundleURLForBundleRoot:@"index"];
+      return RCTBundleURLProvider.sharedSettings()?.jsBundleURL(forBundleRoot: "index")
+    #else
+      // Same as return [[NSBundle mainBundle] URLForResource:@"main" withExtension:@"jsbundle"];
+      return Bundle.main.url(forResource: "main", withExtension: "jsbundle")
+    #endif
+    */
+
+    return self.getBundleURL()
+  }
+
+  // On RN 0.73.1 upgrade, this func was introduced
+  func getBundleURL() -> URL! {
     #if DEBUG
       // Same as  return [[RCTBundleURLProvider sharedSettings] jsBundleURLForBundleRoot:@"index"];
       return RCTBundleURLProvider.sharedSettings()?.jsBundleURL(forBundleRoot: "index")

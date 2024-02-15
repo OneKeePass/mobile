@@ -19,7 +19,7 @@ alias rna := npx-rn-android
 # host := "localhost" 
 # For android, need to use instead of localhost or 127.0.0.1
 # host := "10.0.2.2"
-host := "192.168.1.9"
+host := "192.168.1.5"
 
 clj-clean-compile:
     rm -rf target

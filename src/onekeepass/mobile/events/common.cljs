@@ -2,7 +2,7 @@
   "All common events that are used across many pages"
   (:require
    [clojure.string :as str]
-   [cljs.core.async :refer [go timeout <!]]
+   [cljs.core.async :refer [go go-loop timeout <!]]
    [re-frame.core :refer [reg-event-db
                           reg-event-fx
                           reg-fx
@@ -10,7 +10,7 @@
                           dispatch
                           dispatch-sync
                           subscribe]]
-   [onekeepass.mobile.utils :as u :refer [tags->vec]]
+   [onekeepass.mobile.utils :as u :refer [tags->vec str->int]]
    [onekeepass.mobile.background :as bg]))
 
 (def home-page-title "page.titles.home")
@@ -117,13 +117,16 @@
         app-db (assoc app-db :opened-db-list dbs)]
     (-> app-db
         (assoc :current-db-file-name db-key)
-         ;; opened-db-list is a vec of map with keys :db-key :database-name
+         ;; opened-db-list is a vec of map with keys [db-key database-name file-name user-action-time]
          ;; :database-name is different from :file-name found in the the map Preference -> RecentlyUsed
          ;; See ':recently-used' subscription 
          ;; The latest opened db is last in the vector
         (update-in [:opened-db-list] conj {:db-key db-key
                                            :database-name database-name
                                            :file-name file-name
+                                           ;; user-action-time is used for db timeout
+                                           ;; See onekeepass.mobile.events.app-settings
+                                           :user-action-time (js/Date.now)
                                            ;;:database-name (:database-name meta)
                                            }))))
 
@@ -337,7 +340,9 @@
             ;; Set the biometric availablity info in db so that we can use it in a subscription
             (assoc :biometric-available (bg/is-biometric-available))
             (assoc-in [:app-preference :status] :loaded)
-            (assoc-in [:app-preference :data] pref))}))
+            (assoc-in [:app-preference :data] pref))
+    :fx [[:dispatch [:app-settings/app-preference-loaded]]]
+    }))
 
 (reg-sub
  :recently-used
@@ -387,6 +392,14 @@
     :fx [#_[:bg-lock-kdbx [(active-db-key db)]]
          [:dispatch [:to-home-page]]
          [:dispatch [:common/message-snackbar-open "Database locked"]]]}))
+
+(reg-event-fx
+ :lock-on-session-timeout
+ (fn [{:keys [db]} [_event-id db-key]]
+   (let [curr-dbkey  (:current-db-file-name db)]
+     {:db (assoc-in-selected-db db db-key [:locked] true)
+      :fx [(when (= curr-dbkey db-key)
+             [:dispatch [:to-home-page]])]})))
 
 ;; Need to make use of API call in case we want to do something for lock call
 ;; Currently nothing is done on the backend
@@ -828,6 +841,14 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(def clipboard-session-timeout "Timeout in milliseconds" (atom 10000))
+
+(defn set-clipboard-session-timeout
+  "Called to set a new timeout to use"
+  [time-in-milli-seconds]
+  (let [in-timeout (str->int time-in-milli-seconds)
+        in-timeout (if (nil? in-timeout) 10000 in-timeout)]
+    (reset! clipboard-session-timeout in-timeout)))
 
 (def field-in-clip (atom false))
 
@@ -836,9 +857,11 @@
    "
   [protected]
   (reset! field-in-clip protected)
-  (go
-    (<! (timeout 10000))
-    (when @field-in-clip (bg/write-string-to-clipboard nil))))
+  (when-not (= @clipboard-session-timeout -1)
+    (go
+      (<! (timeout @clipboard-session-timeout))
+      (when @field-in-clip (bg/write-string-to-clipboard nil)))
+    ))
 
 (defn write-string-to-clipboard [{:keys [field-name value protected]}]
   ;;(println "write-string-to-clipboard called field-name value... " field-name value)
@@ -854,8 +877,8 @@
   (bg/open-https-url https-url  (fn [api-response]
                                   (on-error api-response))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (comment
   (in-ns 'onekeepass.mobile.events.common)
 

@@ -27,6 +27,14 @@ struct ExportDataInfo {
     exported_data_full_file_name: Option<String>,
 }
 
+//TODO: 
+// Need to use serde internally-tagged or externally-tagged to deserialize the enum 'CommandArg'
+// instead of current 'untagged' feature. Using untagged feature getting more complex. More changes
+// may be required in 'mobile/src/onekeepass/mobile/background.cljs' and may in the some native calls where json str are formed
+// for this to work
+// https://serde.rs/enum-representations.html#internally-tagged
+// https://serde.rs/enum-representations.html#externally-tagged
+
 // We use serder untagged so that the UI layer args map need not include the enum variant name
 // Just the struct value is sent. The first matching enum variant (order of fields does not matter) is considered by serde.
 // Only field names of the struct of each variant is considerd for matching. It is important we declare the
@@ -36,11 +44,25 @@ struct ExportDataInfo {
 // 1. pick a variant in the order decalred here
 // 2. Checks whether all its fields are available (order of fields does not matter) in the deserialized data
 // 3. If the previous check is success, returns the variant. Otherwise continue to the next variant
+
+// IMPORTANT: 
+// If we add a variant with fields of only Option type(nullable), then that variant will be picked first
+// Need to make sure to add that variant in a proper order (most probably last) to avoid this happening
+// For example, the variant 'SessionTimeoutArg' (commented out one at the bottom) has only Option type fields. if this variant is put
+// in the begining, then that variant will be picked for any json str resulting error
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum CommandArg {
     PasswordGeneratorArg {
         password_options: PasswordGenerationOptions,
+    },
+    SessionTimeoutArg {
+        // timeout_type is a dummy field so that SessionTimeoutArg is matched only we have this
+        // field in the incoming json str. See 
+        timeout_type: u8,
+        db_session_timeout: Option<i64>,
+        clipboard_timeout: Option<i64>,
     },
     OpenDbArgWithFileName {
         file_name: String,
@@ -96,7 +118,6 @@ pub enum CommandArg {
     },
     NewEntryArg {
         db_key: String,
-        //entry_type_name: String,
         entry_type_uuid: Uuid,
         parent_group_uuid: Option<Uuid>,
     },
@@ -129,6 +150,14 @@ pub enum CommandArg {
       key_vals:HashMap<String,String>  
     },
 
+    // Need to come as last variant; Otherwise this will be matched before any variants coming after 
+    // this. This is because serde_json parses any json str as this variant with any json str. This happens because 
+    // we are using untagged deserialization and both the fields can be null
+    // If we use non nullable fields are used in this variant, this issue will not happen
+    // SessionTimeoutArg {
+    //     db_session_timeout: Option<i64>,
+    //     clipboard_timeout: Option<i64>,
+    // },
 }
 
 pub type ResponseJson = String;
@@ -188,10 +217,6 @@ impl Commands {
 
             "categories_to_show" => {
                 db_service_call! (args, DbKey{db_key} => categories_to_show(&db_key))
-            }
-
-            "entry_type_names" => {
-                db_service_call! (args, DbKey{db_key} => entry_type_names(&db_key))
             }
 
             "entry_type_headers" => {
@@ -291,7 +316,8 @@ impl Commands {
             }
 
             "save_attachment_as_temp_file"  => {
-                 service_call! (args, AttachmentArg{db_key,name,data_hash_str} => Self save_attachment_as_temp_file(&db_key,&name,&data_hash_str))
+                 service_call! (args, AttachmentArg{db_key,name,data_hash_str} => 
+                    Self save_attachment_as_temp_file(&db_key,&name,&data_hash_str))
             }
 
             "generate_key_file" => {
@@ -301,6 +327,12 @@ impl Commands {
             "delete_key_file" => {
                 service_call!(args, GenericArg { key_vals } => Self delete_key_file(key_vals))
             }
+
+            "update_session_timeout" => {
+                service_call!(args, SessionTimeoutArg {timeout_type: _,db_session_timeout,clipboard_timeout} => 
+                    Self update_session_timeout(db_session_timeout,clipboard_timeout))
+            }
+
             ////// 
             "remove_from_recently_used" => Self::remove_from_recently_used(&args),
 
@@ -332,7 +364,7 @@ impl Commands {
         r
     }
 
-    fn new_blank_group(args: String) -> String {
+    fn new_blank_group(args: String) -> ResponseJson {
         match serde_json::from_str(&args) {
             Ok(CommandArg::NewBlankGroupArg { mark_as_category }) => {
                 let json_str = match serde_json::to_string_pretty(&InvokeResult::with_ok(
@@ -349,14 +381,14 @@ impl Commands {
         }
     }
 
-    fn get_file_info(args: &str) -> String {
+    fn get_file_info(args: &str) -> ResponseJson {
         if let Ok(CommandArg::DbKey { db_key }) = serde_json::from_str(args) {
             let info = AppState::global().uri_to_file_info(&db_key);
             log::debug!("FileInfo is {:?}", info);
             ok_json_str(info)
         } else {
             error_json_str(&format!(
-                "Unexpected args passed to remove db from list {}",
+                "Unexpected args passed in getting file info {}",
                 args
             ))
         }
@@ -422,6 +454,19 @@ impl Commands {
         } else {
             ios::save_attachment_as_temp_file(db_key, name, &data_hash)
         }
+    }
+
+    fn update_session_timeout(db_session_timeout:Option<i64>,clipboard_timeout:Option<i64>, ) -> OkpResult<()> {
+        let mut pref = AppState::global().preference.lock().unwrap();
+        if let Some(t) = db_session_timeout {
+            pref.db_session_timeout = t;
+        }
+        if let Some(t) = clipboard_timeout {
+            pref.clipboard_timeout = t;
+        }
+
+        pref.write_to_app_dir();
+        Ok(())
     }
 
     fn prepare_export_kdbx_data(args: &str) -> String {
@@ -533,7 +578,6 @@ impl Commands {
         let pref = AppState::global().preference.lock().unwrap();
         ok_json_str(pref.clone())
     }
-
 }
 
 pub fn remove_app_files(db_key: &str) {
@@ -643,107 +687,50 @@ fn _full_path_file_to_read_write(full_file_name: &str) -> db_service::Result<Fil
     Ok(file)
 }
 
-/*
+#[cfg(test)]
+mod tests {
+    use crate::commands::CommandArg;
 
-// TODO: Replace all db_service_call with service_call macro
-macro_rules! db_service_call1  {
-    ($args:expr,$enum_name:tt {$($enum_vals:tt)*} => $fn_name:tt ($($fn_args:expr),*) ) => {
-        match serde_json::from_str(&$args) {
-            Ok(CommandArg::$enum_name{$($enum_vals)*}) => {
-                let response = match db_service::$fn_name($($fn_args),*) {
-                    Ok(r) => {
-                        let json_str = match serde_json::to_string_pretty(&InvokeResult::with_ok(r))
-                        {
-                            Ok(s) => s,
-                            Err(e) => {
-                                InvokeResult::<()>::with_error(format!("{:?}", e).as_str())
-                                    .json_str()
-                            }
-                        };
-                        json_str
-                    }
 
-                    Err(e) => InvokeResult::<()>::with_error(format!("{:?}", e).as_str())
-                        .json_str(),
-                };
-
-                response
-            }
-            Ok(_) => InvokeResult::<()>::with_error("Unexpected args passed".into()).json_str(),
-
-        Err(e) => {
-                InvokeResult::<()>::with_error(format!("{:?}", e).as_str()).json_str()
-            }
+    #[test]
+    fn verify_parsing_db_key_arg() {
+        let in_json_str = r#"{"db_key":"file:///Users/jeyasankar/Library/Developer/CoreSimulator/Devices/CC0D1909-56BA-4AD0-9499-FB96E10925CD/data/Containers/Shared/AppGroup/2AE43D43-8E49-4A03-AA7E-994442DF99E9/File%20Provider%20Storage/Test3.kdbx"}"#;
+    
+        let r = serde_json::from_str::<CommandArg>(in_json_str);
+        if let Ok(CommandArg::DbKey { db_key }) = r {
+            println!("Parsing success with db_key {}", &db_key);
+            assert!(true);
+        } else {
+            assert!(false, "Invalid parsing of json str as  {:?} ", &r);
         }
-    };
-}
+    }
 
+    #[test]
+    fn verify_parsing_session_timeout_arg() {
+        let in_json_str = r#"{ "timeout_type":1, "db_session_timeout":-1}"#;
+        let r = serde_json::from_str::<CommandArg>(in_json_str);
 
-//TODO: Need to combine 'db_service_call' and 'db_service_call_2' into one macro. The only difference between these two is using
-// let response = match db_service::$fn_name($($fn_args),*)  vs let response = match Self::$fn_name($($fn_args),*)
-macro_rules! db_service_call_2  {
-    ($args:expr,$enum_name:tt {$($enum_vals:tt)*} => $fn_name:tt ($($fn_args:expr),*) ) => {
-        match serde_json::from_str(&$args) {
-            Ok(CommandArg::$enum_name{$($enum_vals)*}) => {
-                let response = match Self::$fn_name($($fn_args),*) {
-                    Ok(r) => {
-                        let json_str = match serde_json::to_string_pretty(&InvokeResult::with_ok(r))
-                        {
-                            Ok(s) => s,
-                            Err(e) => {
-                                InvokeResult::<()>::with_error(format!("{:?}", e).as_str())
-                                    .json_str()
-                            }
-                        };
-                        json_str
-                    }
+        //println!("r is {:?}",&r);
 
-                    Err(e) => InvokeResult::<()>::with_error(format!("{:?}", e).as_str())
-                        .json_str(),
-                };
-
-                response
-            }
-            Ok(_) => InvokeResult::<()>::with_error("Unexpected args passed".into()).json_str(),
-
-        Err(e) => {
-                InvokeResult::<()>::with_error(format!("{:?}", e).as_str()).json_str()
-            }
+        if let Ok(CommandArg::SessionTimeoutArg {timeout_type: _, db_session_timeout, clipboard_timeout }) = r {
+            assert_eq!(Some(-1), db_session_timeout);
+            assert_eq!(None, clipboard_timeout);
+        } else {
+            assert!(false, "Invalid parsing of json str as  {:?} ", &r);
         }
-    };
-}
+    }
 
-macro_rules! service_call1  {
-    ($args:expr,$enum_name:tt {$($enum_vals:tt)*} => $path:ident $fn_name:tt ($($fn_args:expr),*) ) => {
-        match serde_json::from_str(&$args) {
-            Ok(CommandArg::$enum_name{$($enum_vals)*}) => {
-                let response = match $path::$fn_name($($fn_args),*) {
-                    Ok(r) => {
-                        let json_str = match serde_json::to_string_pretty(&InvokeResult::with_ok(r))
-                        {
-                            Ok(s) => s,
-                            Err(e) => {
-                                InvokeResult::<()>::with_error(format!("{:?}", e).as_str())
-                                    .json_str()
-                            }
-                        };
-                        json_str
-                    }
-
-                    Err(e) => InvokeResult::<()>::with_error(format!("{:?}", e).as_str())
-                        .json_str(),
-                };
-
-                response
-            }
-            Ok(x) => InvokeResult::<()>::with_error(format!("Unexpected args passed {:?} ", x).as_str()).json_str(),
-
-        Err(e) => {
-                InvokeResult::<()>::with_error(format!("{:?}", e).as_str()).json_str()
-            }
+    #[test]
+    fn verify_parsing_generic_arg() {
+        let in_json_str = r#"{"key_vals": {"some_key":"some_value"}}"#;
+        let r = serde_json::from_str::<CommandArg>(in_json_str);
+        //println!("r is {:?}",&r);
+        if let Ok(CommandArg::GenericArg { key_vals:m }) = r {
+            assert_eq!(Some(&"some_value".to_string()), m.get("some_key"));
+        } else {
+            assert!(false, "Invalid parsing of json str as  {:?} ", &r);
         }
-    };
+    }
+
+
 }
-
-
- */

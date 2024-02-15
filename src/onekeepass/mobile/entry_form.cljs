@@ -9,11 +9,8 @@
                      primary-container-color
                      page-background-color
                      appbar-text-color
-
                      rn-keyboard
                      dots-icon-name
-
-
                      page-title-text-variant
                      rn-view
                      rn-scroll-view
@@ -504,7 +501,7 @@
                                        on-change-text]} is-password-edit? custom-field-edit-focused?]
 
   ;;(println "protected " protected " visible " visible " , " (if (or (not protected) visible) false true))
-  ^{:key (str key protected)} [rnp-text-input {:label (if required (str key "*") key)
+  ^{:key (str key protected)} [rnp-text-input {:label key #_(if required (str key "*") key)
                                                :defaultValue value
                        ;;:value value
                        ;;:editable edit
@@ -542,7 +539,7 @@
                                    edit
                                    on-change-text]} is-password-edit? custom-field-edit-focused?]
   ;;(println "Key is " key " and value " value)
-  [rnp-text-input {:label (if required (str key "*") key)
+  [rnp-text-input {:label key #_(if required (str key "*") key)
                    :value value
                    :showSoftInputOnFocus edit
                    :autoCapitalize "none"
@@ -701,10 +698,10 @@
                       password-score] :as kv} section-data]
           ;; All fields of this section is shown in edit mode. In case of non edit mode, 
           ;; all required fields and other fields with values are shown
-          (when (or edit (or required (not (str/blank? value))))
+          (when (or edit (not (str/blank? value))) #_(or edit (or required (not (str/blank? value))))
             (cond
               (not (nil? select-field-options))
-              ^{:key key} [select-field {:text-label (if required (str key "*") key)
+              ^{:key key} [select-field {:text-label key #_(if required (str key "*") key)
                                          :options  (mapv (fn [v] {:key v :label v}) select-field-options)
                                          :value value
                                          :disabled (not edit)
@@ -713,6 +710,7 @@
 
               :else
               ^{:key key} [text-field (assoc kv
+                                             :required false ;; make all fields as optional 
                                              :section-name section-name
                                              :edit edit
                                              :error-text (get errors key)

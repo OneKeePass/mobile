@@ -5,6 +5,13 @@
                                                              rnp-text]]
             [onekeepass.mobile.events.common :as cmn-events]))
 
+;; The version should match the one used in
+;; iOS: 
+;; See 'mobile/ios/OneKeePassMobile.xcodeproj'  (General -> Identity -> Version)
+;; Android:
+;; See 'mobile/android/app/build.gradle'  (versionName)
+(def app-version "v0.11.0")
+
 (defn link-text [url & opts]
   [rnp-text {:style (merge {:margin-left 5
                             :textDecorationLine "underline"
@@ -44,7 +51,7 @@
     [rnp-text  {:style {:color @rnc/tertiary-color}
                 :variant "headlineLarge"} "OneKeePass"]
     [rnp-text {:style {:color @rnc/primary-color}
-               :variant "headlineSmall"} "v0.10.0"]]
+               :variant "headlineSmall"} app-version]]
 
    [rn-view {:style {:margin-top 50
                      :align-items "center"

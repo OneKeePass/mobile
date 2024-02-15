@@ -46,7 +46,8 @@
   (dispatch [:entry-form/edit true]))
 
 (defn cancel-entry-form []
-  (dispatch [:common/previous-page]))
+  #_(dispatch [:common/previous-page])
+  (dispatch [:cancel-entry-form]))
 
 (defn favorite-menu-checked
   "Called when an entry is marked as favorite or not"
@@ -305,14 +306,15 @@
   "Checks that all keys (form fields) that are marked as required are having some valid values 
    in a list of KV maps"
   [error-fields kvsd]
-  (loop [{:keys [key value required] :as m} (first kvsd)
-         rest-kvsd (next kvsd)
-         acc error-fields]
-    (if (nil? m) acc
-        (let [acc (if (and required (str/blank? value))
-                    (assoc acc key "Please enter a valid value for this required field")
-                    acc)]
-          (recur (first rest-kvsd) (next rest-kvsd) acc)))))
+  error-fields
+  #_(loop [{:keys [key value required] :as m} (first kvsd)
+           rest-kvsd (next kvsd)
+           acc error-fields]
+      (if (nil? m) acc
+          (let [acc (if (and required (str/blank? value))
+                      (assoc acc key "Please enter a valid value for this required field")
+                      acc)]
+            (recur (first rest-kvsd) (next rest-kvsd) acc)))))
 
 (defn validate-all
   "Validates all required fields including title, parent group etc
@@ -730,6 +732,12 @@
  (fn [{:keys [db]} [_event-id entry-type-uuid]]
    (let [group-info (get-in-key-db db [entry-form-key :group-selection-info])]
      {:fx [[:dispatch [:entry-form/add-new-entry group-info entry-type-uuid]]]})))
+
+(reg-event-fx
+ :cancel-entry-form
+ (fn [{:keys [db]} [_event-id]]
+   {:db (assoc-in-key-db db [entry-form-key :error-fields] {})
+    :fx [[:dispatch [:common/previous-page]]]}))
 
 (reg-event-fx
  :entry-save

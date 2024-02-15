@@ -260,7 +260,18 @@
 ;; (def neutral50-color ^js/N50Color (.-neutral50 md3-colors))
 ;; (def neutral-variant60-color ^js/NV60Color (.-neutralVariant60 md3-colors))
 ;; (def neutral-variant20-color ^js/NV20Color (.-neutralVariant20 md3-colors))
-;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Pan Responder ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn create-pan-responder 
+  "Creates a pan responder with the supplied handler functions. Used mainly for session time out
+   Arg 'handler-fns-m' is a map with keys matching reponder handler names of a view 
+   See for an example https://reactnative.dev/docs/view#onmoveshouldsetrespondercapture
+   Returns a PanResponder object with all gesture handlers
+   "
+  [handler-fns-m]
+  ;; handler-fns-m is clojure map and PanResponder expects a js object
+  (.create rn/PanResponder (clj->js handler-fns-m)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  All example components ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -276,6 +287,21 @@
 ;; (def appbar-example  (r/adapt-react-class (.-AppbarExample (js/require "../js/components/examples/RNPExamples.js"))))
 ;; (def textinput-example  (r/adapt-react-class (.-TextInputExample (js/require "../js/components/examples/RNPExamples.js"))))
 ;; (def surface-example  (r/adapt-react-class (.-SurfaceExample rnp-examples)))
+
+(def test-ph {:onStartShouldSetPanResponder (fn [] 
+                                              (println "ShouldSetPanResponder is called")
+                                              true
+                                              )
+              :onStartShouldSetPanResponderCapture (fn []
+                                                     (println "Capture is called")
+                                                     false
+                                                     )
+              
+              }
+  
+  )
+
+(def test-pr (.create rn/PanResponder (clj->js test-ph)))
 
 (comment
   (in-ns 'onekeepass.mobile.rn-components))

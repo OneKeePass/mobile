@@ -192,3 +192,14 @@ pub fn delete_key_file(key_file_name_component: &str) {
     let r = fs::remove_file(&path);
     log::debug!("Delete key file  {:?} result {:?}", &path, r);
 }
+
+
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn verify1() {
+        println!("A test module");
+    }
+
+}

@@ -8,6 +8,7 @@
                                                              rnp-provider
                                                              rnp-portal]]
             [onekeepass.mobile.appbar :refer [appbar-main-content hardware-back-pressed]]
+            [onekeepass.mobile.events.app-settings :as as-events]
             [onekeepass.mobile.events.native-events :as native-events]
             [onekeepass.mobile.events.save :as save-events]
             [onekeepass.mobile.events.common :as cmn-events]
@@ -97,6 +98,7 @@
   []
   (native-events/register-open-url-handler)
   (cmn-events/sync-initialize)
+  (as-events/init-session-timeout-tick)
   (r/as-element [app-root]))
 
 (comment
