@@ -102,6 +102,10 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 8
         versionName "0.11.0"
+        //TODO:(Jey) Added to fix the issue
+        // https://github.com/facebook/react-native/issues/42024
+        // 0.73.2 it is fixed and we need not use this fix
+        resConfigs "en", "US"
     }
 
     signingConfigs {
@@ -112,29 +116,41 @@ android {
             keyPassword 'android'
         }
         //TODO: (Custom-Jey) Added for release time upload key
+        release {
+            if (project.hasProperty('OKP_APP_UPLOAD_STORE_FILE')) {
+                storeFile file(OKP_APP_UPLOAD_STORE_FILE)
+                storePassword OKP_APP_UPLOAD_STORE_PASSWORD
+                keyAlias OKP_APP_UPLOAD_KEY_ALIAS
+                keyPassword OKP_APP_UPLOAD_KEY_PASSWORD
+            }
+        }
+
+        //TODO: (Custom-Jey) Added for release time APK build key
+        // Uncomment this release only for APK build
 //        release {
-//            if (project.hasProperty('OKP_APP_UPLOAD_STORE_FILE')) {
-//                storeFile file(OKP_APP_UPLOAD_STORE_FILE)
-//                storePassword OKP_APP_UPLOAD_STORE_PASSWORD
-//                keyAlias OKP_APP_UPLOAD_KEY_ALIAS
-//                keyPassword OKP_APP_UPLOAD_KEY_PASSWORD
+//            if (project.hasProperty('OKP_APP_APK_STORE_FILE')) {
+//                storeFile file(OKP_APP_APK_STORE_FILE)
+//                storePassword OKP_APP_APK_STORE_PASSWORD
+//                keyAlias OKP_APP_APK_KEY_ALIAS
+//                keyPassword OKP_APP_APK_KEY_PASSWORD
 //            }
 //        }
+//
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
-//        release {
-//            // Caution! In production, you need to generate your own keystore file.
-//            // see https://reactnative.dev/docs/signed-apk-android.
-//            // Uncomment this for development after commenting out the following one for release
-//            signingConfig signingConfigs.debug
-//            // TODO: (Custom-Jey) Changed to signingConfig signingConfigs.release
-//            // signingConfig signingConfigs.release
-//            minifyEnabled enableProguardInReleaseBuilds
-//            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
-//        }
+        release {
+            // Caution! In production, you need to generate your own keystore file.
+            // see https://reactnative.dev/docs/signed-apk-android.
+            // Uncomment this for development after commenting out the following one for release
+            // signingConfig signingConfigs.debug
+            // TODO: (Custom-Jey) Changed to signingConfig signingConfigs.release
+            signingConfig signingConfigs.release
+            minifyEnabled enableProguardInReleaseBuilds
+            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+        }
     }
 }
 
