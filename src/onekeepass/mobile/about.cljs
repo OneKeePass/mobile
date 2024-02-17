@@ -10,7 +10,7 @@
 ;; See 'mobile/ios/OneKeePassMobile.xcodeproj'  (General -> Identity -> Version)
 ;; Android:
 ;; See 'mobile/android/app/build.gradle'  (versionName)
-(def app-version "v0.11.0")
+(def app-version "v0.12.0")
 
 (defn link-text [url & opts]
   [rnp-text {:style (merge {:margin-left 5
