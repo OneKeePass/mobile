@@ -33,8 +33,9 @@
             [onekeepass.mobile.key-file-form :as kf-form]
             [onekeepass.mobile.app-settings :as app-settings]
             [onekeepass.mobile.settings :as settings :refer [db-settings-form-content]]
-
             [onekeepass.mobile.about :as about :refer [about-content privacy-policy-content]]
+            
+            [onekeepass.mobile.totp :as totp]
 
             [onekeepass.mobile.utils :as u]))
 
@@ -217,6 +218,7 @@
     (or (= page :home)
         (= page :about)
         (= page :privacy-policy)
+        (= page :qr-scanner)
         (= page :entry-history-list)
         (= page :search)
         (= page :icons-list)
@@ -267,6 +269,7 @@
        (or
         (= page :about)
         (= page :privacy-policy)
+        (= page :qr-scanner)
         (= page :entry-history-list)
         (= page :icons-list)
         (= page :search)
@@ -350,7 +353,12 @@
     [about-content]
 
     (= page :privacy-policy)
-    [privacy-policy-content]))
+    [privacy-policy-content]
+    
+    (= page :qr-scanner)
+    [totp/content]
+    
+    ))
 
 #_(defn appbar-main-content
     "App bar header and the body combined"

@@ -14,6 +14,7 @@
    ["@react-native-community/slider" :as rnc-slider]
    ["react-native-gesture-handler" :as gh]
    ["react-native-vector-icons" :as vec-icons]
+   ["react-native-vision-camera" :as rn-vision-camera]
    ["react-native-safe-area-context" :as sa-context]
    ["@date-io/date-fns" :as DateAdapter]))
 
@@ -24,6 +25,9 @@
 ;; All the require calls above of NPM packages will have an entry in npm_deps.js
 ;; All (js/require "../js/.....") calls will result an entry in krell_npm_deps.js
 
+
+;; Also this defined again in background as rn-components is not refered in background module to avoid circular references
+(def rn-native-linking ^js/RNLinking rn/Linking)
 
 ;; See https://react.dev/reference/react/useEffect
 ;; useEffect is called after a component is rendered
@@ -273,6 +277,16 @@
   ;; handler-fns-m is clojure map and PanResponder expects a js object
   (.create rn/PanResponder (clj->js handler-fns-m)))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; react-native-vision-camera - VisionCamera  ;;;;;;;;;;
+
+(def use-camera-permission (.-useCameraPermission ^js/RNVisionCamera rn-vision-camera))
+
+(def use-camera-device (.-useCameraDevice ^js/RNVisionCamera rn-vision-camera))
+
+(def use-code-scanner (.-useCodeScanner ^js/RNVisionCamera rn-vision-camera))
+
+(def camera (r/adapt-react-class (.-Camera ^js/RNVisionCamera rn-vision-camera)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  All example components ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Following are some sample React Native components in Javascript based examples that
@@ -287,21 +301,6 @@
 ;; (def appbar-example  (r/adapt-react-class (.-AppbarExample (js/require "../js/components/examples/RNPExamples.js"))))
 ;; (def textinput-example  (r/adapt-react-class (.-TextInputExample (js/require "../js/components/examples/RNPExamples.js"))))
 ;; (def surface-example  (r/adapt-react-class (.-SurfaceExample rnp-examples)))
-
-(def test-ph {:onStartShouldSetPanResponder (fn [] 
-                                              (println "ShouldSetPanResponder is called")
-                                              true
-                                              )
-              :onStartShouldSetPanResponderCapture (fn []
-                                                     (println "Capture is called")
-                                                     false
-                                                     )
-              
-              }
-  
-  )
-
-(def test-pr (.create rn/PanResponder (clj->js test-ph)))
 
 (comment
   (in-ns 'onekeepass.mobile.rn-components))

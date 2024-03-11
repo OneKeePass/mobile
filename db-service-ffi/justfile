@@ -53,6 +53,7 @@ build-ios-sim-lib-release: (build-ios-sim-lib "true")
 build-ios-sim-lib-debug:build-ios-sim-lib
 
 build-ios-sim-lib release="":
+    #!/usr/bin/env bash
     set -euxo pipefail
     export SDKROOT={{ios_sim_sdk_root}}
     export BOTAN_CONFIGURE_OS='ios'
@@ -145,3 +146,14 @@ build-android-lib-cp-src release="":(build-android-lib-all release) generate-kot
 
 
 build-android-lib-cp-src-release:(build-android-lib-cp-src "true")
+
+
+test-env:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+    export BOTAN_CONFIGURE_OS='ios'
+    export BOTAN_CONFIGURE_CC_ABI_FLAGS='-arch arm64'
+    export BOTAN_CONFIGURE_CC='clang'
+    export BOTAN_CONFIGURE_CPU='arm64'
+
+    echo "BOTAN_CONFIGURE_CPU is: '${BOTAN_CONFIGURE_CPU}'"
