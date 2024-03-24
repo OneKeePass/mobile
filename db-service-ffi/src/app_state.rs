@@ -5,12 +5,12 @@ use std::{
     collections::HashMap,
     fs,
     path::{Path, PathBuf},
-    sync::Mutex,
+    sync::{Arc, Mutex},
 };
 
 use onekeepass_core::db_service as kp_service;
 
-use crate::udl_types::{CommonDeviceService, FileInfo};
+use crate::udl_types::{CommonDeviceService, EventDispatch, FileInfo};
 use crate::{udl_types::SecureKeyOperation, util};
 
 // Any mutable field needs to be behind Mutex
@@ -23,6 +23,7 @@ pub struct AppState {
     pub key_files_dir_path: PathBuf,
     pub common_device_service: Box<dyn CommonDeviceService>,
     pub secure_key_operation: Box<dyn SecureKeyOperation>,
+    pub event_dispatcher:Arc<dyn EventDispatch>,
     last_backup_on_error: Mutex<HashMap<String, String>>,
     pub preference: Mutex<Preference>,
 }
@@ -38,6 +39,7 @@ impl AppState {
     pub fn setup(
         common_device_service: Box<dyn CommonDeviceService>,
         secure_key_operation: Box<dyn SecureKeyOperation>,
+        event_dispatcher:Arc<dyn EventDispatch>,
     ) {
         let app_dir = util::url_to_unix_file_name(&common_device_service.app_home_dir());
         let cache_dir = util::url_to_unix_file_name(&common_device_service.cache_dir());
@@ -68,6 +70,7 @@ impl AppState {
             key_files_dir_path,
             common_device_service,
             secure_key_operation,
+            event_dispatcher,
             last_backup_on_error: Mutex::new(HashMap::default()),
             preference: Mutex::new(pref),
         };

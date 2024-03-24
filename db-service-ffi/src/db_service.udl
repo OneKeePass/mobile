@@ -4,7 +4,8 @@ namespace db_service {
     void db_service_enable_logging();
 
     // Needs to be called from Swift/Kotlin side to initialize callback that can be used from rust side
-    void db_service_initialize(CommonDeviceService common_device_service,SecureKeyOperation secure_key_operation);
+    void db_service_initialize(CommonDeviceService common_device_service,
+                               SecureKeyOperation secure_key_operation,EventDispatch event_dispatcher);
  
     ApiResponse read_kdbx(FileArgs file_args, string json_args);
     ApiResponse create_temp_kdbx(FileArgs file_args, string json_args);
@@ -19,6 +20,17 @@ namespace db_service {
 
     string extract_file_provider(string full_file_name_uri);
     string invoke_command(string command_name, string args);
+};
+
+// New way of using callback
+[Trait,WithForeign]
+interface EventDispatch {
+    [Throws=ApiCallbackError]
+    void send_otp_update(string json_string);
+
+    [Throws=ApiCallbackError]
+    void send_tick_update(string json_string);
+
 };
 
 
@@ -44,7 +56,7 @@ callback interface SecureKeyOperation {
 };
 
 // Need to combine this SecureKeyOperationError
-// and use that for all calback erors
+// and use that for all callback erors
 [Enum]
 interface ApiCallbackError {
     InternalCallbackError(string reason);

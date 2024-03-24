@@ -26,7 +26,8 @@ class DbServiceAPI {
       Swift.debugPrint("dbServiceEnableLogging call is done")
       let cmnService = CommonDeviceServiceImpl()
       let secKeyOps = SecureKeyOperationImpl()
-      dbServiceInitialize(cmnService,secKeyOps)
+      let eventDispatcher = BackendEventDispatcher()
+      dbServiceInitialize(cmnService,secKeyOps,eventDispatcher)
       initialized = true
       Swift.debugPrint("API initialize is done")
     } else {

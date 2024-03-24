@@ -13,13 +13,13 @@
                           dispatch
                           reg-fx
                           subscribe]]
+   [onekeepass.mobile.events.entry-form-common :refer [add-section-field 
+                                                       is-field-exist
+                                                       extract-form-otp-fields
+                                                       entry-form-key Favorites]]
    [clojure.string :as str]
    [onekeepass.mobile.utils :as u :refer [contains-val?]]
    [onekeepass.mobile.background :as bg]))
-
-(def ^:private entry-form-key :entry-form)
-
-(def ^:private Favorites "Favorites")
 
 (defn update-section-value-on-change
   "Updates a section's KeyValue map with the given key and value"
@@ -113,11 +113,15 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
 (defn- set-on-entry-load [app-db entry-form-data]
-  (-> app-db
-      (assoc-in-key-db [entry-form-key :data] entry-form-data)
-      (assoc-in-key-db [entry-form-key :undo-data] entry-form-data)
-      (assoc-in-key-db [entry-form-key :showing] :selected)
-      (assoc-in-key-db [entry-form-key :edit] false)))
+  (let [otp-fields (extract-form-otp-fields entry-form-data)]
+    (-> app-db
+        (assoc-in-key-db [entry-form-key :data] entry-form-data)
+        (assoc-in-key-db [entry-form-key :undo-data] entry-form-data)
+        (assoc-in-key-db [entry-form-key :otp-fields] otp-fields)
+        (assoc-in-key-db [entry-form-key :showing] :selected)
+        (assoc-in-key-db [entry-form-key :edit] false))
+    )
+  )
 
 ;; Deprecate ?
 (reg-event-fx
@@ -246,13 +250,13 @@
    ;;(println "form-db called... " form)
    (get form field)))
 
-;; An entry is for new entry when :showing field is :new
+;; The entry form is for a  new entry when :showing field is :new
 (reg-sub
  :entry-form-new
  (fn [db _query-vec]
    (= :new (get-in-key-db db [entry-form-key :showing]))))
 
-;; An entry is for history entry when :showing field is :history-entry
+;; The entry form is for a  history entry when :showing field is :history-entry
 (reg-sub
  :entry-form-history
  (fn [db _query-vec]
@@ -340,7 +344,7 @@
 
 (def field-edit-dialog-key :section-field-dialog-data)
 
-(def standard-kv-fields ["Title" "Notes"])
+#_(def standard-kv-fields ["Title" "Notes"])
 
 (def section-field-dialog-init-data {:dialog-show false
                                      :popper-anchor-el nil
@@ -396,39 +400,39 @@
   [db]
   (assoc-in-key-db db [entry-form-key field-edit-dialog-key] section-field-dialog-init-data))
 
-(defn- is-field-exist
-  "Checks that a given field name exists in the entry form or not "
-  [app-db field-name]
-  (let [all-section-fields (-> (get-in-key-db
-                                app-db
-                                [entry-form-key :data :section-fields])
-                               vals flatten) ;;all-section-fields is a list of maps for all sections 
-        ]
-    (or (contains-val? standard-kv-fields field-name)
-        (-> (filter (fn [m] (= field-name (:key m))) all-section-fields) seq boolean))))
+#_(defn- is-field-exist
+    "Checks that a given field name exists in the entry form or not "
+    [app-db field-name]
+    (let [all-section-fields (-> (get-in-key-db
+                                  app-db
+                                  [entry-form-key :data :section-fields])
+                                 vals flatten) ;;all-section-fields is a list of maps for all sections 
+          ]
+      (or (contains-val? standard-kv-fields field-name)
+          (-> (filter (fn [m] (= field-name (:key m))) all-section-fields) seq boolean))))
 
-(defn- add-section-field
-  "Creates a new KV for the added section field and updates the 'section-name' section
+#_(defn- add-section-field
+    "Creates a new KV for the added section field and updates the 'section-name' section
   Returns the updated app-db
   "
-  [app-db {:keys [section-name
-                  field-name
-                  protected
-                  required
-                  data-type]}]
-  (let [section-fields-m (get-in-key-db
-                          app-db
-                          [entry-form-key :data :section-fields])
+    [app-db {:keys [section-name
+                    field-name
+                    protected
+                    required
+                    data-type]}]
+    (let [section-fields-m (get-in-key-db
+                            app-db
+                            [entry-form-key :data :section-fields])
         ;; fields is a vec of KVs for a given section
-        fields (-> section-fields-m (get section-name []))
-        fields (conj fields {:key field-name
-                             :value nil
-                             :protected protected
-                             :required required
-                             :data-type data-type
-                             :standard-field false})]
-    (assoc-in-key-db app-db [entry-form-key :data :section-fields]
-                     (assoc section-fields-m section-name fields))))
+          fields (-> section-fields-m (get section-name []))
+          fields (conj fields {:key field-name
+                               :value nil
+                               :protected protected
+                               :required required
+                               :data-type data-type
+                               :standard-field false})]
+      (assoc-in-key-db app-db [entry-form-key :data :section-fields]
+                       (assoc section-fields-m section-name fields))))
 
 (defn- modify-section-field [app-db {:keys [section-name
                                             current-field-name
@@ -1209,8 +1213,20 @@
 
 
 (comment
+  (require '[clojure.pprint :refer [pprint]])
+  
   (in-ns 'onekeepass.mobile.events.entry-form)
 
   (def db-key (-> @re-frame.db/app-db :current-db-file-name))
+  
+  (-> (get @re-frame.db/app-db db-key) :entry-form keys)
+  
+  ;; => (:data :undo-data :otp-fields :showing :edit)
+  
   (-> (get @re-frame.db/app-db db-key) :entry-form :data keys)
-  (-> (get @re-frame.db/app-db db-key) :entry-form :data :group-uuid))
+  ;; => :tags :icon-id :binary-key-values :section-fields :title :expiry-time :history-count 
+  ;;     :expires :standard-section-names :last-modification-time :entry-type-name :auto-type :notes 
+  ;;     :section-names :entry-type-icon-name :last-access-time :uuid :entry-type-uuid :group-uuid :creation-time
+  
+  (-> (get @re-frame.db/app-db db-key) :entry-form :data :group-uuid)
+  )

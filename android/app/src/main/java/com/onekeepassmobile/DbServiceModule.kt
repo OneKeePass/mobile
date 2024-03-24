@@ -378,7 +378,6 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
         }
     }
 
-
     private fun resolveResponse(response: ApiResponse, promise: Promise) {
         when (response) {
             is ApiResponse.Success -> {

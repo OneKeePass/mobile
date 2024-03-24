@@ -61,7 +61,7 @@ impl AndroidSupportService {
                 AppState::global().remove_last_backup_name_on_error(&old_full_file_name_uri);
                 Ok(kdbx_loaded)
             } else {
-                Err(OkpError::Other(format!("Last backup is not found")))
+                Err(OkpError::UnexpectedError(format!("Last backup is not found")))
             }
         };
 
@@ -124,10 +124,10 @@ impl AndroidSupportService {
 
                 r
             }
-            Ok(_) => Err(OkpError::Other(
+            Ok(_) => Err(OkpError::UnexpectedError(
                 "Unexpected arguments for create_kdbx api call".into(),
             )),
-            Err(e) => Err(OkpError::Other(format!("{:?}", e))),
+            Err(e) => Err(OkpError::UnexpectedError(format!("{:?}", e))),
         };
 
         {
@@ -168,7 +168,7 @@ impl AndroidSupportService {
         let inner = || -> OkpResult<()> {
             let p = Path::new(&full_key_file_name);
             if !p.exists() {
-                return Err(OkpError::Other(format!(
+                return Err(OkpError::UnexpectedError(format!(
                     "Key file {:?} is not found",
                     p.file_name()
                 )));
@@ -203,7 +203,7 @@ impl AndroidSupportService {
                 data_hash_str,
             }) = serde_json::from_str(&json_args)
             else {
-                return Err(OkpError::Other(format!(
+                return Err(OkpError::UnexpectedError(format!(
                     "Save attachment api call argument parsing failed for the args {} ",
                     &json_args
                 )));

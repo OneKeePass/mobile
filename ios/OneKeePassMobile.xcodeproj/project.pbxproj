@@ -22,6 +22,7 @@
 		F9AD1B6B29B78F1200BED32A /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9AD1B6A29B78F1100BED32A /* AppDelegate.swift */; };
 		F9AE2F40290440380013D9AB /* OkpLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9AE2F3E290440380013D9AB /* OkpLogger.swift */; };
 		F9AE2F41290440380013D9AB /* FileUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9AE2F3F290440380013D9AB /* FileUtils.swift */; };
+		F9B3CE622BAF307C006BDCFA /* BackendEventDispatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9B3CE612BAF307C006BDCFA /* BackendEventDispatcher.swift */; };
 		F9C4D29729AFE1CE00B83DEB /* OkpEvents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9C4D29629AFE1CE00B83DEB /* OkpEvents.swift */; };
 		F9C4D29929AFEC8A00B83DEB /* OkpEventsBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = F9C4D29829AFEC8A00B83DEB /* OkpEventsBridge.m */; };
 		F9C4D29B29B11B1600B83DEB /* OkpExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9C4D29A29B11B1600B83DEB /* OkpExport.swift */; };
@@ -85,6 +86,7 @@
 		F9AD1B6A29B78F1100BED32A /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = OneKeePassMobile/AppDelegate.swift; sourceTree = "<group>"; };
 		F9AE2F3E290440380013D9AB /* OkpLogger.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OkpLogger.swift; sourceTree = "<group>"; };
 		F9AE2F3F290440380013D9AB /* FileUtils.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FileUtils.swift; sourceTree = "<group>"; };
+		F9B3CE612BAF307C006BDCFA /* BackendEventDispatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendEventDispatcher.swift; sourceTree = "<group>"; };
 		F9C4D29629AFE1CE00B83DEB /* OkpEvents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OkpEvents.swift; sourceTree = "<group>"; };
 		F9C4D29829AFEC8A00B83DEB /* OkpEventsBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OkpEventsBridge.m; sourceTree = "<group>"; };
 		F9C4D29A29B11B1600B83DEB /* OkpExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OkpExport.swift; sourceTree = "<group>"; };
@@ -246,6 +248,7 @@
 				F9AE2F3E290440380013D9AB /* OkpLogger.swift */,
 				F9AE2F3F290440380013D9AB /* FileUtils.swift */,
 				F90DF3742A466FF00041F9F5 /* SecureKeyService.swift */,
+				F9B3CE612BAF307C006BDCFA /* BackendEventDispatcher.swift */,
 			);
 			name = Utils;
 			path = OneKeePassMobile/Utils;
@@ -582,6 +585,7 @@
 				F9C4D29B29B11B1600B83DEB /* OkpExport.swift in Sources */,
 				F9AD1B6729B63B6C00BED32A /* SceneDelegate.swift in Sources */,
 				F969C3F128D4C8D90020FA62 /* OkpDbService.swift in Sources */,
+				F9B3CE622BAF307C006BDCFA /* BackendEventDispatcher.swift in Sources */,
 				F9D88149291430B500467986 /* OkpError.swift in Sources */,
 				F9AD1B6B29B78F1200BED32A /* AppDelegate.swift in Sources */,
 				F92CB10328FF7A7500A79F60 /* DbServiceAPI.swift in Sources */,

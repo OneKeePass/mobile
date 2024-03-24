@@ -96,7 +96,8 @@
 
 (defn ^:export -main
   []
-  (native-events/register-open-url-handler)
+  #_(native-events/register-open-url-handler)
+  (native-events/register-backend-event-handlers)
   (cmn-events/sync-initialize)
   (as-events/init-session-timeout-tick)
   (r/as-element [app-root]))

@@ -1,6 +1,22 @@
 (ns
  onekeepass.mobile.entry-form
   (:require [reagent.core :as r]
+            [onekeepass.mobile.entry-form-fields :refer [text-field]]
+            [onekeepass.mobile.entry-form-menus :refer [custom-field-menu
+                                                        custom-field-menu-data
+                                                        section-menu
+                                                        section-menu-dialog-data
+                                                        attachment-long-press-menu-data
+                                                        show-attachment-long-press-menu
+                                                        attachment-long-press-menu]]
+            [onekeepass.mobile.entry-form-dialogs :refer [add-modify-section-name-dialog
+                                                          delete-field-confirm-dialog
+                                                          add-modify-section-field-dialog
+                                                          history-entry-delete-dialog
+                                                          history-entry-restore-dialog
+                                                          rename-attachment-name-dialog
+                                                          delete-attachment-dialog-info
+                                                          rename-attachment-name-dialog-data]]
             [onekeepass.mobile.rn-components
              :as rnc
              :refer [lstr
@@ -16,27 +32,19 @@
                      rn-scroll-view
                      rn-keyboard-avoiding-view
                      rnp-chip
-                     rnp-checkbox
                      rnp-divider
-                     rnp-menu
-                     rnp-menu-item
                      rnp-text-input
                      rnp-text
-                     rnp-touchable-ripple
                      rnp-helper-text
                      rnp-text-input-icon
                      rnp-icon-button
                      rnp-button
                      rnp-portal
-                     cust-dialog
-                     rnp-dialog-title
-                     rnp-dialog-content
-                     rnp-dialog-actions
                      rnp-list-item
                      rn-section-list
                      rnp-list-icon]]
-            [onekeepass.mobile.common-components :as cc :refer [confirm-dialog
-                                                                select-field
+
+            [onekeepass.mobile.common-components :as cc :refer [select-field
                                                                 select-tags-dialog]]
             [onekeepass.mobile.constants :as const]
             [onekeepass.mobile.icons-list :as icons-list]
@@ -44,7 +52,6 @@
             [onekeepass.mobile.date-utils :refer [utc-str-to-local-datetime-str]]
             [clojure.string :as str]
             [onekeepass.mobile.events.entry-form :as form-events]
-            [onekeepass.mobile.events.password-generator :as pg-events]
             [onekeepass.mobile.background :refer [is-iOS is-Android]]
             [onekeepass.mobile.events.common :as cmn-events]))
 
@@ -116,251 +123,6 @@
                                   is-history-entry)
                     :mode "text" :onPress form-events/edit-mode-on-press}
         (lstr "button.labels.edit")]])))
-
-;;;;;;; History ;;;;;;;;
-
-(defn history-entry-delete-dialog []
-  (let [entry-uuid @(form-events/entry-form-uuid)
-        index @(form-events/history-entry-selected-index)]
-    [confirm-dialog {:dialog-show @(form-events/history-entry-delete-flag)
-                     :title "Delete history entry"
-                     :confirm-text "Are you sure you want to delete this history entry permanently?"
-                     :actions [{:label (lstr "button.labels.yes")
-                                :on-press #(form-events/delete-history-entry-by-index
-                                            entry-uuid index)}
-                               {:label (lstr "button.labels.no")
-                                :on-press form-events/close-history-entry-delete-confirm-dialog}]}]))
-
-(defn history-entry-restore-dialog []
-  [confirm-dialog {:dialog-show @(form-events/history-entry-restore-flag)
-                   :title "Restore from history entry"
-                   :confirm-text "Are you sure you want to restore the entry from this history entry?"
-                   :actions [{:label (lstr "button.labels.yes")
-                              :on-press form-events/restore-entry-from-history}
-                             {:label (lstr "button.labels.no")
-                              :on-press form-events/close-history-entry-restore-confirm-dialog}]}])
-
-;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defn add-modify-section-name-dialog [{:keys [dialog-show
-                                              mode
-                                              section-name
-                                              error-fields] :as dialog-data}]
-  (let [error (boolean (seq error-fields))]
-    [cust-dialog {:style {} :dismissable true :visible dialog-show :onDismiss #()}
-     [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1}
-      (if (= mode :add) "New section name" "Modify section name")]
-     [rnp-dialog-content
-      [rn-view {:flexDirection "column"}
-       [rnp-text-input {:label "Section name"
-                        :defaultValue section-name
-                        :onChangeText #(form-events/section-name-dialog-update :section-name %)}]
-       (when error
-         [rnp-helper-text {:type "error" :visible error}
-          (get error-fields :section-name)])]]
-     [rnp-dialog-actions]
-     [rnp-dialog-actions
-      [rnp-button {:mode "text"
-                   :onPress #(form-events/section-name-dialog-update :dialog-show false)} (lstr "button.labels.cancel")]
-      [rnp-button {:mode "text"
-                   :onPress #(form-events/section-name-add-modify dialog-data)} (lstr "button.labels.ok")]]]))
-
-(defn delete-field-confirm-dialog [{:keys [dialog-show]} actions]
-  [cust-dialog {:style {} :dismissable true :visible dialog-show}
-   [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1} "Delete field"]
-   [rnp-dialog-content
-    [rnp-text "Are you sure you want to delete this field permanently?"]]
-   [rnp-dialog-actions
-    (for [{:keys [label on-press]}  actions]
-      ^{:key label} [rnp-button {:mode "text"
-                                 :on-press on-press} label])]])
-
-(defn add-modify-section-field-dialog [{:keys [dialog-show
-                                               section-name
-                                               field-name
-                                               protected
-                                               required
-                                               _data-type
-                                               mode
-                                               error-fields]
-                                        :as m}]
-
-  (let [error (boolean (seq error-fields))
-        ok-fn (fn [_e]
-                (if (= mode :add)
-                  (form-events/section-field-add
-                   (select-keys m [:field-name :protected :required :section-name :data-type]))
-                  (form-events/section-field-modify
-                   (select-keys m [:field-name :current-field-name :data-type :protected :required :section-name]))))]
-
-    [cust-dialog {:style {} :dismissable true :visible dialog-show
-                  :onDismiss #(form-events/close-section-field-dialog)}
-     [rnp-dialog-title {:ellipsizeMode "tail"
-                        :numberOfLines 1} (if (= mode :add)
-                                            (str "Add field in " section-name)
-                                            (str "Modify field in " section-name))]
-     [rnp-dialog-content
-      [rn-view {:flexDirection "column"}
-
-       [rnp-text-input {:label "Field name" :defaultValue field-name
-                        :onChangeText #(form-events/section-field-dialog-update :field-name %)}]
-       (when error
-         [rnp-helper-text {:type "error" :visible error}
-          (get error-fields field-name)])
-
-       [rn-view {:flexDirection "row"}
-        [rnp-touchable-ripple {:style {:width "45%"}
-                               :onPress #(form-events/section-field-dialog-update :protected (not protected))}
-         [rn-view {:flexDirection "row" :style {:alignItems "center" :justifyContent "space-between"}}
-          [rnp-text "Protected"]
-          [rn-view {:pointerEvents "none"}
-           [rnp-checkbox {:status (if protected "checked" "unchecked")}]]]]
-        [rn-view {:style {:width "10%"}}]
-        [rnp-touchable-ripple {:style {:width "45%"}
-                               :onPress #(form-events/section-field-dialog-update :required (not required))}
-         [rn-view {:flexDirection "row" :style {:alignItems "center" :justifyContent "space-between"}}
-          [rnp-text "Required"]
-          [rn-view {:pointerEvents "none"}
-           [rnp-checkbox {:status (if required "checked" "unchecked")}]]]]]]]
-
-     [rnp-dialog-actions
-      [rnp-button {:mode "text" :onPress #(form-events/close-section-field-dialog)} "Cancel"]
-      [rnp-button {:mode "text" :onPress ok-fn} "Ok"]]]))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  Menus ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(def ^:private section-menu-dialog-data (r/atom {:section-name nil
-                                                 :is-standard-section false
-                                                 :show false
-                                                 :x 0 :y 0}))
-
-(defn section-menu [{:keys [section-name is-standard-section show x y]}]
-  ;; anchor coordinates can be obtained in the icon button's onPrees. This is called with 'PressEvent Object Type'
-  ;; (-> event .-nativeEvent .-pageY) and (-> event .-nativeEvent .-pageX) and use that 
-  ;; in achor's coordinate 
-  [rnp-menu {:visible show :onDismiss #(swap! section-menu-dialog-data assoc :show false)
-             :anchor (clj->js {:x x :y y})} ;;:contentStyle {:backgroundColor  "red"}
-   [rnp-menu-item {:title (lstr "menu.labels.changename") :disabled is-standard-section
-                   :onPress (fn []
-                              (form-events/open-section-name-modify-dialog section-name)
-                              (swap! section-menu-dialog-data assoc :show false))}]
-   [rnp-menu-item {:title (lstr "menu.labels.addCustomField")
-                   :onPress (fn []
-                              (swap! section-menu-dialog-data assoc :show false)
-                              (form-events/open-section-field-dialog section-name))}]])
-
-(def ^:private custom-field-menu-data (r/atom {:section-name nil
-                                               :field-name nil
-                                               :show false
-                                               :x 0 :y 0}))
-
-(defn custom-field-menu-show [^js/PEvent event section-name key protected required]
-  (swap! custom-field-menu-data assoc
-         :section-name section-name
-         ;; need to use field-name instead of 'key' as key 
-         ;; in the custom-field-menu-data for the menu popup work properly
-         :field-name key
-         :protected protected
-         :required required
-         :show true
-         :x (-> event .-nativeEvent .-pageX) :y (-> event .-nativeEvent .-pageY)))
-
-(defn custom-field-menu-action-on-dismiss []
-  (swap! custom-field-menu-data assoc :show false))
-
-(defn custom-field-menu [{:keys [show x y section-name field-name protected required]}]
-  [rnp-menu {:visible show
-             :onDismiss custom-field-menu-action-on-dismiss
-             :anchor (clj->js {:x x :y y})}
-   [rnp-menu-item {:title (lstr "menu.labels.modifyCustomField")
-                   :onPress (fn [_e]
-                              (form-events/open-section-field-modify-dialog
-                               {:key field-name
-                                :protected protected
-                                :required required
-                                :section-name section-name})
-                              (custom-field-menu-action-on-dismiss))}]
-   [rnp-menu-item {:title (lstr "menu.labels.deleteField")
-                   :onPress (fn [_e]
-                              (form-events/field-delete section-name field-name)
-                              (custom-field-menu-action-on-dismiss))}]])
-
-
-(def ^:private attachment-long-press-menu-data (r/atom {:show false
-                                                        :edit false
-                                                        :name nil
-                                                        :data-hash nil
-                                                        :x 0 :y 0}))
-
-(defn show-attachment-long-press-menu [^js/PEvent event edit name data-hash]
-  (swap! attachment-long-press-menu-data assoc
-         :edit edit
-         :name name
-         :data-hash data-hash
-         :show true
-         :x (-> event .-nativeEvent .-pageX) :y (-> event .-nativeEvent .-pageY)))
-
-(defn dismiss-attachment-long-press-menu []
-  (swap! attachment-long-press-menu-data assoc
-         :show false
-         :edit false
-         :name nil
-         :data-hash nil
-         :x 0 :y 0))
-
-(declare show-delete-attachment-dialog)
-
-(declare show-rename-attachment-name-dialog)
-
-(defn attachment-long-press-menu [{:keys [show x y edit name data-hash]}]
-  [rnp-menu {:visible show
-             :onDismiss dismiss-attachment-long-press-menu
-             :anchor (clj->js {:x x :y y})}
-
-   [rnp-menu-item {:title "View"
-                   :onPress (fn [_e]
-                              (form-events/view-attachment name data-hash)
-                              (dismiss-attachment-long-press-menu))}]
-
-   [rnp-menu-item {:title (lstr "menu.labels.saveAs")
-                   :onPress (fn [_e]
-                              (form-events/save-attachment name data-hash)
-                              (dismiss-attachment-long-press-menu))}]
-
-   [rnp-divider]
-   [rnp-menu-item {:title (lstr "menu.labels.rename")
-                   :disabled (not edit)
-                   :onPress (fn [_e]
-                              (show-rename-attachment-name-dialog name data-hash)
-                              (dismiss-attachment-long-press-menu))}]
-   [rnp-menu-item {:title (lstr "menu.labels.delete")
-                   :disabled (not edit)
-                   :onPress (fn [_e]
-                              (show-delete-attachment-dialog
-                               (lstr "menu.labels.delete") "Do you want to delete this attachment?"
-                               #(form-events/delete-attachment data-hash))
-                              (dismiss-attachment-long-press-menu))}]])
-
-;; Following menu may be used if we addd Menu action to to attachment header 
-#_(def ^:private attachment-menu-data (r/atom {:show false :x 0 :y 0}))
-
-#_(defn show-attachment-menu [^js/PEvent event]
-    (swap! attachment-menu-data assoc
-           :show true
-           :x (-> event .-nativeEvent .-pageX) :y (-> event .-nativeEvent .-pageY)))
-
-#_(defn dismiss-attachment-menu []
-    (swap! attachment-menu-data assoc :show false))
-
-#_(defn attachment-menu [{:keys [show x y]}]
-    [rnp-menu {:visible show
-               :onDismiss dismiss-attachment-menu
-               :anchor (clj->js {:x x :y y})}
-     [rnp-menu-item {:title "Upload"
-                     :onPress (fn [_e]
-                                (dismiss-attachment-menu))}]])
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (declare clear-notes)
 
@@ -478,162 +240,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def ^:private field-focused (r/atom {:key nil :focused false}))
-
-(defn field-focus-action [key flag]
-  (swap! field-focused assoc :field-name key :focused flag))
-
-;; Android text input component issue - inputing slow and if any character changed in the middle of text 
-;; the cursor moves to the left
-;; Solution:
-;;   Need to use defaultValue. Also we need to use ref clear fn so that any previous default value shown is cleared
-;;   when there is a entry type selection change. 
-;; If we do not call explicit call to clear using ref, then following is noticed 
-;; If user enters some text and when entry type is changed, we expect all fields 
-;; should be blank. But because of the defaultValue prop is used, the old texts entered keeps showing 
-;; though in the backend db it is blank or nil
-(defn android-form-text-input [{:keys [key
-                                       value
-                                       protected
-                                       required
-                                       visible
-                                       edit
-                                       on-change-text]} is-password-edit? custom-field-edit-focused?]
-
-  ;;(println "protected " protected " visible " visible " , " (if (or (not protected) visible) false true))
-  ^{:key (str key protected)} [rnp-text-input {:label key #_(if required (str key "*") key)
-                                               :defaultValue value
-                       ;;:value value
-                       ;;:editable edit
-                                               :showSoftInputOnFocus edit
-                                               :ref (fn [^js/Ref ref]
-                                                      (when (and (not (nil? ref)) (str/blank? value)) (.clear ref)))
-                                               :autoCapitalize "none"
-                                               :keyboardType (if-not protected "email-address" "default")
-                                               :autoComplete "off"
-                                               :autoCorrect false
-                                               :style {:width (if (or is-password-edit? custom-field-edit-focused?)  "90%" "100%")}
-                                               :onFocus #(field-focus-action key true)
-                                               :onBlur #(field-focus-action key false)
-                                               :onChangeText (if edit on-change-text nil)
-                                               :onPressOut (if-not edit
-                                                             #(cmn-events/write-string-to-clipboard {:field-name key
-                                                                                                     :protected protected
-                                                                                                     :value value})
-                                                             nil)
-                                               :secureTextEntry (if (or (not protected) visible) false true)
-                   ;; It looks like we can have only one icon
-                                               :right (when protected
-                                                        (if visible
-                                                          (r/as-element [rnp-text-input-icon {:icon "eye"
-                                                                                              :onPress #(form-events/entry-form-field-visibility-toggle key)}])
-                                                          (r/as-element [rnp-text-input-icon {:icon "eye-off"
-                                                                                              :onPress #(form-events/entry-form-field-visibility-toggle key)}])))}])
-
-;; In iOS, we do not see the same issue as seen with the use of text input in android 
-(defn ios-form-text-input [{:keys [key
-                                   value
-                                   protected
-                                   required
-                                   visible
-                                   edit
-                                   on-change-text]} is-password-edit? custom-field-edit-focused?]
-  ;;(println "Key is " key " and value " value)
-  [rnp-text-input {:label key #_(if required (str key "*") key)
-                   :value value
-                   :showSoftInputOnFocus edit
-                   :autoCapitalize "none"
-                   :keyboardType "email-address"
-                   ;;:autoComplete "off"
-                   :autoCorrect false
-                   ;;:contextMenuHidden true
-                   :selectTextOnFocus false
-                   :spellCheck false ;;ios
-                   :textContentType "none"
-                   ;; Sometime in iOS when a text input has its secureTextEntry with true value
-                   ;; Strong Password prompt comes up and hides the actual input box preventing any entry
-                   ;; Particularly it happened with Simulator. For now, we can disable the Password AutoFill feature
-                   ;; in the Simulator Phone's Settings or setting the textContentType as shown below also works
-                   ;; On device, this behaviour is not seen
-                   ;; :textContentType (if (or (not protected) visible) nil "newPassword")
-                   :style {:width (if (or is-password-edit? custom-field-edit-focused?)  "90%" "100%")}
-                   :onFocus #(field-focus-action key true)
-                   :onBlur #(field-focus-action key false)
-                   :onChangeText (if edit on-change-text nil)
-                   :onPressOut (if-not edit
-                                 #(cmn-events/write-string-to-clipboard {:field-name key
-                                                                         :protected protected
-                                                                         :value value})
-                                 nil)
-                   :secureTextEntry (if (or (not protected) visible) false true)
-                   ;; It looks like we can have only one icon
-                   :right (when protected
-                            (if visible
-                              (r/as-element [rnp-text-input-icon
-                                             {:icon "eye"
-                                              :onPress #(form-events/entry-form-field-visibility-toggle key)}])
-                              (r/as-element [rnp-text-input-icon
-                                             {:icon "eye-off"
-                                              :onPress #(form-events/entry-form-field-visibility-toggle key)}])))}])
-
-(defn text-field
-  "Called to show form fields"
-  [{:keys [key
-           protected
-           standard-field
-           required
-           edit
-           on-change-text
-           error-text
-           section-name]
-    :or {edit false
-         protected false
-         on-change-text #(println (str "No on change text handler yet registered for " key))
-         required false}
-    :as kvm}]
-  (let [cust-color @page-background-color
-        is-password-edit? (and edit (= key "Password"))
-        custom-field-edit-focused? (if (is-iOS)
-                                     (and
-                                      edit
-                                      (= (:field-name @field-focused) key)
-                                      ;; Sometimes pressing on the custom field menu icon is not working
-                                      ;; It starts working when some input action is done in the custom field
-                                      ;; and now if press on the menu icon, it works. By removing focused check as below
-                                      ;; the pressing on custom icon works. But first time when press Soft KB hides and then
-                                      ;; again we need to press for menu popup
-                                      ;;(:focused @field-focused)   <- See above comments
-
-                                      (not standard-field))
-                                     ;; In Android, we cannot use :focused as onBlur sets false and dot-icon is hidden
-                                     (and
-                                      edit
-                                      (= (:field-name @field-focused) key)
-                                      (not standard-field)))]
-    [rn-view {:flexDirection "column"}
-     [rn-view {:flexDirection "row" :style {:flex 1}}
-      (if (is-iOS)
-        [ios-form-text-input kvm is-password-edit? custom-field-edit-focused?]
-        [android-form-text-input kvm is-password-edit? custom-field-edit-focused?])
-      (when is-password-edit?
-        [rn-view {:style {:margin-left -5 :backgroundColor cust-color}}
-         [rnp-icon-button {:style {:margin-right 0}
-                           :icon "cached"
-                           ;; on-change-text is a single argument function
-                           ;; This function is called when the generated password is selected in Generator page
-                           :onPress #(pg-events/generate-password on-change-text)}]])
-
-     ;; In Android, when we press this dot-icon, the custom field first loses focus and the keyborad dimiss takes place 
-     ;; and then menu pops up only when we press second time the dot-icon
-      (when custom-field-edit-focused?
-        [rn-view {:style {:margin-left -5 :backgroundColor cust-color}}
-         [rnp-icon-button {:style {:margin-right 0}
-                           :icon dots-icon-name
-                           :onPress #(custom-field-menu-show % section-name key protected required)}]])]
-
-     (when (and edit (not (nil? error-text)))
-       [rnp-helper-text {:type "error" :visible true} error-text])]))
-
 ;; Notes - Multiline text input
 ;; Android issue - inputing slow and if any character changed in the middle of text 
 ;; the cursor moves to the left
@@ -699,25 +305,25 @@
           ;; All fields of this section is shown in edit mode. In case of non edit mode, 
           ;; all required fields and other fields with values are shown
           (when (or edit (not (str/blank? value))) #_(or edit (or required (not (str/blank? value))))
-            (cond
-              (not (nil? select-field-options))
-              ^{:key key} [select-field {:text-label key #_(if required (str key "*") key)
-                                         :options  (mapv (fn [v] {:key v :label v}) select-field-options)
-                                         :value value
-                                         :disabled (not edit)
-                                         :on-change #(form-events/update-section-value-on-change
-                                                      section-name key (.-label ^js/SelOption %))}]
+                (cond
+                  (not (nil? select-field-options))
+                  ^{:key key} [select-field {:text-label key #_(if required (str key "*") key)
+                                             :options  (mapv (fn [v] {:key v :label v}) select-field-options)
+                                             :value value
+                                             :disabled (not edit)
+                                             :on-change #(form-events/update-section-value-on-change
+                                                          section-name key (.-label ^js/SelOption %))}]
 
-              :else
-              ^{:key key} [text-field (assoc kv
-                                             :required false ;; make all fields as optional 
-                                             :section-name section-name
-                                             :edit edit
-                                             :error-text (get errors key)
-                                             :on-change-text #(form-events/update-section-value-on-change
-                                                               section-name key %)
-                                             :password-score password-score
-                                             :visible @(form-events/visible? key))]))))])))
+                  :else
+                  ^{:key key} [text-field (assoc kv
+                                                 :required false ;; make all fields as optional 
+                                                 :section-name section-name
+                                                 :edit edit
+                                                 :error-text (get errors key)
+                                                 :on-change-text #(form-events/update-section-value-on-change
+                                                                   section-name key %)
+                                                 :password-score password-score
+                                                 :visible @(form-events/visible? key))]))))])))
 
 (defn all-sections-content []
   (let [{:keys [edit]
@@ -772,64 +378,8 @@
 
 ;;;;;;;;;;;;;;;;;;;;  Attachment ;;;;;;;;;;;;;;;;;;;;
 
-;; delete dialog
-(def delete-attachment-confirm-dialog-data (r/atom {:dialog-show false
-                                                    :title nil
-                                                    :confirm-text nil
-                                                    :call-on-ok-fn #(println %)}))
-
-(def delete-attachment-dialog-info (cc/confirm-dialog-factory delete-attachment-confirm-dialog-data))
-
-(defn show-delete-attachment-dialog [title confirm-text call-on-ok-fn]
-  (swap! delete-attachment-confirm-dialog-data assoc
-         :title title :confirm-text confirm-text :call-on-ok-fn call-on-ok-fn)
-  ((:show delete-attachment-dialog-info)))
-
-;; rename dialog
-(def rename-attachment-name-dialog-data (r/atom {:dialog-show false
-                                                 :name nil
-                                                 :data-hash nil
-                                                 :error-text nil}))
-
-(defn show-rename-attachment-name-dialog [name data-hash]
-  (swap! rename-attachment-name-dialog-data assoc :dialog-show true :name name :data-hash data-hash))
-
-(defn close-rename-attachment-name-dialog []
-  (reset! rename-attachment-name-dialog-data {}))
-
-(defn change-attachment-name [value]
-  (swap! rename-attachment-name-dialog-data assoc :name value)
-  (if  (str/blank? value)
-    (swap! rename-attachment-name-dialog-data assoc :error-text "Valid name is required")
-    (swap! rename-attachment-name-dialog-data assoc :error-text nil)))
-
-(defn rename-attachment-name-dialog [{:keys [dialog-show
-                                             name
-                                             data-hash
-                                             error-text]}]
-  [cust-dialog {:style {} :dismissable true :visible dialog-show :onDismiss #()}
-   [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1}
-    "Change name"]
-   [rnp-dialog-content
-    [rn-view {:flexDirection "column"}
-     [rnp-text-input {:label "Name"
-                      :defaultValue name
-                      :onChangeText change-attachment-name}]
-     (when error-text
-       [rnp-helper-text {:type "error" :visible true}
-        error-text])]]
-
-   [rnp-dialog-actions
-    [rnp-button {:mode "text"
-                 :onPress close-rename-attachment-name-dialog} (lstr "button.labels.cancel")]
-    [rnp-button {:mode "text"
-                 :disabled (not (nil? error-text))
-                 :onPress (fn []
-                            (form-events/rename-attachment name data-hash)
-                            (close-rename-attachment-name-dialog))} (lstr "button.labels.ok")]]])
-
 (def attachment-icons {"pdf" const/ICON-PDF
-                       "txt" const/ICON-FILE 
+                       "txt" const/ICON-FILE
                        "jpg" const/ICON-FILE-JPG
                        "gif" const/ICON-FILE-JPG
                        "png" const/ICON-FILE-PNG})

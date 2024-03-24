@@ -1,6 +1,7 @@
 use crate::app_state::{AppState, RecentlyUsed};
 use crate::{as_api_response, ios, KeyFileInfo, android};
 use crate::{open_backup_file, util, OkpError, OkpResult, };
+use onekeepass_core::async_service::{self,OtpTokenTtlInfoByField,TimerID};
 use onekeepass_core::db_content::AttachmentHashValue;
 use onekeepass_core::db_service::{
     self, DbSettings, EntryCategory, EntryFormData, Group, KdbxLoaded, NewDatabase,
@@ -138,6 +139,23 @@ pub enum CommandArg {
         name:String,
         data_hash_str: String,
     },
+
+    StartEntryOtpArg {
+        db_key: String,
+        entry_uuid: Uuid,
+        otp_fields: OtpTokenTtlInfoByField,
+    },
+
+    StartTimerArg {
+        period_in_milli_seconds: u64, 
+        timer_id: Option<TimerID>,
+    },
+
+    // Should come after StartTimerArg
+    StopTimerArg {
+        timer_id:TimerID,
+    },
+
     // This variant needs to come last so that other variants starting with db_key is matched before this
     // and this will be matched only if db_key is passed. A kind of descending order with the same field names
     // in diffrent variant. If this variant put before any other variant with db_key field,
@@ -182,6 +200,26 @@ macro_rules! service_call  {
     };
 }
 
+// Wraps a fn that returns a value in a OkpResult<T>
+// How to combine service_ok_call with service_call?
+macro_rules! service_ok_call  {
+    ($args:expr,$enum_name:tt {$($enum_vals:tt)*} => $path:ident $fn_name:tt ($($fn_args:expr),*) ) => {
+        
+        if let Ok(CommandArg::$enum_name{$($enum_vals)*}) = serde_json::from_str(&$args) {
+            // $path can be either Self or db_service and $fn_name is expected in Self or in db_service
+            // $fn_name expected return non OkpResult<T> value
+            let r = $path::$fn_name($($fn_args),*);
+            return  result_json_str(Ok(r));
+        } else  {
+            let fname = stringify!($fn_name);
+            let ename = stringify!($enum_name);
+            let error_msg = format!("Invalid command args received {} for the api call {}. Expected a valid CommandArg::{}",
+                                    &$args.clone(),&fname, &ename);
+            return InvokeResult::<()>::with_error(&error_msg.clone()).json_str();
+        }
+    };
+}
+
 macro_rules! db_service_call  {
     ($args:expr,$enum_name:tt {$($enum_vals:tt)*} => $fn_name:tt ($($fn_args:expr),*) ) => {
         service_call!($args,$enum_name {$($enum_vals)*} => db_service $fn_name ($($fn_args),*))
@@ -195,6 +233,7 @@ impl Commands {
         }
 
         let r = match command_name.as_str() {
+
             "new_entry_form_data" => {
                 db_service_call!(args,NewEntryArg{db_key,entry_type_uuid,parent_group_uuid} => 
                     new_entry_form_data_by_id(&db_key,&entry_type_uuid,parent_group_uuid.as_ref().as_deref()))
@@ -333,6 +372,17 @@ impl Commands {
                     Self update_session_timeout(db_session_timeout,clipboard_timeout))
             }
 
+            //// Async related
+            "start_polling_entry_otp_fields" => {
+                service_ok_call! (args, StartEntryOtpArg {db_key,entry_uuid,otp_fields} => async_service start_polling_entry_otp_fields(&db_key,&entry_uuid,otp_fields))
+            }
+
+            "stop_polling_all_entries_otp_fields" => Self::stop_polling_all_entries_otp_fields(),
+
+            "set_timeout" => {
+                service_ok_call! (args, StartTimerArg {period_in_milli_seconds,timer_id} => async_service set_timeout(period_in_milli_seconds,timer_id))
+            }
+
             ////// 
             "remove_from_recently_used" => Self::remove_from_recently_used(&args),
 
@@ -359,10 +409,14 @@ impl Commands {
 
             "clean_export_data_dir" => result_json_str(util::clean_export_data_dir()),
 
+            // "test_call" => Self::test_call(),
+
             x => error_json_str(&format!("Invalid command name {} is passed", x)),
         };
         r
     }
+
+    
 
     fn new_blank_group(args: String) -> ResponseJson {
         match serde_json::from_str(&args) {
@@ -578,6 +632,17 @@ impl Commands {
         let pref = AppState::global().preference.lock().unwrap();
         ok_json_str(pref.clone())
     }
+
+    fn  stop_polling_all_entries_otp_fields() -> ResponseJson { 
+        async_service::stop_polling_all_entries_otp_fields();
+        ok_json_str(true)
+
+    }
+
+    // fn test_call() -> ResponseJson {
+    //     onekeepass_core::async_service::start();
+    //     ok_json_str("Done".to_string())
+    // }
 }
 
 pub fn remove_app_files(db_key: &str) {
@@ -598,7 +663,7 @@ pub fn remove_app_files(db_key: &str) {
     ios::delete_book_mark_data(&db_key);
 }
 
-fn ok_json_str<T: serde::Serialize>(val: T) -> ResponseJson {
+pub fn ok_json_str<T: serde::Serialize>(val: T) -> ResponseJson {
     InvokeResult::with_ok(val).json_str()
 }
 

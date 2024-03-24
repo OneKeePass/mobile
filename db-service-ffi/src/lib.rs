@@ -2,8 +2,10 @@
 mod android;
 mod app_state;
 mod commands;
+mod event_dispatcher;
 mod ios;
 mod key_secure;
+mod udl_functions;
 mod udl_types;
 mod util;
 
@@ -17,8 +19,10 @@ use onekeepass_core::{
 };
 use udl_types::{
     ApiCallbackError, ApiResponse, CommonDeviceService, FileArgs, FileInfo, JsonService,
-    KdbxCreated, SecureKeyOperation, SecureKeyOperationError,
+    KdbxCreated, SecureKeyOperation, SecureKeyOperationError,EventDispatch,
 };
+
+use udl_functions::{db_service_enable_logging, db_service_initialize, read_kdbx};
 
 use log::{debug, logger};
 use serde::{Deserialize, Serialize};
@@ -67,28 +71,6 @@ macro_rules! return_api_response_failure {
     };
 }
 
-fn file_to_create(dir_path: &str, file_name: &str) -> OkpResult<File> {
-    let name = util::full_path_str(dir_path, file_name);
-    let full_file_path = Path::new(&name);
-    if let Some(ref p) = full_file_path.parent() {
-        if !p.exists() {
-            return Err(OkpError::Other(format!("Parent dir is not existing")));
-        }
-    }
-    log::debug!(
-        "In file_to_create: Creating file object for full file path  {:?}",
-        full_file_path
-    );
-
-    // IMPORTANT: We need to create a file using OpenOptions so that the file is opened for read and write
-    let file = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .create(true)
-        .open(full_file_path)?;
-    Ok(file)
-}
-
 pub fn open_backup_file(backup_file_path: Option<String>) -> Option<File> {
     match backup_file_path {
         Some(backup_file_name) => OpenOptions::new()
@@ -101,26 +83,6 @@ pub fn open_backup_file(backup_file_path: Option<String>) -> Option<File> {
     }
 }
 
-fn read_kdbx(file_args: FileArgs, json_args: String) -> ApiResponse {
-    log::debug!("file_args received is {:?}", file_args);
-
-    let mut file = match file_args {
-        FileArgs::FileDecriptor { fd } => unsafe { util::get_file_from_fd(fd) },
-        FileArgs::FullFileName { full_file_name } => {
-            // Opening file in read mode alone is sufficient and works fine
-            // full_path_file_to_read_write may be used if we need to open file with read and write permissions
-            // match full_path_file_to_read_write(&full_file_name)
-            match File::open(util::url_to_unix_file_name(&full_file_name)) {
-                Ok(f) => f,
-                Err(e) => return_api_response_failure!(e),
-            }
-        }
-        _ => return_api_response_failure!("Unsupported file args passed"),
-    };
-
-    as_api_response(internal_read_kdbx(&mut file, &json_args))
-}
-
 fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service::KdbxLoaded> {
     let CommandArg::OpenDbArg {
         db_file_name,
@@ -128,7 +90,7 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
         key_file_name,
     } = serde_json::from_str(json_args)?
     else {
-        return Err(OkpError::Other(format!(
+        return Err(OkpError::UnexpectedError(format!(
             "Argument 'json_args' {:?} parsing failed for readkdbx api call",
             json_args
         )));
@@ -279,7 +241,7 @@ fn write_to_backup_on_error(full_file_name_uri: String) -> ApiResponse {
         // instead of using AppState uri_to_file_name method as that call may fail in case of Android
         let file_name = AppState::global()
             .file_name_in_recently_used(&full_file_name_uri)
-            .ok_or(OkpError::Other(format!(
+            .ok_or(OkpError::UnexpectedError(format!(
                 "There is no file name found for the uri {} in the recently used list",
                 &full_file_name_uri
             )))?;
@@ -368,7 +330,7 @@ fn copy_picked_key_file(file_args: FileArgs) -> String {
         //         debug!("copy_picked_key_file:File::open return is {:?}", &r);
         //         (r?, name)
         //     }
-        //     _ => return Err(OkpError::Other("Unsupported file args passed".into())),
+        //     _ => return Err(OkpError::UnexpectedError("Unsupported file args passed".into())),
         // };
 
         let OpenedFile {
@@ -445,7 +407,11 @@ impl OpenedFile {
 
                 (file, name, full_file_name)
             }
-            _ => return Err(OkpError::Other("Unsupported file args passed".into())),
+            _ => {
+                return Err(OkpError::UnexpectedError(
+                    "Unsupported file args passed".into(),
+                ))
+            }
         };
         let r = OpenedFile {
             file,
@@ -466,7 +432,7 @@ fn upload_attachment(file_args: FileArgs, json_args: &str) -> ResponseJson {
         } = OpenedFile::open_to_read(file_args)?;
 
         let CommandArg::DbKey { db_key } = serde_json::from_str(json_args)? else {
-            return Err(OkpError::Other(format!(
+            return Err(OkpError::UnexpectedError(format!(
                 "Unexpected argument {:?} for upload_attachment api call",
                 json_args
             )));
@@ -504,62 +470,6 @@ fn as_api_response<T: serde::Serialize>(val: OkpResult<T>) -> ApiResponse {
             // so that the string in #error[...] is returned in response
             result: InvokeResult::<()>::with_error(&format!("{}", e)).json_str(),
         },
-    }
-}
-
-fn db_service_initialize(
-    common_device_service: Box<dyn CommonDeviceService>,
-    secure_key_operation: Box<dyn SecureKeyOperation>,
-) {
-    AppState::setup(common_device_service, secure_key_operation);
-    log::info!("AppState with CommonDeviceService is initialized");
-    key_secure::init_key_main_store();
-    log::info!("key_secure::init_key_main_store call done after AppState setup");
-}
-
-fn db_service_enable_logging() {
-    #[cfg(target_os = "android")]
-    {
-        let _ = std::panic::catch_unwind(|| {
-            let _filter = android_logger::FilterBuilder::new()
-                //.filter_module("commands", log::LevelFilter::Debug)
-                // .filter_module("", log::LevelFilter::Debug)
-                // .filter_module("", log::LevelFilter::Debug)
-                // .filter_module("our_core::ffi", log::LevelFilter::Info)
-                .build();
-            android_logger::init_once(
-                android_logger::Config::default()
-                    .with_max_level(log::LevelFilter::Trace)
-                    //.with_min_level(log::Level::Debug)
-                    //.with_filter(filter)
-                    .with_tag("DbServiceFFI"),
-            );
-            log::trace!("Android logging should be hooked up!")
-        });
-    }
-
-    // On iOS enable logging with a level filter.
-    #[cfg(target_os = "ios")]
-    {
-        // Debug logging in debug mode.
-        // (Note: `debug_assertions` is the next best thing to determine if this is a debug build)
-        #[cfg(debug_assertions)]
-        let level = log::LevelFilter::Debug;
-        #[cfg(not(debug_assertions))]
-        let level = log::LevelFilter::Info;
-
-        let logger = oslog::OsLogger::new("com.onekeepass")
-            .level_filter(level)
-            // Filter UniFFI log messages
-            .category_level_filter("db_service::ffi", log::LevelFilter::Info);
-
-        match logger.init() {
-            Ok(_) => log::trace!("os_log should be hooked up!"),
-            // Please note that this is only expected to fail during unit tests,
-            // where the logger might have already been initialized by a previous
-            // test. So it's fine to print with the "logger".
-            Err(_) => log::warn!("os_log was already initialized"),
-        };
     }
 }
 
@@ -601,7 +511,7 @@ fn create_temp_kdbx(file_args: FileArgs, json_args: String) -> ApiResponse {
             let _ = file.sync_all();
             r
         }
-        Ok(_) => Err(OkpError::Other(
+        Ok(_) => Err(OkpError::UnexpectedError(
             "Unexpected arguments for create_temp_kdbx api call".into(),
         )),
         Err(e) => {
@@ -610,7 +520,7 @@ fn create_temp_kdbx(file_args: FileArgs, json_args: String) -> ApiResponse {
                 &json_args,
                 e
             );
-            Err(OkpError::Other(format!("{:?}", e)))
+            Err(OkpError::UnexpectedError(format!("{:?}", e)))
         }
     };
 
@@ -654,7 +564,7 @@ fn extract_file_provider(full_file_name_uri: String) -> String {
 // only for ios or android build
 // This is required if we want to run the units tests on Mac OS
 // But we may get all functions that are used in 'db_service.uniffi.rs' marked as
-// never used by lint. We may to use #[allow(dead_code)] to suppress
+// never used by lint. We may need to use #[allow(dead_code)] to suppress that
 // See the use of #![allow(dead_code, unused_imports)] in the top of this crate
 
 #[cfg(any(target_os = "ios", target_os = "android"))]
@@ -698,11 +608,11 @@ fn _read_kdbx_old(file_args: FileArgs, json_args: String) -> ApiResponse {
             }
             r
         }
-        Ok(x) => Err(OkpError::Other(format!(
+        Ok(x) => Err(OkpError::UnexpectedError(format!(
             "Unexpected argument {:?} for readkdbx api call",
             x
         ))),
-        Err(e) => Err(OkpError::Other(format!("{:?}", e))),
+        Err(e) => Err(OkpError::UnexpectedError(format!("{:?}", e))),
     };
 
     ApiResponse::Success {

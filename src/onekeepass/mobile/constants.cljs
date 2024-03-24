@@ -37,9 +37,16 @@
 (def TITLE "Title")
 (def MODIFIED_TIME "Modified Time")
 (def CREATED_TIME "Created Time")
+(def PASSWORD "Password")
 
 (def ASCENDING "Ascending")
 (def DESCENDING "Descending")
+
+(def ONE_TIME_PASSWORD_TYPE "Field type" "OneTimePassword")
+
+(def OTP "Standard field name used" "otp")
+
+(def OTP_URL_PREFIX "otpauth://totp")
 
 
 ;;;;;;; Icon names ;;;;;

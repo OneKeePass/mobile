@@ -1,4 +1,5 @@
 (ns onekeepass.mobile.background
+  "All backend api calls that are used across many events"
   (:require
    [react-native :as rn]
    ["@react-native-clipboard/clipboard" :as rnc-clipboard]
@@ -637,6 +638,12 @@
 (defn update-clipboard-timeout [clipboard-timeout dispatch-fn]
   (invoke-api "update_session_timeout" {:timeout_type 1,:clipboard-timeout clipboard-timeout} dispatch-fn))
 
+;;;;;;;;;;;;;;;;;;;;;;;;; OTP, Timer etc ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn set-timeout [period-in-milli-seconds timer-id dispatch-fn]
+  (invoke-api "set_timeout" {:period-in-milli-seconds period-in-milli-seconds :timer-id timer-id} dispatch-fn))
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Native Events ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; While compiling with advanced option, if we use '(u/is-iOS)' to check platform
 ;; in any place, the call gets optimized with false constant value resulting all calls that 
@@ -720,7 +727,8 @@
     ([event-name]
      (unregister-event-listener :common event-name)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (comment
   (require '[cljs.pprint]) ;;https://cljs.github.io/api/cljs.pprint/

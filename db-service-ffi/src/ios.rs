@@ -144,7 +144,7 @@ impl IosSupportService {
 
                 Ok(kdbx_loaded)
             } else {
-                Err(OkpError::Other(format!(
+                Err(OkpError::UnexpectedError(format!(
                     "Call complete_save_as_on_error failed due Invalid args {}",
                     json_args
                 )))
