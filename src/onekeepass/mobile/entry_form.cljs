@@ -1,59 +1,42 @@
 (ns
  onekeepass.mobile.entry-form
-  (:require [reagent.core :as r]
-            [onekeepass.mobile.entry-form-fields :refer [text-field]]
-            [onekeepass.mobile.entry-form-menus :refer [custom-field-menu
-                                                        custom-field-menu-data
-                                                        section-menu
-                                                        section-menu-dialog-data
-                                                        attachment-long-press-menu-data
-                                                        show-attachment-long-press-menu
-                                                        attachment-long-press-menu]]
-            [onekeepass.mobile.entry-form-dialogs :refer [add-modify-section-name-dialog
+  (:require [clojure.string :as str]
+            [onekeepass.mobile.background :refer [is-Android is-iOS]]
+            [onekeepass.mobile.common-components :as cc :refer [select-field
+                                                                select-tags-dialog]]
+            [onekeepass.mobile.constants :as const :refer [ONE_TIME_PASSWORD_TYPE]]
+            [onekeepass.mobile.date-utils :refer [utc-str-to-local-datetime-str]]
+            [onekeepass.mobile.entry-form-dialogs :refer [add-modify-section-field-dialog
+                                                          add-modify-section-name-dialog
+                                                          delete-attachment-dialog-info
                                                           delete-field-confirm-dialog
-                                                          add-modify-section-field-dialog
                                                           history-entry-delete-dialog
                                                           history-entry-restore-dialog
                                                           rename-attachment-name-dialog
-                                                          delete-attachment-dialog-info
                                                           rename-attachment-name-dialog-data]]
+            [onekeepass.mobile.entry-form-fields :refer [otp-field text-field]]
+            [onekeepass.mobile.entry-form-menus :refer [attachment-long-press-menu
+                                                        attachment-long-press-menu-data
+                                                        custom-field-menu
+                                                        custom-field-menu-data
+                                                        section-menu
+                                                        section-menu-dialog-data
+                                                        show-attachment-long-press-menu]]
+            [onekeepass.mobile.events.common :as cmn-events]
+            [onekeepass.mobile.events.entry-form :as form-events]
+            [onekeepass.mobile.icons-list :as icons-list]
             [onekeepass.mobile.rn-components
              :as rnc
-             :refer [lstr
-                     icon-color
-                     on-primary-color
-                     primary-container-color
-                     page-background-color
-                     appbar-text-color
-                     rn-keyboard
-                     dots-icon-name
-                     page-title-text-variant
-                     rn-view
-                     rn-scroll-view
-                     rn-keyboard-avoiding-view
-                     rnp-chip
-                     rnp-divider
-                     rnp-text-input
-                     rnp-text
-                     rnp-helper-text
-                     rnp-text-input-icon
-                     rnp-icon-button
-                     rnp-button
-                     rnp-portal
-                     rnp-list-item
-                     rn-section-list
-                     rnp-list-icon]]
-
-            [onekeepass.mobile.common-components :as cc :refer [select-field
-                                                                select-tags-dialog]]
-            [onekeepass.mobile.constants :as const]
-            [onekeepass.mobile.icons-list :as icons-list]
+             :refer [appbar-text-color dots-icon-name icon-color lstr
+                     on-primary-color page-background-color
+                     page-title-text-variant primary-container-color
+                     rn-keyboard rn-keyboard-avoiding-view rn-scroll-view
+                     rn-section-list rn-view rnp-button rnp-chip rnp-divider
+                     rnp-helper-text rnp-icon-button rnp-list-icon
+                     rnp-list-item rnp-portal rnp-text rnp-text-input
+                     rnp-text-input-icon]]
             [onekeepass.mobile.utils :as u]
-            [onekeepass.mobile.date-utils :refer [utc-str-to-local-datetime-str]]
-            [clojure.string :as str]
-            [onekeepass.mobile.events.entry-form :as form-events]
-            [onekeepass.mobile.background :refer [is-iOS is-Android]]
-            [onekeepass.mobile.events.common :as cmn-events]))
+            [reagent.core :as r]))
 
 ;;(set! *warn-on-infer* true)
 
@@ -299,6 +282,7 @@
        (doall
         (for [{:keys [key
                       value
+                      data-type
                       select-field-options
                       required
                       password-score] :as kv} section-data]
@@ -313,6 +297,9 @@
                                              :disabled (not edit)
                                              :on-change #(form-events/update-section-value-on-change
                                                           section-name key (.-label ^js/SelOption %))}]
+                  
+                  (= data-type ONE_TIME_PASSWORD_TYPE)
+                  ^{:key key} [otp-field kv]
 
                   :else
                   ^{:key key} [text-field (assoc kv

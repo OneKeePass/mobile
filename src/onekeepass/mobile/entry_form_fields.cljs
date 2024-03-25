@@ -1,7 +1,7 @@
 (ns
  onekeepass.mobile.entry-form-fields
-  
-  (:require 
+
+  (:require
    [reagent.core :as r]
    [clojure.string :as str]
    [onekeepass.mobile.entry-form-menus :refer [custom-field-menu-show]]
@@ -43,10 +43,7 @@
    [onekeepass.mobile.events.entry-form :as form-events]
    [onekeepass.mobile.events.password-generator :as pg-events]
    [onekeepass.mobile.background :refer [is-iOS is-Android]]
-   [onekeepass.mobile.events.common :as cmn-events]
-   
-   )
-  )
+   [onekeepass.mobile.events.common :as cmn-events]))
 
 (def ^:private field-focused (r/atom {:key nil :focused false}))
 
@@ -203,3 +200,34 @@
 
      (when (and edit (not (nil? error-text)))
        [rnp-helper-text {:type "error" :visible true} error-text])]))
+
+
+(defn otp-field [{:keys [key
+                         value
+                         protected
+                         edit]}]
+  (let [{:keys [token ttl period]} @(form-events/otp-currrent-token key)]
+    [rnp-text-input {:label key
+                     :value (if-not edit token value)
+                     :showSoftInputOnFocus edit
+                     :autoCapitalize "none"
+                     :keyboardType "email-address"
+                     :autoCorrect false
+                     :selectTextOnFocus false
+                     :spellCheck false
+                     :textContentType "none"
+                     :style {:width "100%" :fontSize 30}
+                     :onFocus #(field-focus-action key true)
+                     :onBlur #(field-focus-action key false)
+                     :onChangeText nil
+                     :onPressOut (if-not edit
+                                   #(cmn-events/write-string-to-clipboard {:field-name key
+                                                                           :protected protected
+                                                                           :value value})
+                                   nil)
+                     :secureTextEntry false
+                       ;; It looks like we can have only one icon
+                     :right (when edit
+                              (r/as-element [rnp-text-input-icon
+                                             {:icon const/ICON-TRASH-CAN-OUTLINE
+                                              :onPress #()}]))}]))

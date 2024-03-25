@@ -13,13 +13,17 @@
                           dispatch
                           reg-fx
                           subscribe]]
-   [onekeepass.mobile.events.entry-form-common :refer [add-section-field 
+   [onekeepass.mobile.events.entry-form-common :refer [add-section-field
                                                        is-field-exist
                                                        extract-form-otp-fields
                                                        entry-form-key Favorites]]
    [clojure.string :as str]
    [onekeepass.mobile.utils :as u :refer [contains-val?]]
-   [onekeepass.mobile.background :as bg]))
+   [onekeepass.mobile.background :as bg]
+   ;; Need to be called here so that events are registered
+   ;; Should it be moved to core.cljs ? 
+   #_{:clj-kondo/ignore [:unused-namespace]}
+   [onekeepass.mobile.events.entry-form-otp :as ef-otp-events]))
 
 (defn update-section-value-on-change
   "Updates a section's KeyValue map with the given key and value"
@@ -119,9 +123,7 @@
         (assoc-in-key-db [entry-form-key :undo-data] entry-form-data)
         (assoc-in-key-db [entry-form-key :otp-fields] otp-fields)
         (assoc-in-key-db [entry-form-key :showing] :selected)
-        (assoc-in-key-db [entry-form-key :edit] false))
-    )
-  )
+        (assoc-in-key-db [entry-form-key :edit] false))))
 
 ;; Deprecate ?
 (reg-event-fx
@@ -1209,24 +1211,38 @@
      {}
      {:fx [[:dispatch [:common/error-box-show "Save as Error" error]]]})))
 
+
+;;;;;;;;;;;;;;;;;;;;; OTP ;;;;;;;;;;;;;;;;;;;;;;
+
+
+#_(defn entry-form-delete-otp-field [section otp-field-name]
+  (dispatch [:entry-form-delete-otp-field section otp-field-name]))
+
+(defn otp-currrent-token [opt-field-name]
+  (subscribe [:otp-currrent-token opt-field-name]))
+
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
 
 
 (comment
   (require '[clojure.pprint :refer [pprint]])
-  
+
   (in-ns 'onekeepass.mobile.events.entry-form)
 
   (def db-key (-> @re-frame.db/app-db :current-db-file-name))
-  
+
   (-> (get @re-frame.db/app-db db-key) :entry-form keys)
-  
+
   ;; => (:data :undo-data :otp-fields :showing :edit)
-  
+
   (-> (get @re-frame.db/app-db db-key) :entry-form :data keys)
   ;; => :tags :icon-id :binary-key-values :section-fields :title :expiry-time :history-count 
   ;;     :expires :standard-section-names :last-modification-time :entry-type-name :auto-type :notes 
   ;;     :section-names :entry-type-icon-name :last-access-time :uuid :entry-type-uuid :group-uuid :creation-time
-  
-  (-> (get @re-frame.db/app-db db-key) :entry-form :data :group-uuid)
-  )
+
+  (-> (get @re-frame.db/app-db db-key) :entry-form :data :group-uuid))
