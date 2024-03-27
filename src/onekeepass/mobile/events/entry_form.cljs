@@ -116,6 +116,7 @@
   (subscribe [:entry-form-history]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
+;; IMPORTANT: Valid values for :showing are [:selected :new :history-form]
 (defn- set-on-entry-load [app-db entry-form-data]
   (let [otp-fields (extract-form-otp-fields entry-form-data)]
     (-> app-db
@@ -165,7 +166,8 @@
  (fn [{:keys [db]} [_event-id entry-form-data navigate?]]
    ;; When navigate? is false, we just set the loaded entry data and not change the page 
    {:db  (set-on-entry-load db entry-form-data)
-    :fx [(when navigate? [:dispatch [:common/next-page :entry-form  "page.titles.entry"]])]}))
+    :fx [[:dispatch [:entry-form/otp-start-polling]]
+         (when navigate? [:dispatch [:common/next-page :entry-form  "page.titles.entry"]])]}))
 
 ;; Update a field found in :data
 (reg-event-db
@@ -187,14 +189,20 @@
          section-kvs (mapv (fn [m] (if (= (:key m) key) (assoc m :value value) m)) section-kvs)]
      (assoc-in-key-db db [entry-form-key :data :section-fields section] section-kvs))))
 
-(reg-event-db
+(reg-event-fx
  :entry-form/edit
- (fn [db [_event-id edit?]]
-   (if edit?
-     (-> db
+ (fn [{:keys [db]} [_event-id edit?]]
+   {:db (assoc-in-key-db db [entry-form-key :edit] edit?)
+    :fx [(when edit? [:dispatch [:entry-form/otp-stop-polling]])]}))
+
+#_(reg-event-db
+   :entry-form/edit
+   (fn [db [_event-id edit?]]
+     (if edit?
+       (-> db
          ;;(assoc-in-key-db [entry-form-key :undo-data] (get-in-key-db db [entry-form-key :data]))
-         (assoc-in-key-db [entry-form-key :edit] edit?))
-     (assoc-in-key-db db [entry-form-key :edit] edit?))))
+           (assoc-in-key-db [entry-form-key :edit] edit?))
+       (assoc-in-key-db db [entry-form-key :edit] edit?))))
 
 ;; Called to mark or unmark as favorites
 ;; A tag with name "Favorites" is added or removed accordingly
@@ -743,7 +751,8 @@
  :cancel-entry-form
  (fn [{:keys [db]} [_event-id]]
    {:db (assoc-in-key-db db [entry-form-key :error-fields] {})
-    :fx [[:dispatch [:common/previous-page]]]}))
+    :fx [[:dispatch [:entry-form/otp-stop-polling]]
+         [:dispatch [:common/previous-page]]]}))
 
 (reg-event-fx
  :entry-save
@@ -904,7 +913,8 @@
    {:db (-> db
             (assoc-in-key-db [entry-form-key :entry-history-form] {})
             (assoc-in-key-db [entry-form-key :entry-history-form :entries-summary-list] summary-list))
-    :fx [[:dispatch [:common/next-page :entry-history-list "page.titles.histories"]]]}))
+    :fx [[:dispatch [:entry-form/otp-stop-polling]]
+         [:dispatch [:common/next-page :entry-history-list "page.titles.histories"]]]}))
 
 
 (reg-event-fx
@@ -1216,12 +1226,16 @@
 
 
 #_(defn entry-form-delete-otp-field [section otp-field-name]
-  (dispatch [:entry-form-delete-otp-field section otp-field-name]))
+    (dispatch [:entry-form-delete-otp-field section otp-field-name]))
 
 (defn otp-currrent-token [opt-field-name]
   (subscribe [:otp-currrent-token opt-field-name]))
 
+(defn entry-form-otp-start-polling []
+  (dispatch [:entry-form-otp-start-polling]))
 
+(defn entry-form-otp-stop-polling []
+  (dispatch [:entry-form-otp-stop-polling]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

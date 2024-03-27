@@ -2,6 +2,7 @@
   "Handlers for the native side events"
   (:require
    [re-frame.core :refer [dispatch]]
+   [onekeepass.mobile.events.common :refer [on-ok]]
    [onekeepass.mobile.background :as bg]))
 
 
@@ -27,18 +28,23 @@
 #_(defn remove-open-url-handler []
     (bg/unregister-event-listener "onApplicationOpenURL" open-url))
 
+(def ^private token-response-converter (partial bg/transform-response-excluding-keys #(-> % (get "reply_field_tokens") keys vec)))
+
 (defn register-entry-otp-update-handler []
-  (bg/register-event-listener EVENT_ENTRY_OTP_UPDATE (fn [event-message]
-                                                       (println "EVENT_ENTRY_OTP_UPDATE event-message is " (bg/transform-api-response event-message {})))))
+  (bg/register-event-listener EVENT_ENTRY_OTP_UPDATE
+                              (fn [event-message]
+                                (let [converted (bg/transform-api-response event-message {:convert-response-fn token-response-converter})] 
+                                  (when-let [{:keys [entry-uuid reply-field-tokens]} (on-ok converted)] 
+                                    (dispatch [:entry-form/update-otp-tokens entry-uuid reply-field-tokens]))))))
 
-(defn register-timer-tick-handler []
-  (bg/register-event-listener EVENT_ON_TIME_TICK (fn [event-message]
-                                                   (println "EVENT_ON_TIME_TICK event-message is " (bg/transform-api-response event-message {})))))
+  (defn register-timer-tick-handler []
+    (bg/register-event-listener EVENT_ON_TIME_TICK (fn [event-message]
+                                                     (println "EVENT_ON_TIME_TICK event-message is " (bg/transform-api-response event-message {})))))
 
-(defn register-backend-event-handlers []
-  (register-open-url-handler)
-  (register-entry-otp-update-handler)
-  (register-timer-tick-handler))
+  (defn register-backend-event-handlers []
+    (register-open-url-handler)
+    (register-entry-otp-update-handler)
+    (register-timer-tick-handler))
 
 
 

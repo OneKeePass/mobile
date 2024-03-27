@@ -7,6 +7,7 @@
    [onekeepass.mobile.entry-form-menus :refer [custom-field-menu-show]]
    [onekeepass.mobile.rn-components
     :as rnc :refer [lstr
+                    animated-circular-progress
                     icon-color
                     on-primary-color
                     primary-container-color
@@ -16,28 +17,11 @@
                     dots-icon-name
                     page-title-text-variant
                     rn-view
-                    rn-scroll-view
-                    rn-keyboard-avoiding-view
-                    rnp-chip
-                    rnp-checkbox
-                    rnp-divider
-                    rnp-menu
-                    rnp-menu-item
                     rnp-text-input
                     rnp-text
-                    rnp-touchable-ripple
                     rnp-helper-text
                     rnp-text-input-icon
-                    rnp-icon-button
-                    rnp-button
-                    rnp-portal
-                    cust-dialog
-                    rnp-dialog-title
-                    rnp-dialog-content
-                    rnp-dialog-actions
-                    rnp-list-item
-                    rn-section-list
-                    rnp-list-icon]]
+                    rnp-icon-button]]
    [onekeepass.mobile.constants :as const]
    [onekeepass.mobile.utils :as u]
    [onekeepass.mobile.events.entry-form :as form-events]
@@ -201,33 +185,85 @@
      (when (and edit (not (nil? error-text)))
        [rnp-helper-text {:type "error" :visible true} error-text])]))
 
+(defn formatted-token
+  "Groups digits with spaces between them for easy reading"
+  [token]
+  (let [len (count token)
+        n (cond
+            (or (= len 6) (= len 7) (= len 9))
+            3
 
-(defn otp-field [{:keys [key
-                         value
-                         protected
-                         edit]}]
+            (or (= len 8) (= len 10))
+            4
+
+            :else
+            3)
+        ;; step = n, pad = ""
+        parts (partition n n "" token)
+        parts (map (fn [c] (str/join c)) parts)
+        spaced (str/join " " parts)]
+    spaced))
+
+(defn otp-read-field 
+  [{:keys [key
+           value
+           protected
+           edit]}]
   (let [{:keys [token ttl period]} @(form-events/otp-currrent-token key)]
-    [rnp-text-input {:label key
-                     :value (if-not edit token value)
-                     :showSoftInputOnFocus edit
-                     :autoCapitalize "none"
-                     :keyboardType "email-address"
-                     :autoCorrect false
-                     :selectTextOnFocus false
-                     :spellCheck false
-                     :textContentType "none"
-                     :style {:width "100%" :fontSize 30}
-                     :onFocus #(field-focus-action key true)
-                     :onBlur #(field-focus-action key false)
-                     :onChangeText nil
-                     :onPressOut (if-not edit
-                                   #(cmn-events/write-string-to-clipboard {:field-name key
-                                                                           :protected protected
-                                                                           :value value})
-                                   nil)
-                     :secureTextEntry false
-                       ;; It looks like we can have only one icon
-                     :right (when edit
-                              (r/as-element [rnp-text-input-icon
-                                             {:icon const/ICON-TRASH-CAN-OUTLINE
-                                              :onPress #()}]))}]))
+    [rn-view {:flexDirection "row" :style {:flex 1}}
+     [rnp-text-input {:label key
+                      :value (if-not edit (formatted-token token) value)
+                      :showSoftInputOnFocus edit
+                      :autoCapitalize "none"
+                      :keyboardType "email-address"
+                      :autoCorrect false
+                      :selectTextOnFocus false
+                      :spellCheck false
+                      :textContentType "none"
+                      :style {:width "90%" :fontSize 30}
+                      :onFocus #(field-focus-action key true)
+                      :onBlur #(field-focus-action key false)
+                      :onChangeText nil
+                      :onPressOut (if-not edit
+                                    #(cmn-events/write-string-to-clipboard {:field-name key
+                                                                            :protected protected
+                                                                            :value value})
+                                    nil)
+                      :secureTextEntry false
+                      ;; It looks like we can have only one icon
+                      :right (when edit
+                               (r/as-element [rnp-text-input-icon
+                                              {:icon const/ICON-TRASH-CAN-OUTLINE
+                                               :onPress #()}]))}]
+     [rn-view {:style {:width "10%" :justify-content "center"}}
+      ;; Use {:transform [{:scaleX -1} to reverse direction
+      [animated-circular-progress {:style {:transform [{:scaleX 1}]}
+                                   ;;:tintColor "#00e0ff"
+                                   :size 35
+                                   :width 1
+                                   :fill (js/Math.round (* 100 (/ ttl period)))
+                                   :rotation 360}
+       (fn [_v] (r/as-element [rnp-text {:style {:transform [{:scaleX 1}]}} ttl]))]]]))
+
+(defn opt-field-no-token
+  [{:keys [key
+           value
+           history-form]}]
+
+  [rnp-text-input {:label key
+                   :value value
+                   :multiline true
+                   :right (when-not history-form
+                            (r/as-element [rnp-text-input-icon
+                                           {:icon const/ICON-TRASH-CAN-OUTLINE
+                                            :onPress #()}]))}])
+
+
+(defn otp-field [{:keys [edit] :as kv}]
+  (let [history-form? @(form-events/history-entry-form?)]
+    (cond
+      (or edit history-form?)
+      [opt-field-no-token (assoc kv :history-form history-form?)]
+
+      (not edit)
+      [otp-read-field kv])))

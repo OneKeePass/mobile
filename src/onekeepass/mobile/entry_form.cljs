@@ -297,9 +297,9 @@
                                              :disabled (not edit)
                                              :on-change #(form-events/update-section-value-on-change
                                                           section-name key (.-label ^js/SelOption %))}]
-                  
+
                   (= data-type ONE_TIME_PASSWORD_TYPE)
-                  ^{:key key} [otp-field kv]
+                  ^{:key key} [otp-field (assoc kv :edit edit)]
 
                   :else
                   ^{:key key} [text-field (assoc kv
@@ -313,8 +313,22 @@
                                                  :visible @(form-events/visible? key))]))))])))
 
 (defn all-sections-content []
-  (let [{:keys [edit]
+  (let [{:keys [edit showing]
          {:keys [section-names section-fields]} :data} @(form-events/entry-form)]
+    (rnc/react-use-effect 
+     (fn []
+       ;; cleanup fn is returned which is called when this component unmounts or any passed dependencies are changed
+       ;;(println "all-sections-content effect init called with showing  " showing edit)
+       (when (and (= showing :selected) (not edit))
+         (form-events/entry-form-otp-start-polling)) 
+       
+       (fn []
+         ;;(println "all-sections-content effect cleanup is  called with showing " showing edit)
+         (form-events/entry-form-otp-stop-polling)))
+
+     ;; Need to pass the list of all reactive values (dependencies) referenced inside of the setup code or empty list
+     (clj->js [showing edit]))
+
     ;; section-names is a list of section names
     ;; section-fields is a list of map - one map for each field in that section
     [rn-view {:style box-style-2}
@@ -440,7 +454,7 @@
     [rn-view {:style {:flexDirection "column" :justify-content "center" :padding 5}}
      [entry-type-selection-box]
      [title-group-selection-box]
-     [all-sections-content]
+     [:f> all-sections-content]
      (when edit [add-section-btn])
      [notes edit]
      ;; Tags

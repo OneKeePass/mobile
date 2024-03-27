@@ -15,6 +15,7 @@
    ["react-native-gesture-handler" :as gh]
    ["react-native-vector-icons" :as vec-icons]
    ["react-native-vision-camera" :as rn-vision-camera]
+   ["react-native-circular-progress" :as rn-circular-progress]
    ["react-native-safe-area-context" :as sa-context]
    ["@date-io/date-fns" :as DateAdapter]))
 
@@ -286,6 +287,11 @@
 (def use-code-scanner (.-useCodeScanner ^js/RNVisionCamera rn-vision-camera))
 
 (def camera (r/adapt-react-class (.-Camera ^js/RNVisionCamera rn-vision-camera)))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; react-native-circular-progress ;;;;;;;;;;;;;;;;;;;;
+
+(def animated-circular-progress (r/adapt-react-class (.-AnimatedCircularProgress ^js/RNCircularProgress rn-circular-progress)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  All example components ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
