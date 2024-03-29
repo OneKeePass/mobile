@@ -1,6 +1,6 @@
 (ns
  onekeepass.mobile.rn-components
-  (:require-macros [onekeepass.mobile.comp-classes
+  (:require-macros [onekeepass.mobile.okp-macros
                     :refer  [declare-comp-classes]])
   (:require
    [clojure.string :as str]

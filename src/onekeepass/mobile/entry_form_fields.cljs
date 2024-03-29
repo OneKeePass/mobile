@@ -5,6 +5,7 @@
    [reagent.core :as r]
    [clojure.string :as str]
    [onekeepass.mobile.entry-form-menus :refer [custom-field-menu-show]]
+   [onekeepass.mobile.entry-form-dialogs :as ef-dlg  :refer [setup-otp-action-dialog-show]]
    [onekeepass.mobile.rn-components
     :as rnc :refer [lstr
                     animated-circular-progress
@@ -16,18 +17,21 @@
                     rn-keyboard
                     dots-icon-name
                     page-title-text-variant
+                    rnp-button
                     rn-view
                     rnp-text-input
                     rnp-text
                     rnp-helper-text
                     rnp-text-input-icon
                     rnp-icon-button]]
-   [onekeepass.mobile.constants :as const]
+   [onekeepass.mobile.constants :as const :refer [OTP]]
    [onekeepass.mobile.utils :as u]
    [onekeepass.mobile.events.entry-form :as form-events]
+   [onekeepass.mobile.events.dialogs :as dlg-vents]
    [onekeepass.mobile.events.password-generator :as pg-events]
    [onekeepass.mobile.background :refer [is-iOS is-Android]]
-   [onekeepass.mobile.events.common :as cmn-events]))
+   [onekeepass.mobile.events.common :as cmn-events]
+   [onekeepass.mobile.events.dialogs :as dlg-events]))
 
 (def ^:private field-focused (r/atom {:key nil :focused false}))
 
@@ -204,14 +208,14 @@
         spaced (str/join " " parts)]
     spaced))
 
-(defn otp-read-field 
+(defn otp-read-field
   [{:keys [key
            value
            protected
            edit]}]
   (let [{:keys [token ttl period]} @(form-events/otp-currrent-token key)]
     [rn-view {:flexDirection "row" :style {:flex 1}}
-     [rnp-text-input {:label key
+     [rnp-text-input {:label (if (= OTP key) "One-Time Password" key)
                       :value (if-not edit (formatted-token token) value)
                       :showSoftInputOnFocus edit
                       :autoCapitalize "none"
@@ -225,16 +229,13 @@
                       :onBlur #(field-focus-action key false)
                       :onChangeText nil
                       :onPressOut (if-not edit
-                                    #(cmn-events/write-string-to-clipboard {:field-name key
-                                                                            :protected protected
-                                                                            :value value})
+                                    #(cmn-events/write-string-to-clipboard
+                                      {:field-name key
+                                       :protected protected
+                                       :value value})
                                     nil)
                       :secureTextEntry false
-                      ;; It looks like we can have only one icon
-                      :right (when edit
-                               (r/as-element [rnp-text-input-icon
-                                              {:icon const/ICON-TRASH-CAN-OUTLINE
-                                               :onPress #()}]))}]
+                      :right nil}]
      [rn-view {:style {:width "10%" :justify-content "center"}}
       ;; Use {:transform [{:scaleX -1} to reverse direction
       [animated-circular-progress {:style {:transform [{:scaleX 1}]}
@@ -248,20 +249,34 @@
 (defn opt-field-no-token
   [{:keys [key
            value
+           section-name
            history-form]}]
 
   [rnp-text-input {:label key
                    :value value
+                   :showSoftInputOnFocus false
                    :multiline true
                    :right (when-not history-form
-                            (r/as-element [rnp-text-input-icon
-                                           {:icon const/ICON-TRASH-CAN-OUTLINE
-                                            :onPress #()}]))}])
+                            (r/as-element
+                             [rnp-text-input-icon
+                              {:icon const/ICON-TRASH-CAN-OUTLINE
+                               :onPress (fn []
+                                          (ef-dlg/confirm-delete-otp-field-show section-name key)
+                                          #_(dlg-vents/confirm-delete-otp-field-dialog-show-with-state
+                                             {:call-on-ok-fn #(form-events/entry-form-delete-otp-field section-name key)}))}]))}])
 
+(defn setup-otp-button [section-name]
+  [rnp-button {:style {:margin-bottom 5 :margin-top 5 }
+               :labelStyle {:fontWeight "bold" :fontSize 15}
+               :mode "text"
+               :on-press #(setup-otp-action-dialog-show section-name)} "Set up One-Time Password"])
 
-(defn otp-field [{:keys [edit] :as kv}]
+(defn otp-field [{:keys [key value section-name edit] :as kv}]
   (let [history-form? @(form-events/history-entry-form?)]
     (cond
+      (and edit (str/blank? value) (= key OTP))
+      [setup-otp-button section-name]
+      
       (or edit history-form?)
       [opt-field-no-token (assoc kv :history-form history-form?)]
 

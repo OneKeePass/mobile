@@ -6,7 +6,9 @@
                                                                 select-tags-dialog]]
             [onekeepass.mobile.constants :as const :refer [ONE_TIME_PASSWORD_TYPE]]
             [onekeepass.mobile.date-utils :refer [utc-str-to-local-datetime-str]]
-            [onekeepass.mobile.entry-form-dialogs :refer [add-modify-section-field-dialog
+            [onekeepass.mobile.entry-form-dialogs :refer [confirm-delete-otp-field-dialog
+                                                          setup-otp-action-dialog
+                                                          add-modify-section-field-dialog
                                                           add-modify-section-name-dialog
                                                           delete-attachment-dialog-info
                                                           delete-field-confirm-dialog
@@ -299,7 +301,7 @@
                                                           section-name key (.-label ^js/SelOption %))}]
 
                   (= data-type ONE_TIME_PASSWORD_TYPE)
-                  ^{:key key} [otp-field (assoc kv :edit edit)]
+                  ^{:key key} [otp-field (assoc kv :edit edit :section-name section-name)]
 
                   :else
                   ^{:key key} [text-field (assoc kv
@@ -484,6 +486,8 @@
          :on-press #(form-events/field-delete-confirm false)}]]
       [history-entry-delete-dialog]
       [history-entry-restore-dialog]
+      [confirm-delete-otp-field-dialog]
+      [setup-otp-action-dialog]
       (:dialog delete-attachment-dialog-info)
       [rename-attachment-name-dialog @rename-attachment-name-dialog-data]
       [cc/entry-delete-confirm-dialog form-events/delete-entry]]]))

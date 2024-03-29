@@ -6,7 +6,7 @@
                           dispatch
                           reg-fx
                           subscribe]]
-   [onekeepass.mobile.events.entry-form-common :refer [extract-form-otp-fields entry-form-key]]
+   [onekeepass.mobile.events.entry-form-common :refer [merge-section-key-value extract-form-otp-fields entry-form-key]]
    [onekeepass.mobile.constants :refer [ONE_TIME_PASSWORD_TYPE]]
 
    [onekeepass.mobile.events.common :as cmn-events :refer [on-ok
@@ -114,3 +114,58 @@
 
        {:db db})
      {})))
+
+
+(reg-event-fx
+ :entry-form-delete-otp-field
+ (fn [{:keys [db]} [_event-id section otp-field-name]]
+   (let [dispatch-fn (fn [api-response]
+                       (when-not (on-error api-response)
+                         (dispatch [:entry-form-delete-otp-field-complete section otp-field-name])))]
+     ;; First we stop all otp update polling
+     {:fx [[:otp/stop-all-entry-form-polling [(active-db-key db) dispatch-fn]]]})))
+
+
+(defn remove-section-otp-field [otp-field-name {:keys [key] :as section-field-m}]
+  (cond
+    ;; current-opt-token is Option type in struct CurrentOtpTokenData and should be set to nil and not {}
+    (= key "otp")
+    (assoc section-field-m :value nil :current-opt-token nil)
+
+    (= key otp-field-name)
+    nil
+
+    :else
+    section-field-m))
+
+;; Called after stopping the otp update polling
+(reg-event-fx
+ :entry-form-delete-otp-field-complete
+ (fn [{:keys [db]} [_event-id section otp-field-name]]
+   (let [section-kvs (get-in-key-db db [entry-form-key :data :section-fields section])
+         section-kvs (mapv (fn [m] (remove-section-otp-field otp-field-name m)) section-kvs)
+         ;; Remove nil values
+         section-kvs (filterv (fn [m] m) section-kvs)
+         otp-fields (-> db (get-in-key-db [entry-form-key :otp-fields])
+                        (dissoc otp-field-name))
+         ;; Set the db before using in fx
+         db (-> db
+                (assoc-in-key-db [entry-form-key :data :section-fields section] section-kvs)
+                (assoc-in-key-db [entry-form-key :otp-fields] otp-fields))]
+     {:db db
+      ;; Calling update will reload the entry form 
+      :fx [[:bg-update-entry [(active-db-key db) (get-in-key-db db [entry-form-key :data])]]]})))
+
+(reg-event-fx
+ :entry-form/otp-url-formed
+ (fn [{:keys [db]} [_event-id section otp-field-name otp-url]]
+   (let [form-status (get-in-key-db db [entry-form-key :showing])
+         section-kvs (merge-section-key-value db section otp-field-name otp-url)
+         ;; Set the db before using in fx
+         db (-> db
+                (assoc-in-key-db [entry-form-key :data :section-fields section] section-kvs))]
+     ;;(println "entry-form/otp-url-formed form-status is  " form-status)
+     {:db db
+      :fx [(if (= form-status :new)
+             [:bg-insert-entry [(active-db-key db) (get-in-key-db db [entry-form-key :data])]]
+             [:bg-update-entry [(active-db-key db) (get-in-key-db db [entry-form-key :data])]])]})))

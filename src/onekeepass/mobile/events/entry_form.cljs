@@ -1237,6 +1237,9 @@
 (defn entry-form-otp-stop-polling []
   (dispatch [:entry-form-otp-stop-polling]))
 
+(defn entry-form-delete-otp-field [section otp-field-name]
+  (dispatch [:entry-form-delete-otp-field section otp-field-name]))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 

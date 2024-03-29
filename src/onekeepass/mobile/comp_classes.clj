@@ -1,5 +1,7 @@
 (ns onekeepass.mobile.comp-classes
-  "A macro to create defs of reagent components from passed symbols"
+  "A macro to create defs of reagent components from passed symbols
+   TODO: To be removed. See okp_macros.clj
+   "
   (:require [clojure.string]
             [clojure.pprint]
             [camel-snake-kebab.core])) ;;:as csk
@@ -25,8 +27,60 @@
   `(do
      ~@(def-reagent-classes args def-prefix ns-prefix)))
 
+;; Some experiments done for creating wrapper for common dialog dispatch and subscribe events 
+
+(defn dispatches [dlg-name suffix]
+  (let [f-name# (symbol (str dlg-name "-" (str suffix)))
+        g-name# (keyword (str "generic-dialog" "-" (str suffix)))
+        dlg-id# (keyword (str dlg-name))]
+    `(defn ~f-name# []
+       (re-frame.core/dispatch [~g-name# ~dlg-id#]))))
+
+(defmacro def-dispatches [dlg-name suffixes]
+  `(do
+     ~@(map (fn [sx] (dispatches dlg-name sx)) suffixes)))
+
+;; (macroexpand-1 '(def-dispatches setup-otp-action-dialog  [show close])) 
+;; (do (clojure.core/defn setup-otp-action-dialog-show [] (re-frame.core/dispatch [:generic-dialog-show :setup-otp-action-dialog])) 
+;;      (clojure.core/defn setup-otp-action-dialog-close [] (re-frame.core/dispatch [:generic-dialog-close :setup-otp-action-dialog])))
+
+
+(defn dispatches-1 [dlg-name suffix args subscribe-event?]
+  (let [f-name# (symbol (str dlg-name "-" (str suffix)))
+        g-name# (keyword (str "generic-dialog" "-" (str suffix)))
+        dlg-id# (keyword (str dlg-name))
+        event-name# (if subscribe-event?(symbol "re-frame.core/subscribe")  (symbol "re-frame.core/dispatch"))
+        ]
+    (if (nil? args)
+      `(defn ~f-name# []
+         (~event-name# [~g-name# ~dlg-id#]))
+
+      `(defn ~f-name# [~args]
+         (~event-name# [~g-name# ~dlg-id# ~args])))))
+
+(defmacro def-dispatches-1 [dlg-name suffixes-with-args subscribe-event?]
+  `(do
+     ~@(map (fn [[sx args]] (dispatches-1 dlg-name sx args subscribe-event?)) suffixes-with-args)))
+
+
+;; (use '[onekeepass.mobile.comp-classes :refer [dispatches def-dispatches dispatches-1 def-dispatches-1  ]] :reload-all)
 
 (comment
+  ;; Refences:
+  ;;  https://clojure.org/guides/deps_and_cli
+  ;;  https://code.thheller.com/blog/shadow-cljs/2019/10/12/clojurescript-macros.html
+  ;;  https://clojure-doc.org/articles/tutorials/getting_started_cli/
+
+  ;; https://www.braveclojure.com/writing-macros/
+
+  ;; Use clj repl in the folder 
+  ;; mobile where deps.edn is located
+  ;; by default, the sources under src/ are visible to the repl
+  ;; clj
+  ;; Clojure 1.11.1
+  ;; user=> (require '[onekeepass.mobile.comp-classes :refer [declare-comp-classes ]])
+  ;; Then do the following macroexpand-1
+
   (macroexpand-1 '(declare-comp-classes [TextInput.Icon TextInput Textinput Text] "rn1-" "rn1/"))
    ;;Will print in cljc repl
   (do

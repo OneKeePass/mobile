@@ -114,6 +114,16 @@
       ^{:key label} [rnp-button {:mode "text"
                                  :on-press on-press} label])]])
 
+(defn confirm-dialog-with-lstr [{:keys [dialog-show title confirm-text actions]}]
+  [cust-dialog {:style {} :dismissable true :visible dialog-show}
+   [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1} (lstr title)]
+   [rnp-dialog-content
+    [rnp-text (lstr confirm-text)]]
+   [rnp-dialog-actions
+    (for [{:keys [label on-press]}  actions]
+      ^{:key label} [rnp-button {:mode "text"
+                                 :on-press on-press} (lstr label)])]])
+
 (defn message-snackbar
   ([{:keys [open message]}]
    [rnp-snackbar {:visible  open
