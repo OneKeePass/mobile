@@ -265,17 +265,17 @@
                                           #_(dlg-vents/confirm-delete-otp-field-dialog-show-with-state
                                              {:call-on-ok-fn #(form-events/entry-form-delete-otp-field section-name key)}))}]))}])
 
-(defn setup-otp-button [section-name]
+(defn setup-otp-button [section-name key standard-field]
   [rnp-button {:style {:margin-bottom 5 :margin-top 5 }
                :labelStyle {:fontWeight "bold" :fontSize 15}
                :mode "text"
-               :on-press #(setup-otp-action-dialog-show section-name)} "Set up One-Time Password"])
+               :on-press #(setup-otp-action-dialog-show section-name key standard-field)} "Set up One-Time Password"])
 
-(defn otp-field [{:keys [key value section-name edit] :as kv}]
+(defn otp-field [{:keys [key value section-name standard-field edit] :as kv}]
   (let [history-form? @(form-events/history-entry-form?)]
     (cond
       (and edit (str/blank? value) (= key OTP))
-      [setup-otp-button section-name]
+      [setup-otp-button section-name key standard-field]
       
       (or edit history-form?)
       [opt-field-no-token (assoc kv :history-form history-form?)]

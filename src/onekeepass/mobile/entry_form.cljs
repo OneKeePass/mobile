@@ -4,18 +4,21 @@
             [onekeepass.mobile.background :refer [is-Android is-iOS]]
             [onekeepass.mobile.common-components :as cc :refer [select-field
                                                                 select-tags-dialog]]
-            [onekeepass.mobile.constants :as const :refer [ONE_TIME_PASSWORD_TYPE]]
+            [onekeepass.mobile.constants :as const :refer [ADDITIONAL_ONE_TIME_PASSWORDS
+                                                           ONE_TIME_PASSWORD_TYPE]]
             [onekeepass.mobile.date-utils :refer [utc-str-to-local-datetime-str]]
-            [onekeepass.mobile.entry-form-dialogs :refer [confirm-delete-otp-field-dialog
-                                                          setup-otp-action-dialog
-                                                          add-modify-section-field-dialog
+            [onekeepass.mobile.entry-form-dialogs :refer [add-modify-section-field-dialog
                                                           add-modify-section-name-dialog
+                                                          confirm-delete-otp-field-dialog
                                                           delete-attachment-dialog-info
                                                           delete-field-confirm-dialog
                                                           history-entry-delete-dialog
                                                           history-entry-restore-dialog
+                                                          otp-settings-dialog
                                                           rename-attachment-name-dialog
-                                                          rename-attachment-name-dialog-data]]
+                                                          rename-attachment-name-dialog-data
+                                                          setup-otp-action-dialog
+                                                          setup-otp-action-dialog-show]]
             [onekeepass.mobile.entry-form-fields :refer [otp-field text-field]]
             [onekeepass.mobile.entry-form-menus :refer [attachment-long-press-menu
                                                         attachment-long-press-menu-data
@@ -23,8 +26,10 @@
                                                         custom-field-menu-data
                                                         section-menu
                                                         section-menu-dialog-data
+                                                        section-menu-dialog-show
                                                         show-attachment-long-press-menu]]
             [onekeepass.mobile.events.common :as cmn-events]
+            [onekeepass.mobile.events.dialogs :as dlg-events]
             [onekeepass.mobile.events.entry-form :as form-events]
             [onekeepass.mobile.icons-list :as icons-list]
             [onekeepass.mobile.rn-components
@@ -261,16 +266,19 @@
                       :min-height 35}}
      [rnp-text {:style {:alignSelf "center" :width "85%" :padding-left 15} :variant "titleMedium"} section-name]
      (when edit
-       [rnp-icon-button {:icon dots-icon-name :style {:height 35
-                                                      :margin-right 0
-                                                      :backgroundColor @on-primary-color}
-                         :onPress (fn [^js/PEvent event]
-                                    (swap! section-menu-dialog-data assoc
-                                           :section-name section-name
-                                           :is-standard-section (u/contains-val? standard-sections section-name)
-                                           :show true
-                                           :x (-> event .-nativeEvent .-pageX)
-                                           :y (-> event .-nativeEvent .-pageY)))}])]))
+       ;;
+       (if (not= section-name ADDITIONAL_ONE_TIME_PASSWORDS)
+         [rnp-icon-button {:icon dots-icon-name :style {:height 35
+                                                        :margin-right 0
+                                                        :backgroundColor @on-primary-color}
+                           :onPress (fn [^js/PEvent event]
+                                      (section-menu-dialog-show {:section-name section-name
+                                                                 :is-standard-section (u/contains-val? standard-sections section-name)
+                                                                 :event event}))}]
+
+         [rnp-icon-button {:icon const/ICON-PLUS 
+                           :style {:height 35 :margin-right 0 :backgroundColor @on-primary-color}
+                           :onPress (fn [] (setup-otp-action-dialog-show section-name nil false))}]))]))
 
 (defn section-content [edit section-name section-data]
   (let [errors @(form-events/entry-form-field :error-fields)]
@@ -285,6 +293,7 @@
         (for [{:keys [key
                       value
                       data-type
+                      standard-field
                       select-field-options
                       required
                       password-score] :as kv} section-data]
@@ -301,7 +310,10 @@
                                                           section-name key (.-label ^js/SelOption %))}]
 
                   (= data-type ONE_TIME_PASSWORD_TYPE)
-                  ^{:key key} [otp-field (assoc kv :edit edit :section-name section-name)]
+                  ^{:key key} [otp-field (assoc kv
+                                                :edit edit
+                                                :section-name section-name
+                                                :standard-field standard-field)]
 
                   :else
                   ^{:key key} [text-field (assoc kv
@@ -317,13 +329,13 @@
 (defn all-sections-content []
   (let [{:keys [edit showing]
          {:keys [section-names section-fields]} :data} @(form-events/entry-form)]
-    (rnc/react-use-effect 
+    (rnc/react-use-effect
      (fn []
        ;; cleanup fn is returned which is called when this component unmounts or any passed dependencies are changed
        ;;(println "all-sections-content effect init called with showing  " showing edit)
        (when (and (= showing :selected) (not edit))
-         (form-events/entry-form-otp-start-polling)) 
-       
+         (form-events/entry-form-otp-start-polling))
+
        (fn []
          ;;(println "all-sections-content effect cleanup is  called with showing " showing edit)
          (form-events/entry-form-otp-stop-polling)))
@@ -488,6 +500,7 @@
       [history-entry-restore-dialog]
       [confirm-delete-otp-field-dialog]
       [setup-otp-action-dialog]
+      [otp-settings-dialog @(dlg-events/otp-settings-dialog-data)]
       (:dialog delete-attachment-dialog-info)
       [rename-attachment-name-dialog @rename-attachment-name-dialog-data]
       [cc/entry-delete-confirm-dialog form-events/delete-entry]]]))

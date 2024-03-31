@@ -12,6 +12,8 @@
 (def PASSPORT_TYPE_NAME "Passport")
 (def BANK_ACCOUNT_TYPE_NAME "Bank Account")
 
+(def ADDITIONAL_ONE_TIME_PASSWORDS "Additional One-Time Passwords")
+
 ;; Based on the enum 'EntryCategory'
 (def CATEGORY_ALL_ENTRIES "AllEntries")
 (def CATEGORY_FAV_ENTRIES "Favorites")

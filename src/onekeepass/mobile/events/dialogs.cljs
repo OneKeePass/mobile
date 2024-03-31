@@ -2,74 +2,49 @@
   "All common dialog events that are used across many pages"
   (:require-macros [onekeepass.mobile.okp-macros
                     :refer  [def-generic-dialog-events]])
-  (:require
-   [clojure.string :as str]
-   [cljs.core.async :refer [go go-loop timeout <!]]
-   [re-frame.core :refer [reg-event-db
-                          reg-event-fx
-                          reg-fx
-                          reg-sub
-                          dispatch
-                          dispatch-sync
-                          subscribe]]
-   [onekeepass.mobile.utils :as u :refer [tags->vec str->int]]
-   [onekeepass.mobile.background :as bg]))
+  (:require [clojure.string :as str]
+            [onekeepass.mobile.background :as bg]
+            [onekeepass.mobile.constants :refer [ONE_TIME_PASSWORD_TYPE]]
+            [onekeepass.mobile.events.common :refer [on-ok]]
+            [onekeepass.mobile.events.entry-form-common :refer [add-section-field
+                                                                is-field-exist]]
+            [re-frame.core :refer [dispatch reg-event-fx reg-fx reg-sub]]))
 
-;;;;;;;;;;;;;;;   confirm-delete-otp-field-dialog  ;;;;;;;;;;;;;;
-;; kw :confirm-delete-otp-field-dialog
+;;;;;;;;;;;;;;;;;;;;;;;;;;; macro def-generic-dialog-events used ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; The macro will generate wrapper functions something like the following
 
-;; (defn confirm-delete-otp-field-dialog-init [state-m]
-;;   (dispatch [:generic-dialog-init :confirm-delete-otp-field-dialog state-m]))
+;; (clojure.core/defn setup-otp-action-dialog-show []
+;;   (re-frame.core/dispatch [:generic-dialog-show :setup-otp-action-dialog]))
 
-;; (defn confirm-delete-otp-field-dialog-show []
-;;   (dispatch [:generic-dialog-show :confirm-delete-otp-field-dialog]))
-
-;; (defn confirm-delete-otp-field-dialog-show-with-state [state-m]
-;;   (dispatch [:generic-dialog-show-with-state :confirm-delete-otp-field-dialog state-m]))
-
-;; (defn confirm-delete-otp-field-dialog-on-ok []
-;;   (dispatch [:generic-dialog-call-on-ok :confirm-delete-otp-field-dialog]))
-
-;; (defn confirm-delete-otp-field-dialog-close []
-;;   (dispatch [:generic-dialog-close :confirm-delete-otp-field-dialog]))
-
-;; (defn confirm-delete-otp-field-dialog-data []
-;;   (subscribe [:generic-dialog-data :confirm-delete-otp-field-dialog]))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   confirm-delete-otp-field-dialog  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-
-#_{:clj-kondo/ignore [:unresolved-symbol]}
 (def-generic-dialog-events confirm-delete-otp-field-dialog  [[show nil]
                                                              [close nil]
                                                              [on-ok nil]
                                                              [show-with-state state-m]] false)
 
-#_{:clj-kondo/ignore [:unresolved-symbol]}
+
 (def-generic-dialog-events confirm-delete-otp-field-dialog [[data nil]] true)
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;  setup-otp-action-dialog    ;;;;;;;;;;;;;;;;;;
-;; (def SETUP_OTP_ACTION_DIALOG :setup-otp-action-dialog)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  setup-otp-action-dialog   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; (defn setup-otp-action-dialog-show []
-;;   (dispatch [:generic-dialog-show SETUP_OTP_ACTION_DIALOG]))
-
-;; (defn setup-otp-action-dialog-show-with-state [state-m]
-;;   (dispatch [:generic-dialog-show-with-state SETUP_OTP_ACTION_DIALOG state-m]))
-
-;; (defn setup-otp-action-dialog-close []
-;;   (dispatch [:generic-dialog-close SETUP_OTP_ACTION_DIALOG]))
-
-;; (defn setup-otp-action-dialog-data []
-;;   (subscribe [:generic-dialog-state SETUP_OTP_ACTION_DIALOG]))
-
-#_{:clj-kondo/ignore [:unresolved-symbol]}
 (def-generic-dialog-events setup-otp-action-dialog  [[show nil] [close nil] [show-with-state state-m]] false)
 
-#_{:clj-kondo/ignore [:unresolved-symbol]}
 (def-generic-dialog-events setup-otp-action-dialog [[data nil]] true)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  otp-settings-dialog    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; fields-value is a vector of [kws-v value] [[:data :some-field] value] or [:some-field value]
+(def-generic-dialog-events otp-settings-dialog  [[show nil] [close nil] [show-with-state state-m] [update fields-value]] false)
+
+(def-generic-dialog-events otp-settings-dialog [[data nil]] true)
+
+(defn otp-settings-dialog-manual-code-entered-ok []
+  (dispatch [:otp-settings-dialog-manual-code-entered-ok]))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
 
 (defn- init-dialog-map
   "Returns a map"
@@ -92,7 +67,7 @@
 
 (reg-event-fx
  :generic-dialog-init
- (fn [{:keys [db]} [_event-id dialog-identifier-kw {:keys [data dialog-show] :as dialog-state}]]
+ (fn [{:keys [db]} [_event-id dialog-identifier-kw dialog-state]]
    (let [final-dialog-state (init-dialog-map)
          final-dialog-state (merge final-dialog-state dialog-state)]
      {:db (set-dialog-state db dialog-identifier-kw final-dialog-state)})))
@@ -124,30 +99,97 @@
  (fn [{:keys [db]} [_event-id dialog-identifier-kw]]
    {:db (assoc-in db [dialog-identifier-kw] (init-dialog-map))}))
 
+(declare validate-otp-settings-fields)
+
+(def field-validators {:otp-settings-dialog validate-otp-settings-fields})
+
 (reg-event-fx
  :generic-dialog-update
  (fn [{:keys [db]} [_event-id dialog-identifier-kw [kws-v value]]]
-   {:db (assoc-in db (into [dialog-identifier-kw] kws-v ) value)}))
-
-
-#_(reg-sub
-   :generic-dialog-with-init-state
-   (fn [db [_event-id dialog-identifier-kw init-state-m]]
-     (let [db (set-dialog-state db dialog-identifier-kw (init-state-m))]
-       (get-in db [dialog-identifier-kw])
-       #_(if (nil? dg)
-           (set-dialog-state db dialog-identifier-kw (init-dialog-map))
-           dg))))
+   (let [db (assoc-in db (into [dialog-identifier-kw] (if (vector? kws-v)
+                                                        kws-v
+                                                        [kws-v])) value)
+         ;; For now clear any previous errors set
+         db (assoc-in db [dialog-identifier-kw :error-fields] {})]
+     {:db db})))
 
 
 (reg-sub
  :generic-dialog-data
  (fn [db [_event-id dialog-identifier-kw]]
-   (get-in db [dialog-identifier-kw])
-   #_(let [dg (get-in db [dialog-identifier-kw])]
-       (if (nil? dg)
-         (set-dialog-state db dialog-identifier-kw (init-dialog-map))
-         dg))))
+   (get-in db [dialog-identifier-kw])))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;; Following are otp-settings-dialog specific ;;;;;;;;;;;;;;;;;;;
+
+;; All otp-settings-dialog specific fields are under the key :otp-settings-dialog
+
+(defn validate-otp-settings-fields
+  "Validates each field and accumulates the errors"
+  [db]
+  (let [{:keys [secret-or-url standard-field field-name]} (get-in db [:otp-settings-dialog])]
+    (cond-> {}
+      (nil? secret-or-url)
+      (assoc :secret-or-url "A valid value is required for secret code")
+
+      (and (not standard-field) (nil? field-name))
+      (assoc :field-name "A valid field name is required ")
+
+      (and (not standard-field) (is-field-exist db field-name) #_(= OTP field-name))
+      (assoc :field-name "Please provide another name for the field")
+
+      #_(or (nil? period) (or (< period 1) (> period 60)))
+      #_(assoc :period "Valid values should be in the range 1 - 60")
+
+      #_(or (nil? digits) (or (< digits 6) (> digits 10)))
+      #_(assoc :digits "Valid values should be in the range 6 - 10"))))
+
+(reg-event-fx
+ :otp-settings-dialog-manual-code-entered-ok
+ (fn [{:keys [db]} [_event-id]]
+   (let [errors (validate-otp-settings-fields db)
+         errors-found (boolean (seq errors))]
+     (if errors-found
+       {:db (assoc-in db [:otp-settings-dialog :error-fields] errors)}
+       {:fx [[:bg-form-otp-url [{:secret-or-url (get-in db [:otp-settings-dialog :secret-or-url])}]]]}))))
+
+(reg-fx
+ :bg-form-otp-url
+ (fn [[otp-settings]]
+   (bg/form-otp-url otp-settings (fn [api-response]
+                                   (when-let [opt-url (on-ok
+                                                       api-response
+                                                       #(dispatch [:otp-settings-form-url-error %]))]
+                                     (dispatch [:otp-settings-form-url-success opt-url]))))))
+
+;; Called when api call returns any error
+(reg-event-fx
+ :otp-settings-form-url-error
+ (fn [{:keys [db]} [_event-id error]]
+   (let [secret-code-field-error (if (str/starts-with? error "OtpKeyDecodeError")
+                                   (assoc {} :secret-or-url "Valid encoded key or full TOTPAuth URL is required") {})]
+     {:db (-> db
+              (assoc-in [:otp-settings-dialog :error-fields] secret-code-field-error))
+      :fx (when (empty? secret-code-field-error)
+            [[:dispatch [:generic-dialog-close :otp-settings-dialog]] ;; Using the generic close event :generic-dialog-close
+             [:dispatch [:common/error-box-show "Error" error]]])})))
+
+(reg-event-fx
+ :otp-settings-form-url-success
+ (fn [{:keys [db]} [_event-id otp-url]]
+   (let [{:keys [section-name field-name standard-field]} (get-in db [:otp-settings-dialog])
+         ;; Need to add the field to the section if it is not standard field
+         ;; A map corresponding to struct KeyValueData is passed to add this extra otp field
+         db (if standard-field  db (add-section-field db {:section-name section-name
+                                                          :field-name field-name
+                                                          :protected true
+                                                          :required false
+                                                          :data-type ONE_TIME_PASSWORD_TYPE}))]
+
+     ;; We can also use [:dispatch [:generic-dialog-close :otp-settings-dialog] instead of updating db with 
+     ;; init-dialog-map call done here
+     {:db  (-> db (assoc-in [:otp-settings-dialog] (init-dialog-map)))
+      :fx [[:dispatch [:entry-form/otp-url-formed section-name field-name otp-url]]]})))
+
 
 
 (comment

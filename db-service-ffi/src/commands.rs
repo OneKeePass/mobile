@@ -4,8 +4,7 @@ use crate::{open_backup_file, util, OkpError, OkpResult, };
 use onekeepass_core::async_service::{self,OtpTokenTtlInfoByField,TimerID};
 use onekeepass_core::db_content::AttachmentHashValue;
 use onekeepass_core::db_service::{
-    self, DbSettings, EntryCategory, EntryFormData, Group, KdbxLoaded, NewDatabase,
-    PasswordGenerationOptions, EntryCategoryGrouping,
+    self, DbSettings, EntryCategory, EntryCategoryGrouping, EntryFormData, Group, KdbxLoaded, NewDatabase, OtpSettings, PasswordGenerationOptions
 };
 
 use std::fmt::format;
@@ -140,6 +139,10 @@ pub enum CommandArg {
         data_hash_str: String,
     },
 
+    OtpSettingsArg {
+        otp_settings: OtpSettings,
+    },
+
     StartEntryOtpArg {
         db_key: String,
         entry_uuid: Uuid,
@@ -266,8 +269,6 @@ impl Commands {
                 db_service_call! (args, DbKey{db_key} => collect_entry_group_tags(&db_key))
             }
 
-            "empty_trash" => db_service_call! (args, DbKey{db_key} => empty_trash(&db_key)),
-
             "get_db_settings" => db_service_call! (args, DbKey{db_key} => get_db_settings(&db_key)),
 
             "set_db_settings" => {
@@ -306,6 +307,10 @@ impl Commands {
                 db_service_call! (args, DbKeyWithUUIDArg{db_key,uuid} => get_entry_form_data_by_id(&db_key,&uuid))
             }
 
+            "form_otp_url" => {
+                db_service_call! (args, OtpSettingsArg{otp_settings} => form_otp_url(&otp_settings))
+            }
+
             "move_entry_to_recycle_bin" => {
                 db_service_call! (args, DbKeyWithUUIDArg{db_key,uuid} => move_entry_to_recycle_bin(&db_key,uuid))
             }
@@ -321,6 +326,8 @@ impl Commands {
             "remove_group_permanently" => {
                 db_service_call! (args, DbKeyWithUUIDArg{db_key,uuid} => remove_group_permanently(&db_key,uuid))
             }
+
+            "empty_trash" => db_service_call! (args, DbKey{db_key} => empty_trash(&db_key)),
 
             "move_entry" => {
                 db_service_call! (args, MoveArg{db_key,uuid, new_parent_id} => move_entry(&db_key,uuid, new_parent_id))

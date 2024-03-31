@@ -110,7 +110,6 @@
                  (csk/->kebab-case-keyword k)))]
     (cske/transform-keys t-fn response)))
 
-
 (defn transform-api-response
   "Transforms the resolved value and returns a result map with key :ok or :error
   The first arg is the response returned by the api as a stringified json object
@@ -702,7 +701,6 @@
 (defn set-timeout [period-in-milli-seconds timer-id dispatch-fn]
   (invoke-api "set_timeout" {:period-in-milli-seconds period-in-milli-seconds :timer-id timer-id} dispatch-fn))
 
-
 (defn start-polling-entry-otp-fields [db-key entry-uuid otp-fields dispatch-fn]
   ;; otp-fields is a map where keys are otp field names and values are a map with keys [ttl period]
   (let [exclude-keys (-> otp-fields keys vec)]
@@ -715,11 +713,13 @@
                 ;; keys in the passed args map are transformed except those in this exclude vec
                 :args-keys-excluded exclude-keys)))
 
-
 (defn stop-polling-all-entries-otp-fields [db-key dispatch-fn]
   (invoke-api "stop_polling_all_entries_otp_fields" {:db-key db-key} dispatch-fn))
 
-
+(defn form-otp-url 
+  "The arg 'otp-settings' is map with secret-or-url,  eg {:secret-or-url \"base32secret3232\"}"
+  [otp-settings dispatch-fn] 
+  (invoke-api "form_otp_url" {:otp-settings otp-settings} dispatch-fn :convert-request true ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Native Events ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; While compiling with advanced option, if we use '(u/is-iOS)' to check platform

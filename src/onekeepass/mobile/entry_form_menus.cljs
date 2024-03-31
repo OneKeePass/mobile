@@ -15,6 +15,14 @@
                                                  :show false
                                                  :x 0 :y 0}))
 
+(defn section-menu-dialog-show [{:keys [section-name is-standard-section event ]}]
+  (swap! section-menu-dialog-data assoc
+         :section-name section-name
+         :is-standard-section is-standard-section
+         :show true
+         :x (-> event .-nativeEvent .-pageX)
+         :y (-> event .-nativeEvent .-pageY)))
+
 (defn section-menu [{:keys [section-name is-standard-section show x y]}]
   ;; anchor coordinates can be obtained in the icon button's onPrees. This is called with 'PressEvent Object Type'
   ;; (-> event .-nativeEvent .-pageY) and (-> event .-nativeEvent .-pageX) and use that 
