@@ -29,6 +29,8 @@
 (def PERMISSION_REQUIRED_TO_READ "PERMISSION_REQUIRED_TO_READ")
 (def FILE_NOT_FOUND "FILE_NOT_FOUND")
 
+(def OTP_KEY_DECODE_ERROR "OtpKeyDecodeError")
+
 (def BIOMETRIC-AUTHENTICATION-SUCCESS "AuthenticationSucceeded")
 (def BIOMETRIC-AUTHENTICATION-FAILED "AuthenticationFailed")
 
@@ -49,6 +51,16 @@
 (def OTP "Standard field name used" "otp")
 
 (def OTP_URL_PREFIX "otpauth://totp")
+
+;; 'granted' | 'not-determined' | 'denied' | 'restricted'
+(def CAMERA_PERMISSION_GRANTED "granted")
+(def CAMERA_PERMISSION_DENIED "denied")
+(def CAMERA_PERMISSION_NOT_DETERMINED "not-determined")
+(def CAMERA_PERMISSION_RESTRICTED "restricted")
+
+
+;;; Page ids
+(def CAMERA_SCANNER_PAGE_ID :scan-otp-qr)
 
 
 ;;;;;;; Icon names ;;;;;

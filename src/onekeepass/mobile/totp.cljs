@@ -13,6 +13,8 @@
   (when-not @scanned
     (let [codes (js->clj codes :keywordize-keys true) ]
       (println "codes " codes)
+      
+      ;; Disable code scanning to prevent rapid scans
       (when (> (count codes) 0)
         (println "value is " (-> codes (nth 0) :value))
         (reset! scanned true)))

@@ -4,6 +4,7 @@
    [react-native :as rn]
    ["@react-native-clipboard/clipboard" :as rnc-clipboard]
    ["react-native-file-viewer" :as native-file-viewer]
+   ["react-native-vision-camera" :as rn-vision-camera]
    [cljs.core.async :refer [go]]
    [cljs.core.async.interop :refer-macros [<p!]]
    [onekeepass.mobile.utils :as u :refer [contains-val?]]
@@ -18,15 +19,6 @@
 
 (defn write-string-to-clipboard [s]
   (.setString clipboard s))
-
-;; Not ussed for now
-#_(defn read-string-from-clipboard [callback-fn]
-    (go (try
-          (let [s (<p! (.getString clipboard))]
-            (callback-fn s))
-          (catch js/Error err
-            (js/console.log (ex-cause err))
-            (callback-fn nil)))))
 
 ;; Use (.open file-viewer "full file path")
 (def file-viewer ^js/FileViewer (.-default ^js/NFileViewer native-file-viewer))
@@ -217,6 +209,10 @@
   ;; .openURL returns a promise and it is resolved in call-api-async
   (call-api-async
    (fn [] (.openURL rn-native-linking https-url)) dispatch-fn :no-response-conversion true))
+
+(defn open-mobile-settings [dispatch-fn]
+  (call-api-async
+   (fn [] (.openSettings rn-native-linking )) dispatch-fn :no-response-conversion true))
 
 (defn view-file
   "Called to view any file using the native file viewer"
@@ -720,6 +716,52 @@
   "The arg 'otp-settings' is map with secret-or-url,  eg {:secret-or-url \"base32secret3232\"}"
   [otp-settings dispatch-fn] 
   (invoke-api "form_otp_url" {:otp-settings otp-settings} dispatch-fn :convert-request true ))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  Camera static methods calls ;;;;;;;;;;;
+
+;; Reagent component 'camera' from 'react-native-vision-camera - VisionCamera' is defined in 'rn-components.cljs'
+
+;; Need to use (js/Object.getOwnPropertyNames camera-obj) in repl to find all static methods 
+;; defined in 'Camera'
+(def camera-obj (.-Camera ^js/RNVisionCamera rn-vision-camera))
+
+(defn camera-permission-status 
+  "
+  Returns one of 'granted' | 'not-determined' | 'denied' | 'restricted'
+
+  not-determined: Your app has not yet requested permission from the user. Continue by calling the request functions.
+
+  denied: Your app has already requested permissions from the user, but was explicitly denied. 
+  You cannot use the request functions again, 
+  but you can use the Linking API to redirect the user to the Settings App where he can manually grant the permission.
+
+  restricted: Your app cannot use the Camera or Microphone because that 
+  functionality has been restricted, possibly due to active restrictions such as parental controls being in place
+  "
+  []
+  (.getCameraPermissionStatus camera-obj))
+
+;; See https://react-native-vision-camera.com/docs/api/classes/Camera#requestcamerapermission
+;; https://react-native-vision-camera.com/docs/guides#requesting-permissions
+(defn request-camera-permission 
+  "The static method .requestCameraPermission returns a promise and it is resolved in call-api-async
+  By using :no-response-conversion, the resolved value is returned as {:ok resolved-value}
+  he resolved value is either 'granted' or 'denied' 
+  
+  granted: The app is authorized to use said permission. Continue with using the <Camera> view.
+  denied: The user explicitly denied the permission request alert. You cannot use the request functions again, but you can use 
+  the Linking API to redirect the user to the Settings App where he can manually grant the permission.
+  restricted: The app cannot use the Camera or Microphone because that functionality has been restricted, 
+  possibly due to active restrictions such as parental controls being in place
+  "
+  [dispatch-fn] 
+  (call-api-async (fn [] (.requestCameraPermission camera-obj)) dispatch-fn :no-response-conversion true))
+
+(defn available-cameras 
+  "Returns a list of all available camera devices on the current phone"
+  []
+  (-> (.getAvailableCameraDevices camera-obj) js->clj))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Native Events ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; While compiling with advanced option, if we use '(u/is-iOS)' to check platform

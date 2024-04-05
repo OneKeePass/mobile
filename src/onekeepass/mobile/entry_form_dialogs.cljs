@@ -1,6 +1,8 @@
 
 (ns
  onekeepass.mobile.entry-form-dialogs
+  (:require-macros [onekeepass.mobile.okp-macros
+                    :refer  [as-map]])
   (:require [reagent.core :as r]
             [onekeepass.mobile.rn-components
              :as rnc
@@ -35,6 +37,7 @@
             [onekeepass.mobile.events.password-generator :as pg-events]
             [onekeepass.mobile.background :refer [is-iOS is-Android]]
             [onekeepass.mobile.events.dialogs :as dlg-events]
+            [onekeepass.mobile.events.scan-otp-qr :as scan-qr-events]
             [onekeepass.mobile.events.common :as cmn-events]))
 
 ;;;;;;;;;;;;;
@@ -44,13 +47,14 @@
 
 
 (defn confirm-delete-otp-field-show [section-name key]
-  (dlg-events/confirm-delete-otp-field-dialog-show-with-state {:title "Delete one time password?"
-                                                               :confirm-text "Are you sure you want to delete this permanently?"
-                                                               :call-on-ok-fn #(form-events/entry-form-delete-otp-field section-name key)
-                                                               :actions [{:label "button.labels.yes"
-                                                                          :on-press dlg-events/confirm-delete-otp-field-dialog-on-ok}
-                                                                         {:label "button.labels.no"
-                                                                          :on-press dlg-events/confirm-delete-otp-field-dialog-close}]}))
+  (dlg-events/confirm-delete-otp-field-dialog-show-with-state 
+   {:title "Delete one time password?"
+    :confirm-text "Are you sure you want to delete this permanently?"
+    :call-on-ok-fn #(form-events/entry-form-delete-otp-field section-name key)
+    :actions [{:label "button.labels.yes"
+               :on-press dlg-events/confirm-delete-otp-field-dialog-on-ok}
+              {:label "button.labels.no"
+               :on-press dlg-events/confirm-delete-otp-field-dialog-close}]}))
 
 
 (defn setup-otp-action-dialog []
@@ -59,21 +63,29 @@
 
 (declare otp-settings-dialog-show)
 
-(defn setup-otp-action-dialog-show [section-name field-name standard-field]
+(defn scan-qr-action [{:keys [section-name field-name standard-field] :as otp-field-m}]
+  (if standard-field
+    (scan-qr-events/initiate-scan-qr otp-field-m)
+    (otp-settings-dialog-show section-name field-name standard-field :scan-qr))
+  )
 
-  (dlg-events/setup-otp-action-dialog-show-with-state {:title "Set up OTP"
-                                                       :confirm-text "You can set up TOTP by scanning a QR code or manually entering the secret or an OTPAuth url"
-                                                       :section-name section-name
-                                                       :actions [{:label "button.labels.cancel"
-                                                                  :on-press dlg-events/setup-otp-action-dialog-close}
-                                                                 {:label "Scan QR Code"
-                                                                  :on-press (fn []
-                                                                              (otp-settings-dialog-show section-name field-name standard-field :scan-qr)
-                                                                              (dlg-events/setup-otp-action-dialog-close))}
-                                                                 {:label "Enter Manually"
-                                                                  :on-press (fn []
-                                                                              (otp-settings-dialog-show section-name field-name standard-field :manual)
-                                                                              (dlg-events/setup-otp-action-dialog-close))}]}))
+(defn setup-otp-action-dialog-show [section-name field-name standard-field]
+  (dlg-events/setup-otp-action-dialog-show-with-state 
+   {:title "setupOtp"
+    :confirm-text "You can set up TOTP by scanning a QR code or manually entering the secret or an OTPAuth url"
+    :section-name section-name
+    :actions [{:label "button.labels.cancel"
+               :on-press dlg-events/setup-otp-action-dialog-close}
+              {:label "scanQRcode"
+               :on-press (fn []
+                           (scan-qr-action (as-map [section-name field-name standard-field]))
+                           #_(scan-qr-events/initiate-scan-qr (as-map [section-name field-name standard-field]))
+                           #_(otp-settings-dialog-show section-name field-name standard-field :scan-qr)
+                           (dlg-events/setup-otp-action-dialog-close))}
+              {:label "Enter Manually"
+               :on-press (fn []
+                           (otp-settings-dialog-show section-name field-name standard-field :manual)
+                           (dlg-events/setup-otp-action-dialog-close))}]}))
 
 (defn otp-settings-dialog
   "Shown when user wants to enter secrect code or scan QR
@@ -82,39 +94,41 @@
   "
   [{:keys [dialog-show
            standard-field
-           section-name
+           _section-name
            field-name
            code-entry-type
            secret-or-url
            error-fields
-           api-error-text]}]
+           _api-error-text]}]
 
-  (let [error (boolean (seq error-fields))] 
+  (let [error (boolean (seq error-fields))]
     [cust-dialog {:style {} :dismissable true :visible dialog-show :onDismiss #()}
      [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1}
-      (if (=  code-entry-type :scan-qr) "Scan QR Code" "Enter code")]
+      (if (=  code-entry-type :scan-qr) (lstr "scanQRcode") (lstr "enterCode"))]
      [rnp-dialog-content
       [rn-view {:flexDirection "column"}
        (when-not standard-field
          [:<> ;; Needs to :<> so that a combine comp is returned the condition evaluates
-          [rnp-text-input {:label "Field name"
+          [rnp-text-input {:label (lstr "fieldName")
                            :autoCapitalize "none"
                            :defaultValue field-name
                            :onChangeText #(dlg-events/otp-settings-dialog-update [:field-name %])}]
           (when error
             [rnp-helper-text {:type "error" :visible error}
              (get error-fields :field-name)])
-          
-          [rn-view {:style {:height 10}}]
-          ])
 
-       [rnp-text-input {:label "Secret code or Url"
-                        :autoCapitalize "none"
-                        :defaultValue secret-or-url
-                        :onChangeText #(dlg-events/otp-settings-dialog-update [:secret-or-url %])}]
-       (when error
-         [rnp-helper-text {:type "error" :visible error}
-          (get error-fields :secret-or-url)])]]
+          [rn-view {:style {:height 10}}]])
+
+       (when  (= code-entry-type :manual)
+         [:<>
+          [rnp-text-input {:label (lstr "secretCodeOrUrl")
+                           :autoCapitalize "none"
+                           :defaultValue secret-or-url
+                           :onChangeText #(dlg-events/otp-settings-dialog-update [:secret-or-url %])}]
+          (when error
+            [rnp-helper-text {:type "error" :visible error}
+             (get error-fields :secret-or-url)])])]]
+     
      [rnp-dialog-actions
       [rnp-button {:mode "text"
                    :onPress dlg-events/otp-settings-dialog-close} (lstr "button.labels.cancel")]
@@ -122,12 +136,14 @@
                    :onPress dlg-events/otp-settings-dialog-manual-code-entered-ok} (lstr "button.labels.ok")]]]))
 
 (defn otp-settings-dialog-show
-  "Called to show the otp settings dialog with initial values"
+  "Called to show the otp settings dialog with initial values
+   This dialog is shown when user wants to enter the code manually. 
+   This is also called before scanning code if the otp is an additional custom field 
+   code-entry-type is one of :scan-qr or :manual
+   "
   [section-name field-name standard-field code-entry-type]
-  (dlg-events/otp-settings-dialog-show-with-state {:section-name section-name
-                                                   :field-name field-name
-                                                   :standard-field standard-field
-                                                   :code-entry-type code-entry-type}))
+  (println "code-entry-type is " code-entry-type)
+  (dlg-events/otp-settings-dialog-show-with-state (as-map [section-name field-name standard-field code-entry-type])))
 
 ;;;;;;;;;;;;;;;
 (defn add-modify-section-name-dialog [{:keys [dialog-show

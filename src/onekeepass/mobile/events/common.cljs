@@ -57,6 +57,30 @@
   ([api-response]
    (on-ok api-response nil)))
 
+(defn create-api-handler-fn
+  "
+  ok-response-handler is a fn to handle the value found in :ok
+  error-response-handler is a fn to handle the value found in :error
+  Returns a fn wrapping the individual ok and error fns that can be used 
+  in any backend api call as dispatch-fn
+  "
+  [ok-response-handler error-response-handler]
+  (cond
+    
+    (and ok-response-handler error-response-handler)
+    (fn [api-response]
+      (when-let [ok-response (on-ok api-response error-response-handler)]
+        (ok-response-handler ok-response)))
+    
+    ok-response-handler
+    (fn [api-response]
+      (when-let [ok-response (on-ok api-response)]
+        (ok-response-handler ok-response)))
+
+    error-response-handler
+    (fn [api-response]
+      (on-error api-response error-response-handler))))
+
 (defn active-db-key
   "Returns the current database key 'db-key'"
   ;; To be called only in react components as it used 'subscribe' (i.e in React context)
@@ -429,6 +453,10 @@
    (boolean (get-in-selected-db db db-key [:locked]))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  Page Navigation ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; All valid pages are identified keywords with title
+;; Valid page ids are [:home :about ...]  See appbar.cljs
+;; Need to be added to constants.cljs
 
 (defn to-home-page
   "Called to navigate to the home page"

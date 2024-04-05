@@ -61,7 +61,7 @@
                        Button
                        SafeAreaView
                        FlatList
-                       KeyboardAvoidingView 
+                       KeyboardAvoidingView
                        Pressable
                        TouchableWithoutFeedback
                        TouchableHighlight
@@ -268,7 +268,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Pan Responder ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn create-pan-responder 
+(defn create-pan-responder
   "Creates a pan responder with the supplied handler functions. Used mainly for session time out
    Arg 'handler-fns-m' is a map with keys matching reponder handler names of a view 
    See for an example https://reactnative.dev/docs/view#onmoveshouldsetrespondercapture
@@ -280,6 +280,9 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; react-native-vision-camera - VisionCamera  ;;;;;;;;;;
 
+;; https://react-native-vision-camera.com/docs/api/#usecamerapermission
+;; https://github.com/mrousavy/react-native-vision-camera/blob/main/package/src/hooks/useCameraPermission.ts 
+
 (def use-camera-permission (.-useCameraPermission ^js/RNVisionCamera rn-vision-camera))
 
 (def use-camera-device (.-useCameraDevice ^js/RNVisionCamera rn-vision-camera))
@@ -287,7 +290,6 @@
 (def use-code-scanner (.-useCodeScanner ^js/RNVisionCamera rn-vision-camera))
 
 (def camera (r/adapt-react-class (.-Camera ^js/RNVisionCamera rn-vision-camera)))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; react-native-circular-progress ;;;;;;;;;;;;;;;;;;;;
 

@@ -1,22 +1,16 @@
 (ns onekeepass.mobile.events.entry-form-otp
-  (:require
-   [re-frame.core :refer [reg-event-db
-                          reg-event-fx
-                          reg-sub
-                          dispatch
-                          reg-fx
-                          subscribe]]
-   [onekeepass.mobile.events.entry-form-common :refer [merge-section-key-value extract-form-otp-fields entry-form-key]]
-   [onekeepass.mobile.constants :refer [ONE_TIME_PASSWORD_TYPE]]
-
-   [onekeepass.mobile.events.common :as cmn-events :refer [on-ok
-                                                           on-error
-                                                           active-db-key
-                                                           assoc-in-key-db
-                                                           get-in-key-db]]
-   [onekeepass.mobile.utils :as u :refer [contains-val?]]
-
-   [onekeepass.mobile.background :as bg]))
+  "Entry form otp events"
+  (:require [onekeepass.mobile.background :as bg]
+            [onekeepass.mobile.constants :refer [ONE_TIME_PASSWORD_TYPE]]
+            [onekeepass.mobile.events.common :as cmn-events :refer [active-db-key
+                                                                    assoc-in-key-db
+                                                                    get-in-key-db
+                                                                    on-error]]
+            [onekeepass.mobile.events.entry-form-common :refer [add-section-field
+                                                                entry-form-key
+                                                                extract-form-otp-fields
+                                                                merge-section-key-value]]
+            [re-frame.core :refer [dispatch reg-event-fx reg-fx reg-sub]]))
 
 
 (reg-sub
@@ -46,30 +40,6 @@
    (bg/stop-polling-all-entries-otp-fields db-key (if-not (nil? dispatch-fn) dispatch-fn #(on-error %)))))
 
 
-
-(reg-event-fx
- :entry-form/otp-start-polling
- (fn [{:keys [db]} [_event-id]]
-   {}
-   #_(let [form-status (get-in-key-db db [entry-form-key :showing])
-           entry-uuid (get-in-key-db db [entry-form-key :data :uuid])
-           otp-fields (extract-form-otp-fields (get-in-key-db db [entry-form-key :data]))]
-       (if (= form-status :selected)
-         {:fx [[:otp/start-polling-otp-fields [(active-db-key db)
-                                               entry-uuid
-                                               otp-fields]]]}
-         {}))))
-
-
-(reg-event-fx
- :entry-form/otp-stop-polling
- (fn [{:keys [db]} [_event-id]]
-   {}
-   #_(let [form-status (get-in-key-db db [entry-form-key :showing])]
-       (if (= form-status :selected)
-         {:fx [[:otp/stop-all-entry-form-polling [(active-db-key db) nil]]]}
-         {}))))
-
 (reg-event-fx
  :entry-form-otp-start-polling
  (fn [{:keys [db]} [_event-id]]
@@ -93,7 +63,7 @@
 
 
 
-;; Called to update with the current tokens 
+;; Called from backend event handler (see native_events.cljs) to update with the current tokens 
 (reg-event-fx
  :entry-form/update-otp-tokens
  (fn [{:keys [db]} [_event-id entry-uuid current-opt-tokens-by-field]]
@@ -156,6 +126,8 @@
       ;; Calling update will reload the entry form 
       :fx [[:bg-update-entry [(active-db-key db) (get-in-key-db db [entry-form-key :data])]]]})))
 
+;; Called when backend returns a valid otp url that is formed when user 
+;; scans the QR code or enters secret code manually 
 (reg-event-fx
  :entry-form/otp-url-formed
  (fn [{:keys [db]} [_event-id section otp-field-name otp-url]]
@@ -169,3 +141,39 @@
       :fx [(if (= form-status :new)
              [:bg-insert-entry [(active-db-key db) (get-in-key-db db [entry-form-key :data])]]
              [:bg-update-entry [(active-db-key db) (get-in-key-db db [entry-form-key :data])]])]})))
+
+;; dispatch-kw is any previously created reg-event-fx name - a keyword
+(reg-event-fx
+ :entry-form/otp-url-form-success
+ (fn [{:keys [db]} [_event-id section-name otp-field-name otp-url standard-field dispatch-kw]]
+   ;;(println "entry-form/otp-url-form-success is called for section-name otp-field-name otp-url dispatch-kw " section-name otp-field-name otp-url dispatch-kw)
+   (let [;; Need to add the field to the section if it is not standard field
+         ;; A map corresponding to struct KeyValueData is passed to add this extra otp field
+         db (if standard-field  db (add-section-field db {:section-name section-name
+                                                          :field-name otp-field-name
+                                                          :protected true
+                                                          :required false
+                                                          :data-type ONE_TIME_PASSWORD_TYPE}))
+         form-status (get-in-key-db db [entry-form-key :showing])
+         section-kvs (merge-section-key-value db section-name otp-field-name otp-url)
+         ;; Set the db before using in fx
+         db (-> db
+                (assoc-in-key-db [entry-form-key :data :section-fields section-name] section-kvs))]
+     ;;(println "entry-form/otp-url-formed form-status is  " form-status)
+     {:db db
+      :fx [(if (= form-status :new)
+             [:bg-insert-entry [(active-db-key db) (get-in-key-db db [entry-form-key :data])]]
+             [:bg-update-entry [(active-db-key db) (get-in-key-db db [entry-form-key :data])]])
+
+           (when dispatch-kw
+             [:dispatch [dispatch-kw {}]]
+             )]})))
+
+;;api-response-handler is a fn that accepts a single argument
+(reg-fx
+ :entry-form/bg-form-otp-url
+ (fn [[otp-settings api-response-handler]] 
+   (bg/form-otp-url otp-settings api-response-handler)))
+
+
+

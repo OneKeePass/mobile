@@ -1,7 +1,9 @@
 (ns onekeepass.mobile.events.entry-form-common
-  (:require [onekeepass.mobile.constants :refer [ONE_TIME_PASSWORD_TYPE]]
+  "Common fns used acrosss entry form related events"
+  (:require [clojure.string :as str]
+            [onekeepass.mobile.constants :refer [ONE_TIME_PASSWORD_TYPE]]
             [onekeepass.mobile.events.common :as cmn-events :refer [assoc-in-key-db
-                                                                      get-in-key-db]]
+                                                                    get-in-key-db]]
             [onekeepass.mobile.utils :as u :refer [contains-val?]]))
 
 
@@ -15,7 +17,8 @@
 (defn is-field-exist
   "Checks that a given field name exists in the entry form or not "
   [app-db field-name]
-  (let [all-section-fields (-> (get-in-key-db
+  (let [field-name (str/trim field-name)
+        all-section-fields (-> (get-in-key-db
                                 app-db
                                 [entry-form-key :data :section-fields])
                                vals flatten) ;;all-section-fields is a list of maps for all sections 

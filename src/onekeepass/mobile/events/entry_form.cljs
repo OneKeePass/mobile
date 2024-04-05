@@ -166,8 +166,7 @@
  (fn [{:keys [db]} [_event-id entry-form-data navigate?]]
    ;; When navigate? is false, we just set the loaded entry data and not change the page 
    {:db  (set-on-entry-load db entry-form-data)
-    :fx [[:dispatch [:entry-form/otp-start-polling]]
-         (when navigate? [:dispatch [:common/next-page :entry-form  "page.titles.entry"]])]}))
+    :fx [(when navigate? [:dispatch [:common/next-page :entry-form  "page.titles.entry"]])]}))
 
 ;; Update a field found in :data
 (reg-event-db
@@ -192,8 +191,7 @@
 (reg-event-fx
  :entry-form/edit
  (fn [{:keys [db]} [_event-id edit?]]
-   {:db (assoc-in-key-db db [entry-form-key :edit] edit?)
-    :fx [(when edit? [:dispatch [:entry-form/otp-stop-polling]])]}))
+   {:db (assoc-in-key-db db [entry-form-key :edit] edit?)}))
 
 #_(reg-event-db
    :entry-form/edit
@@ -751,8 +749,7 @@
  :cancel-entry-form
  (fn [{:keys [db]} [_event-id]]
    {:db (assoc-in-key-db db [entry-form-key :error-fields] {})
-    :fx [[:dispatch [:entry-form/otp-stop-polling]]
-         [:dispatch [:common/previous-page]]]}))
+    :fx [[:dispatch [:common/previous-page]]]}))
 
 (reg-event-fx
  :entry-save
@@ -913,8 +910,7 @@
    {:db (-> db
             (assoc-in-key-db [entry-form-key :entry-history-form] {})
             (assoc-in-key-db [entry-form-key :entry-history-form :entries-summary-list] summary-list))
-    :fx [[:dispatch [:entry-form/otp-stop-polling]]
-         [:dispatch [:common/next-page :entry-history-list "page.titles.histories"]]]}))
+    :fx [[:dispatch [:common/next-page :entry-history-list "page.titles.histories"]]]}))
 
 
 (reg-event-fx

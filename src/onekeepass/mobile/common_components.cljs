@@ -31,6 +31,7 @@
 
 (set! *warn-on-infer* true)
 
+;; dialog data is under the key :message-box in db
 (defn message-dialog [{:keys [dialog-show title category message]}]
   [rnp-dialog {:style {}
                :dismissable false

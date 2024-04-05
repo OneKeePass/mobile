@@ -20,6 +20,8 @@
     "dbSettings":"Database Settings",
     "dbTimeout":"Database Timeout",
     "description":"Description",
+    "enterCode":"Enter code",
+    "fieldName":"Field name",
     "general":"General",
     "importedKeyFiles":"Imported Key Files",
     "keyFile":"Key File",
@@ -30,6 +32,10 @@
     "masterPassword":"Master Password",
     "privacyPolicy":"Privacy Policy",
     "security":"Security",
+    "scanQRcode":"Scan QR Code",
+    "secretCodeOrUrl":"Secret code or Url",
+    
+    
     "dialog": {
         "titles": {
             "historyDelete": "Delete history entry",
@@ -41,7 +47,8 @@
             "openDatabase":"Open database",
             "newDatabase":"New database",
             "unlockDatabase":"Unlock database",
-            "remove":"Remove"
+            "remove":"Remove",
+            "setupOtp":"Set up OTP"
         },
         "texts": {
             "historyDelete": "Are you sure you want to delete this history entry permanently?",
