@@ -811,6 +811,32 @@
          restored? (get-in-key-db db [entry-form-key :entry-history-form :history-entry-restore-confirmed])
          db (if (= :new current-showing)
               (assoc-in-key-db db [entry-form-key :undo-data] (get-in-key-db db [entry-form-key :data]))
+              db)] 
+     {
+      :fx [(if (= :new current-showing)
+             [:dispatch [:common/message-snackbar-open "Created Entry"]]
+             [:dispatch [:common/message-snackbar-open "Updated Entry"]])
+           
+           ;; Reload entry data again to reflect the saved changes after an update or after a new entry is inserted
+           [:dispatch [:reload-entry-by-id (get-in-key-db db [entry-form-key :data :uuid])]]
+           
+           ;; Need to reload categories, groups and list data on an entry insert/update
+           [:dispatch [:entry-category/load-categories-to-show]]
+           [:dispatch [:groups/load]]
+           [:dispatch [:entry-list/reload-selected-entry-items]]
+           [:dispatch [:search/reload]]
+           [:dispatch [:common/message-modal-hide]]
+           ;; Entry update is due to restoring from history
+           (when restored?
+             [:dispatch [:history-entry-restore-complete]])]})))
+
+#_(reg-event-fx
+ :entry-insert-update-save-complete
+ (fn [{:keys [db]} [_event-id]]
+   (let [current-showing (get-in-key-db db [entry-form-key :showing])
+         restored? (get-in-key-db db [entry-form-key :entry-history-form :history-entry-restore-confirmed])
+         db (if (= :new current-showing)
+              (assoc-in-key-db db [entry-form-key :undo-data] (get-in-key-db db [entry-form-key :data]))
               db)]
      ;; If showing is already :selected, then this is update and we need to reload the entry data
      {:db (-> db (assoc-in-key-db  [entry-form-key :edit] false)
@@ -1239,9 +1265,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-
-
-
 (comment
   (require '[clojure.pprint :refer [pprint]])
 
@@ -1252,10 +1275,13 @@
   (-> (get @re-frame.db/app-db db-key) :entry-form keys)
 
   ;; => (:data :undo-data :otp-fields :showing :edit)
-
+  
   (-> (get @re-frame.db/app-db db-key) :entry-form :data keys)
   ;; => :tags :icon-id :binary-key-values :section-fields :title :expiry-time :history-count 
   ;;     :expires :standard-section-names :last-modification-time :entry-type-name :auto-type :notes 
   ;;     :section-names :entry-type-icon-name :last-access-time :uuid :entry-type-uuid :group-uuid :creation-time
+  
+  (-> (get @re-frame.db/app-db db-key) :entry-form :data pprint) ;; will pretty print the data map
 
-  (-> (get @re-frame.db/app-db db-key) :entry-form :data :group-uuid))
+  (-> (get @re-frame.db/app-db db-key) :entry-form :data :group-uuid)
+  )

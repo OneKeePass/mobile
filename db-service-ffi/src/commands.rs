@@ -183,8 +183,6 @@ pub enum CommandArg {
 
 pub type ResponseJson = String;
 
-pub struct Commands {}
-
 macro_rules! service_call  {
     ($args:expr,$enum_name:tt {$($enum_vals:tt)*} => $path:ident $fn_name:tt ($($fn_args:expr),*) ) => {
         
@@ -228,6 +226,18 @@ macro_rules! db_service_call  {
         service_call!($args,$enum_name {$($enum_vals)*} => db_service $fn_name ($($fn_args),*))
     };
 }
+
+
+macro_rules! wrap_no_arg_call {
+    ($path:ident $fn_name:tt) => {
+        {
+            let r = $path::$fn_name();
+            result_json_str(Ok(r))
+        }
+    };
+}
+
+pub struct Commands {}
 
 impl Commands {
     pub fn invoke(command_name: String, args: String) -> String {
@@ -388,6 +398,10 @@ impl Commands {
 
             "set_timeout" => {
                 service_ok_call! (args, StartTimerArg {period_in_milli_seconds,timer_id} => async_service set_timeout(period_in_milli_seconds,timer_id))
+            }
+
+            "shutdown_async_services" => {
+                wrap_no_arg_call! (async_service shutdown_async_services)
             }
 
             ////// 
@@ -643,8 +657,9 @@ impl Commands {
     fn  stop_polling_all_entries_otp_fields() -> ResponseJson { 
         async_service::stop_polling_all_entries_otp_fields();
         ok_json_str(true)
-
     }
+
+    
 
     // fn test_call() -> ResponseJson {
     //     onekeepass_core::async_service::start();

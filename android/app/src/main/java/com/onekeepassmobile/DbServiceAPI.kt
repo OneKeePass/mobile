@@ -26,7 +26,10 @@ object DbServiceAPI {
     }
 
     fun initialize(reactContext: ReactApplicationContext) {
-        dbServiceInitialize(CommonDeviceServiceImpl(reactContext),SecureKeyOperationImpl(reactContext))
+        dbServiceInitialize(CommonDeviceServiceImpl(reactContext),
+                SecureKeyOperationImpl(reactContext),
+                BackendEventDispatcher(reactContext)
+                )
     }
 
     fun invokeCommand(commandName: String, args: String): String {

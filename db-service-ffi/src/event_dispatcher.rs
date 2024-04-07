@@ -1,4 +1,4 @@
-use log::debug;
+use log::{debug,info};
 use onekeepass_core::async_service;
 
 use crate::{
@@ -34,10 +34,17 @@ pub(crate) fn init_async_listeners() {
                             .send_tick_update(json_string);
                         //debug!("send_tick_update r is {:?}", &r);
                     }
+                    async_service::AsyncResponse::ServiceStopped => {
+                        break;
+                    }
                 }
             } else {
                 debug!("No reply of type 'AsyncResponse' was received in channel");
             }
         }
+
+        info!("Exited the AsyncResponse handling loop and closing channel receiver...");
+        rx.close();
+        info!("Closed receiver side of the channel");
     });
 }

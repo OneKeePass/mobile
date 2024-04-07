@@ -135,6 +135,7 @@
 (reg-event-db
  :categories-to-show-loaded
  (fn [db [_event-id entry-categories]]
+   ;; entry-categories is a map from struct EntryCategories
    (let [kind (get-in-key-db db [:entry-category :entries-grouping-as])
          kind (if (nil? kind) :type kind)
          {:keys [grouping-kind grouped-categories]} entry-categories
@@ -200,44 +201,3 @@
   (-> @re-frame.db/app-db (get db-key) keys)
   (-> @re-frame.db/app-db (get db-key) :entry-category :data keys);; =>  showing-groups-as  entries-grouping-as :type :group-tree :group-category
   )
-
-
-
-#_(reg-event-fx
-   :entry-category/load-categories-to-show
-   (fn [{:keys [db]} [_event-id]]
-     {:fx [[:bg-categories-to-show (active-db-key db)]]}))
-
-#_(reg-fx
-   :bg-categories-to-show
-   (fn [db-key]
-     (bg/categories-to-show db-key (fn [api-response]
-                                     (when-let [categories (on-ok api-response)]
-                                       (dispatch [:categories-to-show-loaded categories]))))))
-
-
-#_(reg-event-db
-   :change-entries-grouping-method
-   (fn [db [_event-id kind]]
-     (assoc-in-key-db db [:entry-category :entries-grouping-as] kind)))
-
-#_(reg-sub
-   :type-categories
-   :<- [:entry-category-data]
-   (fn [data _query-vec]
-     (:type-categories data)))
-
-;; Returns a group info map and it is formed from the original backend group summary info 
-;; {:entries-count 1, :icon-id 59, :title "MyGroup1", :uuid "45121394-2a38-4cc2-9761-43d0d3dc80bf"}
-#_(reg-sub
-   :group-categories
-   :<- [:entry-category-data]
-   (fn [data _query-vec]
-     (let [gc (:group-categories data)]
-     ;; gc is a vector of a map  (where keys are :category-detail :uuid) - say m1 - formed from the struct GroupCategory 
-     ;; an example m1  is 
-     ;; {:category-detail {:entries-count 1, :icon-id 59, :title "MyGroup1"} 
-     ;;   :uuid "45121394-2a38-4cc2-9761-43d0d3dc80bf"
-     ;; }
-     ;; Adds the group uuid from the m1 to each category-detail map found in 'group-categories' list
-       (mapv (fn [g] (merge (:category-detail g) {:uuid (:uuid g)})) gc))))

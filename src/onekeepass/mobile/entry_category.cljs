@@ -221,7 +221,7 @@
                                           :category-detail category-detail-m
                                           :root-group root-group})))
                       :title (r/as-element
-                              [rnp-text {  :variant "titleMedium"} display-name]) ;;:style {:color @rnc/on-background-color}
+                              [rnp-text {:variant "titleMedium"} display-name]) ;;:style {:color @rnc/on-background-color}
                       
                       :left (fn [_props] (r/as-element
                                           [rnp-list-icon {:style {:height 20}

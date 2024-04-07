@@ -250,13 +250,14 @@
   [{:keys [key
            value
            section-name
-           history-form]}]
+           history-form
+           in-deleted-category]}]
 
   [rnp-text-input {:label key
                    :value value
                    :showSoftInputOnFocus false
                    :multiline true
-                   :right (when-not history-form
+                   :right (when-not (or history-form in-deleted-category ) 
                             (r/as-element
                              [rnp-text-input-icon
                               {:icon const/ICON-TRASH-CAN-OUTLINE
@@ -272,13 +273,15 @@
                :on-press #(setup-otp-action-dialog-show section-name key standard-field)} "Set up One-Time Password"])
 
 (defn otp-field [{:keys [key value section-name standard-field edit] :as kv}]
-  (let [history-form? @(form-events/history-entry-form?)]
+  (let [history-form? @(form-events/history-entry-form?)
+        in-deleted-category @(form-events/deleted-category-showing)
+        ]
     (cond
       (and edit (str/blank? value) (= key OTP))
       [setup-otp-button section-name key standard-field]
       
-      (or edit history-form?)
-      [opt-field-no-token (assoc kv :history-form history-form?)]
-
+      (or edit history-form? in-deleted-category)
+      [opt-field-no-token (assoc kv :history-form history-form? :in-deleted-category in-deleted-category)]
+      
       (not edit)
       [otp-read-field kv])))

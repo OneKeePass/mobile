@@ -413,6 +413,8 @@ internal interface UniffiLib : Library {
     ): Unit
     fun uniffi_db_service_ffi_fn_method_eventdispatch_send_otp_update(`ptr`: Pointer,`jsonString`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
+    fun uniffi_db_service_ffi_fn_method_eventdispatch_send_tick_update(`ptr`: Pointer,`jsonString`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
     fun uniffi_db_service_ffi_fn_clone_iossupportservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Pointer
     fun uniffi_db_service_ffi_fn_free_iossupportservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
@@ -453,7 +455,7 @@ internal interface UniffiLib : Library {
     ): RustBuffer.ByValue
     fun uniffi_db_service_ffi_fn_func_db_service_enable_logging(uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
-    fun uniffi_db_service_ffi_fn_func_db_service_initialize(`commonDeviceService`: Long,`secureKeyOperation`: Long,uniffi_out_err: UniffiRustCallStatus, 
+    fun uniffi_db_service_ffi_fn_func_db_service_initialize(`commonDeviceService`: Long,`secureKeyOperation`: Long,`eventDispatcher`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
     fun uniffi_db_service_ffi_fn_func_extract_file_provider(`fullFileNameUri`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -611,6 +613,8 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_db_service_ffi_checksum_method_eventdispatch_send_otp_update(
     ): Short
+    fun uniffi_db_service_ffi_checksum_method_eventdispatch_send_tick_update(
+    ): Short
     fun uniffi_db_service_ffi_checksum_method_iossupportservice_complete_save_as_on_error(
     ): Short
     fun uniffi_db_service_ffi_checksum_method_iossupportservice_copy_last_backup_to_temp_file(
@@ -677,7 +681,7 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_db_service_ffi_checksum_func_db_service_enable_logging() != 27628.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_db_service_ffi_checksum_func_db_service_initialize() != 33006.toShort()) {
+    if (lib.uniffi_db_service_ffi_checksum_func_db_service_initialize() != 246.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_ffi_checksum_func_extract_file_provider() != 63250.toShort()) {
@@ -711,6 +715,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_ffi_checksum_method_eventdispatch_send_otp_update() != 7119.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_ffi_checksum_method_eventdispatch_send_tick_update() != 63104.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_ffi_checksum_method_iossupportservice_complete_save_as_on_error() != 682.toShort()) {
@@ -1298,6 +1305,8 @@ public interface EventDispatch {
     
     fun `sendOtpUpdate`(`jsonString`: String)
     
+    fun `sendTickUpdate`(`jsonString`: String)
+    
     companion object
 }
 open class EventDispatchImpl : FFIObject, EventDispatch {
@@ -1339,6 +1348,17 @@ open class EventDispatchImpl : FFIObject, EventDispatch {
         callWithPointer {
     uniffiRustCallWithError(ApiCallbackException) { _status ->
     UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_method_eventdispatch_send_otp_update(it,
+        FfiConverterString.lower(`jsonString`),
+        _status)
+}
+        }
+    
+    
+    
+    @Throws(ApiCallbackException::class)override fun `sendTickUpdate`(`jsonString`: String) =
+        callWithPointer {
+    uniffiRustCallWithError(ApiCallbackException) { _status ->
+    UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_method_eventdispatch_send_tick_update(it,
         FfiConverterString.lower(`jsonString`),
         _status)
 }
@@ -1446,6 +1466,22 @@ internal class UniffiCallbackInterfaceEventDispatch : ForeignCallback {
                     UNIFFI_CALLBACK_UNEXPECTED_ERROR
                 }
             }
+            2 -> {
+                // Call the method, write to outBuf and return a status code
+                // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs` for info
+                try {
+                    this.`invokeSendTickUpdate`(cb, argsData, argsLen, outBuf)
+                } catch (e: Throwable) {
+                    // Unexpected error
+                    try {
+                        // Try to serialize the error into a string
+                        outBuf.setValue(FfiConverterString.lower(e.toString()))
+                    } catch (e: Throwable) {
+                        // If that fails, then it's time to give up and just return
+                    }
+                    UNIFFI_CALLBACK_UNEXPECTED_ERROR
+                }
+            }
             
             else -> {
                 // An unexpected error happened.
@@ -1469,6 +1505,28 @@ internal class UniffiCallbackInterfaceEventDispatch : ForeignCallback {
         }
         fun makeCall() : Int {
             kotlinCallbackInterface.`sendOtpUpdate`(
+                FfiConverterString.read(argsBuf)
+            )
+            return UNIFFI_CALLBACK_SUCCESS
+        }
+        fun makeCallAndHandleError()  : Int = try {
+            makeCall()
+        } catch (e: ApiCallbackException) {
+            // Expected error, serialize it into outBuf
+            outBuf.setValue(FfiConverterTypeApiCallbackError.lowerIntoRustBuffer(e))
+            UNIFFI_CALLBACK_ERROR
+        }
+
+        return makeCallAndHandleError()
+    }
+    
+    @Suppress("UNUSED_PARAMETER")
+    private fun `invokeSendTickUpdate`(kotlinCallbackInterface: EventDispatch, argsData: Pointer, argsLen: Int, outBuf: RustBufferByReference): Int {
+        val argsBuf = argsData.getByteBuffer(0, argsLen.toLong()).also {
+            it.order(ByteOrder.BIG_ENDIAN)
+        }
+        fun makeCall() : Int {
+            kotlinCallbackInterface.`sendTickUpdate`(
                 FfiConverterString.read(argsBuf)
             )
             return UNIFFI_CALLBACK_SUCCESS
@@ -2747,10 +2805,10 @@ fun `dbServiceEnableLogging`() =
 
 
 
-fun `dbServiceInitialize`(`commonDeviceService`: CommonDeviceService, `secureKeyOperation`: SecureKeyOperation) =
+fun `dbServiceInitialize`(`commonDeviceService`: CommonDeviceService, `secureKeyOperation`: SecureKeyOperation, `eventDispatcher`: EventDispatch) =
     
     uniffiRustCall() { _status ->
-    UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_func_db_service_initialize(FfiConverterTypeCommonDeviceService.lower(`commonDeviceService`),FfiConverterTypeSecureKeyOperation.lower(`secureKeyOperation`),_status)
+    UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_func_db_service_initialize(FfiConverterTypeCommonDeviceService.lower(`commonDeviceService`),FfiConverterTypeSecureKeyOperation.lower(`secureKeyOperation`),FfiConverterTypeEventDispatch.lower(`eventDispatcher`),_status)
 }
 
 

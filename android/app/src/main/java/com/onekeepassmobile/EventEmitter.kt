@@ -12,6 +12,11 @@ object EventEmitter {
     private lateinit var reactApplicationContext: ReactApplicationContext
     var intentOfOnCreate: Intent? = null
 
+
+    private const val EVENT_ON_TIME_TICK = "onTimerTick"
+    private const val  EVENT_ENTRY_OTP_UPDATE = "onEntryOtpUpdate"
+
+
     fun initialize(reactContext: ReactApplicationContext) {
         reactApplicationContext = reactContext
     }
@@ -38,6 +43,17 @@ object EventEmitter {
         } else {
             return "{}"
         }
+    }
+
+
+    fun emitOtpUpdate(jsonString: String) {
+        reactApplicationContext.getJSModule(RCTDeviceEventEmitter::class.java)
+                .emit(EVENT_ENTRY_OTP_UPDATE, jsonString)
+    }
+
+    fun emitTickUpdate(jsonString: String) {
+        reactApplicationContext.getJSModule(RCTDeviceEventEmitter::class.java)
+                .emit(EVENT_ON_TIME_TICK, jsonString)
     }
 
     // This does not work as the registration of a listener for this event in UI is done only after this call

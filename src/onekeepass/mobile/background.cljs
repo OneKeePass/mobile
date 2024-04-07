@@ -424,7 +424,8 @@
   ;; By default, we pass 'false' for the overwrite arg
   (call-api-async (fn [] (.saveKdbx okp-db-service full-file-name overwrite)) dispatch-fn :error-transform true))
 
-(defn categories-to-show [db-key dispatch-fn]
+;; Deprecate
+#_(defn categories-to-show [db-key dispatch-fn]
   (invoke-api "categories_to_show" {:db-key db-key} dispatch-fn))
 
 (defn combined-category-details
@@ -853,7 +854,7 @@
   (require '[cljs.pprint]) ;;https://cljs.github.io/api/cljs.pprint/
   (cljs.pprint/pprint someobject)
   ;; daf114d0-a518-4e13-b75b-fbe893e69a9d 8bd81fe1-f786-46c3-b0e4-d215f8247a10
-
+  
   (in-ns 'onekeepass.mobile.background) 
 
   (re-frame.core/dispatch [:common/update-page-info {:page :home :title "Welcome"}])
@@ -863,6 +864,13 @@
                     :no-response-conversion true :error-transform false))
 
   (def db-key (-> @re-frame.db/app-db :current-db-file-name))
+  
+  ;; Use this in repl before doing the refresh in metro dev server, particularly when async services
+  ;; are sending events to the front end via rust middle layer -see 'init_async_listeners'
+  ;; This ensures no active messages are from backend async loops
+  ;; Otherwise, we may see error "*** Assertion failure in -[RCTEventEmitter sendEventWithName:body:]()," in xcode logs
+  ;; In case of Android, this is not an issue
+  (invoke-api  "shutdown_async_services" {} #(println %))
 
   (invoke-api "get_file_info" {:db-key db-key} #(println %))
 
@@ -872,4 +880,5 @@
 
   (invoke-api  "list_backup_files" {} #(println %))
 
-  (invoke-api  "list_bookmark_files" {} #(println %)))
+  (invoke-api  "list_bookmark_files" {} #(println %))
+  )

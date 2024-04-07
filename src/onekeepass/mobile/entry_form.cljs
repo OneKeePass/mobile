@@ -276,7 +276,7 @@
                                                                  :is-standard-section (u/contains-val? standard-sections section-name)
                                                                  :event event}))}]
 
-         [rnp-icon-button {:icon const/ICON-PLUS 
+         [rnp-icon-button {:icon const/ICON-PLUS
                            :style {:height 35 :margin-right 0 :backgroundColor @on-primary-color}
                            :onPress (fn [] (setup-otp-action-dialog-show section-name nil false))}]))]))
 
@@ -328,20 +328,23 @@
 
 (defn all-sections-content []
   (let [{:keys [edit showing]
-         {:keys [section-names section-fields]} :data} @(form-events/entry-form)]
+         {:keys [section-names section-fields]} :data} @(form-events/entry-form)
+        in-deleted-category @(form-events/deleted-category-showing)]
     (rnc/react-use-effect
      (fn []
        ;; cleanup fn is returned which is called when this component unmounts or any passed dependencies are changed
-       ;;(println "all-sections-content effect init called with showing  " showing edit)
-       (when (and (= showing :selected) (not edit))
+       (println "all-sections-content effect init - showing edit in-deleted-category: " showing edit in-deleted-category)
+       (when (and (= showing :selected) (not edit) (not in-deleted-category) )
+         (println "From effect init entry-form-otp-start-polling is called")
          (form-events/entry-form-otp-start-polling))
 
        (fn []
-         ;;(println "all-sections-content effect cleanup is  called with showing " showing edit)
+         (println "all-sections-content effect cleanup - showing edit in-deleted-category: " showing edit in-deleted-category)
+         (println "From effect cleanup entry-form-otp-stop-polling is called")
          (form-events/entry-form-otp-stop-polling)))
 
      ;; Need to pass the list of all reactive values (dependencies) referenced inside of the setup code or empty list
-     (clj->js [showing edit]))
+     (clj->js [showing edit in-deleted-category]))
 
     ;; section-names is a list of section names
     ;; section-fields is a list of map - one map for each field in that section
@@ -478,8 +481,6 @@
      [attachment-content]
 
      (when-not edit [uuid-times-content])
-
-
 
      ;; Setup the menus. This ensures these menu components are called only once to initiate
      [section-menu @section-menu-dialog-data]
