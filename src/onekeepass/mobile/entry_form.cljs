@@ -333,14 +333,14 @@
     (rnc/react-use-effect
      (fn []
        ;; cleanup fn is returned which is called when this component unmounts or any passed dependencies are changed
-       (println "all-sections-content effect init - showing edit in-deleted-category: " showing edit in-deleted-category)
+       ;; (println "all-sections-content effect init - showing edit in-deleted-category: " showing edit in-deleted-category)
        (when (and (= showing :selected) (not edit) (not in-deleted-category) )
-         (println "From effect init entry-form-otp-start-polling is called")
+         ;; (println "From effect init entry-form-otp-start-polling is called")
          (form-events/entry-form-otp-start-polling))
 
        (fn []
-         (println "all-sections-content effect cleanup - showing edit in-deleted-category: " showing edit in-deleted-category)
-         (println "From effect cleanup entry-form-otp-stop-polling is called")
+         ;; (println "all-sections-content effect cleanup - showing edit in-deleted-category: " showing edit in-deleted-category)
+         ;; (println "From effect cleanup entry-form-otp-stop-polling is called")
          (form-events/entry-form-otp-stop-polling)))
 
      ;; Need to pass the list of all reactive values (dependencies) referenced inside of the setup code or empty list

@@ -5,7 +5,8 @@ namespace db_service {
 
     // Needs to be called from Swift/Kotlin side to initialize callback that can be used from rust side
     void db_service_initialize(CommonDeviceService common_device_service,
-                               SecureKeyOperation secure_key_operation,EventDispatch event_dispatcher);
+                               SecureKeyOperation secure_key_operation,
+                               EventDispatch event_dispatcher);
  
     ApiResponse read_kdbx(FileArgs file_args, string json_args);
     ApiResponse create_temp_kdbx(FileArgs file_args, string json_args);
@@ -23,6 +24,10 @@ namespace db_service {
 };
 
 // New way of using callback
+// The rust side may implement and which can be used in Swift or in Kotlin side 
+// 'WithForeign' indicates, there is also an implementaion in Swift/Kotlin 
+// If this is implemented in Swift/Kotlin, then that is a callback for the rust side use 
+// Swift/Kotlin implementaion is passed as 'Arc<dyn EventDispatch>'
 [Trait,WithForeign]
 interface EventDispatch {
     [Throws=ApiCallbackError]
@@ -30,9 +35,7 @@ interface EventDispatch {
 
     [Throws=ApiCallbackError]
     void send_tick_update(string json_string);
-
 };
-
 
 // From Rust to Swift or Kotlin
 callback interface CommonDeviceService {

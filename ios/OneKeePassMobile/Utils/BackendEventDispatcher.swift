@@ -7,6 +7,9 @@
 
 import Foundation
 
+// This is the callback implementation of the Trait 'EventDispatch' defined in db_service.udl
+// We can not use name 'EventDispatchImpl' as this is used in the generated code in db_service.swift
+
 class BackendEventDispatcher: EventDispatch {
   func sendTickUpdate(_ jsonString: String) throws {
     //cmnLogger.debug("Received sendTickUpdate jsonString \(jsonString)")

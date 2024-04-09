@@ -710,8 +710,9 @@
                 ;; keys in the passed args map are transformed except those in this exclude vec
                 :args-keys-excluded exclude-keys)))
 
-(defn stop-polling-all-entries-otp-fields [db-key dispatch-fn]
-  (invoke-api "stop_polling_all_entries_otp_fields" {:db-key db-key} dispatch-fn))
+(defn stop-polling-all-entries-otp-fields [_db-key dispatch-fn]
+  #_(invoke-api "stop_polling_all_entries_otp_fields" {:db-key db-key} dispatch-fn)
+  (invoke-api "stop_polling_all_entries_otp_fields" {} dispatch-fn))
 
 (defn form-otp-url 
   "The arg 'otp-settings' is map with secret-or-url,  eg {:secret-or-url \"base32secret3232\"}"

@@ -209,6 +209,9 @@
     spaced))
 
 (defn otp-read-field
+  "Shows token value which is updated to a new value based on its 'period' value - Typically every 30sec 
+   Also there is progress indicator that is updated every second
+   "
   [{:keys [key
            value
            protected
@@ -247,6 +250,7 @@
        (fn [_v] (r/as-element [rnp-text {:style {:transform [{:scaleX 1}]}} ttl]))]]]))
 
 (defn opt-field-no-token
+  "This field will not show token and instead it is a text input with otp url"
   [{:keys [key
            value
            section-name
@@ -257,7 +261,7 @@
                    :value value
                    :showSoftInputOnFocus false
                    :multiline true
-                   :right (when-not (or history-form in-deleted-category ) 
+                   :right (when-not (or history-form in-deleted-category)
                             (r/as-element
                              [rnp-text-input-icon
                               {:icon const/ICON-TRASH-CAN-OUTLINE
@@ -266,22 +270,29 @@
                                           #_(dlg-vents/confirm-delete-otp-field-dialog-show-with-state
                                              {:call-on-ok-fn #(form-events/entry-form-delete-otp-field section-name key)}))}]))}])
 
-(defn setup-otp-button [section-name key standard-field]
-  [rnp-button {:style {:margin-bottom 5 :margin-top 5 }
+(defn setup-otp-button 
+  "Shows a button to add an otp field - particularly standard built-in field 'otp' "
+  [section-name key standard-field]
+  [rnp-button {:style {:margin-bottom 5 :margin-top 5}
                :labelStyle {:fontWeight "bold" :fontSize 15}
                :mode "text"
                :on-press #(setup-otp-action-dialog-show section-name key standard-field)} "Set up One-Time Password"])
 
-(defn otp-field [{:keys [key value section-name standard-field edit] :as kv}]
+(defn otp-field 
+  "Otp field that shows the timed token value or the corresponding otp url or a button for 
+   adding a new otp"
+  [{:keys [key value section-name standard-field edit] :as kv}]
   (let [history-form? @(form-events/history-entry-form?)
-        in-deleted-category @(form-events/deleted-category-showing)
-        ]
+        in-deleted-category @(form-events/deleted-category-showing)]
     (cond
+      ;; No otp is yet set and shows a button to add
       (and edit (str/blank? value) (= key OTP))
       [setup-otp-button section-name key standard-field]
-      
+
+      ;; Token value is not shown if the form is in edit mode or a history entry or deleted one
       (or edit history-form? in-deleted-category)
       [opt-field-no-token (assoc kv :history-form history-form? :in-deleted-category in-deleted-category)]
-      
+
+      ;; This is the case where periodically updated token value is shown
       (not edit)
       [otp-read-field kv])))
