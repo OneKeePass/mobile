@@ -152,7 +152,12 @@
 (def primary-color (r/atom nil))
 
 ;; white (in light theme), blue (in dark theme)
+;; A color that's clearly legible when drawn on primary
+;; See https://api.flutter.dev/flutter/material/ColorScheme/onPrimary.html
 (def on-primary-color (r/atom nil))
+
+;; A color used for elements needing less emphasis than primary
+;; light blue (in light theme), dark blue in (dark mode)
 (def primary-container-color (r/atom nil))
 
 (def secondary-color (r/atom nil))
@@ -174,6 +179,8 @@
 
 (def surface-variant (r/atom nil))
 (def outline-variant (r/atom nil))
+
+(def custom-color0 (r/atom nil))
 
 ;; Component specific colors
 ;; TODO: Need to use only these colors instead of refering the above standard colors
@@ -209,7 +216,9 @@
     (reset! inverse-onsurface-color (.-inverseOnSurface colors))
     (reset! surface-variant (.-surfaceVariant colors))
     (reset! outline-variant (.-outlineVariant colors))
-    (reset! on-error-container (.-onErrorContainer colors))))
+    (reset! on-error-container (.-onErrorContainer colors))
+    
+    (reset! custom-color0 (.-custom0 colors))))
 
 
 ;;;;;;;;;;

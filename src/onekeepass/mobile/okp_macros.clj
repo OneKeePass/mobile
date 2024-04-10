@@ -74,6 +74,7 @@
   [variable-names]
   (reduce (fn [m s] (assoc m (keyword s) s)) {} variable-names))
 
+;; Need two more patterns based macros are required - they are on-error and on-ok based pattern
 (defmacro as-api-response-handler 
   "The arg ok-response-handler, error-response-handler 
    are functions names - symbols or anonymous functions

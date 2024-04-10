@@ -8,37 +8,22 @@
              :as rnc
              :refer [lstr
                      rn-view
-                     rnp-checkbox
-                     rnp-divider
-                     rnp-menu
-                     rnp-menu-item
+                     rnp-checkbox 
                      rnp-text-input
                      rnp-text
                      rnp-touchable-ripple
-                     rnp-helper-text
-                     rnp-text-input-icon
-                     rnp-icon-button
-                     rnp-button
-                     rnp-portal
+                     rnp-helper-text 
+                     rnp-button 
                      cust-dialog
                      rnp-dialog-title
                      rnp-dialog-content
                      rnp-dialog-actions]]
             [onekeepass.mobile.common-components :as cc :refer [confirm-dialog
-                                                                confirm-dialog-with-lstr
-                                                                select-field
-                                                                select-tags-dialog]]
-            [onekeepass.mobile.constants :as const]
-            [onekeepass.mobile.icons-list :as icons-list]
-            [onekeepass.mobile.utils :as u]
-            [onekeepass.mobile.date-utils :refer [utc-str-to-local-datetime-str]]
+                                                                confirm-dialog-with-lstr]] 
             [clojure.string :as str]
-            [onekeepass.mobile.events.entry-form :as form-events]
-            [onekeepass.mobile.events.password-generator :as pg-events]
-            [onekeepass.mobile.background :refer [is-iOS is-Android]]
+            [onekeepass.mobile.events.entry-form :as form-events] 
             [onekeepass.mobile.events.dialogs :as dlg-events]
-            [onekeepass.mobile.events.scan-otp-qr :as scan-qr-events]
-            [onekeepass.mobile.events.common :as cmn-events]))
+            [onekeepass.mobile.events.scan-otp-qr :as scan-qr-events]))
 
 ;;;;;;;;;;;;;
 
@@ -47,7 +32,7 @@
 
 
 (defn confirm-delete-otp-field-show [section-name key]
-  (dlg-events/confirm-delete-otp-field-dialog-show-with-state 
+  (dlg-events/confirm-delete-otp-field-dialog-show-with-state
    {:title "Delete one time password?"
     :confirm-text "Are you sure you want to delete this permanently?"
     :call-on-ok-fn #(form-events/entry-form-delete-otp-field section-name key)
@@ -66,26 +51,24 @@
 (defn scan-qr-action [{:keys [section-name field-name standard-field] :as otp-field-m}]
   (if standard-field
     (scan-qr-events/initiate-scan-qr otp-field-m)
-    (otp-settings-dialog-show section-name field-name standard-field :scan-qr))
-  )
+    (otp-settings-dialog-show section-name field-name standard-field :scan-qr)))
 
 (defn setup-otp-action-dialog-show [section-name field-name standard-field]
-  (dlg-events/setup-otp-action-dialog-show-with-state 
-   {:title "setupOtp"
+  (dlg-events/setup-otp-action-dialog-show-with-state
+   {:title "dialog.titles.setupOtp"
     :confirm-text "You can set up TOTP by scanning a QR code or manually entering the secret or an OTPAuth url"
     :section-name section-name
-    :actions [{:label "button.labels.cancel"
-               :on-press dlg-events/setup-otp-action-dialog-close}
-              {:label "scanQRcode"
+    :show-action-as-vertical true
+    :actions [{:label "scanQRcode"
                :on-press (fn []
                            (scan-qr-action (as-map [section-name field-name standard-field]))
-                           #_(scan-qr-events/initiate-scan-qr (as-map [section-name field-name standard-field]))
-                           #_(otp-settings-dialog-show section-name field-name standard-field :scan-qr)
                            (dlg-events/setup-otp-action-dialog-close))}
-              {:label "Enter Manually"
+              {:label "button.labels.enterManually"
                :on-press (fn []
                            (otp-settings-dialog-show section-name field-name standard-field :manual)
-                           (dlg-events/setup-otp-action-dialog-close))}]}))
+                           (dlg-events/setup-otp-action-dialog-close))}
+              {:label "button.labels.cancel"
+               :on-press dlg-events/setup-otp-action-dialog-close}]}))
 
 (defn otp-settings-dialog
   "Shown when user wants to enter secrect code or scan QR
@@ -128,12 +111,12 @@
           (when error
             [rnp-helper-text {:type "error" :visible error}
              (get error-fields :secret-or-url)])])]]
-     
+
      [rnp-dialog-actions
       [rnp-button {:mode "text"
                    :onPress dlg-events/otp-settings-dialog-close} (lstr "button.labels.cancel")]
       [rnp-button {:mode "text"
-                   :onPress dlg-events/otp-settings-dialog-manual-code-entered-ok} (lstr "button.labels.ok")]]]))
+                   :onPress dlg-events/otp-settings-dialog-complete-ok} (lstr "button.labels.ok")]]]))
 
 (defn otp-settings-dialog-show
   "Called to show the otp settings dialog with initial values
@@ -141,8 +124,7 @@
    This is also called before scanning code if the otp is an additional custom field 
    code-entry-type is one of :scan-qr or :manual
    "
-  [section-name field-name standard-field code-entry-type]
-  (println "code-entry-type is " code-entry-type)
+  [section-name field-name standard-field code-entry-type] 
   (dlg-events/otp-settings-dialog-show-with-state (as-map [section-name field-name standard-field code-entry-type])))
 
 ;;;;;;;;;;;;;;;
@@ -211,8 +193,19 @@
        (when error
          [rnp-helper-text {:type "error" :visible error}
           (get error-fields field-name)])
+       
+       [rn-view {:flexDirection "column" :style {}}
+        [rn-view {:style {:height 15}}]
+        [rnp-touchable-ripple {:style {}
+                               :onPress #(form-events/section-field-dialog-update :protected (not protected))} 
+         [rn-view {:flexDirection "row" 
+                   :style {:alignItems "center" :justifyContent "center"}}
+          [rnp-text {:style {}} "Protected"]
+          [rn-view {:pointerEvents "none"}
+           [rnp-checkbox {:status (if protected "checked" "unchecked")}]]]]
+        ]
 
-       [rn-view {:flexDirection "row"}
+       #_[rn-view {:flexDirection "row"}
         [rnp-touchable-ripple {:style {:width "45%"}
                                :onPress #(form-events/section-field-dialog-update :protected (not protected))}
          [rn-view {:flexDirection "row" :style {:alignItems "center" :justifyContent "space-between"}}

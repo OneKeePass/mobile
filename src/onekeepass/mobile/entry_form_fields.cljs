@@ -7,16 +7,9 @@
    [onekeepass.mobile.entry-form-menus :refer [custom-field-menu-show]]
    [onekeepass.mobile.entry-form-dialogs :as ef-dlg  :refer [setup-otp-action-dialog-show]]
    [onekeepass.mobile.rn-components
-    :as rnc :refer [lstr
-                    animated-circular-progress
-                    icon-color
-                    on-primary-color
-                    primary-container-color
+    :as rnc :refer [animated-circular-progress
                     page-background-color
-                    appbar-text-color
-                    rn-keyboard
                     dots-icon-name
-                    page-title-text-variant
                     rnp-button
                     rn-view
                     rnp-text-input
@@ -25,13 +18,10 @@
                     rnp-text-input-icon
                     rnp-icon-button]]
    [onekeepass.mobile.constants :as const :refer [OTP]]
-   [onekeepass.mobile.utils :as u]
    [onekeepass.mobile.events.entry-form :as form-events]
-   [onekeepass.mobile.events.dialogs :as dlg-vents]
    [onekeepass.mobile.events.password-generator :as pg-events]
-   [onekeepass.mobile.background :refer [is-iOS is-Android]]
-   [onekeepass.mobile.events.common :as cmn-events]
-   [onekeepass.mobile.events.dialogs :as dlg-events]))
+   [onekeepass.mobile.background :refer [is-iOS]]
+   [onekeepass.mobile.events.common :as cmn-events]))
 
 (def ^:private field-focused (r/atom {:key nil :focused false}))
 
@@ -88,8 +78,7 @@
 ;; In iOS, we do not see the same issue as seen with the use of text input in android 
 (defn ios-form-text-input [{:keys [key
                                    value
-                                   protected
-                                   required
+                                   protected 
                                    visible
                                    edit
                                    on-change-text]} is-password-edit? custom-field-edit-focused?]
@@ -208,9 +197,10 @@
         spaced (str/join " " parts)]
     spaced))
 
-(defn otp-read-field
+(defn otp-field-with-token-update
   "Shows token value which is updated to a new value based on its 'period' value - Typically every 30sec 
    Also there is progress indicator that is updated every second
+   This is shown only when the form is in an non edit mode - that is when in read mode
    "
   [{:keys [key
            value
@@ -228,6 +218,7 @@
                       :spellCheck false
                       :textContentType "none"
                       :style {:width "90%" :fontSize 30}
+                      ;;:textColor @rnc/custom-color0
                       :onFocus #(field-focus-action key true)
                       :onBlur #(field-focus-action key false)
                       :onChangeText nil
@@ -235,14 +226,14 @@
                                     #(cmn-events/write-string-to-clipboard
                                       {:field-name key
                                        :protected protected
-                                       :value value})
+                                       :value token})
                                     nil)
                       :secureTextEntry false
                       :right nil}]
      [rn-view {:style {:width "10%" :justify-content "center"}}
       ;; Use {:transform [{:scaleX -1} to reverse direction
       [animated-circular-progress {:style {:transform [{:scaleX 1}]}
-                                   ;;:tintColor "#00e0ff"
+                                   :tintColor @rnc/custom-color0 
                                    :size 35
                                    :width 1
                                    :fill (js/Math.round (* 100 (/ ttl period)))
@@ -265,20 +256,20 @@
                             (r/as-element
                              [rnp-text-input-icon
                               {:icon const/ICON-TRASH-CAN-OUTLINE
-                               :onPress (fn []
-                                          (ef-dlg/confirm-delete-otp-field-show section-name key)
-                                          #_(dlg-vents/confirm-delete-otp-field-dialog-show-with-state
-                                             {:call-on-ok-fn #(form-events/entry-form-delete-otp-field section-name key)}))}]))}])
+                               :onPress (fn [] (ef-dlg/confirm-delete-otp-field-show section-name key))}]))}])
 
-(defn setup-otp-button 
+(defn setup-otp-button
   "Shows a button to add an otp field - particularly standard built-in field 'otp' "
   [section-name key standard-field]
   [rnp-button {:style {:margin-bottom 5 :margin-top 5}
                :labelStyle {:fontWeight "bold" :fontSize 15}
                :mode "text"
-               :on-press #(setup-otp-action-dialog-show section-name key standard-field)} "Set up One-Time Password"])
+               :on-press (fn []
+                           (form-events/show-form-fields-validation-error-or-call
+                            #(setup-otp-action-dialog-show
+                              section-name key standard-field)))} "Set up One-Time Password"])
 
-(defn otp-field 
+(defn otp-field
   "Otp field that shows the timed token value or the corresponding otp url or a button for 
    adding a new otp"
   [{:keys [key value section-name standard-field edit] :as kv}]
@@ -295,4 +286,4 @@
 
       ;; This is the case where periodically updated token value is shown
       (not edit)
-      [otp-read-field kv])))
+      [otp-field-with-token-update kv])))

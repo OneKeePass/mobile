@@ -7,12 +7,11 @@
                      tertiary-color
                      modal-selector-colors
                      message-modal-background-color
-                     on-background-color 
+                     on-background-color
                      rn-view
                      rn-scroll-view
                      rnp-button
                      rnp-chip
-                     rnp-paragraph
                      rnp-divider
                      rnp-dialog
                      cust-dialog
@@ -25,14 +24,21 @@
                      rnp-text
                      rnp-text-input
                      rnp-text-input-icon]]
-            [onekeepass.mobile.utils :as u] 
+            [onekeepass.mobile.utils :as u]
             [onekeepass.mobile.constants :as const]
             [onekeepass.mobile.events.common :as cmn-events]))
 
 (set! *warn-on-infer* true)
 
+;; TODO: Need to use 'generic-dialog-*' as done in onekeepass.mobile.events.dialogs
+;; for all dialogs data provider and events
+
 ;; dialog data is under the key :message-box in db
-(defn message-dialog [{:keys [dialog-show title category message]}]
+(defn message-dialog
+  "Called to show an error or a general message
+  The value of key 'category' determines whether it is error or message
+   "
+  [{:keys [dialog-show title category message]}]
   [rnp-dialog {:style {}
                :dismissable false
                :visible dialog-show
@@ -41,12 +47,14 @@
                      :color (if (= category :error)
                               @rnc/error-color
                               @rnc/outline-color)}]
-   [rnp-dialog-title {:style {:color @rnc/error-color}} title]
+   [rnp-dialog-title {:style {:color (if (= category :error)
+                                       @rnc/error-color
+                                       @rnc/tertiary-color)}} (lstr title)]
    [rnp-dialog-content
     [rn-view {:style {:flexDirection "column" :justify-content "center"}}
-     [rnp-paragraph message]]]
+     [rnp-text (lstr message)]]]
    [rnp-dialog-actions
-    [rnp-button {:mode "text" :onPress cmn-events/close-message-dialog} "Close"]]])
+    [rnp-button {:mode "text" :onPress cmn-events/close-message-dialog} (lstr "button.labels.close")]]])
 
 (defn select-tags-dialog [{:keys [show all-tags new-tags-str selected-tags]}
                           selected-tags-receiver-fn]
@@ -60,9 +68,9 @@
      [rnp-dialog-content
       [rn-view {:flexDirection "column"}
        [rn-view {:style {:min-height 100 :max-height 250} :flexDirection "column"}
-        [rn-scroll-view {:style {:borderWidth .20 :borderRadius 4 :border-color @on-background-color }
+        [rn-scroll-view {:style {:borderWidth .20 :borderRadius 4 :border-color @on-background-color}
                          ;; Need to use flexGrow for the Scroll View to show its content
-                         :contentContainerStyle {:flexGrow 1 }
+                         :contentContainerStyle {:flexGrow 1}
                          :ref (fn [ref] (reset! sv-ref ref))
                          :onContentSizeChange (fn [_h] (when-not (nil? @sv-ref)
                                                          (.scrollToEnd ^js/SV @sv-ref)))}
@@ -115,28 +123,40 @@
       ^{:key label} [rnp-button {:mode "text"
                                  :on-press on-press} label])]])
 
-(defn confirm-dialog-with-lstr [{:keys [dialog-show title confirm-text actions]}]
+(defn vertical-buttons [actions]
+  [rn-view {:style {}}
+   (for [{:keys [label on-press]} actions]
+     ^{:key label} [rnp-button {:mode "text"
+                                :on-press on-press} (lstr label)])])
+
+(defn confirm-dialog-with-lstr [{:keys [dialog-show
+                                        title
+                                        confirm-text
+                                        show-action-as-vertical
+                                        actions]}]
   [cust-dialog {:style {} :dismissable true :visible dialog-show}
    [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1} (lstr title)]
    [rnp-dialog-content
     [rnp-text (lstr confirm-text)]]
-   [rnp-dialog-actions
-    (for [{:keys [label on-press]}  actions]
-      ^{:key label} [rnp-button {:mode "text"
-                                 :on-press on-press} (lstr label)])]])
+   [rnp-dialog-actions {:style {:justify-content (if show-action-as-vertical "center" "flex-end")}} ;;
+    (if-not show-action-as-vertical
+      (for [{:keys [label on-press]} actions]
+        ^{:key label} [rnp-button {:mode "text"
+                                   :on-press on-press} (lstr label)])
+      [vertical-buttons actions])]])
 
 (defn message-snackbar
   ([{:keys [open message]}]
    [rnp-snackbar {:visible  open
                   :onDismiss cmn-events/close-message-snackbar
                   ;; label 'Close' is not seen
-                  :action (fn [] (clj->js {:label "Close" })) ;;:onPress #()
-                  :duration 4000 
+                  :action (fn [] (clj->js {:label "Close"})) ;;:onPress #()
+                  :duration 4000
                   ;;:theme {:colors {:inverseOnSurface "red"}} ;; only inverseOnSurface works
                   :style {} ;;:zIndex 10 this works in android and not in iOs
                   ;; zIndex in wrapperStyle makes the snackbar to appear on top fab in iOS. 
                   ;; Need to check on android
-                  :wrapperStyle {:bottom 20 :zIndex 10 }} (lstr message)])
+                  :wrapperStyle {:bottom 20 :zIndex 10}} (lstr message)])
   ([]
    [message-snackbar @(cmn-events/message-snackbar-data)]))
 
@@ -159,6 +179,9 @@
       (apply action action-args))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; TODO: Need to replace with generic dialog data handling methods as done in
+;; onekeepass.mobile.events.dialogs
 
 (def entry-delete-confirm-dialog-data (r/atom {:dialog-show false :entry-uuid nil}))
 
@@ -199,7 +222,8 @@
                                             (swap! group-delete-confirm-dialog-data
                                                    assoc :dialog-show false))}]}]))
 
-;; TODO: Replace the use of group-delete-confirm-dialog and entry-delete-confirm-dialog with this 
+;; TODO: Need to replace with generic dialog data handling methods as done in
+;; onekeepass.mobile.events.dialogs
 
 (defn- confirm-dialog-with-ref
   "This creates an reagent component. The arg 'data-ref' is reagent.core/atom"

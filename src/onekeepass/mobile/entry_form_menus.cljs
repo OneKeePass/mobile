@@ -74,7 +74,6 @@
                               (form-events/field-delete section-name field-name)
                               (custom-field-menu-action-on-dismiss))}]])
 
-
 (def attachment-long-press-menu-data (r/atom {:show false
                                                         :edit false
                                                         :name nil
@@ -97,7 +96,8 @@
          :data-hash nil
          :x 0 :y 0))
 
-(defn attachment-long-press-menu [{:keys [show x y edit name data-hash]}]
+(defn attachment-long-press-menu 
+  [{:keys [show x y edit name data-hash]}]
   [rnp-menu {:visible show
              :onDismiss dismiss-attachment-long-press-menu
              :anchor (clj->js {:x x :y y})}

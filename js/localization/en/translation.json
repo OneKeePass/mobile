@@ -21,6 +21,7 @@
     "dbTimeout":"Database Timeout",
     "description":"Description",
     "enterCode":"Enter code",
+    "error":"Error",
     "fieldName":"Field name",
     "general":"General",
     "importedKeyFiles":"Imported Key Files",
@@ -59,6 +60,14 @@
             "remove":"All references to the database by the app will be removed. The original database is not deleted and can be opened later"
         }
     },
+
+    "errorDialog" :{
+        "titles": {
+            "filePickError":"File Pick Error",
+            "scanError":"Scan Errror"
+        }
+    },
+
     "modal.messages":{
         
     },
@@ -83,6 +92,7 @@
         "newCategory": "New Category",
         "newGroup": "New Group",
         "privacyPolicy":"Privacy Policy",
+        "scanQRcode":"Scan QR Code",
         "search": "Search",
         "settings": "Settings"
     },
@@ -95,6 +105,7 @@
         "continue": "Continue",
         "create":"Create",
         "edit": "Edit",
+        "enterManually":"Enter Manually",
         "generate": "Generate",
         "newdb": "New Database",
         "no": "No",

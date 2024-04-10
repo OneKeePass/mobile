@@ -1,6 +1,6 @@
 (ns onekeepass.mobile.events.scan-otp-qr
   (:require-macros [onekeepass.mobile.okp-macros
-                    :refer  [as-api-response-handler]])
+                    :refer  [as-api-response-handler as-map]])
   (:require [clojure.string :as str]
             [onekeepass.mobile.background :as bg]
             [onekeepass.mobile.constants :refer [CAMERA_PERMISSION_DENIED
@@ -13,13 +13,13 @@
             [re-frame.core :refer [dispatch reg-event-fx reg-fx reg-sub
                                    subscribe]]))
 
-(defn initiate-scan-qr [{:keys [section-name field-name standard-field] :as field-info-m}]
+(defn initiate-scan-qr [{:keys [_section-name _field-name _standard-field] :as field-info-m}]
   ;;(println "initiate-scan-qr field-info-m... " field-info-m)
   (let [permission-status (bg/camera-permission-status)]
     (cond
-      ;; (empty? (bg/available-cameras))
-      ;; (dispatch [:common/message-box-show
-      ;;            "No Camera" "No camera is found. Please enter the secret code manually"])
+      (empty? (bg/available-cameras))
+      (dispatch [:common/message-box-show
+                 "No Camera" "No camera is found. Please enter the secret code manually"])
 
       (= permission-status CAMERA_PERMISSION_GRANTED)
       (dispatch [:scan-qr-camera-show (assoc field-info-m :camera-permission CAMERA_PERMISSION_GRANTED)])
@@ -40,6 +40,9 @@
       :else
       (dispatch [:common/error-box-show
                  "No scanning" "Please enter the secret code instead of scanning QR code"]))))
+
+(defn scan-qr-scanned [scanned-qr-code]
+  (dispatch [:scan-qr-scanned scanned-qr-code]))
 
 (defn scan-qr-data []
   (subscribe [:scan-qr-data]))
@@ -71,13 +74,10 @@
 (reg-fx
  :bg-camera-request-permission
  (fn []
-   (bg/request-camera-permission (fn [api-response]
-                                   (when-let [status (on-ok api-response)]
-                                     (dispatch [:scan-qr-ask-camera-permission-response status])
-                                     #_(if (= CAMERA_PERMISSION_GRANTED p)
-                                         #()
-                                       ;; Ask user to use manual code entering
-                                         #()))))))
+   (bg/request-camera-permission 
+    (fn [api-response]
+      (when-let [status (on-ok api-response)]
+        (dispatch [:scan-qr-ask-camera-permission-response status]))))))
 
 (reg-event-fx
  :scan-qr-ask-camera-permission-response
@@ -85,10 +85,11 @@
    (if (= permission-status CAMERA_PERMISSION_RESTRICTED)
 
      {:db (-> db (assoc-in [:scan-otp-qr :camera-permission] permission-status))
-      :fx [[:dispatch [:common/error-box-show "Restricted" "Please enter the secret code instead of scanning QR code"]]]}
+      :fx [[:dispatch [:common/error-box-show "Restricted" 
+                       "Please enter the secret code instead of scanning QR code"]]]}
 
      {:db (-> db (assoc-in [:scan-otp-qr :camera-permission] permission-status))
-      :fx [[:dispatch [:common/next-page CAMERA_SCANNER_PAGE_ID "Scan QR Code"]]]})))
+      :fx [[:dispatch [:common/next-page CAMERA_SCANNER_PAGE_ID "page.titles.scanQRcode"]]]})))
 
 
 #_(defn callback-on-form-otp-url [api-response]
@@ -97,30 +98,34 @@
                         #(dispatch [:scan-qr-form-url-error %]))]
       (dispatch [:scan-qr-form-url-success opt-url])))
 
-(def callback-on-form-otp-url (as-api-response-handler
+;; An example using macro to create an anonymous fn as api response handler
+(def callback-on-form-otp-url (as-api-response-handler 
                                #(dispatch [:scan-qr-form-url-success %])
                                #(dispatch [:scan-qr-form-url-error %])))
 
 (reg-event-fx
  :scan-qr-scanned
  (fn [{:keys [db]} [_event-id url]]
-   (println "Going to call bg with url and check " url (= (str/lower-case url) OTP_URL_PREFIX))
+   ;;(println "Going to call bg with url and check " url (= (str/lower-case url) OTP_URL_PREFIX))
    (if (str/starts-with? (str/lower-case url) OTP_URL_PREFIX)
      {:fx [[:entry-form/bg-form-otp-url [{:secret-or-url url} callback-on-form-otp-url]]]}
-     {:fx [[:dispatch [:common/error-box-show "Error" "The scanned url is not an otp type url"]]]})))
-
+     {:fx [[:dispatch [:common/error-box-show "errorDialog.titles.scanError" "The scanned url is not an otp type url"]]]})))
 
 (reg-event-fx
  :scan-qr-form-url-success
- (fn [{:keys [db]} [_event-id url]]
-   (println "verified url returned is  " url)
-   {}))
+ (fn [{:keys [db]} [_event-id otp-url]] 
+   (let [{:keys [section-name field-name standard-field]} (get-in db [:scan-otp-qr])]
+     {:fx [;; Go back to the form page
+           [:dispatch [:common/previous-page]]
+           [:dispatch [:entry-form/otp-url-form-success
+                       (as-map [section-name field-name standard-field otp-url])]]]})))
+
 
 (reg-event-fx
  :scan-qr-form-url-error
- (fn [{:keys [db]} [_event-id error]]
-   (println "verified url error returned is " error)
-   {}))
+ (fn [{:keys [db]} [_event-id error]] 
+   {:fx [[:dispatch [:common/error-box-show 
+                     "errorDialog.titles.scanError" error]]]}))
 
 ;; Called to show the page with link for openSettings as CAMERA_PERMISSION_DENIED  
 #_(reg-event-fx
@@ -132,11 +137,6 @@
  :scan-qr-data
  (fn [db]
    (get-in db [:scan-otp-qr])))
-
-(def test1 (clojure.core/fn [G__6787]
-             (clojure.core/when-let [G__6788 (onekeepass.mobile.events.common/on-ok G__6787
-                                                                                    (fn* [p1__6784#] (dispatch [:scan-qr-form-url-error p1__6784#])))]
-               ((fn* [p1__6783#] (dispatch [:scan-qr-form-url-success p1__6783#])) G__6788))))
 
 (comment
   (in-ns 'onekeepass.mobile.events.scan-otp-qr))

@@ -3,13 +3,10 @@
   (:require-macros [onekeepass.mobile.okp-macros
                     :refer  [def-generic-dialog-events as-map]])
   (:require [clojure.string :as str]
-            [onekeepass.mobile.background :as bg]
-            [onekeepass.mobile.constants :refer [ONE_TIME_PASSWORD_TYPE
-                                                 OTP_KEY_DECODE_ERROR]]
+            [onekeepass.mobile.constants :refer [OTP_KEY_DECODE_ERROR]]
             [onekeepass.mobile.events.common :refer [on-ok]]
-            [onekeepass.mobile.events.entry-form-common :refer [add-section-field
-                                                                is-field-exist]]
-            [re-frame.core :refer [dispatch reg-event-fx reg-fx reg-sub]]))
+            [onekeepass.mobile.events.entry-form-common :refer [is-field-exist]]
+            [re-frame.core :refer [dispatch reg-event-fx  reg-sub]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;; macro def-generic-dialog-events used ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; The macro will generate wrapper functions something like the following
@@ -42,9 +39,7 @@
 
 (def-generic-dialog-events otp-settings-dialog [[data nil]] true)
 
-(defn otp-settings-dialog-manual-code-entered-ok []
-  (println "otp-settings-dialog-manual-code-entered-ok is called")
-  #_(dispatch [:otp-settings-dialog-manual-code-entered-ok])
+(defn otp-settings-dialog-complete-ok [] 
   (dispatch [:otp-settings-dialog-complete-ok]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
@@ -131,7 +126,7 @@
   [db]
   (let [{:keys [secret-or-url standard-field field-name code-entry-type]} (get-in db [:otp-settings-dialog])]
     (cond-> {}
-      (and (= code-entry-type :manual)(nil? secret-or-url) )
+      (and (= code-entry-type :manual) (nil? secret-or-url))
       (assoc :secret-or-url "A valid value is required for secret code")
 
       (and (not standard-field) (nil? field-name))
@@ -154,10 +149,8 @@
 
 
 (defn manual-or-scan-qr-dispatch [section-name field-name standard-field secret-or-url code-entry-type]
-  (println "manual-or-scan-qr-dispatch code-entry-type  and secret-or-url are  " code-entry-type secret-or-url)
   (if (= code-entry-type :manual)
     [[:entry-form/bg-form-otp-url [{:secret-or-url secret-or-url} callback-on-form-otp-url]]]
-
     [[:scan-qr/initiate-scan-qr (as-map [section-name field-name standard-field])]
      [:dispatch [:generic-dialog-close :otp-settings-dialog]]]))
 
@@ -166,34 +159,19 @@
  (fn [{:keys [db]} [_event-id]]
    (let [errors (validate-otp-settings-fields db)
          errors-found (boolean (seq errors))
-         {:keys [section-name field-name standard-field secret-or-url code-entry-type]} (get-in db [:otp-settings-dialog]) 
+         {:keys [section-name field-name standard-field secret-or-url code-entry-type]} (get-in db [:otp-settings-dialog])
          dispatch-events (when-not errors-found
-                           (manual-or-scan-qr-dispatch section-name field-name standard-field secret-or-url code-entry-type))
-         #_(if (= code-entry-type :manual)
-             [[:entry-form/bg-form-otp-url [{:secret-or-url secret-or-url} callback-on-form-otp-url]]]
-
-             [[:scan-qr/initiate-scan-qr (as-map [section-name field-name standard-field])]
-              [:dispatch [:generic-dialog-close :otp-settings-dialog]]])]
+                           (manual-or-scan-qr-dispatch
+                            section-name field-name standard-field secret-or-url code-entry-type))]
      (if errors-found
        {:db (assoc-in db [:otp-settings-dialog :error-fields] errors)
         :fx []}
        {:fx dispatch-events}))))
 
-
-#_(reg-event-fx
- :otp-settings-dialog-manual-code-entered-ok
- (fn [{:keys [db]} [_event-id]]
-   (let [errors (validate-otp-settings-fields db)
-         errors-found (boolean (seq errors))]
-     (if errors-found
-       {:db (assoc-in db [:otp-settings-dialog :error-fields] errors)}
-       {:fx [[:entry-form/bg-form-otp-url [{:secret-or-url (get-in db [:otp-settings-dialog :secret-or-url])}
-                                           callback-on-form-otp-url]]]}))))
-
 ;; Called when api call returns any error
 (reg-event-fx
  :otp-settings-form-url-error
- (fn [{:keys [db]} [_event-id error]] 
+ (fn [{:keys [db]} [_event-id error]]
    (let [secret-code-field-error (if (str/starts-with? error OTP_KEY_DECODE_ERROR)
                                    (assoc {} :secret-or-url "Valid encoded key or full TOTPAuth URL is required") {})]
      {:db (-> db
@@ -211,42 +189,8 @@
      ;; We can also use [:dispatch [:generic-dialog-close :otp-settings-dialog] instead of updating db with 
      ;; init-dialog-map call done here
      {:db  (-> db (assoc-in [:otp-settings-dialog] (init-dialog-map)))
-      :fx  [[:dispatch [:entry-form/otp-url-form-success section-name field-name otp-url standard-field]]]})))
+      :fx  [[:dispatch [:entry-form/otp-url-form-success (as-map [section-name field-name otp-url standard-field])]]]})))
 
-
-#_(reg-event-fx
-   :otp-settings-dialog-manual-code-entered-ok
-   (fn [{:keys [db]} [_event-id]]
-     (let [errors (validate-otp-settings-fields db)
-           errors-found (boolean (seq errors))]
-       (if errors-found
-         {:db (assoc-in db [:otp-settings-dialog :error-fields] errors)}
-         {:fx [[:bg-form-otp-url [{:secret-or-url (get-in db [:otp-settings-dialog :secret-or-url])}]]]}))))
-
-#_(reg-fx
-   :bg-form-otp-url
-   (fn [[otp-settings]]
-     (bg/form-otp-url otp-settings (fn [api-response]
-                                     (when-let [opt-url (on-ok
-                                                         api-response
-                                                         #(dispatch [:otp-settings-form-url-error %]))]
-                                       (dispatch [:otp-settings-form-url-success opt-url]))))))
-#_(reg-event-fx
-   :otp-settings-form-url-success
-   (fn [{:keys [db]} [_event-id otp-url]]
-     (let [{:keys [section-name field-name standard-field]} (get-in db [:otp-settings-dialog])
-         ;; Need to add the field to the section if it is not standard field
-         ;; A map corresponding to struct KeyValueData is passed to add this extra otp field
-           db (if standard-field  db (add-section-field db {:section-name section-name
-                                                            :field-name field-name
-                                                            :protected true
-                                                            :required false
-                                                            :data-type ONE_TIME_PASSWORD_TYPE}))]
-
-     ;; We can also use [:dispatch [:generic-dialog-close :otp-settings-dialog] instead of updating db with 
-     ;; init-dialog-map call done here
-       {:db  (-> db (assoc-in [:otp-settings-dialog] (init-dialog-map)))
-        :fx [[:dispatch [:entry-form/otp-url-formed section-name field-name otp-url]]]})))
 
 
 

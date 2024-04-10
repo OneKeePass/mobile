@@ -35,8 +35,7 @@
                   field-name
                   protected
                   required
-                  data-type]}]
-  (println "add-section-field called with section-name field-name data-type protected " section-name field-name data-type protected)
+                  data-type]}] 
   (let [section-fields-m (get-in-key-db
                           app-db
                           [entry-form-key :data :section-fields])
@@ -69,3 +68,17 @@
         otp-fields (filter (fn [m] (=  ONE_TIME_PASSWORD_TYPE (:data-type m))) fields)
         names-values (into {} (for [{:keys [key current-opt-token]} otp-fields] [key current-opt-token]))]
     names-values))
+
+
+(defn validate-entry-form-data
+  "Verifies that the user has entered valid values in some of the required fields of the entry form
+  Returns a map of fileds with errors and error-fields will be {} in case no error is found
+  "
+  [{:keys [group-uuid title]}]
+  (let [error-fields (cond-> {}
+                       (u/uuid-nil-or-default? group-uuid)
+                       (assoc :group-selection "Please select a group ")
+
+                       (str/blank? title)
+                       (assoc :title "Please enter a title for this form"))]
+    error-fields))

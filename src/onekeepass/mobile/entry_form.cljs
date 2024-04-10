@@ -278,7 +278,8 @@
 
          [rnp-icon-button {:icon const/ICON-PLUS
                            :style {:height 35 :margin-right 0 :backgroundColor @on-primary-color}
-                           :onPress (fn [] (setup-otp-action-dialog-show section-name nil false))}]))]))
+                           :onPress (fn [] (form-events/show-form-fields-validation-error-or-call
+                                            #(setup-otp-action-dialog-show section-name nil false)))}]))]))
 
 (defn section-content [edit section-name section-data]
   (let [errors @(form-events/entry-form-field :error-fields)]
@@ -334,7 +335,7 @@
      (fn []
        ;; cleanup fn is returned which is called when this component unmounts or any passed dependencies are changed
        ;; (println "all-sections-content effect init - showing edit in-deleted-category: " showing edit in-deleted-category)
-       (when (and (= showing :selected) (not edit) (not in-deleted-category) )
+       (when (and (= showing :selected) (not edit) (not in-deleted-category))
          ;; (println "From effect init entry-form-otp-start-polling is called")
          (form-events/entry-form-otp-start-polling))
 

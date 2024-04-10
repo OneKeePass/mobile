@@ -16,7 +16,8 @@
    [onekeepass.mobile.events.entry-form-common :refer [add-section-field
                                                        is-field-exist
                                                        extract-form-otp-fields
-                                                       entry-form-key Favorites]]
+                                                       entry-form-key Favorites
+                                                       validate-entry-form-data]]
    [clojure.string :as str]
    [onekeepass.mobile.utils :as u :refer [contains-val?]]
    [onekeepass.mobile.background :as bg]
@@ -129,8 +130,7 @@
 ;; Deprecate ?
 (reg-event-fx
  :entry-delete
- (fn [{:keys [db]} [_event-id]]
-   (println "Delete is called for.. " (get-in-key-db db [entry-form-key :data :uuid]))
+ (fn [{:keys [db]} [_event-id]] 
    {:fx [[:dispatch [:move-delete/entry-delete-start (get-in-key-db db [entry-form-key :data :uuid]) true]]]}))
 
 (defn- on-entry-find [api-response]
@@ -301,18 +301,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn validate-entry-form-data
-  "Verifies that the user has entered valid values in some of the required fields of the entry form
-  Returns a map of fileds with errors and error-fields will be {} in case no error is found
-  "
-  [{:keys [group-uuid title]}]
-  (let [error-fields (cond-> {}
-                       (u/uuid-nil-or-default? group-uuid)
-                       (assoc :group-selection "Please select a group ")
-
-                       (str/blank? title)
-                       (assoc :title "Please enter a title for this form"))]
-    error-fields))
 
 (defn validate-required-fields
   "Checks that all keys (form fields) that are marked as required are having some valid values 
@@ -811,15 +799,14 @@
          restored? (get-in-key-db db [entry-form-key :entry-history-form :history-entry-restore-confirmed])
          db (if (= :new current-showing)
               (assoc-in-key-db db [entry-form-key :undo-data] (get-in-key-db db [entry-form-key :data]))
-              db)] 
-     {
-      :fx [(if (= :new current-showing)
+              db)]
+     {:fx [(if (= :new current-showing)
              [:dispatch [:common/message-snackbar-open "Created Entry"]]
              [:dispatch [:common/message-snackbar-open "Updated Entry"]])
-           
+
            ;; Reload entry data again to reflect the saved changes after an update or after a new entry is inserted
            [:dispatch [:reload-entry-by-id (get-in-key-db db [entry-form-key :data :uuid])]]
-           
+
            ;; Need to reload categories, groups and list data on an entry insert/update
            [:dispatch [:entry-category/load-categories-to-show]]
            [:dispatch [:groups/load]]
@@ -831,31 +818,31 @@
              [:dispatch [:history-entry-restore-complete]])]})))
 
 #_(reg-event-fx
- :entry-insert-update-save-complete
- (fn [{:keys [db]} [_event-id]]
-   (let [current-showing (get-in-key-db db [entry-form-key :showing])
-         restored? (get-in-key-db db [entry-form-key :entry-history-form :history-entry-restore-confirmed])
-         db (if (= :new current-showing)
-              (assoc-in-key-db db [entry-form-key :undo-data] (get-in-key-db db [entry-form-key :data]))
-              db)]
+   :entry-insert-update-save-complete
+   (fn [{:keys [db]} [_event-id]]
+     (let [current-showing (get-in-key-db db [entry-form-key :showing])
+           restored? (get-in-key-db db [entry-form-key :entry-history-form :history-entry-restore-confirmed])
+           db (if (= :new current-showing)
+                (assoc-in-key-db db [entry-form-key :undo-data] (get-in-key-db db [entry-form-key :data]))
+                db)]
      ;; If showing is already :selected, then this is update and we need to reload the entry data
-     {:db (-> db (assoc-in-key-db  [entry-form-key :edit] false)
-              (assoc-in-key-db [entry-form-key :showing] :selected))
-      :fx [;; Reload entry data again to reflect the saved changes
-           (when (= :selected current-showing)
-             [:dispatch [:reload-entry-by-id (get-in-key-db db [entry-form-key :data :uuid])]])
-           (if (= :new current-showing)
-             [:dispatch [:common/message-snackbar-open "Created Entry"]]
-             [:dispatch [:common/message-snackbar-open "Updated Entry"]])
+       {:db (-> db (assoc-in-key-db  [entry-form-key :edit] false)
+                (assoc-in-key-db [entry-form-key :showing] :selected))
+        :fx [;; Reload entry data again to reflect the saved changes
+             (when (= :selected current-showing)
+               [:dispatch [:reload-entry-by-id (get-in-key-db db [entry-form-key :data :uuid])]])
+             (if (= :new current-showing)
+               [:dispatch [:common/message-snackbar-open "Created Entry"]]
+               [:dispatch [:common/message-snackbar-open "Updated Entry"]])
            ;; Need to reload categories, groups and list data on an entry insert/update
-           [:dispatch [:entry-category/load-categories-to-show]]
-           [:dispatch [:groups/load]]
-           [:dispatch [:entry-list/reload-selected-entry-items]]
-           [:dispatch [:search/reload]]
-           [:dispatch [:common/message-modal-hide]]
+             [:dispatch [:entry-category/load-categories-to-show]]
+             [:dispatch [:groups/load]]
+             [:dispatch [:entry-list/reload-selected-entry-items]]
+             [:dispatch [:search/reload]]
+             [:dispatch [:common/message-modal-hide]]
            ;; Entry update is due to restoring from history
-           (when restored?
-             [:dispatch [:history-entry-restore-complete]])]})))
+             (when restored?
+               [:dispatch [:history-entry-restore-complete]])]})))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  Entry History  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -1246,21 +1233,30 @@
 
 ;;;;;;;;;;;;;;;;;;;;; OTP ;;;;;;;;;;;;;;;;;;;;;;
 
-
-#_(defn entry-form-delete-otp-field [section otp-field-name]
-    (dispatch [:entry-form-delete-otp-field section otp-field-name]))
-
 (defn otp-currrent-token [opt-field-name]
   (subscribe [:otp-currrent-token opt-field-name]))
 
-(defn entry-form-otp-start-polling []
+(defn entry-form-otp-start-polling
+  "Called to start polling from use effect"
+  []
   (dispatch [:entry-form-otp-start-polling]))
 
-(defn entry-form-otp-stop-polling []
+(defn entry-form-otp-stop-polling
+  "Called to stop polling from use effect"
+  []
   (dispatch [:entry-form-otp-stop-polling]))
 
 (defn entry-form-delete-otp-field [section otp-field-name]
   (dispatch [:entry-form-delete-otp-field section otp-field-name]))
+
+(defn show-form-fields-validation-error-or-call
+  "Called to verify that title and group fields have valid non nil values in the form and 
+   then only the otp set up action dialog is called.
+   The arg 'call-on-no-error-fn' is a no arg fn that is called when there is no 
+   error in the form required fields validation
+  "
+  [call-on-no-error-fn]
+  (dispatch [:entry-form/verify-form-fields call-on-no-error-fn]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -1275,13 +1271,12 @@
   (-> (get @re-frame.db/app-db db-key) :entry-form keys)
 
   ;; => (:data :undo-data :otp-fields :showing :edit)
-  
+
   (-> (get @re-frame.db/app-db db-key) :entry-form :data keys)
   ;; => :tags :icon-id :binary-key-values :section-fields :title :expiry-time :history-count 
   ;;     :expires :standard-section-names :last-modification-time :entry-type-name :auto-type :notes 
   ;;     :section-names :entry-type-icon-name :last-access-time :uuid :entry-type-uuid :group-uuid :creation-time
-  
+
   (-> (get @re-frame.db/app-db db-key) :entry-form :data pprint) ;; will pretty print the data map
 
-  (-> (get @re-frame.db/app-db db-key) :entry-form :data :group-uuid)
-  )
+  (-> (get @re-frame.db/app-db db-key) :entry-form :data :group-uuid))

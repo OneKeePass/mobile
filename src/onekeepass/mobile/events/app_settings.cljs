@@ -16,14 +16,6 @@
 
 (def db-session-timeout "Timeout in milliseconds" (atom 15000))
 
-#_(defn set-db-session-timeout
-    "Called to set a new timeout to use"
-    [time-in-seconds]
-    (let [in-timeout (str->int time-in-seconds)
-          in-timeout (if (nil? in-timeout) 10 in-timeout)
-          in-timeout (* in-timeout 1000)]
-      (reset! db-session-timeout in-timeout)))
-
 (defn set-db-session-timeout
   "Called to set a new timeout to use"
   [time-in-milli-seconds]
@@ -100,7 +92,7 @@
        {})
      {})))
 
-;;;;;;;;;;;;;;; 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
 
 (defn to-app-settings-page
   "Called to navigate to the app settings page"

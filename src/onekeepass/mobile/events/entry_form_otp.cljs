@@ -1,23 +1,31 @@
 (ns onekeepass.mobile.events.entry-form-otp
   "Entry form otp events"
-  (:require [onekeepass.mobile.background :as bg]
-            [onekeepass.mobile.constants :refer [ONE_TIME_PASSWORD_TYPE]]
-            [onekeepass.mobile.events.common :as cmn-events :refer [active-db-key
-                                                                    assoc-in-key-db
-                                                                    get-in-key-db
-                                                                    on-error]]
-            [onekeepass.mobile.events.entry-form-common :refer [add-section-field
-                                                                entry-form-key
-                                                                extract-form-otp-fields
-                                                                merge-section-key-value]]
-            [re-frame.core :refer [dispatch reg-event-fx reg-fx reg-sub]]))
+  (:require
+   [onekeepass.mobile.background :as bg]
+   [onekeepass.mobile.constants :refer [ONE_TIME_PASSWORD_TYPE]]
 
+   [onekeepass.mobile.events.common
+    :as cmn-events
+    :refer [active-db-key
+            assoc-in-key-db
+            get-in-key-db
+            on-error]]
 
+   [onekeepass.mobile.events.entry-form-common
+    :refer [add-section-field
+            entry-form-key
+            extract-form-otp-fields
+            merge-section-key-value
+            validate-entry-form-data]]
+
+   [re-frame.core :refer [dispatch reg-event-fx reg-fx reg-sub]]))
+
+;; Returns a map with otp fileds as key and its token info as value
+;; e.g {"My Git OTP Code" {:token "576331", :ttl 9, :period 30}, "otp" {:token "145214", :ttl 9, :period 30}}
 (reg-sub
  :otp-currrent-token
  (fn [db [_query-id otp-field-name]]
    (get-in-key-db db [entry-form-key :otp-fields otp-field-name])))
-
 
 (reg-fx
  :otp/start-polling-otp-fields
@@ -40,6 +48,7 @@
    (bg/stop-polling-all-entries-otp-fields db-key (if-not (nil? dispatch-fn) dispatch-fn #(on-error %)))))
 
 
+;; Called to start polling from use effect
 (reg-event-fx
  :entry-form-otp-start-polling
  (fn [{:keys [db]} [_event-id]]
@@ -53,6 +62,7 @@
        {}))))
 
 
+;; Called to stop polling from use effect
 (reg-event-fx
  :entry-form-otp-stop-polling
  (fn [{:keys [db]} [_event-id]]
@@ -60,8 +70,6 @@
      (if (= form-status :selected)
        {:fx [[:otp/stop-all-entry-form-polling [(active-db-key db) nil]]]}
        {}))))
-
-
 
 ;; Called from backend event handler (see native_events.cljs) to update with the current tokens 
 (reg-event-fx
@@ -145,17 +153,17 @@
 ;; dispatch-kw is any previously created reg-event-fx name - a keyword
 (reg-event-fx
  :entry-form/otp-url-form-success
- (fn [{:keys [db]} [_event-id section-name otp-field-name otp-url standard-field dispatch-kw]]
+ (fn [{:keys [db]} [_event-id {:keys [section-name field-name standard-field otp-url dispatch-kw]}]]
    ;;(println "entry-form/otp-url-form-success is called for section-name otp-field-name otp-url dispatch-kw " section-name otp-field-name otp-url dispatch-kw)
    (let [;; Need to add the field to the section if it is not standard field
          ;; A map corresponding to struct KeyValueData is passed to add this extra otp field
          db (if standard-field  db (add-section-field db {:section-name section-name
-                                                          :field-name otp-field-name
+                                                          :field-name field-name
                                                           :protected true
                                                           :required false
                                                           :data-type ONE_TIME_PASSWORD_TYPE}))
          form-status (get-in-key-db db [entry-form-key :showing])
-         section-kvs (merge-section-key-value db section-name otp-field-name otp-url)
+         section-kvs (merge-section-key-value db section-name field-name otp-url)
          ;; Set the db before using in fx
          db (-> db
                 (assoc-in-key-db [entry-form-key :data :section-fields section-name] section-kvs))]
@@ -166,14 +174,36 @@
              [:bg-update-entry [(active-db-key db) (get-in-key-db db [entry-form-key :data])]])
 
            (when dispatch-kw
-             [:dispatch [dispatch-kw {}]]
-             )]})))
+             [:dispatch [dispatch-kw {}]])]})))
 
 ;;api-response-handler is a fn that accepts a single argument
 (reg-fx
  :entry-form/bg-form-otp-url
- (fn [[otp-settings api-response-handler]] 
+ (fn [[otp-settings api-response-handler]]
    (bg/form-otp-url otp-settings api-response-handler)))
 
+;; Called before calling setup otp action dialog
+;; The arg 'call-on-no-error-fn' is a no arg fn that is called when there is no 
+;; error in the form required fields validation
+(reg-event-fx
+ :entry-form/verify-form-fields
+ (fn [{:keys [db]} [_event-id call-on-no-error-fn]]
+   (let [form-data (get-in-key-db db [entry-form-key :data])
+         error-fields (validate-entry-form-data form-data)
+         errors-found (boolean (seq error-fields))]
+     (if errors-found
+       {:db (assoc-in-key-db db [entry-form-key :error-fields] error-fields)}
+       (do
+         ;; Called the passed callback fn when title and group are not blank
+         (call-on-no-error-fn)
+         {})))))
 
 
+(comment
+  (require '[clojure.pprint :refer [pprint]])
+
+  (in-ns 'onekeepass.mobile.events.entry-form)
+
+  (def db-key (-> @re-frame.db/app-db :current-db-file-name))
+
+  (-> (get @re-frame.db/app-db db-key) :entry-form keys))
