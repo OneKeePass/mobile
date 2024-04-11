@@ -417,7 +417,8 @@
   (call-api-async (fn []
                     (.readKdbx okp-db-service
                                db-file-name
-                               (api-args->json {:db-file-name db-file-name :password password :key_file_name key-file-name} :convert-request true)))
+                               (api-args->json {:db-file-name db-file-name :password password :key_file_name key-file-name} 
+                                               :convert-request true)))
                   dispatch-fn :error-transform true))
 
 (defn save-kdbx [full-file-name overwrite dispatch-fn]

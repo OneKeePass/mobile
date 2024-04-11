@@ -235,7 +235,7 @@
       [animated-circular-progress {:style {:transform [{:scaleX 1}]}
                                    :tintColor @rnc/custom-color0 
                                    :size 35
-                                   :width 1
+                                   :width 2
                                    :fill (js/Math.round (* 100 (/ ttl period)))
                                    :rotation 360}
        (fn [_v] (r/as-element [rnp-text {:style {:transform [{:scaleX 1}]}} ttl]))]]]))

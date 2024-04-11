@@ -21,6 +21,8 @@ alias rna := npx-rn-android
 # host := "10.0.2.2"
 host := "192.168.1.5"
 
+# The clojurescript compiled output found './target/main.js' is used in index.js
+
 clj-clean-compile:
     rm -rf target
     clj -M -m krell.main --host {{host}} -co build.edn -c

@@ -150,7 +150,7 @@
  :database-file-repicked
  (fn [{:keys [db]} [_event-id {:keys [full-file-name-uri] :as picked-response}]]
    (let [{:keys [database-full-file-name]} (get db :open-database)]
-     ;; There is a possiilty user might have picked up another database file instead of repicking the original database file
+     ;; There is a possibility that user might have picked up another database file instead of repicking the original database file
      (if (= database-full-file-name full-file-name-uri)
        ;; User picked up the same database file 
        {:db (-> db
@@ -203,17 +203,24 @@
  (fn [{:keys [db]} [_event-id error]]
    {:db (-> db (assoc-in [:open-database :error-fields] {})
             (assoc-in [:open-database :status] :completed))
+    
     ;; We get error code PERMISSION_REQUIRED_TO_READ or FILE_NOT_FOUND from middle layer readKdbx 
+
     ;; PERMISSION_REQUIRED_TO_READ may happen if the File Manager decides 
     ;; that the existing uri should be refreshed by asking user to pick the database again 
+
     ;; FILE_NOT_FOUND happens when the uri we have no more points to a valid file as that file 
-    ;; might have been changed by other program.In iOS, typically the error is "NSFileProviderErrorDomain Code=-1005 "The file doesn’t exist."
+    ;; might have been changed by other program.
+
+    ;; In iOS, typically the error is "NSFileProviderErrorDomain Code=-1005 "The file doesn’t exist."
     :fx (cond (= (:code error) const/PERMISSION_REQUIRED_TO_READ)
               [[:dispatch [:repick-confirm-show const/PERMISSION_REQUIRED_TO_READ]]
                [:dispatch [:open-database-dialog-hide]]] 
+              
               (= (:code error) const/FILE_NOT_FOUND)
               [[:dispatch [:open-database-dialog-hide]]
                [:dispatch [:repick-confirm-show const/FILE_NOT_FOUND]]]
+              
               :else
               [[:dispatch [:common/error-box-show "Database Open Error" error]]])}))
 
