@@ -15,6 +15,7 @@ node_modules/
 .calva/
 .clj-kondo/.cache
 src/.clj-kondo/.cache
+docs/.clj-kondo/.cache
 .rebel_readline_history
 
 /target

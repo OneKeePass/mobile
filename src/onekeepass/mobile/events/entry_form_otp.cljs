@@ -47,7 +47,6 @@
    ;;(println "Stopping form polling for db-key " (last (str/split db-key "/")))
    (bg/stop-polling-all-entries-otp-fields db-key (if-not (nil? dispatch-fn) dispatch-fn #(on-error %)))))
 
-
 ;; Called to start polling from use effect
 (reg-event-fx
  :entry-form-otp-start-polling
@@ -93,7 +92,6 @@
        {:db db})
      {})))
 
-
 (reg-event-fx
  :entry-form-delete-otp-field
  (fn [{:keys [db]} [_event-id section otp-field-name]]
@@ -102,7 +100,6 @@
                          (dispatch [:entry-form-delete-otp-field-complete section otp-field-name])))]
      ;; First we stop all otp update polling
      {:fx [[:otp/stop-all-entry-form-polling [(active-db-key db) dispatch-fn]]]})))
-
 
 (defn remove-section-otp-field [otp-field-name {:keys [key] :as section-field-m}]
   (cond
@@ -190,14 +187,14 @@
  (fn [{:keys [db]} [_event-id call-on-no-error-fn]]
    (let [form-data (get-in-key-db db [entry-form-key :data])
          error-fields (validate-entry-form-data form-data)
-         errors-found (boolean (seq error-fields))]
+         errors-found (boolean (seq error-fields))] 
      (if errors-found
-       {:db (assoc-in-key-db db [entry-form-key :error-fields] error-fields)}
+       {:db (assoc-in-key-db db [entry-form-key :error-fields] error-fields)
+        :fx [[:dispatch [:common/error-box-show "Fields" "One or more required fields are missing"]]]}
        (do
          ;; Called the passed callback fn when title and group are not blank
          (call-on-no-error-fn)
          {})))))
-
 
 (comment
   (require '[clojure.pprint :refer [pprint]])

@@ -182,6 +182,8 @@
 
 (def custom-color0 (r/atom nil))
 
+(def circular-progress-color custom-color0 #_(r/atom "#F8BD2A"))
+
 ;; Component specific colors
 ;; TODO: Need to use only these colors instead of refering the above standard colors
 (def icon-color primary-color)
@@ -190,6 +192,7 @@
 (def modal-selector-colors {:background-color secondary-container-color
                             :selected-text-color primary-color})
 (def page-background-color background-color)
+
 (def divider-color-1 outline-color)
 
 (defn reset-colors

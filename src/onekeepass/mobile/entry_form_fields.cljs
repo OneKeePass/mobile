@@ -78,7 +78,7 @@
 ;; In iOS, we do not see the same issue as seen with the use of text input in android 
 (defn ios-form-text-input [{:keys [key
                                    value
-                                   protected 
+                                   protected
                                    visible
                                    edit
                                    on-change-text]} is-password-edit? custom-field-edit-focused?]
@@ -206,39 +206,45 @@
            value
            protected
            edit]}]
-  (let [{:keys [token ttl period]} @(form-events/otp-currrent-token key)]
-    [rn-view {:flexDirection "row" :style {:flex 1}}
-     [rnp-text-input {:label (if (= OTP key) "One-Time Password" key)
-                      :value (if-not edit (formatted-token token) value)
-                      :showSoftInputOnFocus edit
-                      :autoCapitalize "none"
-                      :keyboardType "email-address"
-                      :autoCorrect false
-                      :selectTextOnFocus false
-                      :spellCheck false
-                      :textContentType "none"
-                      :style {:width "90%" :fontSize 30}
-                      ;;:textColor @rnc/custom-color0
-                      :onFocus #(field-focus-action key true)
-                      :onBlur #(field-focus-action key false)
-                      :onChangeText nil
-                      :onPressOut (if-not edit
-                                    #(cmn-events/write-string-to-clipboard
-                                      {:field-name key
-                                       :protected protected
-                                       :value token})
-                                    nil)
-                      :secureTextEntry false
-                      :right nil}]
-     [rn-view {:style {:width "10%" :justify-content "center"}}
-      ;; Use {:transform [{:scaleX -1} to reverse direction
-      [animated-circular-progress {:style {:transform [{:scaleX 1}]}
-                                   :tintColor @rnc/custom-color0 
-                                   :size 35
-                                   :width 2
-                                   :fill (js/Math.round (* 100 (/ ttl period)))
-                                   :rotation 360}
-       (fn [_v] (r/as-element [rnp-text {:style {:transform [{:scaleX 1}]}} ttl]))]]]))
+  (let [{:keys [token ttl period]} @(form-events/otp-currrent-token key)
+        valid-token-found (not (nil? token))]
+    [rn-view
+     [rn-view {:flexDirection "row" :style {:flex 1}}
+      [rnp-text-input {:label (if (= OTP key) "One-Time Password" key)
+                       :value (if valid-token-found (if-not edit (formatted-token token) value) "  ")
+                       :showSoftInputOnFocus edit
+                       :autoCapitalize "none"
+                       :keyboardType "email-address"
+                       :autoCorrect false
+                       :selectTextOnFocus false
+                       :spellCheck false
+                       :textContentType "none"
+                       :style {:width "90%" :fontSize 30}
+                           ;;:textColor @rnc/custom-color0
+                       :onFocus #(field-focus-action key true)
+                       :onBlur #(field-focus-action key false)
+                       :onChangeText nil
+                       :onPressOut (if-not edit
+                                     #(cmn-events/write-string-to-clipboard
+                                       {:field-name key
+                                        :protected protected
+                                        :value token})
+                                     nil)
+                       :secureTextEntry false
+                       :right nil}]
+      [rn-view {:style {:width "10%" :justify-content "center"}}
+           ;; Use {:transform [{:scaleX -1} to reverse direction
+       [animated-circular-progress {:style {:transform [{:scaleX 1}]}
+                                    :tintColor @rnc/circular-progress-color 
+                                    :size 35
+                                    :width 2
+                                    :fill (js/Math.round (* 100 (/ ttl period)))
+                                    :rotation 360}
+        (fn [_v] (r/as-element [rnp-text {:style {:transform [{:scaleX 1}]}} ttl]))]]]
+
+     (when-not valid-token-found
+       [rnp-helper-text {:type "error" :visible true} "Invalid otp url. No token is generated"])]))
+
 
 (defn opt-field-no-token
   "This field will not show token and instead it is a text input with otp url"

@@ -9,8 +9,13 @@ import {MD3LightTheme,MD3DarkTheme, useTheme,Menu,Divider, TextInput} from 'reac
 
 // The theme colors are created for both light and dark color schemes in that page and copied here
 
-// Used #3141AD as the primary color and #388E3C a custom color 
-// Custom colors are added as 'custom0'
+// Used #3141AD as the primary color 
+// #388E3C a custom color - 'custom0' 
+// #FBC02D a custom color - 'custom1'
+// Custom colors are added as 'custom0',...'custom1',...
+
+// See what colors rgb(c1,c2,c3) represent, we can use search from  https://duckduckgo.com/  
+// and color and its hex code are shown
 
 // Copied it from the color codes scheme and then used it here. The color used to generate this is #3141AD
 const custLightThemeColors = {
@@ -59,7 +64,12 @@ const custLightThemeColors = {
     "custom0": "rgb(16, 109, 32)",
     "onCustom0": "rgb(255, 255, 255)",
     "custom0Container": "rgb(157, 248, 152)",
-    "onCustom0Container": "rgb(0, 34, 4)"
+    "onCustom0Container": "rgb(0, 34, 4)",
+
+    "custom1": "rgb(121, 89, 0)",
+    "onCustom1": "rgb(255, 255, 255)",
+    "custom1Container": "rgb(255, 223, 160)",
+    "onCustom1Container": "rgb(38, 26, 0)"
   }
 }
 
@@ -110,7 +120,12 @@ const custDarkThemeColors = {
     "custom0": "rgb(130, 219, 126)",
     "onCustom0": "rgb(0, 57, 10)",
     "custom0Container": "rgb(0, 83, 18)",
-    "onCustom0Container": "rgb(157, 248, 152)"
+    "onCustom0Container": "rgb(157, 248, 152)",
+
+    "custom1": "rgb(248, 189, 42)",
+    "onCustom1": "rgb(64, 45, 0)",
+    "custom1Container": "rgb(92, 67, 0)",
+    "onCustom1Container": "rgb(255, 223, 160)"
   }
 };
 
