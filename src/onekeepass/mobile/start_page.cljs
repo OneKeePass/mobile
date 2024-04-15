@@ -197,7 +197,6 @@
 
       [rnp-progress-bar {:style {:margin-top 10} :visible in-progress? :indeterminate true}]]
 
-
      [rnp-dialog-actions
       [rnp-button {:mode "text" :disabled in-progress?
                    :onPress  opndb-events/cancel-on-press}

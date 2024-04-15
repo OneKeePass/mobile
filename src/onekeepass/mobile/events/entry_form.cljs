@@ -13,13 +13,18 @@
                           dispatch
                           reg-fx
                           subscribe]]
+   [onekeepass.mobile.events.entry-form-common :refer [add-section-field
+                                                       is-field-exist
+                                                       extract-form-otp-fields
+                                                       entry-form-key Favorites
+                                                       validate-entry-form-data]]
    [clojure.string :as str]
    [onekeepass.mobile.utils :as u :refer [contains-val?]]
-   [onekeepass.mobile.background :as bg]))
-
-(def ^:private entry-form-key :entry-form)
-
-(def ^:private Favorites "Favorites")
+   [onekeepass.mobile.background :as bg]
+   ;; Need to be called here so that events are registered
+   ;; Should it be moved to core.cljs ? 
+   #_{:clj-kondo/ignore [:unused-namespace]}
+   [onekeepass.mobile.events.entry-form-otp :as ef-otp-events]))
 
 (defn update-section-value-on-change
   "Updates a section's KeyValue map with the given key and value"
@@ -112,18 +117,20 @@
   (subscribe [:entry-form-history]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
+;; IMPORTANT: Valid values for :showing are [:selected :new :history-form]
 (defn- set-on-entry-load [app-db entry-form-data]
-  (-> app-db
-      (assoc-in-key-db [entry-form-key :data] entry-form-data)
-      (assoc-in-key-db [entry-form-key :undo-data] entry-form-data)
-      (assoc-in-key-db [entry-form-key :showing] :selected)
-      (assoc-in-key-db [entry-form-key :edit] false)))
+  (let [otp-fields (extract-form-otp-fields entry-form-data)]
+    (-> app-db
+        (assoc-in-key-db [entry-form-key :data] entry-form-data)
+        (assoc-in-key-db [entry-form-key :undo-data] entry-form-data)
+        (assoc-in-key-db [entry-form-key :otp-fields] otp-fields)
+        (assoc-in-key-db [entry-form-key :showing] :selected)
+        (assoc-in-key-db [entry-form-key :edit] false))))
 
 ;; Deprecate ?
 (reg-event-fx
  :entry-delete
- (fn [{:keys [db]} [_event-id]]
-   (println "Delete is called for.. " (get-in-key-db db [entry-form-key :data :uuid]))
+ (fn [{:keys [db]} [_event-id]] 
    {:fx [[:dispatch [:move-delete/entry-delete-start (get-in-key-db db [entry-form-key :data :uuid]) true]]]}))
 
 (defn- on-entry-find [api-response]
@@ -181,14 +188,19 @@
          section-kvs (mapv (fn [m] (if (= (:key m) key) (assoc m :value value) m)) section-kvs)]
      (assoc-in-key-db db [entry-form-key :data :section-fields section] section-kvs))))
 
-(reg-event-db
+(reg-event-fx
  :entry-form/edit
- (fn [db [_event-id edit?]]
-   (if edit?
-     (-> db
+ (fn [{:keys [db]} [_event-id edit?]]
+   {:db (assoc-in-key-db db [entry-form-key :edit] edit?)}))
+
+#_(reg-event-db
+   :entry-form/edit
+   (fn [db [_event-id edit?]]
+     (if edit?
+       (-> db
          ;;(assoc-in-key-db [entry-form-key :undo-data] (get-in-key-db db [entry-form-key :data]))
-         (assoc-in-key-db [entry-form-key :edit] edit?))
-     (assoc-in-key-db db [entry-form-key :edit] edit?))))
+           (assoc-in-key-db [entry-form-key :edit] edit?))
+       (assoc-in-key-db db [entry-form-key :edit] edit?))))
 
 ;; Called to mark or unmark as favorites
 ;; A tag with name "Favorites" is added or removed accordingly
@@ -246,13 +258,13 @@
    ;;(println "form-db called... " form)
    (get form field)))
 
-;; An entry is for new entry when :showing field is :new
+;; The entry form is for a  new entry when :showing field is :new
 (reg-sub
  :entry-form-new
  (fn [db _query-vec]
    (= :new (get-in-key-db db [entry-form-key :showing]))))
 
-;; An entry is for history entry when :showing field is :history-entry
+;; The entry form is for a  history entry when :showing field is :history-entry
 (reg-sub
  :entry-form-history
  (fn [db _query-vec]
@@ -289,18 +301,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn validate-entry-form-data
-  "Verifies that the user has entered valid values in some of the required fields of the entry form
-  Returns a map of fileds with errors and error-fields will be {} in case no error is found
-  "
-  [{:keys [group-uuid title]}]
-  (let [error-fields (cond-> {}
-                       (u/uuid-nil-or-default? group-uuid)
-                       (assoc :group-selection "Please select a group ")
-
-                       (str/blank? title)
-                       (assoc :title "Please enter a title for this form"))]
-    error-fields))
 
 (defn validate-required-fields
   "Checks that all keys (form fields) that are marked as required are having some valid values 
@@ -340,7 +340,7 @@
 
 (def field-edit-dialog-key :section-field-dialog-data)
 
-(def standard-kv-fields ["Title" "Notes"])
+#_(def standard-kv-fields ["Title" "Notes"])
 
 (def section-field-dialog-init-data {:dialog-show false
                                      :popper-anchor-el nil
@@ -396,39 +396,39 @@
   [db]
   (assoc-in-key-db db [entry-form-key field-edit-dialog-key] section-field-dialog-init-data))
 
-(defn- is-field-exist
-  "Checks that a given field name exists in the entry form or not "
-  [app-db field-name]
-  (let [all-section-fields (-> (get-in-key-db
-                                app-db
-                                [entry-form-key :data :section-fields])
-                               vals flatten) ;;all-section-fields is a list of maps for all sections 
-        ]
-    (or (contains-val? standard-kv-fields field-name)
-        (-> (filter (fn [m] (= field-name (:key m))) all-section-fields) seq boolean))))
+#_(defn- is-field-exist
+    "Checks that a given field name exists in the entry form or not "
+    [app-db field-name]
+    (let [all-section-fields (-> (get-in-key-db
+                                  app-db
+                                  [entry-form-key :data :section-fields])
+                                 vals flatten) ;;all-section-fields is a list of maps for all sections 
+          ]
+      (or (contains-val? standard-kv-fields field-name)
+          (-> (filter (fn [m] (= field-name (:key m))) all-section-fields) seq boolean))))
 
-(defn- add-section-field
-  "Creates a new KV for the added section field and updates the 'section-name' section
+#_(defn- add-section-field
+    "Creates a new KV for the added section field and updates the 'section-name' section
   Returns the updated app-db
   "
-  [app-db {:keys [section-name
-                  field-name
-                  protected
-                  required
-                  data-type]}]
-  (let [section-fields-m (get-in-key-db
-                          app-db
-                          [entry-form-key :data :section-fields])
+    [app-db {:keys [section-name
+                    field-name
+                    protected
+                    required
+                    data-type]}]
+    (let [section-fields-m (get-in-key-db
+                            app-db
+                            [entry-form-key :data :section-fields])
         ;; fields is a vec of KVs for a given section
-        fields (-> section-fields-m (get section-name []))
-        fields (conj fields {:key field-name
-                             :value nil
-                             :protected protected
-                             :required required
-                             :data-type data-type
-                             :standard-field false})]
-    (assoc-in-key-db app-db [entry-form-key :data :section-fields]
-                     (assoc section-fields-m section-name fields))))
+          fields (-> section-fields-m (get section-name []))
+          fields (conj fields {:key field-name
+                               :value nil
+                               :protected protected
+                               :required required
+                               :data-type data-type
+                               :standard-field false})]
+      (assoc-in-key-db app-db [entry-form-key :data :section-fields]
+                       (assoc section-fields-m section-name fields))))
 
 (defn- modify-section-field [app-db {:keys [section-name
                                             current-field-name
@@ -800,15 +800,13 @@
          db (if (= :new current-showing)
               (assoc-in-key-db db [entry-form-key :undo-data] (get-in-key-db db [entry-form-key :data]))
               db)]
-     ;; If showing is already :selected, then this is update and we need to reload the entry data
-     {:db (-> db (assoc-in-key-db  [entry-form-key :edit] false)
-              (assoc-in-key-db [entry-form-key :showing] :selected))
-      :fx [;; Reload entry data again to reflect the saved changes
-           (when (= :selected current-showing)
-             [:dispatch [:reload-entry-by-id (get-in-key-db db [entry-form-key :data :uuid])]])
-           (if (= :new current-showing)
+     {:fx [(if (= :new current-showing)
              [:dispatch [:common/message-snackbar-open "Created Entry"]]
              [:dispatch [:common/message-snackbar-open "Updated Entry"]])
+
+           ;; Reload entry data again to reflect the saved changes after an update or after a new entry is inserted
+           [:dispatch [:reload-entry-by-id (get-in-key-db db [entry-form-key :data :uuid])]]
+
            ;; Need to reload categories, groups and list data on an entry insert/update
            [:dispatch [:entry-category/load-categories-to-show]]
            [:dispatch [:groups/load]]
@@ -818,6 +816,33 @@
            ;; Entry update is due to restoring from history
            (when restored?
              [:dispatch [:history-entry-restore-complete]])]})))
+
+#_(reg-event-fx
+   :entry-insert-update-save-complete
+   (fn [{:keys [db]} [_event-id]]
+     (let [current-showing (get-in-key-db db [entry-form-key :showing])
+           restored? (get-in-key-db db [entry-form-key :entry-history-form :history-entry-restore-confirmed])
+           db (if (= :new current-showing)
+                (assoc-in-key-db db [entry-form-key :undo-data] (get-in-key-db db [entry-form-key :data]))
+                db)]
+     ;; If showing is already :selected, then this is update and we need to reload the entry data
+       {:db (-> db (assoc-in-key-db  [entry-form-key :edit] false)
+                (assoc-in-key-db [entry-form-key :showing] :selected))
+        :fx [;; Reload entry data again to reflect the saved changes
+             (when (= :selected current-showing)
+               [:dispatch [:reload-entry-by-id (get-in-key-db db [entry-form-key :data :uuid])]])
+             (if (= :new current-showing)
+               [:dispatch [:common/message-snackbar-open "Created Entry"]]
+               [:dispatch [:common/message-snackbar-open "Updated Entry"]])
+           ;; Need to reload categories, groups and list data on an entry insert/update
+             [:dispatch [:entry-category/load-categories-to-show]]
+             [:dispatch [:groups/load]]
+             [:dispatch [:entry-list/reload-selected-entry-items]]
+             [:dispatch [:search/reload]]
+             [:dispatch [:common/message-modal-hide]]
+           ;; Entry update is due to restoring from history
+             (when restored?
+               [:dispatch [:history-entry-restore-complete]])]})))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  Entry History  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -1205,12 +1230,53 @@
      {}
      {:fx [[:dispatch [:common/error-box-show "Save as Error" error]]]})))
 
+
+;;;;;;;;;;;;;;;;;;;;; OTP ;;;;;;;;;;;;;;;;;;;;;;
+
+(defn otp-currrent-token [opt-field-name]
+  (subscribe [:otp-currrent-token opt-field-name]))
+
+(defn entry-form-otp-start-polling
+  "Called to start polling from use effect"
+  []
+  (dispatch [:entry-form-otp-start-polling]))
+
+(defn entry-form-otp-stop-polling
+  "Called to stop polling from use effect"
+  []
+  (dispatch [:entry-form-otp-stop-polling]))
+
+(defn entry-form-delete-otp-field [section otp-field-name]
+  (dispatch [:entry-form-delete-otp-field section otp-field-name]))
+
+(defn show-form-fields-validation-error-or-call
+  "Called to verify that title and group fields have valid non nil values in the form and 
+   then only the otp set up action dialog is called.
+   The arg 'call-on-no-error-fn' is a no arg fn that is called when there is no 
+   error in the form required fields validation
+  "
+  [call-on-no-error-fn]
+  (dispatch [:entry-form/verify-form-fields call-on-no-error-fn]))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 (comment
+  (require '[clojure.pprint :refer [pprint]])
+
   (in-ns 'onekeepass.mobile.events.entry-form)
 
   (def db-key (-> @re-frame.db/app-db :current-db-file-name))
+
+  (-> (get @re-frame.db/app-db db-key) :entry-form keys)
+
+  ;; => (:data :undo-data :otp-fields :showing :edit)
+
   (-> (get @re-frame.db/app-db db-key) :entry-form :data keys)
+  ;; => :tags :icon-id :binary-key-values :section-fields :title :expiry-time :history-count 
+  ;;     :expires :standard-section-names :last-modification-time :entry-type-name :auto-type :notes 
+  ;;     :section-names :entry-type-icon-name :last-access-time :uuid :entry-type-uuid :group-uuid :creation-time
+
+  (-> (get @re-frame.db/app-db db-key) :entry-form :data pprint) ;; will pretty print the data map
+
   (-> (get @re-frame.db/app-db db-key) :entry-form :data :group-uuid))

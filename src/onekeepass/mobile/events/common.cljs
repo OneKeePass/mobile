@@ -341,8 +341,7 @@
             (assoc :biometric-available (bg/is-biometric-available))
             (assoc-in [:app-preference :status] :loaded)
             (assoc-in [:app-preference :data] pref))
-    :fx [[:dispatch [:app-settings/app-preference-loaded]]]
-    }))
+    :fx [[:dispatch [:app-settings/app-preference-loaded]]]}))
 
 (reg-sub
  :recently-used
@@ -429,6 +428,10 @@
    (boolean (get-in-selected-db db db-key [:locked]))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  Page Navigation ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Each valid pages have a keyword indentifier as id and a title
+;; Valid page ids are [:home :about ...]  See appbar.cljs
+;; Need to be added to constants.cljs
 
 (defn to-home-page
   "Called to navigate to the home page"
@@ -860,8 +863,7 @@
   (when-not (= @clipboard-session-timeout -1)
     (go
       (<! (timeout @clipboard-session-timeout))
-      (when @field-in-clip (bg/write-string-to-clipboard nil)))
-    ))
+      (when @field-in-clip (bg/write-string-to-clipboard nil)))))
 
 (defn write-string-to-clipboard [{:keys [field-name value protected]}]
   ;;(println "write-string-to-clipboard called field-name value... " field-name value)
@@ -874,9 +876,7 @@
 ;;;;;;;;;;;;;;;;;;;; Open URL ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn open-https-url [https-url]
-  (bg/open-https-url https-url  (fn [api-response]
-                                  (on-error api-response))))
-
+  (bg/open-https-url https-url  (fn [api-response] (on-error api-response))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (comment
@@ -887,3 +887,28 @@
 
   (def db-key (-> @re-frame.db/app-db :current-db-file-name))
   (-> @re-frame.db/app-db (get db-key) keys))
+
+
+#_(defn create-api-handler-fn
+    "
+  ok-response-handler is a fn to handle the value found in :ok
+  error-response-handler is a fn to handle the value found in :error
+  Returns a fn wrapping the individual ok and error fns that can be used 
+  in any backend api call as dispatch-fn
+  "
+    [ok-response-handler error-response-handler]
+    (cond
+
+      (and ok-response-handler error-response-handler)
+      (fn [api-response]
+        (when-let [ok-response (on-ok api-response error-response-handler)]
+          (ok-response-handler ok-response)))
+
+      ok-response-handler
+      (fn [api-response]
+        (when-let [ok-response (on-ok api-response)]
+          (ok-response-handler ok-response)))
+
+      error-response-handler
+      (fn [api-response]
+        (on-error api-response error-response-handler))))

@@ -12,6 +12,8 @@
 (def PASSPORT_TYPE_NAME "Passport")
 (def BANK_ACCOUNT_TYPE_NAME "Bank Account")
 
+(def ADDITIONAL_ONE_TIME_PASSWORDS "Additional One-Time Passwords")
+
 ;; Based on the enum 'EntryCategory'
 (def CATEGORY_ALL_ENTRIES "AllEntries")
 (def CATEGORY_FAV_ENTRIES "Favorites")
@@ -27,6 +29,8 @@
 (def PERMISSION_REQUIRED_TO_READ "PERMISSION_REQUIRED_TO_READ")
 (def FILE_NOT_FOUND "FILE_NOT_FOUND")
 
+(def OTP_KEY_DECODE_ERROR "OtpKeyDecodeError")
+
 (def BIOMETRIC-AUTHENTICATION-SUCCESS "AuthenticationSucceeded")
 (def BIOMETRIC-AUTHENTICATION-FAILED "AuthenticationFailed")
 
@@ -37,9 +41,26 @@
 (def TITLE "Title")
 (def MODIFIED_TIME "Modified Time")
 (def CREATED_TIME "Created Time")
+(def PASSWORD "Password")
 
 (def ASCENDING "Ascending")
 (def DESCENDING "Descending")
+
+(def ONE_TIME_PASSWORD_TYPE "Field type" "OneTimePassword")
+
+(def OTP "Standard field name used" "otp")
+
+(def OTP_URL_PREFIX "otpauth://totp")
+
+;; 'granted' | 'not-determined' | 'denied' | 'restricted'
+(def CAMERA_PERMISSION_GRANTED "granted")
+(def CAMERA_PERMISSION_DENIED "denied")
+(def CAMERA_PERMISSION_NOT_DETERMINED "not-determined")
+(def CAMERA_PERMISSION_RESTRICTED "restricted")
+
+
+;;; Page ids
+(def CAMERA_SCANNER_PAGE_ID :scan-otp-qr)
 
 
 ;;;;;;; Icon names ;;;;;

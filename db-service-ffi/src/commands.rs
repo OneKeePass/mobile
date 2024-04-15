@@ -1,10 +1,11 @@
 use crate::app_state::{AppState, RecentlyUsed};
-use crate::{as_api_response, ios, KeyFileInfo, android};
-use crate::{open_backup_file, util, OkpError, OkpResult, };
+use crate::{android, as_api_response, ios, KeyFileInfo};
+use crate::{open_backup_file, util, OkpError, OkpResult};
+use onekeepass_core::async_service::{self, OtpTokenTtlInfoByField, TimerID};
 use onekeepass_core::db_content::AttachmentHashValue;
 use onekeepass_core::db_service::{
-    self, DbSettings, EntryCategory, EntryFormData, Group, KdbxLoaded, NewDatabase,
-    PasswordGenerationOptions, EntryCategoryGrouping,
+    self, DbSettings, EntryCategory, EntryCategoryGrouping, EntryFormData, Group, KdbxLoaded,
+    NewDatabase, OtpSettings, PasswordGenerationOptions,
 };
 
 use std::fmt::format;
@@ -27,7 +28,7 @@ struct ExportDataInfo {
     exported_data_full_file_name: Option<String>,
 }
 
-//TODO: 
+//TODO:
 // Need to use serde internally-tagged or externally-tagged to deserialize the enum 'CommandArg'
 // instead of current 'untagged' feature. Using untagged feature getting more complex. More changes
 // may be required in 'mobile/src/onekeepass/mobile/background.cljs' and may in the some native calls where json str are formed
@@ -45,7 +46,7 @@ struct ExportDataInfo {
 // 2. Checks whether all its fields are available (order of fields does not matter) in the deserialized data
 // 3. If the previous check is success, returns the variant. Otherwise continue to the next variant
 
-// IMPORTANT: 
+// IMPORTANT:
 // If we add a variant with fields of only Option type(nullable), then that variant will be picked first
 // Need to make sure to add that variant in a proper order (most probably last) to avoid this happening
 // For example, the variant 'SessionTimeoutArg' (commented out one at the bottom) has only Option type fields. if this variant is put
@@ -59,7 +60,7 @@ pub enum CommandArg {
     },
     SessionTimeoutArg {
         // timeout_type is a dummy field so that SessionTimeoutArg is matched only we have this
-        // field in the incoming json str. See 
+        // field in the incoming json str. See
         timeout_type: u8,
         db_session_timeout: Option<i64>,
         clipboard_timeout: Option<i64>,
@@ -91,7 +92,7 @@ pub enum CommandArg {
     },
     CategoryDetailArg {
         db_key: String,
-        grouping_kind:EntryCategoryGrouping,
+        grouping_kind: EntryCategoryGrouping,
     },
     // Should come before DbKeyWithUUIDArg
     MoveArg {
@@ -135,9 +136,30 @@ pub enum CommandArg {
     },
     AttachmentArg {
         db_key: String,
-        name:String,
+        name: String,
         data_hash_str: String,
     },
+
+    OtpSettingsArg {
+        otp_settings: OtpSettings,
+    },
+
+    StartEntryOtpArg {
+        db_key: String,
+        entry_uuid: Uuid,
+        otp_fields: OtpTokenTtlInfoByField,
+    },
+
+    StartTimerArg {
+        period_in_milli_seconds: u64,
+        timer_id: Option<TimerID>,
+    },
+
+    // Should come after StartTimerArg
+    StopTimerArg {
+        timer_id: TimerID,
+    },
+
     // This variant needs to come last so that other variants starting with db_key is matched before this
     // and this will be matched only if db_key is passed. A kind of descending order with the same field names
     // in diffrent variant. If this variant put before any other variant with db_key field,
@@ -147,11 +169,10 @@ pub enum CommandArg {
     },
 
     GenericArg {
-      key_vals:HashMap<String,String>  
+        key_vals: HashMap<String, String>,
     },
-
-    // Need to come as last variant; Otherwise this will be matched before any variants coming after 
-    // this. This is because serde_json parses any json str as this variant with any json str. This happens because 
+    // Need to come as last variant; Otherwise this will be matched before any variants coming after
+    // this. This is because serde_json parses any json str as this variant with any json str. This happens because
     // we are using untagged deserialization and both the fields can be null
     // If we use non nullable fields are used in this variant, this issue will not happen
     // SessionTimeoutArg {
@@ -162,16 +183,34 @@ pub enum CommandArg {
 
 pub type ResponseJson = String;
 
-pub struct Commands {}
-
 macro_rules! service_call  {
     ($args:expr,$enum_name:tt {$($enum_vals:tt)*} => $path:ident $fn_name:tt ($($fn_args:expr),*) ) => {
-        
+
         if let Ok(CommandArg::$enum_name{$($enum_vals)*}) = serde_json::from_str(&$args) {
             // $path can be either Self or db_service and $fn_name is expected in Self or in db_service
             // $fn_name expected to return OkpResult<T>
             let r = $path::$fn_name($($fn_args),*);
             return  result_json_str(r);
+        } else  {
+            let fname = stringify!($fn_name);
+            let ename = stringify!($enum_name);
+            let error_msg = format!("Invalid command args received {} for the api call {}. Expected a valid CommandArg::{}",
+                                    &$args.clone(),&fname, &ename);
+            return InvokeResult::<()>::with_error(&error_msg.clone()).json_str();
+        }
+    };
+}
+
+// Wraps a fn that returns a value in a OkpResult<T>
+// How to combine service_ok_call with service_call?
+macro_rules! service_ok_call  {
+    ($args:expr,$enum_name:tt {$($enum_vals:tt)*} => $path:ident $fn_name:tt ($($fn_args:expr),*) ) => {
+
+        if let Ok(CommandArg::$enum_name{$($enum_vals)*}) = serde_json::from_str(&$args) {
+            // $path can be either Self or db_service and $fn_name is expected in Self or in db_service
+            // $fn_name expected return non OkpResult<T> value
+            let r = $path::$fn_name($($fn_args),*);
+            return  result_json_str(Ok(r));
         } else  {
             let fname = stringify!($fn_name);
             let ename = stringify!($enum_name);
@@ -188,6 +227,16 @@ macro_rules! db_service_call  {
     };
 }
 
+// Wraps a no arg fn that returns a value in a OkpResult<T>
+macro_rules! wrap_no_arg_ok_call {
+    ($path:ident $fn_name:tt) => {{
+        let r = $path::$fn_name();
+        result_json_str(Ok(r))
+    }};
+}
+
+pub struct Commands {}
+
 impl Commands {
     pub fn invoke(command_name: String, args: String) -> String {
         if command_name.trim().is_empty() {
@@ -196,12 +245,12 @@ impl Commands {
 
         let r = match command_name.as_str() {
             "new_entry_form_data" => {
-                db_service_call!(args,NewEntryArg{db_key,entry_type_uuid,parent_group_uuid} => 
+                db_service_call!(args,NewEntryArg{db_key,entry_type_uuid,parent_group_uuid} =>
                     new_entry_form_data_by_id(&db_key,&entry_type_uuid,parent_group_uuid.as_ref().as_deref()))
             }
 
             "unlock_kdbx" => {
-                service_call!(args, OpenDbArg{db_file_name,password,key_file_name} => 
+                service_call!(args, OpenDbArg{db_file_name,password,key_file_name} =>
                     Self unlock_kdbx(&db_file_name,password.as_deref(),key_file_name.as_deref()))
             }
 
@@ -212,7 +261,7 @@ impl Commands {
             "close_kdbx" => db_service_call!(args, DbKey{db_key} => close_kdbx(&db_key)),
 
             "combined_category_details" => {
-                db_service_call! (args, CategoryDetailArg{db_key,grouping_kind} => combined_category_details(&db_key,grouping_kind)) 
+                db_service_call! (args, CategoryDetailArg{db_key,grouping_kind} => combined_category_details(&db_key,grouping_kind))
             }
 
             "categories_to_show" => {
@@ -226,8 +275,6 @@ impl Commands {
             "collect_entry_group_tags" => {
                 db_service_call! (args, DbKey{db_key} => collect_entry_group_tags(&db_key))
             }
-
-            "empty_trash" => db_service_call! (args, DbKey{db_key} => empty_trash(&db_key)),
 
             "get_db_settings" => db_service_call! (args, DbKey{db_key} => get_db_settings(&db_key)),
 
@@ -267,6 +314,10 @@ impl Commands {
                 db_service_call! (args, DbKeyWithUUIDArg{db_key,uuid} => get_entry_form_data_by_id(&db_key,&uuid))
             }
 
+            "form_otp_url" => {
+                db_service_call! (args, OtpSettingsArg{otp_settings} => form_otp_url(&otp_settings))
+            }
+
             "move_entry_to_recycle_bin" => {
                 db_service_call! (args, DbKeyWithUUIDArg{db_key,uuid} => move_entry_to_recycle_bin(&db_key,uuid))
             }
@@ -282,6 +333,8 @@ impl Commands {
             "remove_group_permanently" => {
                 db_service_call! (args, DbKeyWithUUIDArg{db_key,uuid} => remove_group_permanently(&db_key,uuid))
             }
+
+            "empty_trash" => db_service_call! (args, DbKey{db_key} => empty_trash(&db_key)),
 
             "move_entry" => {
                 db_service_call! (args, MoveArg{db_key,uuid, new_parent_id} => move_entry(&db_key,uuid, new_parent_id))
@@ -315,8 +368,8 @@ impl Commands {
                 db_service_call! (args, PasswordGeneratorArg{password_options} => analyzed_password(password_options))
             }
 
-            "save_attachment_as_temp_file"  => {
-                 service_call! (args, AttachmentArg{db_key,name,data_hash_str} => 
+            "save_attachment_as_temp_file" => {
+                service_call! (args, AttachmentArg{db_key,name,data_hash_str} =>
                     Self save_attachment_as_temp_file(&db_key,&name,&data_hash_str))
             }
 
@@ -329,11 +382,28 @@ impl Commands {
             }
 
             "update_session_timeout" => {
-                service_call!(args, SessionTimeoutArg {timeout_type: _,db_session_timeout,clipboard_timeout} => 
+                service_call!(args, SessionTimeoutArg {timeout_type: _,db_session_timeout,clipboard_timeout} =>
                     Self update_session_timeout(db_session_timeout,clipboard_timeout))
             }
 
-            ////// 
+            //// Async related
+            "start_polling_entry_otp_fields" => {
+                service_ok_call! (args, StartEntryOtpArg {db_key,entry_uuid,otp_fields} => async_service start_polling_entry_otp_fields(&db_key,&entry_uuid,otp_fields))
+            }
+
+            "stop_polling_all_entries_otp_fields" => {
+                wrap_no_arg_ok_call! (async_service stop_polling_all_entries_otp_fields)
+            }
+
+            "set_timeout" => {
+                service_ok_call! (args, StartTimerArg {period_in_milli_seconds,timer_id} => async_service set_timeout(period_in_milli_seconds,timer_id))
+            }
+
+            "shutdown_async_services" => {
+                wrap_no_arg_ok_call! (async_service shutdown_async_services)
+            }
+
+            //////
             "remove_from_recently_used" => Self::remove_from_recently_used(&args),
 
             "new_blank_group" => Self::new_blank_group(args),
@@ -342,7 +412,6 @@ impl Commands {
 
             "prepare_export_kdbx_data" => Self::prepare_export_kdbx_data(&args),
             ///////
-
             "app_preference" => Self::app_preference(),
 
             "recently_used_dbs_info" => Self::recently_used_dbs_info(),
@@ -356,9 +425,9 @@ impl Commands {
             "list_key_files" => ok_json_str(util::list_key_files()),
 
             // "delete_key_file" => Self::delete_key_file(&args),
-
             "clean_export_data_dir" => result_json_str(util::clean_export_data_dir()),
 
+            // "test_call" => Self::test_call(),
             x => error_json_str(&format!("Invalid command name {} is passed", x)),
         };
         r
@@ -402,43 +471,61 @@ impl Commands {
         let mut kdbx_loaded = db_service::unlock_kdbx(db_key, password, key_file_name)?;
         // For now, we are replacing any file_name formed in db_service::unlock_kdbx as that is desktop file system specific
         // In case of mobile, the file uri is just some handle and need to get the file name using mobile api
-        kdbx_loaded.file_name = AppState::global().common_device_service.uri_to_file_name(db_key.into());
+        kdbx_loaded.file_name = AppState::global()
+            .common_device_service
+            .uri_to_file_name(db_key.into());
 
         Ok(kdbx_loaded)
     }
 
-    fn unlock_kdbx_on_biometric_authentication(db_key: &str,) -> OkpResult<KdbxLoaded> {
+    fn unlock_kdbx_on_biometric_authentication(db_key: &str) -> OkpResult<KdbxLoaded> {
         let mut kdbx_loaded = db_service::unlock_kdbx_on_biometric_authentication(db_key)?;
-        kdbx_loaded.file_name = AppState::global().common_device_service.uri_to_file_name(db_key.into());
+        kdbx_loaded.file_name = AppState::global()
+            .common_device_service
+            .uri_to_file_name(db_key.into());
         Ok(kdbx_loaded)
     }
 
-    fn generate_key_file(key_vals:HashMap<String,String>) -> OkpResult<KeyFileInfo> {
+    fn generate_key_file(key_vals: HashMap<String, String>) -> OkpResult<KeyFileInfo> {
         let Some(key_file_name_component) = key_vals.get("file_name") else {
-            return Err(OkpError::DataError("Key file name to generate is not found in args"));
+            return Err(OkpError::DataError(
+                "Key file name to generate is not found in args",
+            ));
         };
 
         let path = &AppState::global()
-        .key_files_dir_path
-        .join(key_file_name_component.trim());
+            .key_files_dir_path
+            .join(key_file_name_component.trim());
 
-        debug!("Key file Path is {:?} and exists check {}",path,path.exists());
+        debug!(
+            "Key file Path is {:?} and exists check {}",
+            path,
+            path.exists()
+        );
 
         if path.exists() {
-            return Err(OkpError::DuplicateKeyFileName(format!("Key file with the same name exists")))
+            return Err(OkpError::DuplicateKeyFileName(format!(
+                "Key file with the same name exists"
+            )));
         }
 
         let Some(full_file_name_str) = path.as_os_str().to_str() else {
-            return Err(OkpError::DataError("Full Key file name could not be formed"));
+            return Err(OkpError::DataError(
+                "Full Key file name could not be formed",
+            ));
         };
         db_service::generate_key_file(full_file_name_str)?;
-        
-        debug!("Generated key file is {}",full_file_name_str);
 
-        Ok(KeyFileInfo {full_file_name:full_file_name_str.into(),file_name:key_file_name_component.clone(),file_size:None})
+        debug!("Generated key file is {}", full_file_name_str);
+
+        Ok(KeyFileInfo {
+            full_file_name: full_file_name_str.into(),
+            file_name: key_file_name_component.clone(),
+            file_size: None,
+        })
     }
 
-    fn delete_key_file(key_vals:HashMap<String,String>) ->  OkpResult<Vec<KeyFileInfo>> {
+    fn delete_key_file(key_vals: HashMap<String, String>) -> OkpResult<Vec<KeyFileInfo>> {
         let Some(key_file_name) = key_vals.get("file_name") else {
             return Err(OkpError::DataError("Key file name to delete is not found"));
         };
@@ -446,7 +533,11 @@ impl Commands {
         Ok(util::list_key_files())
     }
 
-    fn save_attachment_as_temp_file(db_key: &str,name: &str,data_hash_str: &str,) ->  OkpResult<String>  {
+    fn save_attachment_as_temp_file(
+        db_key: &str,
+        name: &str,
+        data_hash_str: &str,
+    ) -> OkpResult<String> {
         let data_hash = db_service::parse_attachment_hash(data_hash_str)?;
 
         if cfg!(target_os = "android") {
@@ -456,7 +547,10 @@ impl Commands {
         }
     }
 
-    fn update_session_timeout(db_session_timeout:Option<i64>,clipboard_timeout:Option<i64>, ) -> OkpResult<()> {
+    fn update_session_timeout(
+        db_session_timeout: Option<i64>,
+        clipboard_timeout: Option<i64>,
+    ) -> OkpResult<()> {
         let mut pref = AppState::global().preference.lock().unwrap();
         if let Some(t) = db_session_timeout {
             pref.db_session_timeout = t;
@@ -578,6 +672,11 @@ impl Commands {
         let pref = AppState::global().preference.lock().unwrap();
         ok_json_str(pref.clone())
     }
+
+    // fn test_call() -> ResponseJson {
+    //     onekeepass_core::async_service::start();
+    //     ok_json_str("Done".to_string())
+    // }
 }
 
 pub fn remove_app_files(db_key: &str) {
@@ -598,7 +697,7 @@ pub fn remove_app_files(db_key: &str) {
     ios::delete_book_mark_data(&db_key);
 }
 
-fn ok_json_str<T: serde::Serialize>(val: T) -> ResponseJson {
+pub fn ok_json_str<T: serde::Serialize>(val: T) -> ResponseJson {
     InvokeResult::with_ok(val).json_str()
 }
 
@@ -691,11 +790,10 @@ fn _full_path_file_to_read_write(full_file_name: &str) -> db_service::Result<Fil
 mod tests {
     use crate::commands::CommandArg;
 
-
     #[test]
     fn verify_parsing_db_key_arg() {
         let in_json_str = r#"{"db_key":"file:///Users/jeyasankar/Library/Developer/CoreSimulator/Devices/CC0D1909-56BA-4AD0-9499-FB96E10925CD/data/Containers/Shared/AppGroup/2AE43D43-8E49-4A03-AA7E-994442DF99E9/File%20Provider%20Storage/Test3.kdbx"}"#;
-    
+
         let r = serde_json::from_str::<CommandArg>(in_json_str);
         if let Ok(CommandArg::DbKey { db_key }) = r {
             println!("Parsing success with db_key {}", &db_key);
@@ -712,7 +810,12 @@ mod tests {
 
         //println!("r is {:?}",&r);
 
-        if let Ok(CommandArg::SessionTimeoutArg {timeout_type: _, db_session_timeout, clipboard_timeout }) = r {
+        if let Ok(CommandArg::SessionTimeoutArg {
+            timeout_type: _,
+            db_session_timeout,
+            clipboard_timeout,
+        }) = r
+        {
             assert_eq!(Some(-1), db_session_timeout);
             assert_eq!(None, clipboard_timeout);
         } else {
@@ -725,12 +828,10 @@ mod tests {
         let in_json_str = r#"{"key_vals": {"some_key":"some_value"}}"#;
         let r = serde_json::from_str::<CommandArg>(in_json_str);
         //println!("r is {:?}",&r);
-        if let Ok(CommandArg::GenericArg { key_vals:m }) = r {
+        if let Ok(CommandArg::GenericArg { key_vals: m }) = r {
             assert_eq!(Some(&"some_value".to_string()), m.get("some_key"));
         } else {
             assert!(false, "Invalid parsing of json str as  {:?} ", &r);
         }
     }
-
-
 }

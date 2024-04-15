@@ -1,6 +1,6 @@
 (ns
  onekeepass.mobile.rn-components
-  (:require-macros [onekeepass.mobile.comp-classes
+  (:require-macros [onekeepass.mobile.okp-macros
                     :refer  [declare-comp-classes]])
   (:require
    [clojure.string :as str]
@@ -14,6 +14,8 @@
    ["@react-native-community/slider" :as rnc-slider]
    ["react-native-gesture-handler" :as gh]
    ["react-native-vector-icons" :as vec-icons]
+   ["react-native-vision-camera" :as rn-vision-camera]
+   ["react-native-circular-progress" :as rn-circular-progress]
    ["react-native-safe-area-context" :as sa-context]
    ["@date-io/date-fns" :as DateAdapter]))
 
@@ -24,6 +26,9 @@
 ;; All the require calls above of NPM packages will have an entry in npm_deps.js
 ;; All (js/require "../js/.....") calls will result an entry in krell_npm_deps.js
 
+
+;; Also this defined again in background as rn-components is not refered in background module to avoid circular references
+(def rn-native-linking ^js/RNLinking rn/Linking)
 
 ;; See https://react.dev/reference/react/useEffect
 ;; useEffect is called after a component is rendered
@@ -56,7 +61,7 @@
                        Button
                        SafeAreaView
                        FlatList
-                       KeyboardAvoidingView 
+                       KeyboardAvoidingView
                        Pressable
                        TouchableWithoutFeedback
                        TouchableHighlight
@@ -147,7 +152,12 @@
 (def primary-color (r/atom nil))
 
 ;; white (in light theme), blue (in dark theme)
+;; A color that's clearly legible when drawn on primary
+;; See https://api.flutter.dev/flutter/material/ColorScheme/onPrimary.html
 (def on-primary-color (r/atom nil))
+
+;; A color used for elements needing less emphasis than primary
+;; light blue (in light theme), dark blue in (dark mode)
 (def primary-container-color (r/atom nil))
 
 (def secondary-color (r/atom nil))
@@ -170,6 +180,10 @@
 (def surface-variant (r/atom nil))
 (def outline-variant (r/atom nil))
 
+(def custom-color0 (r/atom nil))
+
+(def circular-progress-color custom-color0 #_(r/atom "#F8BD2A"))
+
 ;; Component specific colors
 ;; TODO: Need to use only these colors instead of refering the above standard colors
 (def icon-color primary-color)
@@ -178,6 +192,7 @@
 (def modal-selector-colors {:background-color secondary-container-color
                             :selected-text-color primary-color})
 (def page-background-color background-color)
+
 (def divider-color-1 outline-color)
 
 (defn reset-colors
@@ -204,7 +219,9 @@
     (reset! inverse-onsurface-color (.-inverseOnSurface colors))
     (reset! surface-variant (.-surfaceVariant colors))
     (reset! outline-variant (.-outlineVariant colors))
-    (reset! on-error-container (.-onErrorContainer colors))))
+    (reset! on-error-container (.-onErrorContainer colors))
+    
+    (reset! custom-color0 (.-custom0 colors))))
 
 
 ;;;;;;;;;;
@@ -263,7 +280,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Pan Responder ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn create-pan-responder 
+(defn create-pan-responder
   "Creates a pan responder with the supplied handler functions. Used mainly for session time out
    Arg 'handler-fns-m' is a map with keys matching reponder handler names of a view 
    See for an example https://reactnative.dev/docs/view#onmoveshouldsetrespondercapture
@@ -272,6 +289,23 @@
   [handler-fns-m]
   ;; handler-fns-m is clojure map and PanResponder expects a js object
   (.create rn/PanResponder (clj->js handler-fns-m)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; react-native-vision-camera - VisionCamera  ;;;;;;;;;;
+
+;; https://react-native-vision-camera.com/docs/api/#usecamerapermission
+;; https://github.com/mrousavy/react-native-vision-camera/blob/main/package/src/hooks/useCameraPermission.ts 
+
+(def use-camera-permission (.-useCameraPermission ^js/RNVisionCamera rn-vision-camera))
+
+(def use-camera-device (.-useCameraDevice ^js/RNVisionCamera rn-vision-camera))
+
+(def use-code-scanner (.-useCodeScanner ^js/RNVisionCamera rn-vision-camera))
+
+(def camera (r/adapt-react-class (.-Camera ^js/RNVisionCamera rn-vision-camera)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; react-native-circular-progress ;;;;;;;;;;;;;;;;;;;;
+
+(def animated-circular-progress (r/adapt-react-class (.-AnimatedCircularProgress ^js/RNCircularProgress rn-circular-progress)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  All example components ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -287,21 +321,6 @@
 ;; (def appbar-example  (r/adapt-react-class (.-AppbarExample (js/require "../js/components/examples/RNPExamples.js"))))
 ;; (def textinput-example  (r/adapt-react-class (.-TextInputExample (js/require "../js/components/examples/RNPExamples.js"))))
 ;; (def surface-example  (r/adapt-react-class (.-SurfaceExample rnp-examples)))
-
-(def test-ph {:onStartShouldSetPanResponder (fn [] 
-                                              (println "ShouldSetPanResponder is called")
-                                              true
-                                              )
-              :onStartShouldSetPanResponderCapture (fn []
-                                                     (println "Capture is called")
-                                                     false
-                                                     )
-              
-              }
-  
-  )
-
-(def test-pr (.create rn/PanResponder (clj->js test-ph)))
 
 (comment
   (in-ns 'onekeepass.mobile.rn-components))

@@ -1,12 +1,18 @@
 {
 	"folders": [
 		{
-			"path": "./src"
+			"path": "../mobile/src"
 		},
 		{
-			"path": "./js"
-		}
-	]
+			"path": "../mobile/js"
+		},
+		{
+			"path": "../mobile"
+		},
+	],
+	"settings": {
+		"editor.foldingStrategy": "indentation",
+
 		"calva.replConnectSequences": [
 			{
 				"name": "deps.edn + Krell",
@@ -17,6 +23,5 @@
 				}
 			}
 		]
-	
     }
 }

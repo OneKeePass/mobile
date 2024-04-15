@@ -20,6 +20,9 @@
     "dbSettings":"Database Settings",
     "dbTimeout":"Database Timeout",
     "description":"Description",
+    "enterCode":"Enter code",
+    "error":"Error",
+    "fieldName":"Field name",
     "general":"General",
     "importedKeyFiles":"Imported Key Files",
     "keyFile":"Key File",
@@ -30,6 +33,10 @@
     "masterPassword":"Master Password",
     "privacyPolicy":"Privacy Policy",
     "security":"Security",
+    "scanQRcode":"Scan QR Code",
+    "secretCodeOrUrl":"Secret code or Url",
+    
+    
     "dialog": {
         "titles": {
             "historyDelete": "Delete history entry",
@@ -41,7 +48,8 @@
             "openDatabase":"Open database",
             "newDatabase":"New database",
             "unlockDatabase":"Unlock database",
-            "remove":"Remove"
+            "remove":"Remove",
+            "setupOtp":"Set up OTP"
         },
         "texts": {
             "historyDelete": "Are you sure you want to delete this history entry permanently?",
@@ -52,6 +60,14 @@
             "remove":"All references to the database by the app will be removed. The original database is not deleted and can be opened later"
         }
     },
+
+    "errorDialog" :{
+        "titles": {
+            "filePickError":"File Pick Error",
+            "scanError":"Scan Errror"
+        }
+    },
+
     "modal.messages":{
         
     },
@@ -76,6 +92,7 @@
         "newCategory": "New Category",
         "newGroup": "New Group",
         "privacyPolicy":"Privacy Policy",
+        "scanQRcode":"Scan QR Code",
         "search": "Search",
         "settings": "Settings"
     },
@@ -88,6 +105,7 @@
         "continue": "Continue",
         "create":"Create",
         "edit": "Edit",
+        "enterManually":"Enter Manually",
         "generate": "Generate",
         "newdb": "New Database",
         "no": "No",

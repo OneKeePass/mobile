@@ -4,8 +4,7 @@
                                                              dots-icon-name
                                                              background-color
                                                              primary-color
-                                                             on-primary-color
-                                                             rnp-divider
+                                                             on-primary-color 
                                                              cust-rnp-divider
                                                              rnp-menu
                                                              rnp-menu-item
@@ -21,6 +20,7 @@
             [onekeepass.mobile.events.password-generator :as pg-events]
             [onekeepass.mobile.events.settings :as stgs-events]
             [onekeepass.mobile.common-components :as cc :refer [menu-action-factory]]
+            [onekeepass.mobile.constants :refer [CAMERA_SCANNER_PAGE_ID]]
             [onekeepass.mobile.entry-form :as entry-form]
             [onekeepass.mobile.group-form :as group-form]
             [onekeepass.mobile.start-page :refer [open-page-content]]
@@ -33,9 +33,9 @@
             [onekeepass.mobile.key-file-form :as kf-form]
             [onekeepass.mobile.app-settings :as app-settings]
             [onekeepass.mobile.settings :as settings :refer [db-settings-form-content]]
-
+            [onekeepass.mobile.scan-otp-qr :as scan-otp-qr]
             [onekeepass.mobile.about :as about :refer [about-content privacy-policy-content]]
-
+            
             [onekeepass.mobile.utils :as u]))
 
 (set! *warn-on-infer* true)
@@ -71,6 +71,7 @@
      (= page :settings)
      (= page :app-settings)
      (= page :key-file-form)
+     (= page CAMERA_SCANNER_PAGE_ID)
      (= page :about)
      (= page :privacy-policy))
     (do
@@ -179,7 +180,7 @@
 ;; If we have more than one appbar action icon on right side, the title text is not centered
 ;; One solution is to use appbar content with absolute position based on the discussion here
 ;;https://stackoverflow.com/questions/54120003/how-can-i-center-the-title-in-appbar-header-in-react-native-paper 
-(defn positioned-title [& {:keys [title page style titleStyle]}]
+(defn positioned-title [& {:keys [title page style titleStyle]}] 
   [:<>
    ;; Need a dummy content so that icons(from rnp-appbar-action) are placed on the right side 
    ;; We need to use the dummy one's zIndex = -1 so that any click action on the buttons used inside the custom title
@@ -189,6 +190,8 @@
    [rnp-appbar-content {:style (merge {:marginLeft 0  :position "absolute", :left 0, :right 0, :zIndex -1} style)
                         :color @background-color
                         :titleStyle (merge {:align-self "center"} titleStyle)
+
+                        ;; For some forms provides its own appbar title
                         :title (cond
 
                                  (= page :entry-form)
@@ -202,33 +205,33 @@
 
                                  (is-settings-page page)
                                  (r/as-element [settings/appbar-title page])
-
-                                 (= page :app-settings)
-                                 (r/as-element [app-settings/appbar-title])
-
+                                 
+                                 ;; Title for all other pages 
                                  (string? title)
                                  (lstr title)
 
                                  :else
                                  "No Title")}]])
 
-(defn- appbar-title [{:keys [page title]}]
+(defn- appbar-title [{:keys [page title]}] 
   (cond
     (or (= page :home)
         (= page :about)
-        (= page :privacy-policy)
+        (= page :privacy-policy) 
         (= page :entry-history-list)
         (= page :search)
         (= page :icons-list)
         (= page :settings)
         (= page :app-settings)
-        (= page :key-file-form))
+        (= page :key-file-form)
+        (= page CAMERA_SCANNER_PAGE_ID)
+        )
     [positioned-title :title title]
     #_[rnp-appbar-content {:style appbar-content-style :color background-color :title (lstr title)}]
 
     (= page :entry-list)
     [positioned-title :title @(elist-events/current-page-title)  :titleStyle {:max-width "50%"}] ;;
-
+    
     (= page :entry-category)
     [positioned-title :title @(cmn-events/current-database-name) :titleStyle {:max-width "50%"}]
 
@@ -237,7 +240,7 @@
 
     ;; (= page :app-settings)
     ;; [positioned-title :page page]
-
+    
     (= page :group-form)
     [positioned-title :page page :title title]
     #_[rnp-appbar-content {:style appbar-content-style :title (r/as-element [group-form/appbar-title title])}]
@@ -267,11 +270,13 @@
        (or
         (= page :about)
         (= page :privacy-policy)
+        (= page :qr-scanner)
         (= page :entry-history-list)
         (= page :icons-list)
         (= page :search)
         (= page :settings)
         (= page :app-settings)
+        (= page CAMERA_SCANNER_PAGE_ID)
         (= page :key-file-form))
        [rnp-appbar-back-action {:color @background-color
                                 :onPress cmn-events/to-previous-page}])
@@ -350,7 +355,15 @@
     [about-content]
 
     (= page :privacy-policy)
-    [privacy-policy-content]))
+    [privacy-policy-content]
+    
+    (= page CAMERA_SCANNER_PAGE_ID)
+    (scan-otp-qr/content)
+    
+    ;; (= page :qr-scanner)
+    ;; [totp/content]
+    
+    ))
 
 #_(defn appbar-main-content
     "App bar header and the body combined"
@@ -362,15 +375,16 @@
 
 
 (defn appbar-main-content
-  "App bar header and the body combined"
+  "An App bar has both header and the body combined"
   []
-  (let [handler-fns-m {:onStartShouldSetPanResponderCapture (fn []
-                                                              #_(println "New capture is called")
+  (let [handler-fns-m {:onStartShouldSetPanResponderCapture (fn [] 
                                                               (as-events/user-action-detected)
+                                                              ;; Returns false so that the event is passed to other 
+                                                              ;; listeners
                                                               false)}
 
         pan-handlers-m (-> (rnc/create-pan-responder handler-fns-m)
                            (js->clj :keywordize-keys true) :panHandlers)]
-    [rnc/rn-view (merge {:style {:flex 1}} pan-handlers-m #_(-> (js->clj rnc/test-pr :keywordize-keys true) :panHandlers))
+    [rnc/rn-view (merge {:style {:flex 1}} pan-handlers-m)
      [appbar-header-content @(cmn-events/page-info)]
      [appbar-body-content @(cmn-events/page-info)]]))

@@ -16,14 +16,13 @@ class MainApplication : Application(), ReactApplication {
             return BuildConfig.DEBUG
         }
 
-        override fun getPackages(): List<ReactPackage> {
-            val packages: MutableList<ReactPackage> = PackageList(this).packages
-            //TODO (Custom - Jey)
-            // OneKeePassAppPackage should be added as here to ensure, the app's NativeModules
-            // are loaded and be available to the UI layer
-            packages.add(OneKeePassAppPackage())
-            return packages
-        }
+        override fun getPackages(): List<ReactPackage> =
+                PackageList(this).packages.apply {
+                    // Packages that cannot be autolinked yet can be added manually here
+                    //TODO (Custom - Jey)
+                    // OneKeePassAppPackage should be added as here to ensure, the app's NativeModules
+                    add(OneKeePassAppPackage())
+                }
 
         override fun getJSMainModuleName(): String {
             return "index"

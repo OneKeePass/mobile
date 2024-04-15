@@ -111,7 +111,7 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
                 }
 
             } catch (e: SecurityException) {
-                // UI layer needs to handle this with apprpriate message to the user
+                // UI layer needs to handle this with appropriate message to the user
                 // This will happen, if we try to read the kdbx file without proper permissions
                 // We need to obtain while selecting the file.
                 // See 'pickKdbxFileToOpen'
@@ -359,7 +359,7 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
                 }
 
             } catch (e: SecurityException) {
-                // UI layer needs to handle this with apprpriate message to the user
+                // UI layer needs to handle this with appropriate message to the user
                 // This will happen, if we try to read the kdbx file without proper permissions
                 // We need to obtain while selecting the file.
                 // See 'pickKdbxFileToOpen'
@@ -377,7 +377,6 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
             }
         }
     }
-
 
     private fun resolveResponse(response: ApiResponse, promise: Promise) {
         when (response) {

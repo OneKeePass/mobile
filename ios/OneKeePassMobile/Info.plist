@@ -55,6 +55,8 @@
 	<string>This app wants to use your Face ID. Plaese Hit OK to activate Face ID</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string></string>
+  <key>NSCameraUsageDescription</key>
+  <string>$(PRODUCT_NAME) needs access to your Camera.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>FontAwesome.ttf</string>

@@ -40,7 +40,26 @@ pub enum ApiCallbackError {
     #[error("InternalCallbackError")]
     InternalCallbackError {reason:String},
 }
+
+impl From<uniffi::UnexpectedUniFFICallbackError> for ApiCallbackError {
+    fn from(callback_error: uniffi::UnexpectedUniFFICallbackError) -> Self {
+        log::error!("UnexpectedUniFFICallbackError is {}", callback_error);
+        Self::InternalCallbackError{reason:format!("UnexpectedUniFFICallbackError is {}", callback_error)}
+    }
+}
+
+impl From<ApiCallbackError> for kp_service::error::Error {
+    fn from(err: ApiCallbackError) -> Self {
+        Self::UnexpectedError(format!("{}",err))
+    }
+}
 /////////////////////////////////////////////////////////////////
+
+pub trait  EventDispatch: Send + Sync {
+    fn send_otp_update(&self,json_string:String) -> ApiCallbackResult<()>;
+    fn send_tick_update(&self,json_string:String) -> ApiCallbackResult<()>;
+}
+
 
 // This trait represents a callback declared in 'db_service.udl'
 // We need to implement this interface in Swift and Kotlin for the rust side use

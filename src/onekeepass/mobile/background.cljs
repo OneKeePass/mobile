@@ -1,8 +1,10 @@
 (ns onekeepass.mobile.background
+  "All backend api calls that are used across many events"
   (:require
    [react-native :as rn]
    ["@react-native-clipboard/clipboard" :as rnc-clipboard]
    ["react-native-file-viewer" :as native-file-viewer]
+   ["react-native-vision-camera" :as rn-vision-camera]
    [cljs.core.async :refer [go]]
    [cljs.core.async.interop :refer-macros [<p!]]
    [onekeepass.mobile.utils :as u :refer [contains-val?]]
@@ -17,15 +19,6 @@
 
 (defn write-string-to-clipboard [s]
   (.setString clipboard s))
-
-;; Not ussed for now
-#_(defn read-string-from-clipboard [callback-fn]
-    (go (try
-          (let [s (<p! (.getString clipboard))]
-            (callback-fn s))
-          (catch js/Error err
-            (js/console.log (ex-cause err))
-            (callback-fn nil)))))
 
 ;; Use (.open file-viewer "full file path")
 (def file-viewer ^js/FileViewer (.-default ^js/NFileViewer native-file-viewer))
@@ -58,26 +51,71 @@
   ;; Valid values expected for BiometricAvailable are "true" or "false" for both iOS and Android
   (= (-> okp-db-service .getConstants .-BiometricAvailable) "true"))
 
+(defn- transform-resquest-args-excluding-keys
+  "All keys in the incoming args map from UI will be transformed recursively except those that 
+   match in the vec keys-exclude-v
+   "
+  [args keys-exclude-v]
+  (let [t-fn (fn [k]
+               (if (contains-val? keys-exclude-v k)
+                 k
+                 (csk/->snake_case k)))]
+    (cske/transform-keys t-fn args)))
+
 (defn- api-args->json
-  [api-args convert-request]
-  (if convert-request
-    ;; changes all keys of args map to snake_case (e.g db-key -> db_key, ...)
-    (->> api-args (cske/transform-keys csk/->snake_case) clj->js (.stringify js/JSON))
-    ;; Here the api-args map has all its keys of 'snake_case' form as they converted in the calling
-    ;; fn itself
-    (->>  api-args clj->js  (.stringify js/JSON))))
+  "Converts the api-args map to a json string that can be deserilaized on the backend as 
+  arguments for the invoked command fn
+  "
+  [api-args & {:keys [convert-request
+                      ;; Keys in this vector are not converted to snake_case
+                      ;; Typically string that are used as keys in a HashMap 
+                      args-keys-excluded]
+               :or {convert-request true
+                    args-keys-excluded nil}}]
+  (let [args-keys-excluded (when (vector? args-keys-excluded) args-keys-excluded)]
+    (cond
+      ;; args-keys-excluded supercedes convert-request
+      (vector? args-keys-excluded)
+      (->> (transform-resquest-args-excluding-keys api-args args-keys-excluded) clj->js (.stringify js/JSON))
+
+      ;; changes all keys of args map to snake_case (e.g db-key -> db_key, ...)
+      convert-request
+      (->> api-args (cske/transform-keys csk/->snake_case) clj->js (.stringify js/JSON))
+
+      ;; args-keys-excluded is nil and convert-request is false
+      :else
+      ;; Here the api-args map has all its keys of 'snake_case' form as they converted in the calling
+      ;; fn itself
+      (->>  api-args clj->js  (.stringify js/JSON)))))
+
+(defn transform-response-excluding-keys
+  "Called to transform the keys recursively in all maps found in the json response except those 
+   keys returned by keys-excluded-fn. 
+   Typically a partial fn is created with some 'keys-excluded-fn' as first arg and then the resulting fn
+   is passed in 'convert-response-fn' to transform-api-response
+   "
+  [keys-excluded-fn response]
+  (let [keys-exclude-vec  (keys-excluded-fn (get response "ok"))
+        t-fn (fn [k]
+               (if (contains-val? keys-exclude-vec k)
+                 k
+                 (csk/->kebab-case-keyword k)))]
+    (cske/transform-keys t-fn response)))
 
 (defn transform-api-response
-  "Transforms the resolved value and returns a result map with key :ok or :error"
+  "Transforms the resolved value and returns a result map with key :ok or :error
+  The first arg is the response returned by the api as a stringified json object
+  and this string will be parsed to a map and then keys are transformed 
+  The second args is a map with few options
+  "
   [resolved {:keys [convert-response
                     convert-response-fn
                     no-response-conversion]
              :or {convert-response true
                   no-response-conversion false}}]
-  ;; A typical resolved response is of form {"ok" {}, "error" nil} or {"ok" nil, "error" "someerror value"}
+  ;; A typical resolved response is a json string of the 
+  ;; form {"ok" {}, "error" nil} or {"ok" nil, "error" "someerror value"}
   ;; e.g {"ok" {"k1" "v1", "k2" "v1"}, "error" nil} 
-  ;; May need to allow the caller to do the transformation as done in desktop application
-  ;; The transformation fn need to extract the successful value from "ok" and do the custom conversion
   (cond
     no-response-conversion
     {:ok resolved}
@@ -85,6 +123,7 @@
     (not (nil? convert-response-fn))
     (->> resolved (.parse js/JSON) js->clj convert-response-fn) ;; custom transformer of response
 
+    ;; All keys are transformed to keywords
     convert-response
     (->> resolved (.parse js/JSON) js->clj (cske/transform-keys csk/->kebab-case-keyword))
 
@@ -145,21 +184,35 @@
 
 (defn invoke-api
   "Called to invoke commands from ffi
+   The arg 'name' is the name of backend fn to call
+   The args 'api-args' is map that provides arguments to the ffi fns (commands.rs) on the backend 
+   The arg 'dispatch-fn' is called with the returned map (parsed from a json string)
+   The final arg is an optional map 
   "
   [name api-args dispatch-fn &
-   {:keys [convert-request convert-response convert-response-fn]
-    :or {convert-request true convert-response true}}]
-  (call-api-async (fn [] (.invokeCommand okp-db-service name (api-args->json api-args convert-request)))
+   {:keys [convert-request args-keys-excluded convert-response convert-response-fn]
+    :or {convert-request true
+         args-keys-excluded nil
+         convert-response true}}]
+  (call-api-async (fn [] (.invokeCommand okp-db-service
+                                         name
+                                         (api-args->json api-args
+                                                         :convert-request convert-request
+                                                         :args-keys-excluded args-keys-excluded)))
                   dispatch-fn :convert-response convert-response :convert-response-fn convert-response-fn))
 
-(defn open-https-url 
+(defn open-https-url
   "Called to open a valid web url using the built-in browser
    It is assumed the arg 'https-url' is a valid https url and no validation is done here for this
    "
-  [https-url dispatch-fn] 
+  [https-url dispatch-fn]
   ;; .openURL returns a promise and it is resolved in call-api-async
-  (call-api-async 
+  (call-api-async
    (fn [] (.openURL rn-native-linking https-url)) dispatch-fn :no-response-conversion true))
+
+(defn open-mobile-settings [dispatch-fn]
+  (call-api-async
+   (fn [] (.openSettings rn-native-linking )) dispatch-fn :no-response-conversion true))
 
 (defn view-file
   "Called to view any file using the native file viewer"
@@ -228,7 +281,9 @@
   (call-api-async (fn [] (.pickAndSaveNewKdbxFile
                           okp-document-pick-service file-name
                           ;; Explicit conversion of the api args to json here
-                          (api-args->json {:new_db (request-argon2key-transformer new-db)} false)))
+                          (api-args->json
+                           {:new_db (request-argon2key-transformer new-db)}
+                           :convert-request false)))
                   ;; This dipatch function receives a map with keys [file-name full-file-name-uri] as ':ok' value
                   dispatch-fn
                   :error-transform true))
@@ -309,7 +364,7 @@
 (defn ios-complete-save-as-on-error [db-key new-db-key dispatch-fn]
   (call-api-async (fn [] (.completeSaveAsOnError
                           okp-db-service
-                          (api-args->json {:db-key db-key :new-db-key new-db-key} true)))
+                          (api-args->json {:db-key db-key :new-db-key new-db-key})))
                   dispatch-fn))
 
 ;; 
@@ -330,7 +385,7 @@
   "After user picks up a file to use as Key File, this api is called to copy to a dir inside the app"
   [db-key full-file-name dispatch-fn]
   (call-api-async (fn [] (.uploadAttachment okp-db-service full-file-name
-                                            (api-args->json {:db_key db-key} false)))
+                                            (api-args->json {:db_key db-key} :convert-request false)))
                   dispatch-fn :error-transform true))
 
 (defn create-kdbx
@@ -341,7 +396,7 @@
   [full-file-name new-db dispatch-fn]
   (call-api-async (fn [] (.createKdbx okp-db-service full-file-name
                                        ;; Note the use of snake_case for all keys and false as convert-request value
-                                      (api-args->json {:new_db (request-argon2key-transformer new-db)} false)))
+                                      (api-args->json {:new_db (request-argon2key-transformer new-db)} :convert-request false)))
                   dispatch-fn :error-transform true))
 
 ;; Used to get any uri that may be avaiable to open when user starts our app by pressing 
@@ -362,14 +417,16 @@
   (call-api-async (fn []
                     (.readKdbx okp-db-service
                                db-file-name
-                               (api-args->json {:db-file-name db-file-name :password password :key_file_name key-file-name} true)))
+                               (api-args->json {:db-file-name db-file-name :password password :key_file_name key-file-name} 
+                                               :convert-request true)))
                   dispatch-fn :error-transform true))
 
 (defn save-kdbx [full-file-name overwrite dispatch-fn]
   ;; By default, we pass 'false' for the overwrite arg
   (call-api-async (fn [] (.saveKdbx okp-db-service full-file-name overwrite)) dispatch-fn :error-transform true))
 
-(defn categories-to-show [db-key dispatch-fn]
+;; Deprecate
+#_(defn categories-to-show [db-key dispatch-fn]
   (invoke-api "categories_to_show" {:db-key db-key} dispatch-fn))
 
 (defn combined-category-details
@@ -631,11 +688,87 @@
   (invoke-api "save_attachment_as_temp_file" {:db-key db-key :name name :data-hash-str data-hash-str} dispatch-fn :no-response-conversion true))
 
 
-(defn update-db-session-timeout [db-session-timeout dispatch-fn] 
+(defn update-db-session-timeout [db-session-timeout dispatch-fn]
   (invoke-api "update_session_timeout" {:timeout_type 1, :db-session-timeout db-session-timeout} dispatch-fn))
 
 (defn update-clipboard-timeout [clipboard-timeout dispatch-fn]
   (invoke-api "update_session_timeout" {:timeout_type 1,:clipboard-timeout clipboard-timeout} dispatch-fn))
+
+;;;;;;;;;;;;;;;;;;;;;;;;; OTP, Timer etc ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn set-timeout [period-in-milli-seconds timer-id dispatch-fn]
+  (invoke-api "set_timeout" {:period-in-milli-seconds period-in-milli-seconds :timer-id timer-id} dispatch-fn))
+
+(defn start-polling-entry-otp-fields [db-key entry-uuid otp-fields dispatch-fn]
+  ;; otp-fields is a map where keys are otp field names and values are a map with keys [ttl period]
+  (let [exclude-keys (-> otp-fields keys vec)]
+    ;; exclude-keys is vec of all otp field names and we use exclude-keys from not transforming these keys
+    (invoke-api "start_polling_entry_otp_fields"
+                {:db-key db-key
+                 :entry-uuid entry-uuid
+                 :otp-fields {:token-ttls otp-fields}}
+                dispatch-fn
+                ;; keys in the passed args map are transformed except those in this exclude vec
+                :args-keys-excluded exclude-keys)))
+
+(defn stop-polling-all-entries-otp-fields [_db-key dispatch-fn]
+  #_(invoke-api "stop_polling_all_entries_otp_fields" {:db-key db-key} dispatch-fn)
+  (invoke-api "stop_polling_all_entries_otp_fields" {} dispatch-fn))
+
+(defn form-otp-url 
+  "The arg 'otp-settings' is map with secret-or-url,  eg {:secret-or-url \"base32secret3232\"}"
+  [otp-settings dispatch-fn] 
+  (invoke-api "form_otp_url" {:otp-settings otp-settings} dispatch-fn :convert-request true ))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  Camera static methods calls ;;;;;;;;;;;
+
+;; Reagent component 'camera' from 'react-native-vision-camera - VisionCamera' is defined in 'rn-components.cljs'
+
+;; Need to use (js/Object.getOwnPropertyNames camera-obj) in repl to find all static methods 
+;; defined in 'Camera'
+(def camera-obj (.-Camera ^js/RNVisionCamera rn-vision-camera))
+
+(defn camera-permission-status 
+  "
+  Returns one of 'granted' | 'not-determined' | 'denied' | 'restricted'
+
+  not-determined: Your app has not yet requested permission from the user. Continue by calling the request functions.
+
+  denied: Your app has already requested permissions from the user, but was explicitly denied. 
+  You cannot use the request functions again, 
+  but you can use the Linking API to redirect the user to the Settings App where he can manually grant the permission.
+
+  restricted: Your app cannot use the Camera or Microphone because that 
+  functionality has been restricted, possibly due to active restrictions such as parental controls being in place
+  "
+  []
+  (.getCameraPermissionStatus camera-obj))
+
+;; See https://react-native-vision-camera.com/docs/api/classes/Camera#requestcamerapermission
+;; https://react-native-vision-camera.com/docs/guides#requesting-permissions
+(defn request-camera-permission 
+  "The static method .requestCameraPermission returns a promise and it is resolved in call-api-async
+  
+  By using :no-response-conversion, the resolved value is returned as {:ok resolved-value}
+  The resolved value is either 'granted' or 'denied' 
+  
+  granted: The app is authorized to use said permission. Continue with using the <Camera> view.
+
+  denied: The user explicitly denied the permission request alert. 
+  You cannot use the request functions again, but you can use 
+  the Linking API to redirect the user to the Settings App where he can manually grant the permission.
+
+  restricted: The app cannot use the Camera or Microphone because that functionality has been restricted, 
+  possibly due to active restrictions such as parental controls being in place
+  "
+  [dispatch-fn] 
+  (call-api-async (fn [] (.requestCameraPermission camera-obj)) dispatch-fn :no-response-conversion true))
+
+(defn available-cameras 
+  "Returns a list of all available camera devices on the current phone"
+  []
+  (-> (.getAvailableCameraDevices camera-obj) js->clj))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Native Events ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; While compiling with advanced option, if we use '(u/is-iOS)' to check platform
@@ -720,14 +853,15 @@
     ([event-name]
      (unregister-event-listener :common event-name)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (comment
   (require '[cljs.pprint]) ;;https://cljs.github.io/api/cljs.pprint/
   (cljs.pprint/pprint someobject)
   ;; daf114d0-a518-4e13-b75b-fbe893e69a9d 8bd81fe1-f786-46c3-b0e4-d215f8247a10
-
-  (in-ns 'onekeepass.mobile.background)
+  
+  (in-ns 'onekeepass.mobile.background) 
 
   (re-frame.core/dispatch [:common/update-page-info {:page :home :title "Welcome"}])
 
@@ -736,6 +870,13 @@
                     :no-response-conversion true :error-transform false))
 
   (def db-key (-> @re-frame.db/app-db :current-db-file-name))
+  
+  ;; Use this in repl before doing the refresh in metro dev server, particularly when async services
+  ;; are sending events to the front end via rust middle layer -see 'init_async_listeners'
+  ;; This ensures no active messages are from backend async loops
+  ;; Otherwise, we may see error "*** Assertion failure in -[RCTEventEmitter sendEventWithName:body:]()," in xcode logs
+  ;; In case of Android, this is not an issue
+  (invoke-api  "shutdown_async_services" {} #(println %))
 
   (invoke-api "get_file_info" {:db-key db-key} #(println %))
 
@@ -745,4 +886,5 @@
 
   (invoke-api  "list_backup_files" {} #(println %))
 
-  (invoke-api  "list_bookmark_files" {} #(println %)))
+  (invoke-api  "list_bookmark_files" {} #(println %))
+  )

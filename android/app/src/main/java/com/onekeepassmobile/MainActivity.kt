@@ -2,6 +2,7 @@ package com.onekeepassmobile
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
@@ -74,5 +75,15 @@ class MainActivity : ReactActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         EventEmitter.onNewIntent(intent)
+    }
+
+    override fun onPause() {
+        super.onPause();
+        Log.d("MainActivity", "On pause is called...")
+    }
+
+    override fun onResume() {
+        super.onResume()
+        Log.d("MainActivity", "On resume is called...")
     }
 }
