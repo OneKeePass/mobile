@@ -4,8 +4,7 @@
                                                              dots-icon-name
                                                              background-color
                                                              primary-color
-                                                             on-primary-color
-                                                             rnp-divider
+                                                             on-primary-color 
                                                              cust-rnp-divider
                                                              rnp-menu
                                                              rnp-menu-item
@@ -37,8 +36,6 @@
             [onekeepass.mobile.scan-otp-qr :as scan-otp-qr]
             [onekeepass.mobile.about :as about :refer [about-content privacy-policy-content]]
             
-            #_[onekeepass.mobile.totp :as totp]
-
             [onekeepass.mobile.utils :as u]))
 
 (set! *warn-on-infer* true)
@@ -208,10 +205,8 @@
 
                                  (is-settings-page page)
                                  (r/as-element [settings/appbar-title page])
-
-                                ;;  (= page :app-settings)
-                                ;;  (r/as-element [app-settings/appbar-title])
                                  
+                                 ;; Title for all other pages 
                                  (string? title)
                                  (lstr title)
 
@@ -222,8 +217,7 @@
   (cond
     (or (= page :home)
         (= page :about)
-        (= page :privacy-policy)
-        ;; (= page :qr-scanner)
+        (= page :privacy-policy) 
         (= page :entry-history-list)
         (= page :search)
         (= page :icons-list)

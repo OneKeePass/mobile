@@ -429,7 +429,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  Page Navigation ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;; All valid pages are identified keywords with title
+;; Each valid pages have a keyword indentifier as id and a title
 ;; Valid page ids are [:home :about ...]  See appbar.cljs
 ;; Need to be added to constants.cljs
 

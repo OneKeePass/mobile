@@ -200,19 +200,19 @@
 (defn otp-field-with-token-update
   "Shows token value which is updated to a new value based on its 'period' value - Typically every 30sec 
    Also there is progress indicator that is updated every second
-   This is shown only when the form is in an non edit mode - that is when in read mode
+   This is shown only when the form is in an non edit mode - that is when in read mode and edit is false
    "
-  [{:keys [key
-           value
+  [{:keys [key 
            protected
-           edit]}]
-  (let [{:keys [token ttl period]} @(form-events/otp-currrent-token key)
-        valid-token-found (not (nil? token))]
+           _edit]}]
+  (let [{:keys [token ttl period]} @(form-events/otp-currrent-token key) 
+        valid-token-found (not (nil? token))] 
     [rn-view
      [rn-view {:flexDirection "row" :style {:flex 1}}
       [rnp-text-input {:label (if (= OTP key) "One-Time Password" key)
-                       :value (if valid-token-found (if-not edit (formatted-token token) value) "  ")
-                       :showSoftInputOnFocus edit
+                       
+                       :value (if valid-token-found (formatted-token token) "  ")
+                       :showSoftInputOnFocus false
                        :autoCapitalize "none"
                        :keyboardType "email-address"
                        :autoCorrect false
@@ -224,12 +224,10 @@
                        :onFocus #(field-focus-action key true)
                        :onBlur #(field-focus-action key false)
                        :onChangeText nil
-                       :onPressOut (if-not edit
-                                     #(cmn-events/write-string-to-clipboard
-                                       {:field-name key
-                                        :protected protected
-                                        :value token})
-                                     nil)
+                       :onPressOut #(cmn-events/write-string-to-clipboard
+                                     {:field-name key
+                                      :protected protected
+                                      :value token})
                        :secureTextEntry false
                        :right nil}]
       [rn-view {:style {:width "10%" :justify-content "center"}}
@@ -247,7 +245,9 @@
 
 
 (defn opt-field-no-token
-  "This field will not show token and instead it is a text input with otp url"
+  "This field will not show token and instead it is a text input with otp url.
+   This is used during edit mode
+  "
   [{:keys [key
            value
            section-name

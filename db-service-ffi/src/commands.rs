@@ -391,7 +391,6 @@ impl Commands {
                 service_ok_call! (args, StartEntryOtpArg {db_key,entry_uuid,otp_fields} => async_service start_polling_entry_otp_fields(&db_key,&entry_uuid,otp_fields))
             }
 
-            //"stop_polling_all_entries_otp_fields" => Self::stop_polling_all_entries_otp_fields(),
             "stop_polling_all_entries_otp_fields" => {
                 wrap_no_arg_ok_call! (async_service stop_polling_all_entries_otp_fields)
             }
@@ -673,11 +672,6 @@ impl Commands {
         let pref = AppState::global().preference.lock().unwrap();
         ok_json_str(pref.clone())
     }
-
-    // fn  stop_polling_all_entries_otp_fields() -> ResponseJson {
-    //     async_service::stop_polling_all_entries_otp_fields();
-    //     ok_json_str(true)
-    // }
 
     // fn test_call() -> ResponseJson {
     //     onekeepass_core::async_service::start();

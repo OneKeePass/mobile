@@ -24,9 +24,9 @@ namespace db_service {
 };
 
 // New way of using callback
-// The rust side may implement and which can be used in Swift or in Kotlin side 
-// 'WithForeign' indicates, there is also an implementaion in Swift/Kotlin 
-// If this is implemented in Swift/Kotlin, then that is a callback for the rust side use 
+// The rust side may be implemented and which can then be used in Swift or in Kotlin side 
+// The 'WithForeign' attribute indicates, there is also an implementaion in Swift/Kotlin 
+// If this is implemented in Swift/Kotlin, then that is a callback for the rust side to use 
 // Swift/Kotlin implementaion is passed as 'Arc<dyn EventDispatch>'
 [Trait,WithForeign]
 interface EventDispatch {

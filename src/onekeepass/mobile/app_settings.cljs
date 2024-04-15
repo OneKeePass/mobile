@@ -1,25 +1,17 @@
 (ns onekeepass.mobile.app-settings
   (:require
    [reagent.core :as r]
-   [onekeepass.mobile.rn-components :as rnc :refer [lstr
-                                                    appbar-text-color
+   [onekeepass.mobile.rn-components :as rnc :refer [lstr 
                                                     page-background-color
                                                     inverse-onsurface-color
-                                                    modal-selector-colors
-                                                    page-title-text-variant
+                                                    modal-selector-colors 
                                                     rnms-modal-selector
                                                     rn-view
                                                     rn-safe-area-view
-                                                    rn-section-list
-                                                    rnp-text-input
-                                                    rnp-helper-text
-                                                    rnp-text-input-icon
-                                                    rnp-icon-button
-                                                    rnp-button
+                                                    rn-section-list 
                                                     rnp-list-item
                                                     rnp-divider
-                                                    rnp-list-icon
-                                                    rnp-portal
+                                                    rnp-list-icon 
                                                     rnp-text]]
    [onekeepass.mobile.events.app-settings :as as-events]
    [onekeepass.mobile.constants :as const]))

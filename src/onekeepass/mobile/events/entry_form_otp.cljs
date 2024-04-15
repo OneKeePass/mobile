@@ -186,11 +186,19 @@
  :entry-form/verify-form-fields
  (fn [{:keys [db]} [_event-id call-on-no-error-fn]]
    (let [form-data (get-in-key-db db [entry-form-key :data])
-         error-fields (validate-entry-form-data form-data)
-         errors-found (boolean (seq error-fields))] 
+         {:keys [group-selection title] :as error-fields} (validate-entry-form-data form-data)
+         errors-found (boolean (seq error-fields))]
      (if errors-found
        {:db (assoc-in-key-db db [entry-form-key :error-fields] error-fields)
-        :fx [[:dispatch [:common/error-box-show "Fields" "One or more required fields are missing"]]]}
+        :fx [[:dispatch [:common/error-box-show "Fields" (cond
+                                                           (not (nil? title))
+                                                           title
+
+                                                           (not (nil? group-selection))
+                                                           group-selection
+
+                                                           :else
+                                                           "One or more required fields are missing")]]]}
        (do
          ;; Called the passed callback fn when title and group are not blank
          (call-on-no-error-fn)

@@ -53,7 +53,7 @@
 
 (defn- transform-resquest-args-excluding-keys
   "All keys in the incoming args map from UI will be transformed recursively except those that 
-   match in keys-exclude
+   match in the vec keys-exclude-v
    "
   [args keys-exclude-v]
   (let [t-fn (fn [k]
@@ -748,12 +748,16 @@
 ;; https://react-native-vision-camera.com/docs/guides#requesting-permissions
 (defn request-camera-permission 
   "The static method .requestCameraPermission returns a promise and it is resolved in call-api-async
+  
   By using :no-response-conversion, the resolved value is returned as {:ok resolved-value}
-  he resolved value is either 'granted' or 'denied' 
+  The resolved value is either 'granted' or 'denied' 
   
   granted: The app is authorized to use said permission. Continue with using the <Camera> view.
-  denied: The user explicitly denied the permission request alert. You cannot use the request functions again, but you can use 
+
+  denied: The user explicitly denied the permission request alert. 
+  You cannot use the request functions again, but you can use 
   the Linking API to redirect the user to the Settings App where he can manually grant the permission.
+
   restricted: The app cannot use the Camera or Microphone because that functionality has been restricted, 
   possibly due to active restrictions such as parental controls being in place
   "
