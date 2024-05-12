@@ -84,7 +84,7 @@
                                                   :save-message "Delete and Saving...."
                                                   :on-save-ok (fn []
                                                                 (dispatch [:common/refresh-forms])
-                                                                (dispatch [:common/message-snackbar-open "Group/Category deleted"])
+                                                                (dispatch [:common/message-snackbar-open 'groupOrCatDeleted])
                                                                 (when from-group-page
                                                                   ;; Need to go back to the previous page as group delete 
                                                                   ;; is called from the group's header menu
@@ -245,6 +245,6 @@
                                                 :save-message "Deleted permanently and Saving" 
                                                 :on-save-ok (fn []
                                                               (dispatch [:common/refresh-forms])
-                                                              (dispatch [:common/message-snackbar-open "Entries deleted permanently"])
+                                                              (dispatch [:common/message-snackbar-open 'entriesDeletedPermanently])
                                                               (dispatch [:common/previous-page]))}]]]}))
 

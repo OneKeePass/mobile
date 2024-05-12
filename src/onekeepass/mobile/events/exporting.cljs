@@ -36,4 +36,4 @@
    (bg/export-kdbx exported-data-full-file-name
                    (fn [api-response]
                      (when-not (on-error api-response)
-                       (dispatch [:common/message-snackbar-open "Action completed"]))))))
+                       (dispatch [:common/message-snackbar-open  'actionCompleted]))))))

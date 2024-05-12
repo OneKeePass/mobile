@@ -1,47 +1,28 @@
 (ns
  onekeepass.mobile.start-page
-  (:require [reagent.core :as r] 
-            [onekeepass.mobile.rn-components
-             :as rnc
-             :refer [lstr
-                     primary-color
-                     primary-container-color
-                     divider-color-1
-
-                     dots-icon-name
-
-                     rn-keyboard
-                     rn-view
-                     rn-safe-area-view
-                     rn-section-list
-                     rnp-menu
-                     rnp-menu-item
-                     rnp-text
-                     rnp-list-item
-                     rnp-list-icon
-                     rnp-icon-button
-                     rnp-divider
-                     cust-rnp-divider
-                     rnp-text-input
-                     rnp-helper-text
-                     rnp-text-input-icon
-                     rnp-portal
-                     cust-dialog
-                     rnp-dialog-title
-                     rnp-dialog-content
-                     rnp-dialog-actions
-                     rnp-button
-                     rnp-progress-bar]]
-            [onekeepass.mobile.utils :as u]
+  (:require [onekeepass.mobile.background :refer [is-iOS]]
+            [onekeepass.mobile.common-components :as cc  :refer [menu-action-factory
+                                                                 message-dialog]]
             [onekeepass.mobile.constants :as const]
-            [onekeepass.mobile.background :refer [is-iOS]]
             [onekeepass.mobile.date-utils :refer [utc-to-local-datetime-str]]
-            [onekeepass.mobile.common-components :as cc  :refer [menu-action-factory message-dialog]]
+            [onekeepass.mobile.events.common :as cmn-events]
+            [onekeepass.mobile.events.exporting :as exp-events]
             [onekeepass.mobile.events.new-database :as ndb-events]
             [onekeepass.mobile.events.open-database :as opndb-events]
             [onekeepass.mobile.events.settings :as stgs-events]
-            [onekeepass.mobile.events.common :as cmn-events]
-            [onekeepass.mobile.events.exporting :as exp-events]))
+            [onekeepass.mobile.rn-components
+             :as rnc
+             :refer [cust-dialog cust-rnp-divider divider-color-1
+                     dots-icon-name lstr primary-color primary-container-color
+                     rn-keyboard rn-safe-area-view rn-section-list rn-view
+                     rnp-button rnp-dialog-actions rnp-dialog-content
+                     rnp-dialog-title rnp-divider rnp-helper-text
+                     rnp-icon-button rnp-list-icon rnp-list-item rnp-menu
+                     rnp-menu-item rnp-portal rnp-progress-bar rnp-text
+                     rnp-text-input rnp-text-input-icon]]
+            [onekeepass.mobile.translation :refer [lstr-dlg-title]]
+            [onekeepass.mobile.utils :as u]
+            [reagent.core :as r]))
 
 ;;(set! *warn-on-infer* true)
 
@@ -180,7 +161,7 @@
 
        (if  key-file-name-part
          [rnp-text-input {:style {:margin-top 10}
-                          :label "Key File"
+                          :label (lstr 'keyFile)
                           :defaultValue key-file-name-part
                           :readOnly (if (is-iOS) true false)
                           :onPressIn #(opndb-events/show-key-file-form)
@@ -193,7 +174,7 @@
          [rnp-text {:style {:margin-top 15
                             :textDecorationLine "underline"
                             :text-align "center"}
-                    :onPress #(opndb-events/show-key-file-form)} "Key File"])]
+                    :onPress #(opndb-events/show-key-file-form)} (lstr 'keyFile)])]
 
       [rnp-progress-bar {:style {:margin-top 10} :visible in-progress? :indeterminate true}]]
 
@@ -319,7 +300,7 @@
                    :onPress (fn []
                               (hide-db-action-menu)
                               (swap! remove-confirm-dialog-data assoc
-                                     :title (str "Removing" " " file-name)
+                                     :title (lstr-dlg-title 'removing {:dbFileName file-name})
                                      :confirm-text (lstr "dialog.texts.remove")
                                      :call-on-ok-fn #(cmn-events/remove-from-recent-list
                                                       db-file-path))

@@ -1,0 +1,22 @@
+{
+    "allEntries": "Todas las entradas",
+    "deleted": "Eliminado",
+    "favorites": "Favoritos",
+    "entryType.titles": {
+        "bankAccount": "Cuenta bancaria",
+        "credit/DebitCard": "Tarjeta de crédito / débito",
+        "login": "Acceso",
+        "wirelessRouter": "Router inalámbrico"
+    },
+    "button.labels": {
+        "opendb": "Abrir base de datos",
+        "newdb": "Nueva base de datos"
+    },
+
+    "menu.labels": {
+        "categories": "Categorías",
+        "groups": "Grupos",
+        "tags": "Etiquetas",
+        "types": "Tipos"
+    }
+}

@@ -1,0 +1,17 @@
+{
+    "allEntries": "Toutes les entrées",
+    "deleted": "Supprimé",
+    "favorites": "Favoris",
+    "entryTypeTitles": {
+        "bankAccount": "Compte bancaire",
+        "credit/DebitCard": "Carte de crédit / débit",
+        "login": "Se connecter",
+        "wirelessRouter": "Routeur sans fil"
+    },
+    "menu.labels": {
+        "categories": "Catégories",
+        "groups": "Groupes",
+        "tags": "Mots clés",
+        "types": "Les types"
+    }
+}

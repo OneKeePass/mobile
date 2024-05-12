@@ -27,6 +27,7 @@
 		F9C4D29929AFEC8A00B83DEB /* OkpEventsBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = F9C4D29829AFEC8A00B83DEB /* OkpEventsBridge.m */; };
 		F9C4D29B29B11B1600B83DEB /* OkpExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9C4D29A29B11B1600B83DEB /* OkpExport.swift */; };
 		F9C4D29D29B11BAF00B83DEB /* OkpExportBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = F9C4D29C29B11BAF00B83DEB /* OkpExportBridge.m */; };
+		F9C4EFE82BEBFEC200B7214E /* Translations in Resources */ = {isa = PBXBuildFile; fileRef = F9C4EFE72BEBFEC200B7214E /* Translations */; };
 		F9CD34AA28E2AABC00B6C59C /* FontAwesome.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F9CD349A28E2AABB00B6C59C /* FontAwesome.ttf */; };
 		F9CD34AB28E2AABC00B6C59C /* Feather.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F9CD349B28E2AABB00B6C59C /* Feather.ttf */; };
 		F9CD34AC28E2AABC00B6C59C /* EvilIcons.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F9CD349C28E2AABC00B6C59C /* EvilIcons.ttf */; };
@@ -91,6 +92,7 @@
 		F9C4D29829AFEC8A00B83DEB /* OkpEventsBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OkpEventsBridge.m; sourceTree = "<group>"; };
 		F9C4D29A29B11B1600B83DEB /* OkpExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OkpExport.swift; sourceTree = "<group>"; };
 		F9C4D29C29B11BAF00B83DEB /* OkpExportBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OkpExportBridge.m; sourceTree = "<group>"; };
+		F9C4EFE72BEBFEC200B7214E /* Translations */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Translations; path = OneKeePassMobile/Translations; sourceTree = "<group>"; };
 		F9CD349A28E2AABB00B6C59C /* FontAwesome.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; name = FontAwesome.ttf; path = "../node_modules/react-native-vector-icons/Fonts/FontAwesome.ttf"; sourceTree = "<group>"; };
 		F9CD349B28E2AABB00B6C59C /* Feather.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; name = Feather.ttf; path = "../node_modules/react-native-vector-icons/Fonts/Feather.ttf"; sourceTree = "<group>"; };
 		F9CD349C28E2AABC00B6C59C /* EvilIcons.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; name = EvilIcons.ttf; path = "../node_modules/react-native-vector-icons/Fonts/EvilIcons.ttf"; sourceTree = "<group>"; };
@@ -155,6 +157,7 @@
 		13B07FAE1A68108700A75B9A /* OneKeePassMobile */ = {
 			isa = PBXGroup;
 			children = (
+				F9C4EFE72BEBFEC200B7214E /* Translations */,
 				F9E4235A29E62B3400A8F366 /* DbServiceFFILib */,
 				F9E4235629E5F39000A8F366 /* DbServiceFFI */,
 				F9E4235429DC8CE000A8F366 /* BootSplash.storyboard */,
@@ -392,6 +395,7 @@
 			files = (
 				F9CD34B428E2AABC00B6C59C /* Entypo.ttf in Resources */,
 				F9CD34B028E2AABC00B6C59C /* Foundation.ttf in Resources */,
+				F9C4EFE82BEBFEC200B7214E /* Translations in Resources */,
 				F9CD34B128E2AABC00B6C59C /* Ionicons.ttf in Resources */,
 				F9CD34AD28E2AABC00B6C59C /* MaterialCommunityIcons.ttf in Resources */,
 				F9CD34AC28E2AABC00B6C59C /* EvilIcons.ttf in Resources */,
@@ -687,7 +691,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/OneKeePassMobile/DbServiceFFILib",
 				);
-				MARKETING_VERSION = 0.12.0;
+				MARKETING_VERSION = 0.13.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -731,7 +735,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/OneKeePassMobile/DbServiceFFILib",
 				);
-				MARKETING_VERSION = 0.12.0;
+				MARKETING_VERSION = 0.13.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",

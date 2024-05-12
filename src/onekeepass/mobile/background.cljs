@@ -130,7 +130,9 @@
     :else
     (->> resolved (.parse js/JSON) js->clj)))
 
-(def test-data (atom nil))
+;; We can store the last raw response here and can be used for debugging during
+;; development time. Need to uncomment the '(reset!...) call in fn 'call-api-async' for this
+(def test-raw-response-data (atom nil))
 
 (defn call-api-async
   "Calls the backend APIs asynchronously
@@ -145,12 +147,13 @@
     (try
       (let [r (<p! (aync-fn))
             deserialized-response (transform-api-response r opts)]
-        ;;(reset! test-data r)
+        ;; Uncomment for debugging raw response during dev time only  
+        ;;(reset! test-raw-response-data r)
         (dispatch-fn deserialized-response))
       (catch js/Error err
         (do
 
-          (reset! test-data err)
+          ;;(reset! test-raw-response-data err)
 
           ;; (println "type of err is " (type err))
           ;; (println "type of (ex-cause err) is " (type (ex-cause err))) 
@@ -651,7 +654,7 @@
 #_(defn recently-used-dbs-info [dispatch-fn]
     (invoke-api "recently_used_dbs_info" {} dispatch-fn))
 
-(defn app_preference [dispatch-fn]
+(defn app-preference [dispatch-fn]
   (invoke-api "app_preference" {} dispatch-fn))
 
 (defn get-file-info [full-file-name-uri dispatch-fn]
@@ -687,12 +690,17 @@
   [db-key name data-hash-str dispatch-fn]
   (invoke-api "save_attachment_as_temp_file" {:db-key db-key :name name :data-hash-str data-hash-str} dispatch-fn :no-response-conversion true))
 
-
 (defn update-db-session-timeout [db-session-timeout dispatch-fn]
   (invoke-api "update_session_timeout" {:timeout_type 1, :db-session-timeout db-session-timeout} dispatch-fn))
 
 (defn update-clipboard-timeout [clipboard-timeout dispatch-fn]
   (invoke-api "update_session_timeout" {:timeout_type 1,:clipboard-timeout clipboard-timeout} dispatch-fn))
+
+(defn update-preference [preference-data dispatch-fn]
+  (invoke-api "update_preference" {:preference-data preference-data} dispatch-fn))
+
+(defn load-language-translations [language-ids dispatch-fn] 
+  (invoke-api "load_language_translations" {:language-ids language-ids} dispatch-fn))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;; OTP, Timer etc ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -870,6 +878,8 @@
                     :no-response-conversion true :error-transform false))
 
   (def db-key (-> @re-frame.db/app-db :current-db-file-name))
+  
+  (load-language-translations ["en"] #(println %))
   
   ;; Use this in repl before doing the refresh in metro dev server, particularly when async services
   ;; are sending events to the front end via rust middle layer -see 'init_async_listeners'

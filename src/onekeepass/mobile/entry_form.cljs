@@ -121,7 +121,7 @@
                      (mapv (fn [{:keys [name uuid]}]
                              {:key uuid :label name}) @(cmn-events/all-entry-type-headers)))
         entry-type-name-selection (form-events/entry-form-field :entry-type-name-selection)]
-    [select-field {:text-label (str "Entry type" "*")
+    [select-field {:text-label (str (lstr 'entryType) "*")
                    :options entry-types
                    :value @entry-type-name-selection
                    ;;:init-value @entry-type-name-selection  
@@ -145,13 +145,13 @@
 
     (if (and edit (not (nil? error-text)))
       [:<>
-       [select-field {:text-label (str "Group/Category" "*")
+       [select-field {:text-label (str (lstr 'groupOrCategory) "*")
                       :options names
                       :value group-selected-name
                       :on-change on-change}]
        [rnp-helper-text {:type "error" :visible true} error-text]]
 
-      [select-field {:text-label (str "Group/Category" "*")
+      [select-field {:text-label (str (lstr 'groupOrCategory) "*")
                      :options names
                      :value group-selected-name
                      :on-change on-change}])))
@@ -184,7 +184,7 @@
 
 (defn android-title-text-input [title icon-name]
   [rnp-text-input {:style {:width "100%"}
-                   :label (str "Title" "*")
+                   :label (str (lstr 'title) "*")
                    :autoCapitalize "none"
                    :defaultValue title
                    :ref (fn [^js/Ref ref]
@@ -201,7 +201,7 @@
 
 (defn ios-title-text-input [title icon-name]
   [rnp-text-input {:style {:width "100%"}
-                   :label (str "Title" "*")
+                   :label (str (lstr 'title) "*")
                    :autoCapitalize "none"
                    :value title
                    :onChangeText #(form-events/entry-form-data-update-field-value :title %)

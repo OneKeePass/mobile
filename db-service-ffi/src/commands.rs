@@ -1,4 +1,4 @@
-use crate::app_state::{AppState, RecentlyUsed};
+use crate::app_state::{AppState, PreferenceData, RecentlyUsed};
 use crate::{android, as_api_response, ios, KeyFileInfo};
 use crate::{open_backup_file, util, OkpError, OkpResult};
 use onekeepass_core::async_service::{self, OtpTokenTtlInfoByField, TimerID};
@@ -28,6 +28,13 @@ struct ExportDataInfo {
     exported_data_full_file_name: Option<String>,
 }
 
+#[derive(Serialize)]
+pub struct TranslationResource {
+    current_locale_language: String,
+    prefered_language: String,
+    translations: HashMap<String, String>,
+}
+
 //TODO:
 // Need to use serde internally-tagged or externally-tagged to deserialize the enum 'CommandArg'
 // instead of current 'untagged' feature. Using untagged feature getting more complex. More changes
@@ -52,7 +59,7 @@ struct ExportDataInfo {
 // For example, the variant 'SessionTimeoutArg' (commented out one at the bottom) has only Option type fields. if this variant is put
 // in the begining, then that variant will be picked for any json str resulting error
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(untagged)]
 pub enum CommandArg {
     PasswordGeneratorArg {
@@ -64,6 +71,9 @@ pub enum CommandArg {
         timeout_type: u8,
         db_session_timeout: Option<i64>,
         clipboard_timeout: Option<i64>,
+    },
+    PrefefenceUpdateArg {
+        preference_data: PreferenceData,
     },
     OpenDbArgWithFileName {
         file_name: String,
@@ -158,6 +168,10 @@ pub enum CommandArg {
     // Should come after StartTimerArg
     StopTimerArg {
         timer_id: TimerID,
+    },
+
+    TranslationsArg {
+        language_ids: Vec<String>,
     },
 
     // This variant needs to come last so that other variants starting with db_key is matched before this
@@ -386,9 +400,18 @@ impl Commands {
                     Self update_session_timeout(db_session_timeout,clipboard_timeout))
             }
 
+            "update_preference" => {
+                service_call!(args, PrefefenceUpdateArg {preference_data} => Self update_preference(preference_data))
+            }
+
+            "load_language_translations" => {
+                service_call!(args, TranslationsArg {language_ids} => Self load_language_translations(language_ids))
+            }
+
             //// Async related
             "start_polling_entry_otp_fields" => {
-                service_ok_call! (args, StartEntryOtpArg {db_key,entry_uuid,otp_fields} => async_service start_polling_entry_otp_fields(&db_key,&entry_uuid,otp_fields))
+                service_ok_call! (args, StartEntryOtpArg {db_key,entry_uuid,otp_fields} => 
+                    async_service start_polling_entry_otp_fields(&db_key,&entry_uuid,otp_fields))
             }
 
             "stop_polling_all_entries_otp_fields" => {
@@ -551,6 +574,7 @@ impl Commands {
         db_session_timeout: Option<i64>,
         clipboard_timeout: Option<i64>,
     ) -> OkpResult<()> {
+        // TODO: Move this to a fn in AppState
         let mut pref = AppState::global().preference.lock().unwrap();
         if let Some(t) = db_session_timeout {
             pref.db_session_timeout = t;
@@ -561,6 +585,10 @@ impl Commands {
 
         pref.write_to_app_dir();
         Ok(())
+    }
+
+    fn update_preference(preference_data:PreferenceData) -> OkpResult<()>   {
+        Ok(AppState::global().update_preference(preference_data))
     }
 
     fn prepare_export_kdbx_data(args: &str) -> String {
@@ -671,6 +699,62 @@ impl Commands {
     fn app_preference() -> ResponseJson {
         let pref = AppState::global().preference.lock().unwrap();
         ok_json_str(pref.clone())
+    }
+
+    fn load_language_translations(language_ids: Vec<String>) -> OkpResult<TranslationResource> {
+        let current_locale_language = util::current_locale_language();
+        debug!("current_locale is {}", &current_locale_language);
+        
+        let prefered_language = AppState::global().language(); //current_locale_language.clone(); 
+        debug!("prefered_language is {}", &prefered_language);
+        
+        let language_ids_to_load = if !language_ids.is_empty() {
+            language_ids
+        } else {
+            if prefered_language != "en" {
+                vec![String::from("en"), prefered_language.clone()]
+            } else {
+                // locale is 'en'
+                vec![String::from("en")]
+            }
+        };
+
+        let mut translations: HashMap<String, String> = HashMap::default();
+
+        // if let Some(language_id) = language_ids_to_load.first() {
+        //     if let Some(data) = AppState::global()
+        //         .common_device_service
+        //         .load_language_translation(language_id.clone())
+        //     {
+        //         debug!("Got translations json from device service");
+        //         translations.insert(language_id.clone(), data);
+        //     }
+        // }
+
+        for lng in language_ids_to_load {
+            if let Some(data) = AppState::global()
+                .common_device_service
+                .load_language_translation(lng.clone())
+            {
+                debug!(
+                    "Got translations json from resources for language id {}",
+                    &lng
+                );
+                translations.insert(lng.clone(), data);
+            } else {
+                debug!(
+                    "No translations json found in resources for language id {}",
+                    &lng
+                );
+                translations.insert(lng.clone(), "{}".into());
+            }
+        }
+
+        Ok(TranslationResource {
+            current_locale_language,
+            prefered_language,
+            translations,
+        })
     }
 
     // fn test_call() -> ResponseJson {

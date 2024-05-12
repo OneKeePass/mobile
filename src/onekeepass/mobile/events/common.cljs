@@ -1,17 +1,11 @@
 (ns onekeepass.mobile.events.common
   "All common events that are used across many pages"
-  (:require
-   [clojure.string :as str]
-   [cljs.core.async :refer [go go-loop timeout <!]]
-   [re-frame.core :refer [reg-event-db
-                          reg-event-fx
-                          reg-fx
-                          reg-sub
-                          dispatch
-                          dispatch-sync
-                          subscribe]]
-   [onekeepass.mobile.utils :as u :refer [tags->vec str->int]]
-   [onekeepass.mobile.background :as bg]))
+  (:require [cljs.core.async :refer [<! go timeout]]
+            [clojure.string :as str]
+            [onekeepass.mobile.background :as bg] 
+            [onekeepass.mobile.utils :as u :refer [str->int tags->vec]]
+            [re-frame.core :refer [dispatch dispatch-sync reg-event-db
+                                   reg-event-fx reg-fx reg-sub subscribe]]))
 
 (def home-page-title "page.titles.home")
 
@@ -23,7 +17,7 @@
 
 (defn- default-error-fn [error]
   (println "API returned error: " error)
-  (dispatch [:common/error-box-show "API Call Error" error])
+  (dispatch [:common/error-box-show 'apiError error])
   (dispatch [:common/message-modal-hide]))
 
 (defn on-error
@@ -161,10 +155,16 @@
 (defn remove-from-recent-list [full-file-name-uri]
   (dispatch [:remove-from-recent-list full-file-name-uri]))
 
+(defn load-language-translation-completed []
+  (dispatch [:load-language-translation-complete]))
+
 (defn opened-database-file-names
   "Gets db info map with keys [db-key database-name file-name key-file-name] from the opened database list"
   []
   (subscribe [:opened-database-file-names]))
+
+(defn language-translation-loading-completed []
+  (subscribe [:language-translation-loading-completed]))
 
 ;; Put an initial value into app-db.
 ;; Using the sync version of dispatch means that value is in
@@ -203,7 +203,7 @@
    (bg/close-kdbx db-key
                   (fn [api-response]
                     (when-not (on-error api-response)
-                      (dispatch [:common/message-snackbar-open "Database closed"])
+                      (dispatch [:common/message-snackbar-open 'databaseClosed ])
                       (dispatch [:close-kdbx-completed db-key]))))))
 
 (reg-event-fx
@@ -255,7 +255,7 @@
    ;; This backend call not only removes the recent use file info but also closes the db if it is openned 
    (bg/remove-from-recently-used full-file-name-uri (fn [api-reponse]
                                                       (when-not (on-error api-reponse)
-                                                        (dispatch [:common/message-snackbar-open "Database is removed from the list"])
+                                                        (dispatch [:common/message-snackbar-open 'databaseRemovedFromList])
                                                         ;; As db is closed when this response is received, we call :close-kdbx-completed 
                                                         (dispatch [:close-kdbx-completed full-file-name-uri]))))
    {}))
@@ -275,6 +275,21 @@
                         (:opened-db-list db))]
      ;;(println "new-list " new-list (keys db))
      {:db (assoc db :opened-db-list new-list)})))
+
+(reg-event-fx
+ :load-language-translation-complete
+ (fn [{:keys [db]} [_event-id]]
+   {:db (assoc-in db [:background-loading-statuses :load-language-translation] true)}))
+
+(reg-event-db
+ :reset-load-language-translation-status
+ (fn [db [_event-id]]
+   (assoc-in db [:background-loading-statuses :load-language-translation] false)))
+
+(reg-sub
+ :language-translation-loading-completed
+ (fn [db _query-vec]
+   (get-in db [:background-loading-statuses :load-language-translation] false)))
 
 (reg-sub
  :active-db-key
@@ -316,7 +331,7 @@
 (reg-fx
  :bg-app-preference
  (fn []
-   (bg/app_preference (fn [api-response]
+   (bg/app-preference (fn [api-response]
                         (when-let [r (on-ok api-response)]
                           (dispatch [:app-preference-loaded r]))))))
 
@@ -381,7 +396,7 @@
  (fn [{:keys [db]} [_event-id]]
    {:db (assoc-in-key-db db [:locked] true)
     :fx [[:dispatch [:to-home-page]]
-         [:dispatch [:common/message-snackbar-open "Database locked"]]]}))
+         [:dispatch [:common/message-snackbar-open 'databaseLocked ]]]}))
 
 ;; Called to lock any opened database using the passed db-key - used from home page
 (reg-event-fx
@@ -390,7 +405,7 @@
    {:db (assoc-in-selected-db db db-key [:locked] true)
     :fx [#_[:bg-lock-kdbx [(active-db-key db)]]
          [:dispatch [:to-home-page]]
-         [:dispatch [:common/message-snackbar-open "Database locked"]]]}))
+         [:dispatch [:common/message-snackbar-open 'databaseLocked]]]}))
 
 (reg-event-fx
  :lock-on-session-timeout

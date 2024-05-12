@@ -2,22 +2,23 @@
  onekeepass.mobile.rn-components
   (:require-macros [onekeepass.mobile.okp-macros
                     :refer  [declare-comp-classes]])
-  (:require
-   [clojure.string :as str]
-   [reagent.core :as r]
-   [react]
-   [react-native :as rn]
-   [onekeepass.mobile.background :refer [is-iOS]]
-   ["react-i18next" :as ri18n]
-   ["react-native-paper" :as rnp]
-   ["react-native-modal-selector" :as rnms]
-   ["@react-native-community/slider" :as rnc-slider]
-   ["react-native-gesture-handler" :as gh]
-   ["react-native-vector-icons" :as vec-icons]
-   ["react-native-vision-camera" :as rn-vision-camera]
-   ["react-native-circular-progress" :as rn-circular-progress]
-   ["react-native-safe-area-context" :as sa-context]
-   ["@date-io/date-fns" :as DateAdapter]))
+  (:require ["@date-io/date-fns" :as DateAdapter]
+            ["@react-native-community/slider" :as rnc-slider]
+            ["react-i18next" :as ri18n]
+            ["react-native-circular-progress" :as rn-circular-progress]
+            ["react-native-gesture-handler" :as gh]
+            ["react-native-modal-selector" :as rnms]
+            ["react-native-paper" :as rnp]
+            ["react-native-safe-area-context" :as sa-context]
+            ["react-native-vector-icons" :as vec-icons]
+            ["react-native-vision-camera" :as rn-vision-camera]
+            [clojure.string :as str]
+            [onekeepass.mobile.background :refer [is-iOS]]
+            [onekeepass.mobile.constants :refer [DEFAULT-SYSTEM-THEME]]
+            [onekeepass.mobile.translation :as t]
+            [react]
+            [react-native :as rn]
+            [reagent.core :as r]))
 
 (set! *warn-on-infer* true)
 
@@ -36,6 +37,16 @@
 (def react-use-effect (.-useEffect ^js/React react))
 
 (def use-color-scheme rn/useColorScheme)
+
+(def appearance ^js/RNAppearance rn/Appearance)
+
+(defn theme-to-use [prefered-theme] 
+  (let [theme (if (= prefered-theme DEFAULT-SYSTEM-THEME)
+                (do
+                  (.setColorScheme appearance nil)
+                  (.getColorScheme appearance))
+                prefered-theme)] 
+    theme))
 
 ;; At this moment, these are not used
 #_(def react-use-state (.-useState ^js/React react))
@@ -220,7 +231,7 @@
     (reset! surface-variant (.-surfaceVariant colors))
     (reset! outline-variant (.-outlineVariant colors))
     (reset! on-error-container (.-onErrorContainer colors))
-    
+
     (reset! custom-color0 (.-custom0 colors))))
 
 
@@ -242,7 +253,7 @@
 ;; TODO: Figure out how to load only the relavant translation
 ;; TODO: Need to add getting the language code from the backend - from the exported constants in 'okp-db-service' (yet to be added)
 
-(defn setup-i18n []
+#_(defn setup-i18n []
   (let [device-language (.-Language ^js/OkpDbService (.-OkpDbService rn/NativeModules))
         ;; device-language may be 'en' or 'es-US' ...
         device-language (-> device-language (str/split #"-") first)]
@@ -250,11 +261,11 @@
     (init-i18n device-language)))
 
 ;; IMPORTANT: Needs to be called before set-translator in any component
-(setup-i18n)
+#_(setup-i18n)
 
 (def ^:private translator (atom nil)) ;; (Object.keys  @translator) => #js ["0" "1" "2" "t" "i18n" "ready"]
 
-(defn set-translator
+#_(defn set-translator
   " Needs to be called as hook in a functional react/reagent component"
   []
   ;; (println "set-translator is called")
@@ -268,7 +279,8 @@
    "
   [s]
   ;; translator should have been set before the first calling of this fn in any component
-  ((.-t ^js/Translator @translator) s))
+  (t/lstr s)
+  #_((.-t ^js/Translator @translator) s))
 
 
 ;; Additional colors that are specifc to MD3/MD2 

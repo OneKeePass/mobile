@@ -1,24 +1,14 @@
 (ns onekeepass.mobile.events.entry-form-otp
   "Entry form otp events"
-  (:require
-   [onekeepass.mobile.background :as bg]
-   [onekeepass.mobile.constants :refer [ONE_TIME_PASSWORD_TYPE]]
-
-   [onekeepass.mobile.events.common
+  (:require [onekeepass.mobile.background :as bg]
+            [onekeepass.mobile.constants :refer [ONE_TIME_PASSWORD_TYPE]]
+            [onekeepass.mobile.events.common
     :as cmn-events
-    :refer [active-db-key
-            assoc-in-key-db
-            get-in-key-db
-            on-error]]
-
-   [onekeepass.mobile.events.entry-form-common
-    :refer [add-section-field
-            entry-form-key
-            extract-form-otp-fields
-            merge-section-key-value
-            validate-entry-form-data]]
-
-   [re-frame.core :refer [dispatch reg-event-fx reg-fx reg-sub]]))
+    :refer [active-db-key assoc-in-key-db get-in-key-db on-error]]
+            [onekeepass.mobile.events.entry-form-common
+    :refer [add-section-field entry-form-key extract-form-otp-fields
+            merge-section-key-value validate-entry-form-data]] 
+            [re-frame.core :refer [dispatch reg-event-fx reg-fx reg-sub]]))
 
 ;; Returns a map with otp fileds as key and its token info as value
 ;; e.g {"My Git OTP Code" {:token "576331", :ttl 9, :period 30}, "otp" {:token "145214", :ttl 9, :period 30}}
@@ -190,15 +180,15 @@
          errors-found (boolean (seq error-fields))]
      (if errors-found
        {:db (assoc-in-key-db db [entry-form-key :error-fields] error-fields)
-        :fx [[:dispatch [:common/error-box-show "Fields" (cond
-                                                           (not (nil? title))
-                                                           title
+        :fx [[:dispatch [:common/error-box-show 'missingFields (cond
+                                                   (not (nil? title))
+                                                   title
 
-                                                           (not (nil? group-selection))
-                                                           group-selection
+                                                   (not (nil? group-selection))
+                                                   group-selection
 
-                                                           :else
-                                                           "One or more required fields are missing")]]]}
+                                                   :else
+                                                   "One or more required fields are missing")]]]}
        (do
          ;; Called the passed callback fn when title and group are not blank
          (call-on-no-error-fn)

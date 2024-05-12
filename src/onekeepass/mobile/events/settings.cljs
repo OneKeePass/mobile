@@ -289,7 +289,7 @@
  (fn [{:keys [_db]} [_event-id]]
    {:fx [[:dispatch [:db-settings-read]] ;; Need to reload the updated db-settings before navigating to previous page
          [:dispatch [:common/previous-page]]
-         [:dispatch [:common/message-snackbar-open "Database Settings saved"]]]}))
+         [:dispatch [:common/message-snackbar-open 'databaseSettingsSaved]]]}))
 
 (reg-sub
  :master-password-visible

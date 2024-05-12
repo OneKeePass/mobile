@@ -23,7 +23,7 @@ pub struct AppState {
     pub key_files_dir_path: PathBuf,
     pub common_device_service: Box<dyn CommonDeviceService>,
     pub secure_key_operation: Box<dyn SecureKeyOperation>,
-    pub event_dispatcher:Arc<dyn EventDispatch>,
+    pub event_dispatcher: Arc<dyn EventDispatch>,
     last_backup_on_error: Mutex<HashMap<String, String>>,
     pub preference: Mutex<Preference>,
 }
@@ -39,7 +39,7 @@ impl AppState {
     pub fn setup(
         common_device_service: Box<dyn CommonDeviceService>,
         secure_key_operation: Box<dyn SecureKeyOperation>,
-        event_dispatcher:Arc<dyn EventDispatch>,
+        event_dispatcher: Arc<dyn EventDispatch>,
     ) {
         let app_dir = util::url_to_unix_file_name(&common_device_service.app_home_dir());
         let cache_dir = util::url_to_unix_file_name(&common_device_service.cache_dir());
@@ -134,6 +134,12 @@ impl AppState {
             .map(|r| RecentlyUsed { ..r.clone() })
     }
 
+
+    pub fn language(&self) -> String {
+        let pref = self.preference.lock().unwrap();
+        pref.language.clone()
+    }
+
     pub fn file_name_in_recently_used(&self, full_file_name_uri: &str) -> Option<String> {
         let pref = self.preference.lock().unwrap();
         pref.recent_dbs_info
@@ -145,6 +151,11 @@ impl AppState {
     pub fn remove_recent_db_use_info(&self, full_file_name_uri: &str) {
         let mut pref = self.preference.lock().unwrap();
         pref.remove_recent_db_use_info(full_file_name_uri);
+    }
+
+    pub fn update_preference(&self, preference_data: PreferenceData) {
+        let mut store_pref = self.preference.lock().unwrap();
+        store_pref.update(preference_data);
     }
 
     pub fn uri_to_file_name(&self, full_file_name_uri: &str) -> String {
@@ -177,28 +188,52 @@ pub struct RecentlyUsed {
     pub(crate) db_file_path: String,
 }
 
-// This struct matches any previous verion (0.0.1) of preference.json
-#[derive(Clone, Serialize, Deserialize)]
-pub struct Preference1 {
-    pub version: String,
-    pub recent_dbs_info: Vec<RecentlyUsed>,
+#[derive(Debug,Deserialize)]
+pub struct PreferenceData {
+    pub db_session_timeout: Option<i64>,
+    pub clipboard_timeout: Option<i64>,
+    pub default_entry_category_groupings: Option<String>,
+    pub theme: Option<String>,
+    pub language: Option<String>,
 }
 
+// This struct matches any previous verion (0.0.2) of preference.json
 #[derive(Clone, Serialize, Deserialize)]
-pub struct Preference {
+pub struct Preference1 {
     pub version: String,
     pub recent_dbs_info: Vec<RecentlyUsed>,
     pub db_session_timeout: i64,
     pub clipboard_timeout: i64,
 }
 
+#[derive(Clone, Serialize, Deserialize)]
+pub struct Preference {
+    pub version: String,
+    pub recent_dbs_info: Vec<RecentlyUsed>,
+    // Session will time out in these milli seconds
+    pub db_session_timeout: i64,
+    // clipboard will be cleared in these milli seconds
+    pub clipboard_timeout: i64,
+    // Determines the theme colors etc
+    pub theme: String,
+    // Should be a two letters language id
+    pub language: String,
+    //Valid values one of Types,Categories,Groups,Tags
+    pub default_entry_category_groupings: String,
+}
+
 impl Default for Preference {
     fn default() -> Self {
         Self {
-            version: "0.0.2".into(),
+            // Here we are using the version to determine the preference data struct used
+            // and not the app release version
+            version: "0.0.3".into(),
             recent_dbs_info: vec![],
             db_session_timeout: 1_800_000, // 30 minutes
-            clipboard_timeout: 10_000,  // 10 secondds
+            clipboard_timeout: 10_000,     // 10 secondds
+            theme: "system".into(),
+            language: util::current_locale_language(),
+            default_entry_category_groupings: "Types".into(),
         }
     }
 }
@@ -250,7 +285,40 @@ impl Preference {
         self.write(&AppState::global().app_home_dir);
     }
 
-    pub fn add_recent_db_use_info(
+    // Update the preference with any non null values
+    pub fn update(&mut self, preference_data: PreferenceData) {
+        let mut updated = false;
+        if let Some(v) = preference_data.language {
+            self.language = v;
+            updated = true;
+        }
+
+        if let Some(v) = preference_data.theme {
+            self.theme = v;
+            updated = true;
+        }
+
+        if let Some(v) = preference_data.default_entry_category_groupings {
+            self.default_entry_category_groupings = v;
+            updated = true;
+        }
+
+        if let Some(v) = preference_data.db_session_timeout {
+            self.db_session_timeout = v;
+            updated = true;
+        }
+
+        if let Some(v) = preference_data.clipboard_timeout {
+            self.clipboard_timeout = v;
+            updated = true;
+        }
+
+        if updated {
+            self.write_to_app_dir();
+        }
+    }
+
+    fn add_recent_db_use_info(
         &mut self,
         app_home_dir: &str,
         recently_used: RecentlyUsed,
@@ -265,7 +333,7 @@ impl Preference {
         self
     }
 
-    pub fn remove_recent_db_use_info(&mut self, full_file_name_uri: &str) {
+    fn remove_recent_db_use_info(&mut self, full_file_name_uri: &str) {
         self.recent_dbs_info
             .retain(|s| s.db_file_path != full_file_name_uri);
 

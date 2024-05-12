@@ -109,7 +109,7 @@
    ;;(println "Going to call bg with url and check " url (= (str/lower-case url) OTP_URL_PREFIX))
    (if (str/starts-with? (str/lower-case url) OTP_URL_PREFIX)
      {:fx [[:entry-form/bg-form-otp-url [{:secret-or-url url} callback-on-form-otp-url]]]}
-     {:fx [[:dispatch [:common/error-box-show "errorDialog.titles.scanError" "The scanned url is not an otp type url"]]]})))
+     {:fx [[:dispatch [:common/error-box-show 'scanError "The scanned url is not an otp type url"]]]})))
 
 (reg-event-fx
  :scan-qr-form-url-success
@@ -124,8 +124,7 @@
 (reg-event-fx
  :scan-qr-form-url-error
  (fn [{:keys [db]} [_event-id error]] 
-   {:fx [[:dispatch [:common/error-box-show 
-                     "errorDialog.titles.scanError" error]]]}))
+   {:fx [[:dispatch [:common/error-box-show 'scanError error]]]}))
 
 ;; Called to show the page with link for openSettings as CAMERA_PERMISSION_DENIED  
 #_(reg-event-fx

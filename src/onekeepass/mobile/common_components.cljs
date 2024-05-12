@@ -1,32 +1,19 @@
 (ns onekeepass.mobile.common-components
-  (:require [reagent.core :as r]
+  (:require [onekeepass.mobile.constants :as const]
+            [onekeepass.mobile.events.common :as cmn-events]
             [onekeepass.mobile.rn-components
              :as rnc
-             :refer [rnms-modal-selector
-                     lstr
-                     tertiary-color
-                     modal-selector-colors
-                     message-modal-background-color
-                     on-background-color
-                     rn-view
-                     rn-scroll-view
-                     rnp-button
-                     rnp-chip
-                     rnp-divider
-                     rnp-dialog
-                     cust-dialog
-                     rnp-dialog-icon
-                     rnp-dialog-title
-                     rnp-dialog-content
-                     rnp-dialog-actions
-                     rnp-modal
-                     rnp-snackbar
-                     rnp-text
-                     rnp-text-input
-                     rnp-text-input-icon]]
+             :refer [cust-dialog lstr message-modal-background-color
+                     modal-selector-colors on-background-color rn-scroll-view
+                     rn-view rnms-modal-selector rnp-button rnp-chip
+                     rnp-dialog rnp-dialog-actions rnp-dialog-content
+                     rnp-dialog-icon rnp-dialog-title rnp-divider rnp-modal
+                     rnp-snackbar rnp-text rnp-text-input rnp-text-input-icon
+                     tertiary-color]]
+            [onekeepass.mobile.translation :refer [lstr-error-dlg-title
+                                                   lstr-sm]]
             [onekeepass.mobile.utils :as u]
-            [onekeepass.mobile.constants :as const]
-            [onekeepass.mobile.events.common :as cmn-events]))
+            [reagent.core :as r]))
 
 (set! *warn-on-infer* true)
 
@@ -39,22 +26,24 @@
   The value of key 'category' determines whether it is error or message
    "
   [{:keys [dialog-show title category message]}]
-  [rnp-dialog {:style {}
-               :dismissable false
-               :visible dialog-show
-               :onDismiss #()}
-   [rnp-dialog-icon {:icon (if (= category :error) "alert" "information")
-                     :color (if (= category :error)
-                              @rnc/error-color
-                              @rnc/outline-color)}]
-   [rnp-dialog-title {:style {:color (if (= category :error)
-                                       @rnc/error-color
-                                       @rnc/tertiary-color)}} (lstr title)]
-   [rnp-dialog-content
-    [rn-view {:style {:flexDirection "column" :justify-content "center"}}
-     [rnp-text (lstr message)]]]
-   [rnp-dialog-actions
-    [rnp-button {:mode "text" :onPress cmn-events/close-message-dialog} (lstr "button.labels.close")]]])
+  (let [error? (= category :error)
+        title-txt (if error? (lstr-error-dlg-title title) (lstr title))]
+    [rnp-dialog {:style {}
+                 :dismissable false
+                 :visible dialog-show
+                 :onDismiss #()}
+     [rnp-dialog-icon {:icon (if error? "alert" "information")
+                       :color (if error?
+                                @rnc/error-color
+                                @rnc/outline-color)}]
+     [rnp-dialog-title {:style {:color (if error?
+                                         @rnc/error-color
+                                         @rnc/tertiary-color)}} title-txt]
+     [rnp-dialog-content
+      [rn-view {:style {:flexDirection "column" :justify-content "center"}}
+       [rnp-text (lstr message)]]]
+     [rnp-dialog-actions
+      [rnp-button {:mode "text" :onPress cmn-events/close-message-dialog} (lstr "button.labels.close")]]]))
 
 (defn select-tags-dialog [{:keys [show all-tags new-tags-str selected-tags]}
                           selected-tags-receiver-fn]
@@ -156,7 +145,7 @@
                   :style {} ;;:zIndex 10 this works in android and not in iOs
                   ;; zIndex in wrapperStyle makes the snackbar to appear on top fab in iOS. 
                   ;; Need to check on android
-                  :wrapperStyle {:bottom 20 :zIndex 10}} (lstr message)])
+                  :wrapperStyle {:bottom 20 :zIndex 10}} (lstr-sm message)])
   ([]
    [message-snackbar @(cmn-events/message-snackbar-data)]))
 

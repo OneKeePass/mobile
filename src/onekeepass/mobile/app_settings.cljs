@@ -1,20 +1,21 @@
 (ns onekeepass.mobile.app-settings
-  (:require
-   [reagent.core :as r]
-   [onekeepass.mobile.rn-components :as rnc :refer [lstr 
-                                                    page-background-color
-                                                    inverse-onsurface-color
-                                                    modal-selector-colors 
-                                                    rnms-modal-selector
-                                                    rn-view
-                                                    rn-safe-area-view
-                                                    rn-section-list 
-                                                    rnp-list-item
-                                                    rnp-divider
-                                                    rnp-list-icon 
-                                                    rnp-text]]
-   [onekeepass.mobile.events.app-settings :as as-events]
-   [onekeepass.mobile.constants :as const]))
+  (:require [onekeepass.mobile.constants :as const :refer [DARK-THEME
+                                                           DEFAULT-SYSTEM-THEME
+                                                           LIGHT-THEME]]
+            [onekeepass.mobile.events.app-settings :as as-events]
+            [onekeepass.mobile.rn-components :as rnc :refer [inverse-onsurface-color
+                                                             lstr
+                                                             modal-selector-colors
+                                                             page-background-color
+                                                             rn-safe-area-view
+                                                             rn-section-list
+                                                             rn-view
+                                                             rnms-modal-selector
+                                                             rnp-divider
+                                                             rnp-list-icon
+                                                             rnp-list-item
+                                                             rnp-text]]
+            [reagent.core :as r]))
 
 (defn section-header [title]
   [rn-view  {:style {:flexDirection "row"
@@ -52,7 +53,15 @@
                                         {:key 3600000 :label  "1 hour"}
                                         {:key -1 :label  "Never"}])
 
-(defn list-item-modal-selector 
+(def theme-options [{:key LIGHT-THEME :label "Light"}
+                    {:key DARK-THEME :label "Dark"}
+                    {:key DEFAULT-SYSTEM-THEME :label "System Default"}])
+
+(def language-options [{:key "en" :label "en - English"}
+                       {:key "es" :label "es - Español"}
+                       {:key "fr" :label "fr - Français"}])
+
+(defn list-item-modal-selector
   [{:keys [options value on-change list-title]}]
   (let [modal-ref (atom nil)]
     ;; customSelector of react-native-modal-selector is used here to use 'Custom component'instead of the built-in select box.
@@ -92,7 +101,70 @@
       (str "Clipboard will be cleared in" " " label)]
      #_[rnp-text {:style {:margin-left 5}} label]]))
 
-(defn row-item 
+(defn theme-explain [{:keys [key label]}]
+  [rn-view {:style {:margin-top 1} :flexDirection "row" :flexWrap "wrap"}
+   [rnp-text {:style {:margin-left 15}} label]]
+  )
+
+(defn language-explain [{:keys [key label]}]
+  [rn-view {:style {:margin-top 1 } :flexDirection "row" :flexWrap "wrap"}
+   [rnp-text {:style {:margin-left 15}} label]])
+
+(defn find-match [options value]
+  (first
+   (filter
+    (fn [m]
+      (= value (:key m)))
+    options)))
+
+#_(defn theme-row-item [title]
+    (let [{:keys [label]} (find-match theme-options @(as-events/app-theme))]
+      [rn-view {:style {:margin-bottom 15}}
+       [list-item-modal-selector {:options theme-options
+                                  :list-title title
+                                  :on-change (fn [^js/SelOption option]
+                                               (as-events/app-theme-update (.-key option)))
+                                  :value label}]
+       #_[db-timeout-explain selected-m]]))
+
+#_(defn language-row-item [title]
+    (let [{:keys [label]} (find-match language-options @(as-events/app-language))]
+      [rn-view {:style {:margin-bottom 15}}
+       [list-item-modal-selector {:options language-options
+                                  :list-title title
+                                  :on-change (fn [^js/SelOption option]
+                                               (as-events/app-language-update (.-key option)))
+                                  :value label}]
+       #_[db-timeout-explain selected-m]]))
+
+(defn field-explain [title option]
+  (cond
+    (= title "dbTimeout")
+    [db-timeout-explain option]
+
+    (= title "clipboardTimeout")
+    [clipboard-timeout-explain option]
+    
+    (= title "theme")
+    [theme-explain option]
+    
+    (= title "language")
+    [language-explain option]
+
+    :else
+    nil))
+
+(defn row-item-with-select [title options current-selection update-fn]
+  (let [{:keys [label] :as selected-option} (find-match options current-selection)]
+    [rn-view {:style {:margin-bottom 15}}
+     [list-item-modal-selector {:options options
+                                :list-title title
+                                :on-change (fn [^js/SelOption option]
+                                             (update-fn (.-key option)))
+                                :value label}]
+     [field-explain title selected-option]]))
+
+(defn row-item
   "Provides a row component - a view with children list-item-modal-selector and db-timeout-explain
    for the 'renderItem' prop of rn-section-list
    The arg is a map that are passed in 'sections'
@@ -100,45 +172,28 @@
   [_m]
   (fn [{:keys [title key]}]
     (cond
+      (= key "APP-THEME")
+      [row-item-with-select title theme-options @(as-events/app-theme) as-events/app-theme-update]
+
+      (= key "APP-LANGUAGE")
+      [row-item-with-select title language-options @(as-events/app-language) as-events/app-language-update]
+
       (= key "DB-TIMEOUT")
-      (let [{:keys [label] :as selected-m} (first 
-                                            (filter 
-                                             (fn [m]
-                                               (= @(as-events/db-session-timeout-value) (:key m)))
-                                             db-session-timeout-options))]
-        [rn-view {:style {:margin-bottom 15}}
-         [list-item-modal-selector {:options db-session-timeout-options
-                                    :list-title title
-                                    :on-change (fn [^js/SelOption option]
-                                                 (as-events/update-db-session-timeout (.-key option)))
-                                    :value label}]
-         [db-timeout-explain selected-m]])
+      [row-item-with-select title db-session-timeout-options @(as-events/db-session-timeout-value) as-events/update-db-session-timeout]
 
       (= key "CLIPBOARD-TIMEOUT")
-      (let [{:keys [label] :as selected-m} (first 
-                                            (filter 
-                                             (fn [m]
-                                               (= @(as-events/clipboard-timeout-value) (:key m)))
-                                             clipboard-session-timeout-options))]
-        [rn-view {:style {:margin-bottom 15}}
-         [list-item-modal-selector {:options clipboard-session-timeout-options
-                                    :list-title title
-                                    :on-change (fn [^js/SelOption option]
-                                                 (as-events/update-clipboard-timeout (.-key option)))
-                                    :value label}]
-         [clipboard-timeout-explain selected-m]]))))
+      [row-item-with-select title clipboard-session-timeout-options @(as-events/clipboard-timeout-value) as-events/update-clipboard-timeout])))
 
 (defn settings-list-content []
-  (let [sections [{;;:title "Data Protection"
-                   :title "dataProtection"
+  (let [sections [{:title "dataProtection"
                    :key "Data Protection"
                    :data [{:title "dbTimeout" :key "DB-TIMEOUT"}
                           {:title "clipboardTimeout" :key "CLIPBOARD-TIMEOUT"}]}
 
-                  #_{:title "App Protection"
-                     :key "App Protection"
-                     :data [{:title "Database Timeout"}
-                            {:title "Clipboard Timeout"}]}]]
+                  {:title "appearance"
+                   :key "Appearance"
+                   :data [{:title "theme" :key "APP-THEME"}
+                          {:title "language" :key "APP-LANGUAGE"}]}]]
     [rn-section-list  {:style {}
                        :sections (clj->js sections)
                        :renderItem  (fn [props]

@@ -652,10 +652,10 @@
            {:db (-> db
                     (assoc-in-key-db  [entry-form-key :data :section-names] (conj section-names section-name))
                     (to-section-name-dialog-data :dialog-show false))
-            :fx [[:dispatch [:common/message-snackbar-open "New section is created"]]]}
+            :fx [[:dispatch [:common/message-snackbar-open 'newSectionCreated]]]}
            {:db (-> db (modify-section-name m)
                     (to-section-name-dialog-data :dialog-show false))
-            :fx [[:dispatch [:common/message-snackbar-open "Section name is changed"]]]}))))))
+            :fx [[:dispatch [:common/message-snackbar-open 'sectionNameChanged ]]]}))))))
 
 (reg-sub
  :section-name-dialog-data
@@ -801,8 +801,8 @@
               (assoc-in-key-db db [entry-form-key :undo-data] (get-in-key-db db [entry-form-key :data]))
               db)]
      {:fx [(if (= :new current-showing)
-             [:dispatch [:common/message-snackbar-open "Created Entry"]]
-             [:dispatch [:common/message-snackbar-open "Updated Entry"]])
+             [:dispatch [:common/message-snackbar-open 'createdEntry ]]
+             [:dispatch [:common/message-snackbar-open  'updatedEntry]])
 
            ;; Reload entry data again to reflect the saved changes after an update or after a new entry is inserted
            [:dispatch [:reload-entry-by-id (get-in-key-db db [entry-form-key :data :uuid])]]
@@ -1024,7 +1024,7 @@
                                               :save-message "Deleting all histories and saving"
                                               :on-save-ok (fn []
                                                             (dispatch [:reload-entry-by-id entry-id])
-                                                            (dispatch [:common/message-snackbar-open "snackbar.messages.historiesDeleted"])
+                                                            (dispatch [:common/message-snackbar-open "historiesDeleted"])
                                                             (dispatch [:common/previous-page]))}]]]}))
 
 
@@ -1216,7 +1216,7 @@
                                      temp-file-name name
                                      (fn [api-response]
                                        (when-not (on-error api-response #(dispatch [:pick-save-attachment-to-cancelled %]))
-                                         (dispatch [:common/message-snackbar-open "Attachment file saved"])))
+                                         (dispatch [:common/message-snackbar-open 'attachmentFileSaved ])))
                                      #_(fn [api-response]
                                          (on-error api-response #(dispatch [:pick-save-attachment-to-cancelled %])))))))))
 
