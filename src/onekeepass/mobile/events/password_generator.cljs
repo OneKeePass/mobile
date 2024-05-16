@@ -132,7 +132,7 @@
             (assoc-in  [:generator :data :password-result] password-result)
             (assoc-in  [:generator :data :slider-value] (:length password-result)))
 
-    :fx [[:dispatch [:common/next-page :password-generator  "page.titles.generator"]]]}))
+    :fx [[:dispatch [:common/next-page :password-generator  "generator"]]]}))
 
 (reg-sub
  :password-generation-options

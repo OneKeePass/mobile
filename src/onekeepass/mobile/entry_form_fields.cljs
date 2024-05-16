@@ -1,27 +1,22 @@
 (ns
  onekeepass.mobile.entry-form-fields
 
-  (:require
-   [reagent.core :as r]
-   [clojure.string :as str]
-   [onekeepass.mobile.entry-form-menus :refer [custom-field-menu-show]]
-   [onekeepass.mobile.entry-form-dialogs :as ef-dlg  :refer [setup-otp-action-dialog-show]]
-   [onekeepass.mobile.rn-components
-    :as rnc :refer [animated-circular-progress
-                    page-background-color
-                    dots-icon-name
-                    rnp-button
-                    rn-view
-                    rnp-text-input
-                    rnp-text
-                    rnp-helper-text
-                    rnp-text-input-icon
-                    rnp-icon-button]]
-   [onekeepass.mobile.constants :as const :refer [OTP]]
-   [onekeepass.mobile.events.entry-form :as form-events]
-   [onekeepass.mobile.events.password-generator :as pg-events]
-   [onekeepass.mobile.background :refer [is-iOS]]
-   [onekeepass.mobile.events.common :as cmn-events]))
+  (:require [clojure.string :as str]
+            [onekeepass.mobile.background :refer [is-iOS]]
+            [onekeepass.mobile.constants :as const :refer [OTP]]
+            [onekeepass.mobile.entry-form-dialogs :as ef-dlg  :refer [setup-otp-action-dialog-show]]
+            [onekeepass.mobile.entry-form-menus :refer [custom-field-menu-show]]
+            [onekeepass.mobile.events.common :as cmn-events]
+            [onekeepass.mobile.events.entry-form :as form-events]
+            [onekeepass.mobile.events.password-generator :as pg-events]
+            [onekeepass.mobile.rn-components
+    :as rnc :refer [animated-circular-progress dots-icon-name
+                    page-background-color rn-view rnp-button rnp-helper-text
+                    rnp-icon-button rnp-text rnp-text-input
+                    rnp-text-input-icon]]
+            [onekeepass.mobile.translation :refer [lstr-bl lstr-field-name
+                                                   lstr-l]]
+            [reagent.core :as r]))
 
 (def ^:private field-focused (r/atom {:key nil :focused false}))
 
@@ -42,11 +37,12 @@
                                        protected
                                        required
                                        visible
+                                       standard-field
                                        edit
                                        on-change-text]} is-password-edit? custom-field-edit-focused?]
 
   ;;(println "protected " protected " visible " visible " , " (if (or (not protected) visible) false true))
-  ^{:key (str key protected)} [rnp-text-input {:label key #_(if required (str key "*") key)
+  ^{:key (str key protected)} [rnp-text-input {:label (if standard-field (lstr-field-name key) key)  
                                                :defaultValue value
                        ;;:value value
                        ;;:editable edit
@@ -80,10 +76,11 @@
                                    value
                                    protected
                                    visible
+                                   standard-field
                                    edit
                                    on-change-text]} is-password-edit? custom-field-edit-focused?]
   ;;(println "Key is " key " and value " value)
-  [rnp-text-input {:label key #_(if required (str key "*") key)
+  [rnp-text-input {:label (if standard-field (lstr-field-name key) key) 
                    :value value
                    :showSoftInputOnFocus edit
                    :autoCapitalize "none"
@@ -209,8 +206,7 @@
         valid-token-found (not (nil? token))] 
     [rn-view
      [rn-view {:flexDirection "row" :style {:flex 1}}
-      [rnp-text-input {:label (if (= OTP key) "One-Time Password" key)
-                       
+      [rnp-text-input {:label (if (= OTP key) (lstr-l 'oneTimePasswordTotp) key) 
                        :value (if valid-token-found (formatted-token token) "  ")
                        :showSoftInputOnFocus false
                        :autoCapitalize "none"
@@ -273,7 +269,8 @@
                :on-press (fn []
                            (form-events/show-form-fields-validation-error-or-call
                             #(setup-otp-action-dialog-show
-                              section-name key standard-field)))} "Set up One-Time Password"])
+                              section-name key standard-field)))} 
+   (lstr-bl 'setUpOneTimePassword)])
 
 (defn otp-field
   "Otp field that shows the timed token value or the corresponding otp url or a button for 

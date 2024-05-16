@@ -4,8 +4,9 @@
             [camel-snake-kebab.extras :as cske]
             [cljs.core.async :refer [go]]
             [cljs.core.async.interop :refer-macros [<p!]]
-            [onekeepass.mobile.background :as bg]
-            [onekeepass.mobile.events.common :as cmn-events :refer [on-ok]]))
+            #_[onekeepass.mobile.background :as bg]
+            [onekeepass.mobile.events.translation :as tr-events]
+            #_[onekeepass.mobile.events.common :as cmn-events :refer [on-ok]]))
 
 (set! *warn-on-infer* true)
 
@@ -40,13 +41,21 @@
   "
   [txt-key]
   (csk/->camelCase
-   (str txt-key)
+   (str txt-key) ;; (str nil) => ""
    #_(if (string? txt-key) txt-key "")))
+
+(defn lstr-l
+  "Adds prefix 'commonTexts' to the key before getting the translation"
+  ([txt-key interpolation-args]
+   (-> (str "commonTexts." txt-key) (lstr interpolation-args))
+   #_(-> (str  txt-key) (lstr interpolation-args)))
+  ([txt-key]
+   (lstr-l txt-key nil)))
 
 (defn lstr-cv
   "Converts the arg txt-key to cameCase and gets the translation text for that key"
   [txt-key]
-  (lstr (convert  (str txt-key))))
+  (lstr-l (convert (str txt-key))))
 
 (defn lstr-dlg-title
   "Adds prefix 'dialog.titles' to the key before getting the translation"
@@ -60,16 +69,15 @@
   "Adds prefix 'dialog.texts' to the key before getting the translation"
   ([txt-key interpolation-args]
    (-> (str "dialog.texts." (convert  txt-key)) (lstr interpolation-args)))
-  ([txt-key] 
+  ([txt-key]
    (lstr-dlg-text txt-key nil)))
-
 
 ;;(re-find #"[A-Z]"  (first "sacnError")) => nil
 ;;(re-find #"[A-Z]"  (first "Key File Save Error")) => "K"
 (defn lstr-error-dlg-title
   "Adds prefix 'errorDialog.titles' to the key before getting the translation"
   [txt-key]
-  ;;  :common/error-box-show calls that use symbol for title are assumed to have translations 
+  ;; :common/error-box-show calls that use symbol for title are assumed to have translations 
   ;; If string value is used, that means these are yet to be translated 
   (if (symbol? txt-key)
     (lstr (str "errorDialog.titles." txt-key))
@@ -78,33 +86,89 @@
 (defn lstr-error-dlg-text
   "Adds prefix 'errorDialog.texts' to the key before getting the translation"
   [txt-key]
-  (lstr (str "errorDialog.texts." txt-key)))
+  ;; :common/error-box-show calls that use symbol for message are assumed to have translations 
+  ;; If string value is used, that means these are yet to be translated 
+  (if (symbol? txt-key)
+    (lstr (str "errorDialog.texts." txt-key))
+    txt-key))
+
+(defn lstr-msg-dlg-title
+  "Adds prefix 'messageDialog.titles' to the key before getting the translation"
+  [txt-key]
+  ;; :common/message-box-show calls that use symbol for title are assumed to have translations 
+  ;; If string value is used, that means these are yet to be translated 
+  (if (symbol? txt-key)
+    (lstr (str "messageDialog.titles." txt-key))
+    txt-key))
+
+(defn lstr-msg-dlg-text
+  "Adds prefix 'messageDialog.texts' to the key before getting the translation"
+  [txt-key]
+  ;; :common/message-box-show calls that use symbol for message are assumed to have translations 
+  ;; If string value is used, that means these are yet to be translated 
+  (if (symbol? txt-key)
+    (lstr (str "messageDialog.texts." txt-key))
+    txt-key))
+
+(defn lstr-modal-dlg-text
+  "Adds prefix 'modalDialog.texts' to the key before getting the translation"
+  [txt-key]
+  ;;  :common/error-box-show calls that use symbol for message are assumed to have translations 
+  ;; If string value is used, that means these are yet to be translated 
+  (if (symbol? txt-key)
+    (lstr (str "modalDialog.texts." txt-key))
+    txt-key))
 
 (defn lstr-sm
-  "Adds prefix 'snackbar.messages' to the key before getting the translation"
+  "Adds prefix 'snackbarMessages' to the key before getting the translation
+  The arg 'txt-key' are expected to be a symbol as passed in events call ':common/message-snackbar-open' 
+   "
   [txt-key]
-  (lstr (str "snackbar.messages." txt-key)))
+  ;; If string value is used, that means such texts are yet to be translated 
+  (if (symbol? txt-key)
+    (lstr (str "snackbarMessages." txt-key))
+    txt-key))
 
 (defn lstr-ml
-  "Adds 'menu.labels' prefix to the key and gets the translated text."
+  "Adds 'menuLabels' prefix to the key and gets the translated text."
   [txt-key]
-  (-> (str "menu.labels." (convert txt-key)) lstr))
+  (-> (str "menuLabels." (convert txt-key)) lstr))
 
-(defn lstr-bl [txt-key]
-  (lstr (str "button.labels." txt-key)))
+(defn lstr-mt
+  "Adds 'messageTexts' prefix to the key and gets the translated text."
+
+  ([view-name txt-key interpolation-args]
+   (-> (str "messageTexts." view-name "." txt-key) (lstr interpolation-args)))
+  ([view-name txt-key]
+   (lstr-mt view-name txt-key nil)))
+
+(defn lstr-bl
+  "Adds 'buttonLabels' prefix to the key and gets the translated text."
+  [txt-key]
+  (lstr (str "buttonLabels." txt-key)))
 
 (defn lstr-pt
-  "Adds 'page.titles' prefix to the key and gets the translated text."
+  "Adds 'pageTitles' prefix to the key and gets the translated text."
   [txt-key]
-  (lstr (str "page.titles." txt-key)))
+  (lstr (str "pageTitles." txt-key)))
 
 (defn lstr-entry-type-title
-  "Adds 'entryType.titles' prefix to the key and gets the translated text."
+  "Adds 'entryTypeTitles' prefix to the key and gets the translated text."
   [txt-key]
   (lstr (str "entryTypeTitles." (convert txt-key))))
 
-#_(defn lstr-l [txt-key]
-    (lstr (str "labels." txt-key)))
+(defn lstr-section-name
+  "Adds 'entrySectionNames' prefix to the key and gets the translated text of standard entry section names"
+  [txt-key]
+  (lstr (str "entrySectionNames." (convert txt-key))))
+
+(defn lstr-field-name
+  "Adds 'entryFieldNames' prefix to the key and gets the translated text of standard entry fields"
+  [txt-key]
+  (lstr (str "entryFieldNames." (convert txt-key))))
+
+
+(tr-events/set-translator {:lstr-modal-dlg-text lstr-modal-dlg-text})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
 
@@ -119,9 +183,9 @@
 
 (declare ^:private create-back-end)
 
-(defn- translations-loaded [api-response]
-  ;; on-ok may return nil on error. Then no translation will be available  
-  (let [{:keys [_current-locale-language prefered-language translations] :as res} (on-ok api-response)
+(defn- translations-loaded-callback [ok-response]
+  ;; ok-response be nil on error. Then no translation will be available  
+  (let [{:keys [_current-locale-language prefered-language translations]} ok-response
         ;; translations is a map where key is the language id and value is a json string and 
         ;; the json string needs to be parsed. After parsing the string in 'v', the type 
         ;; of the parsed value is a js object - #object[Object]
@@ -137,17 +201,53 @@
 
     (setup-i18n-with-backend prefered-language (create-back-end parsed-translations))))
 
-
 (defn load-language-translation
   "Needs to be called on app loading in the very begining to load locale language and 'en' 
    tranalations json files found in app resource dir"
   ([]
-   (bg/load-language-translations [] translations-loaded))
+   (tr-events/load-language-translation [] translations-loaded-callback))
 
   ([language-ids]
    ;; language-ids is a vec of two charater language ids
    ;; e.g ["en" "fr"]
-   (bg/load-language-translations language-ids translations-loaded)))
+   (tr-events/load-language-translation language-ids translations-loaded-callback)))
+
+
+(defn reload-language-translation 
+  "Called after language selection is changed"
+  []
+  (tr-events/reload-language-data [] translations-loaded-callback))
+
+
+#_(defn- translations-loaded [api-response]
+  ;; on-ok may return nil on error. Then no translation will be available  
+    (let [{:keys [_current-locale-language prefered-language translations] :as res} (on-ok api-response)
+        ;; translations is a map where key is the language id and value is a json string and 
+        ;; the json string needs to be parsed. After parsing the string in 'v', the type 
+        ;; of the parsed value is a js object - #object[Object]
+          parsed-translations (reduce (fn [m [k v]] (assoc m k (parse-json v)))  {} translations)]
+    ;; (println "res is  " res)
+      #_(println "current-locale-language prefered-language are " current-locale-language prefered-language)
+
+    ;; Type of 'parsed-translations' is  cljs.core/PersistentArrayMap
+      #_(println "Type of 'parsed-translations' is " (type parsed-translations))
+
+    ;; Type of translations for en is  #object[Object]
+      #_(println "Type of value for en key in 'parsed-translations' is " (type (:en parsed-translations)))
+
+      (setup-i18n-with-backend prefered-language (create-back-end parsed-translations))))
+
+
+#_(defn load-language-translation
+    "Needs to be called on app loading in the very begining to load locale language and 'en' 
+   tranalations json files found in app resource dir"
+    ([]
+     (bg/load-language-translations [] translations-loaded))
+
+    ([language-ids]
+   ;; language-ids is a vec of two charater language ids
+   ;; e.g ["en" "fr"]
+     (bg/load-language-translations language-ids translations-loaded)))
 
 (defn- create-i18n-init
   "The init call on an instance of 'i18n' returns a promise and we need to r
@@ -159,10 +259,16 @@
         (reset! i18n-instance instance)
         (js/console.log  "i18n init is done successfully")
         ;; Need to dispatch on successful loading of data
-        (cmn-events/load-language-translation-completed))
+        #_(cmn-events/load-language-translation-completed)
+        (tr-events/load-language-data-complete))
+
       ;; Error should not happen as we have already loaded a valid translations data before calling init 
       ;; Still what to do if there is any error in initializing 'i18n'? 
       (catch js/Error err
+        ;; Because of error in laoding i18n data, all UI texts will not be correct 
+        ;; even though we are calling this complete status setting.
+        ;; If we do not call this status, the UI will be stuck in 'Please wait ..'
+        (tr-events/load-language-data-complete)
         (js/console.log (ex-cause err))))))
 
 ;;Ref: https://www.i18next.com/misc/creating-own-plugins#backend

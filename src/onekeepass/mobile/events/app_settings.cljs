@@ -108,11 +108,10 @@
   (dispatch [:clipboard-timeout-update value-in-milli-seconds]))
 
 (defn app-theme-update [theme-selected]
-  (dispatch [:app-preference-update-data :theme theme-selected])
-  #_(dispatch [:app-theme-update theme-selected]))
+  (dispatch [:app-preference-update-data :theme theme-selected nil]))
 
-(defn app-language-update [lng-selected]
-  (dispatch [:app-preference-update-data :language lng-selected]))
+(defn app-language-update [lng-selected call-on-success]
+  (dispatch [:app-preference-update-data :language lng-selected call-on-success]))
 
 (defn db-session-timeout-value
   "An atom that gives the db session timeout in milli seconds"
@@ -132,7 +131,7 @@
 (reg-event-fx
  :to-app-settings
  (fn [{:keys [_db]} [_event-id]]
-   {:fx [[:dispatch [:common/next-page :app-settings "page.titles.appSettings"]]]}))
+   {:fx [[:dispatch [:common/next-page :app-settings "appSettings"]]]}))
 
 (reg-event-fx
  :db-session-timeout-update
@@ -163,21 +162,29 @@
                                                       ;; Just show error message if any
                                                     (on-error api-response)))))
 
-(defn- on-success [ kw value]
+#_(defn- on-success [m]
+  #_(when (= kw :language)
+    (dispatch [:common/reset-load-language-translation-status])
+    (dispatch [])
+    )
   #_(println "Preference field kw " kw " is updated"))
 
 (reg-event-fx
  :app-preference-update-data
- (fn [{:keys [db]} [_event-id kw value]]
+ (fn [{:keys [db]} [_event-id kw value call-on-success]] 
    {:db (assoc-in db [:app-preference :data kw] value)
-    :fx [[:bg-update-preference [kw value on-success]]]}))
+    ;; This event is called in on-change handler of 'list-item-modal-selector'
+    ;; and as a result calling any modal window (:common/message-modal-show) in this event did not work
+    ;; Need to complete on-change call and then call any messaging then
+    :fx [[:bg-update-preference [kw value call-on-success]]]}))
 
 (reg-fx
  :bg-update-preference
  (fn [[kw value call-on-success]]
-   (bg/update-preference {kw value} (fn [api-response]
+   (bg/update-preference {kw value} (fn [api-response] 
                                       (when-not (on-error api-response)
-                                        (when-not (nil? call-on-success) (call-on-success kw value)))))))
+                                        (when-not (nil? call-on-success) 
+                                          (call-on-success {kw value})))))))
 
 (reg-sub
  :db-session-timeout

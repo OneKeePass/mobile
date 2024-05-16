@@ -2,8 +2,7 @@
   {:clj-kondo/config '{:linters {:unresolved-symbol {:level :off}}}}
   (:require
    [reagent.core :as r]
-   [onekeepass.mobile.rn-components :as rnc :refer [lstr
-                                                    appbar-text-color
+   [onekeepass.mobile.rn-components :as rnc :refer [appbar-text-color
                                                     page-background-color
                                                     inverse-onsurface-color
                                                     page-title-text-variant
@@ -20,6 +19,7 @@
                                                     rnp-list-icon
                                                     rnp-portal
                                                     rnp-text]]
+   [onekeepass.mobile.translation :refer [lstr-bl lstr-l lstr-mt]]
    [onekeepass.mobile.background :refer [is-iOS]]
    [onekeepass.mobile.utils  :refer [str->int]]
    [onekeepass.mobile.common-components :as cc :refer [select-field confirm-dialog]]
@@ -35,11 +35,11 @@
   [confirm-dialog {:dialog-show @mp-confirm-dialog-data
                    :title "Changing Master Password"
                    :confirm-text "You are changing the master password. Please keep it safe. Otherwise you will not be able to unlock the databse"
-                   :actions [{:label (lstr "button.labels.yes")
+                   :actions [{:label (lstr-bl "yes")
                               :on-press (fn []
                                           (stgs-events/save-db-settings)
                                           (reset! mp-confirm-dialog-data false))}
-                             {:label (lstr "button.labels.no")
+                             {:label (lstr-bl "no")
                               :on-press (fn []
                                           (reset! mp-confirm-dialog-data false))}]}])
 
@@ -93,9 +93,9 @@
   (let [{:keys [database-name database-description]} (-> @(stgs-events/db-settings-data) :meta)
         error-text (:database-name @(stgs-events/db-settings-validation-errors))]
     [rn-view {:flex 1 :backgroundColor @page-background-color} ;;
-     [form-header "Database Details"]
+     [form-header (lstr-l 'databaseDetails)]
      [rn-view {:style form-style}
-      [rnp-text-input {:label "Database Name"
+      [rnp-text-input {:label (lstr-l 'databaseName)
                        ;;:value database-name
                        ;; Need to use defaultValue prop instead of value prop to handle the text caret cursor movement
                        ;; This is required mainly for android. Otherwise the cursor does not move after a letter is inserted 
@@ -103,7 +103,7 @@
                        :autoCapitalize "none"
                        :onChangeText #(stgs-events/db-settings-data-field-update [:meta :database-name] %)}]
       (when-not (nil? error-text) [rnp-helper-text {:type "error" :visible true} error-text])
-      [rnp-text-input {:label "Database Description"
+      [rnp-text-input {:label (lstr-l 'databaseDesc)
                        ;;:value database-description
                        :defaultValue database-description
                        :onChangeText #(stgs-events/db-settings-data-field-update [:meta :database-description] %)
@@ -114,7 +114,7 @@
                                     password-used]} :data}]
   (let [update-password #(stgs-events/db-settings-password-updated %)]
     [rn-view {:style {:backgroundColor @page-background-color}}
-     [form-header "Password"]
+     [form-header (lstr-l 'masterPassword)]
      [rn-view {:style form-style}
       (cond
         ;;
@@ -125,13 +125,13 @@
             [rn-view {:style {:margin-top 20 :margin-bottom 20 :align-items "center"}}
              [rnp-button {:style {:width "50%"}
                           :mode "contained"
-                          :on-press stgs-events/db-settings-password-removed} (lstr "button.labels.removePassword")]]
+                          :on-press stgs-events/db-settings-password-removed} (lstr-bl "removePassword")]]
             [rnp-divider {:bold true :style {:margin-top 5}}]])
 
          [rn-view {:style {:flexDirection "row"}}
           [rn-view {:style {:width "85%"}}
            [rnp-text-input {:style {}
-                            :label (if password-use-added (lstr "button.labels.addPassword") (lstr "button.labels.changePassword"))
+                            :label (if password-use-added (lstr-bl "addPassword") (lstr-bl "changePassword"))
                             :value password
                             :secureTextEntry (not password-visible)
                             :right (r/as-element [rnp-text-input-icon
@@ -152,25 +152,27 @@
         [rn-view {:style {:margin-top 20 :margin-bottom 20 :align-items "center"}}
          [rnp-button {:style {:width "50%"}
                       :mode "contained"
-                      :on-press stgs-events/db-settings-password-added} "Add password"]
+                      :on-press stgs-events/db-settings-password-added} 
+          (lstr-bl 'addPassword)]
+         
          (when password-use-removed
            [rnp-text {:style {:margin-top 10 :color @rnc/tertiary-color}}
-            "The current password is removed and will not be used for the master key"])])]]))
+            (lstr-mt 'dbSettings 'currrentPasswordRemoved)])])]]))
 
 (defn key-file-credential [{:keys []
                             {:keys [key-file-name-part]} :data}]
 
   [rn-view {:style {:backgroundColor @page-background-color}} ;;
-   [form-header "Key File"]
+   [form-header (lstr-l 'keyFile)]
    [rn-view  {:style form-style}
     (when key-file-name-part
       [rnp-text-input {:style {:margin-top 10}
-                       :label "Key File"
+                       :label (lstr-l 'keyFile)
                        :defaultValue key-file-name-part
                        :readOnly (if (is-iOS) true false)
                        :onPressIn #(stgs-events/show-key-file-form)
                        :onChangeText nil
-                       :placeholder "Pick an optional key file"
+                       :placeholder (lstr-mt 'dbSettings 'pickKeyFile)
                        :right (r/as-element [rnp-text-input-icon
                                              {:icon const/ICON-CLOSE
                                               :onPress (fn []
@@ -178,7 +180,7 @@
     [rnp-text {:style {:margin-top 15
                        :textDecorationLine "underline"
                        :text-align "center"}
-               :onPress #(stgs-events/show-key-file-form)} "Key File"]]])
+               :onPress #(stgs-events/show-key-file-form)} (lstr-bl 'keyFile)]]])
 
 (defn credential-content []
   [rn-view {:style {:flex 1 :backgroundColor @page-background-color}}
@@ -188,7 +190,9 @@
 
    (when-let [error-text (:in-sufficient-credentials @(stgs-events/db-settings-validation-errors))]
      [rn-view {:style {:margin-top 20}}
-      [rnp-helper-text {:style {:fontWeight "bold"}  :type "error" :visible true} error-text]])
+      [rnp-helper-text {:style {:fontWeight "bold"}  :type "error" :visible true} 
+       ;; Translatted error text
+       error-text]])
    [rnp-portal
     [master-password-change-confirm-dialog]]])
 
@@ -201,9 +205,9 @@
         errors @(stgs-events/db-settings-validation-errors)]
 
     [rn-view {:flex 1 :backgroundColor @page-background-color}  ;;
-     [form-header "Security"]
+     [form-header (lstr-l 'security)]
      [rn-view {:style form-style}
-      [select-field {:text-label "Encription Algorithm"
+      [select-field {:text-label (lstr-l 'encriptionAlgorithm)
                      :options encryption-algorithms
                      :value cipher-id
                      :on-change (fn [option]
@@ -211,9 +215,10 @@
      [rn-view {:style form-style}
       [rnp-text-input {:style {}
                        :editable false
-                       :label "Key Derivation Function" :value "Argon 2d"}]
+                       :label (lstr-l 'kdf)
+                       :value "Argon 2d"}]
       [rnp-text-input {:style {}
-                       :label "Transform Rounds"
+                       :label (lstr-l 'transformRounds)
                        :keyboardType "numeric"
                        :value (str iterations)
                        :onChangeText #(stgs-events/db-settings-data-field-update [:kdf :Argon2 :iterations] (str->int %))}]
@@ -221,7 +226,7 @@
         [rnp-helper-text {:type "error" :visible true} (:iterations errors)])
 
       [rnp-text-input {:style {}
-                       :label "Memory Usage"
+                       :label (lstr-l 'memoryUsage)
                        :keyboardType "numeric"
                        :value (str memory)
                        :onChangeText #(stgs-events/db-settings-data-field-update [:kdf :Argon2 :memory] (str->int %))}]
@@ -229,7 +234,7 @@
         [rnp-helper-text {:type "error" :visible true} (:memory errors)])
 
       [rnp-text-input {:style {}
-                       :label "Parallelism"
+                       :label (lstr-l 'parallelism)
                        :keyboardType "numeric"
                        :value (str parallelism)
                        :onChangeText #(stgs-events/db-settings-data-field-update [:kdf :Argon2 :parallelism] (str->int %))}]
@@ -257,11 +262,12 @@
                       :alignSelf "center"
                       ;;:width "85%"
                       :text-align "center"
-                      :padding-left 5} :variant "titleSmall"} (lstr title)]])
+                      :padding-left 5} :variant "titleSmall"} (lstr-l title)]])
 
 (defn row-item [_m]
   (fn [{:keys [title page-id]} section-key] 
     ;; page-id is string and need to be convereted to a keyword to get the settings panel id
+    ;; title is a key to i18n map
     [rnp-list-item {:style {}
                     :onPress (fn []
                                (if-not (= "AppSettings" section-key)
@@ -271,7 +277,7 @@
                                  (as-events/to-app-settings-page)))
                     :title (r/as-element
                             [rnp-text {:style {}
-                                       :variant "titleMedium"} (lstr title)])
+                                       :variant "titleMedium"} (lstr-l title)])
                     :right (fn [_props] (r/as-element [rnp-list-icon {:icon const/ICON-CHEVRON-RIGHT}]))}]))
 
 (defn db-settings-list-content []
@@ -287,6 +293,7 @@
                        :sections (clj->js sections)
                        :renderItem  (fn [props]
                                       ;; keys are (:item :index :section :separators)
+                                      ;; (-> props :item) gives the map corresponding to each member of the vec in :data
                                       (let [props (js->clj props :keywordize-keys true)]
                                         (r/as-element [row-item (-> props :item) (-> props :section :key)])))
                        :ItemSeparatorComponent (fn [_p]
@@ -307,7 +314,7 @@
     [rnp-text {:style {:textDecorationLine "underline"
                        :text-align "center"}
                :variant "titleMedium"
-               :onPress cmn-events/to-about-page} (lstr "appInfo")]]])
+               :onPress cmn-events/to-about-page} (lstr-l "appInfo")]]])
 
 (defn content []
   [rn-safe-area-view {:style {:flex 1 :backgroundColor @page-background-color}}

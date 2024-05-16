@@ -10,7 +10,7 @@
             [onekeepass.mobile.events.move-delete :as md-events]
             [onekeepass.mobile.icons-list :refer [icon-id->name]]
             [onekeepass.mobile.rn-components :as rnc :refer [cust-dialog
-                                                             icon-color lstr
+                                                             icon-color
                                                              page-background-color
                                                              primary-container-color
                                                              rn-safe-area-view
@@ -31,7 +31,8 @@
                                                              rnp-text]]
             [onekeepass.mobile.translation :refer [lstr-bl lstr-cv
                                                    lstr-dlg-text
-                                                   lstr-dlg-title lstr-ml]]
+                                                   lstr-dlg-title lstr-l
+                                                   lstr-ml]]
             [reagent.core :as r]))
 
 ;;;;;;;;;;; Menus ;;;;;;;;;;;;;;
@@ -55,10 +56,10 @@
 
 (defn fab-action-menu [{:keys [show x y selected-category-key selected-category-detail]}]
   [rnp-menu {:visible show :onDismiss hide-fab-action-menu :anchor (clj->js {:x x :y y})}
-   [rnp-menu-item {:title (lstr "menu.labels.addEntry")
+   [rnp-menu-item {:title (lstr-ml "addEntry")
                    :onPress (fab-menu-action elist-events/add-entry)}]
    (when (= const/GROUP_SECTION_TITLE selected-category-key)
-     [rnp-menu-item {:title (lstr "menu.labels.addGroup")
+     [rnp-menu-item {:title (lstr-ml "addGroup")
                      :onPress (fab-menu-action elist-events/add-group (:uuid selected-category-detail))}])])
 
 (def ^:private entry-long-press-menu-data (r/atom
@@ -81,7 +82,7 @@
       [rnp-menu {:visible show :onDismiss hide-entry-long-press-menu :anchor (clj->js {:x x :y y})}
        ;; TODO: Need to add a rust api to toggle an entry as Favorites or not and then enable this 
        #_[rnp-menu-item {:title "Favorites" :onPress #()  :trailingIcon "check"}]
-       [rnp-menu-item {:title (lstr "menu.labels.delete")
+       [rnp-menu-item {:title (lstr-ml "delete")
                        :onPress (entry-long-press-menu-action cc/show-entry-delete-confirm-dialog (:uuid entry-summary))}]
        ;; TDOO: 
        ;; Need to add backend api support to get history count as part of summary
@@ -90,10 +91,10 @@
        #_[rnp-menu-item {:title "History"  :onPress #()}]]
 
       [rnp-menu {:visible show :onDismiss hide-entry-long-press-menu :anchor (clj->js {:x x :y y})}
-       [rnp-menu-item {:title (lstr "menu.labels.putback")
+       [rnp-menu-item {:title (lstr-ml "putback")
                        :onPress (entry-long-press-menu-action
                                  md-events/open-putback-dialog (:uuid entry-summary))}]
-       [rnp-menu-item {:title (lstr "menu.labels.deletePermanently")
+       [rnp-menu-item {:title (lstr-ml "deletePermanently")
                        :onPress (entry-long-press-menu-action
                                  md-events/openn-delete-permanent-dialog (:uuid entry-summary))}]])))
 
@@ -115,17 +116,17 @@
 (defn group-long-press-menu [{:keys [show x y category-detail]}]
   (let [group-uuid (:uuid category-detail)]
     [rnp-menu {:visible show :onDismiss hide-group-long-press-menu :anchor (clj->js {:x x :y y})}
-     [rnp-menu-item {:title (lstr "menu.labels.edit")
+     [rnp-menu-item {:title (lstr-ml "edit")
                      :onPress (group-long-press-menu-action elist-events/find-group-by-id group-uuid)}]
      [rnp-divider]
-     [rnp-menu-item {:title (lstr "menu.labels.addEntry")
+     [rnp-menu-item {:title (lstr-ml "addEntry")
                      :onPress (group-long-press-menu-action
                                elist-events/add-entry-in-selected-group category-detail)}]
-     [rnp-menu-item {:title (lstr "menu.labels.addGroup")
+     [rnp-menu-item {:title (lstr-ml "addGroup")
                      :onPress (group-long-press-menu-action
                                elist-events/add-group group-uuid)}]
      [rnp-divider]
-     [rnp-menu-item {:title (lstr "menu.labels.delete")
+     [rnp-menu-item {:title (lstr-ml "delete")
                      :onPress (group-long-press-menu-action
                                cc/show-group-delete-confirm-dialog group-uuid)}]]))
 
@@ -182,12 +183,12 @@
        [rnp-text {:style {:margin-bottom 10} :variant "titleMedium"} (lstr-dlg-text 'putBack)]
        (if-not (empty? error-fields)
          [:<>
-          [select-field {:text-label (str (lstr 'groupOrCategory) "*")
+          [select-field {:text-label (str (lstr-l 'groupOrCategory) "*")
                          :options names
                          :value parent-group-name
                          :on-change on-change}]
           [rnp-helper-text {:type "error" :visible true} (:parent-group-info error-fields)]]
-         [select-field {:text-label (str (lstr 'groupOrCategory) "*")
+         [select-field {:text-label (str (lstr-l 'groupOrCategory) "*")
                         :options names
                         :value parent-group-name
                         :on-change on-change}])]]
@@ -274,9 +275,9 @@
   [confirm-dialog (merge @(md-events/delete-permanent-dialog-data)
                          {:title (lstr-dlg-title 'deleteEntryPermanent)
                           :confirm-text (lstr-dlg-text 'deleteEntryPermanent)
-                          :actions [{:label (lstr "button.labels.yes")
+                          :actions [{:label (lstr-bl "yes")
                                      :on-press md-events/on-delete-permanent-dialog-ok}
-                                    {:label (lstr "button.labels.no")
+                                    {:label (lstr-bl "no")
                                      :on-press md-events/hide-delete-permanent-dialog}]})])
 
 (def delete-all-entries-permanent-confirm (r/atom false))
@@ -286,13 +287,13 @@
 
 (defn delete-all-entries-permanent-confirm-dialog []
   [confirm-dialog {:dialog-show @delete-all-entries-permanent-confirm
-                   :title  (lstr "dialog.titles.deleteAllEntriesPermanet")
-                   :confirm-text (lstr "dialog.texts.deleteAllEntriesPermanet")
-                   :actions [{:label (lstr "button.labels.yes")
+                   :title  (lstr-dlg-title "deleteAllEntriesPermanet")
+                   :confirm-text (lstr-dlg-text "deleteAllEntriesPermanet")
+                   :actions [{:label (lstr-bl "yes")
                               :on-press (fn []
                                           (reset! delete-all-entries-permanent-confirm false)
                                           (elist-events/delete-all-entries-permanently))}
-                             {:label (lstr "button.labels.no")
+                             {:label (lstr-bl "no")
                               :on-press #(reset! delete-all-entries-permanent-confirm false)}]}])
 
 (defn bottom-nav-bar 
@@ -331,7 +332,8 @@
                            :onPress (fn [e]
                                       (show-sort-menu e sort-criteria))}]
          [rnp-text {:style {:margin-top -5}
-                    :text-align "center"} (lstr 'sort)]]
+                    :text-align "center"} 
+          (lstr-l 'sort)]]
 
         [rn-view {:align-items "center"}
          [rnp-icon-button {:size 24
@@ -340,7 +342,8 @@
                            :onPress (fn [e]
                                       (show-fab-action-menu e selected-category-key selected-category-detail))}]
          [rnp-text {:style {:margin-top -5}
-                    :text-align "center"} (lstr 'add)]]]])))
+                    :text-align "center"} 
+          (lstr-l 'add)]]]])))
 
 (def idx (r/atom -1))
 

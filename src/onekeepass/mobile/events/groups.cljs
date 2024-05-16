@@ -74,7 +74,7 @@
      {:db (-> db (assoc-in-key-db [:group-form :data] group)
               (assoc-in-key-db [:group-form :error-fields] {})
               (assoc-in-key-db [:group-form :undo-data] group))
-      :fx [[:dispatch [:common/next-page :group-form (if (= kind :group) "page.titles.group" "page.titles.category")]]]})))
+      :fx [[:dispatch [:common/next-page :group-form (if (= kind :group) "group" "category")]]]})))
 
 
 (reg-event-fx
@@ -102,7 +102,7 @@
       ;; TODO: Use "page.titles.newGroup" "page.titles.newCategory" after finding a way to show longer texts
       ;; We may use the same technique as in Database settings page title ?
       :fx [[:dispatch [:common/next-page :group-form
-                       (if (= kind :group) "page.titles.group" "page.titles.category")]]]})))
+                       (if (= kind :group) "group" "category")]]]})))
 
 (reg-event-fx
  :save-group-form
@@ -113,7 +113,7 @@
          error-fields (if (str/blank? name) {:name "A valid group/category name is required"} {})]
      (if (empty? error-fields)
        {:db (-> db (assoc-in-key-db [:group-form :error-fields] error-fields))
-        :fx [[:dispatch [:common/message-modal-show nil "Saving ..."]]
+        :fx [[:dispatch [:common/message-modal-show nil 'saving]]
              (if new [:bg-insert-group [(active-db-key db) group]]
                  [:bg-update-group [(active-db-key db) group]])]}
 

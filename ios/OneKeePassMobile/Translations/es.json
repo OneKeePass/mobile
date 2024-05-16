@@ -1,22 +1,43 @@
 {
-    "allEntries": "Todas las entradas",
-    "deleted": "Eliminado",
-    "favorites": "Favoritos",
-    "entryType.titles": {
+    "commonTexts": {
+        "allEntries": "Todas las entradas",
+        "deleted": "Eliminado",
+        "favorites": "Favoritos"
+    },
+    "entryTypeTitles": {
         "bankAccount": "Cuenta bancaria",
         "credit/DebitCard": "Tarjeta de crédito / débito",
         "login": "Acceso",
         "wirelessRouter": "Router inalámbrico"
     },
-    "button.labels": {
-        "opendb": "Abrir base de datos",
-        "newdb": "Nueva base de datos"
+    "dialog": {
+        "titles": {},
+        "texts": {}
     },
-
-    "menu.labels": {
+    "errorDialog": {
+        "titles": {},
+        "texts": {}
+    },
+    "snackbarMessages": {},
+    "pageTitles": {
+        "about": "Acerca de",
+        "appSettings": "Ajustes de Aplicacion"
+    },
+    "buttonLabels": {
+        "opendb": "Abrir base de datos",
+        "newdb": "Nueva base de datos",
+        "refresh":"Actualizar"
+    },
+    
+    "menuLabels": {
         "categories": "Categorías",
         "groups": "Grupos",
         "tags": "Etiquetas",
         "types": "Tipos"
+    },
+    "messageTexts": {
+        "about": {
+            "noPersonalInfoCollection": "La aplicación no recopila ninguna información de identificación personal. Nada se recopila ni se comparte con ningún tercero"
+        }
     }
 }

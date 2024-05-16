@@ -1,17 +1,40 @@
 {
-    "allEntries": "Toutes les entrées",
-    "deleted": "Supprimé",
-    "favorites": "Favoris",
+    "commonTexts": {
+        "allEntries": "Toutes les entrées",
+        "deleted": "Supprimé",
+        "favorites": "Favoris"
+    },
     "entryTypeTitles": {
         "bankAccount": "Compte bancaire",
         "credit/DebitCard": "Carte de crédit / débit",
         "login": "Se connecter",
         "wirelessRouter": "Routeur sans fil"
     },
-    "menu.labels": {
+    "dialog": {
+        "titles": {},
+        "texts": {}
+    },
+    "errorDialog": {
+        "titles": {},
+        "texts": {}
+    },
+    "snackbarMessages": {},
+    "pageTitles": {
+        "about": "À propos",
+        "appSettings": "Paramètres de l'application"
+    },
+    "buttonLabels": {
+        "refresh":"Rafraîchir"
+    },
+    "menuLabels": {
         "categories": "Catégories",
         "groups": "Groupes",
         "tags": "Mots clés",
         "types": "Les types"
+    },
+    "messageTexts": {
+        "about": {
+            "noPersonalInfoCollection": "L'application ne collecte aucune information personnelle identifiable. Rien n'est collecté ou partagé avec une partie externe"
+        }
     }
 }

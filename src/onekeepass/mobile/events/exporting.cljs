@@ -13,7 +13,7 @@
 (reg-event-fx
  :start-export-kdbx-data-preparation
  (fn [{:keys [_db]} [_event-id full-file-name-uri]]
-   {:fx  [[:dispatch [:common/message-modal-show nil "Preparing data to export"]]
+   {:fx  [[:dispatch [:common/message-modal-show nil 'preparingExportData]]
           [:bg-prepare-export-kdbx-data [full-file-name-uri]]]}))
 
 (reg-fx

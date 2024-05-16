@@ -20,7 +20,7 @@
             [onekeepass.mobile.icons-list :refer [icon-id->name]]
             [onekeepass.mobile.rn-components :as rnc :refer [cust-rnp-divider
                                                              dots-icon-name
-                                                             icon-color lstr
+                                                             icon-color
                                                              on-primary-color
                                                              page-background-color
                                                              primary-container-color
@@ -65,11 +65,11 @@
 
 (defn fab-action-menu [{:keys [show x y]} root-group]
   [rnp-menu {:visible show :onDismiss hide-fab-action-menu :anchor (clj->js {:x x :y y})}
-   [rnp-menu-item {:title (lstr "menu.labels.addEntry")
+   [rnp-menu-item {:title (lstr-ml "addEntry")
                    :onPress (fab-menu-action ecat-events/add-new-entry (select-keys root-group [:name :uuid]) UUID_OF_ENTRY_TYPE_LOGIN)}]
-   [rnp-menu-item {:title (lstr "menu.labels.addCategory")
+   [rnp-menu-item {:title (lstr-ml "addCategory")
                    :onPress (fab-menu-action ecat-events/initiate-new-blank-category-form (:uuid root-group))}]
-   [rnp-menu-item {:title (lstr "menu.labels.addGroup")
+   [rnp-menu-item {:title (lstr-ml "addGroup")
                    :onPress (fab-menu-action ecat-events/initiate-new-blank-group-form (:uuid root-group))}]])
 
 ;;
@@ -90,32 +90,32 @@
   [rnp-menu {:visible show :onDismiss hide-category-long-press-menu :anchor (clj->js {:x x :y y})}
    (cond
      (= category-key TYPE_SECTION_TITLE)
-     [rnp-menu-item {:title (lstr "menu.labels.addEntry")
+     [rnp-menu-item {:title (lstr-ml "addEntry")
                      :onPress (fn [] (ecat-events/add-new-entry nil (:entry-type-uuid category-detail)))}]
 
      (= category-key TAG_SECTION_TITLE)
-     [rnp-menu-item {:title (lstr "menu.labels.addEntry")
+     [rnp-menu-item {:title (lstr-ml "addEntry")
                      :onPress (fn [] (ecat-events/add-new-entry nil UUID_OF_ENTRY_TYPE_LOGIN))}]
 
      (= category-key CAT_SECTION_TITLE)
      [:<>
 
-      [rnp-menu-item {:title (lstr "menu.labels.addEntry")
+      [rnp-menu-item {:title (lstr-ml "addEntry")
                       :onPress (fn [] (ecat-events/add-new-entry {:name (:title category-detail) :uuid (:uuid category-detail)} UUID_OF_ENTRY_TYPE_LOGIN))}]
       [cust-rnp-divider]
-      [rnp-menu-item {:title (lstr "menu.labels.edit")
+      [rnp-menu-item {:title (lstr-ml "edit")
                       :onPress (fn [] (ecat-events/find-category-by-id (:uuid category-detail)))}]]
 
 
      (= category-key GROUP_SECTION_TITLE)
      [:<>
 
-      [rnp-menu-item {:title (lstr "menu.labels.addEntry")
+      [rnp-menu-item {:title (lstr-ml "addEntry")
                       :onPress (fn [] (ecat-events/add-new-entry {:name (:title category-detail) :uuid (:uuid category-detail)} UUID_OF_ENTRY_TYPE_LOGIN))}]
-      [rnp-menu-item {:title (lstr "menu.labels.addGroup")
+      [rnp-menu-item {:title (lstr-ml "addGroup")
                       :onPress #(ecat-events/initiate-new-blank-group-form (:uuid category-detail))}]
       [cust-rnp-divider]
-      [rnp-menu-item {:title (lstr "menu.labels.edit")
+      [rnp-menu-item {:title (lstr-ml "edit")
                       :onPress (fn [] (ecat-events/find-group-by-id (:uuid category-detail)))}]]
 
      :else
@@ -139,16 +139,16 @@
 
 (defn group-by-menu [{:keys [show group-by x y]}]
   [rnp-menu {:visible show :onDismiss hide-group-by-menu :anchor (clj->js {:x x :y y})}
-   [rnp-menu-item {:title (lstr "menu.labels.types")
+   [rnp-menu-item {:title (lstr-ml "types")
                    :leadingIcon (if (= group-by :type) ICON-CHECKBOX-OUTLINE ICON-CHECKBOX-BLANK-OUTLINE)
                    :onPress #(change-entries-grouping-method :type)}]
-   [rnp-menu-item {:title (lstr "menu.labels.tags")
+   [rnp-menu-item {:title (lstr-ml "tags")
                    :leadingIcon (if (= group-by :tag) ICON-CHECKBOX-OUTLINE ICON-CHECKBOX-BLANK-OUTLINE)
                    :onPress #(change-entries-grouping-method :tag)}]
-   [rnp-menu-item {:title (lstr "menu.labels.categories")
+   [rnp-menu-item {:title (lstr-ml "categories")
                    :leadingIcon (if (= group-by :group-category) ICON-CHECKBOX-OUTLINE ICON-CHECKBOX-BLANK-OUTLINE)
                    :onPress #(change-entries-grouping-method :group-category)}]
-   [rnp-menu-item {:title (lstr "menu.labels.groups")
+   [rnp-menu-item {:title (lstr-ml "groups")
                    :leadingIcon (if (= group-by :group-tree) ICON-CHECKBOX-OUTLINE ICON-CHECKBOX-BLANK-OUTLINE)
                    :onPress #(change-entries-grouping-method :group-tree)}]])
 

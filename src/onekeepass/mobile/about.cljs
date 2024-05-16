@@ -1,9 +1,8 @@
 (ns onekeepass.mobile.about
-  (:require [reagent.core :as r]
+  (:require [onekeepass.mobile.events.common :as cmn-events]
             [onekeepass.mobile.rn-components :as rnc :refer [rn-safe-area-view
-                                                             rn-view
-                                                             rnp-text]]
-            [onekeepass.mobile.events.common :as cmn-events]))
+                                                             rn-view rnp-text]]
+            [onekeepass.mobile.translation :refer [lstr-l lstr-mt]]))
 
 ;; The version should match the one used in
 
@@ -32,10 +31,10 @@
                      :background-color @rnc/inverse-onsurface-color}}
     [rnp-text  {:style {:padding 5
                         :textTransform "uppercase"}
-                :variant "titleSmall"} "Privacy Policy"]]
+                :variant "titleSmall"} (lstr-l 'privacyPolicy)]]
 
    [rn-view {:style {:margin-top 10 :justify-content "center" :align-items "center"}}
-    [rnp-text "The application does not collect any of the personal identifiable information. Nothing is collected or shared with any external party"]
+    [rnp-text (lstr-mt 'about 'noPersonalInfoCollection)]
 
     [rn-view {:style {:margin-top 10 :padding 5 :justify-content "center" :align-items "center"}}
      [rn-view {:style {:margin-top 5} :flexDirection "row" :flexWrap "wrap"}
@@ -61,7 +60,7 @@
                      :background-color @rnc/inverse-onsurface-color}}
     [rnp-text  {:style {:padding 5
                         :textTransform "uppercase"}
-                :variant "titleSmall"} "Support"]]
+                :variant "titleSmall"} (lstr-l 'support)]]
 
    [rn-view {:style {:margin-top 10 :justify-content "center" :align-items "center"}}
     [link-text "https://github.com/OneKeePass/mobile/issues"]
@@ -73,10 +72,10 @@
                      :background-color @rnc/inverse-onsurface-color}}
     [rnp-text  {:style {:padding 5
                         :textTransform "uppercase"}
-                :variant "titleSmall"} "Privacy Policy"]]
+                :variant "titleSmall"} (lstr-l 'privacyPolicy)]]
 
    [rn-view {:style {:margin-top 10 :justify-content "center" :align-items "center"}}
-    [rnp-text "The application does not collect any of the personal identifiable information. Nothing is collected or shared with any external party"]
+    [rnp-text (lstr-mt 'about 'noPersonalInfoCollection)]
 
     [rn-view {:style {:margin-top 10 :padding 5 :justify-content "center" :align-items "center"}}
      [rn-view {:style {:margin-top 5} :flexDirection "row" :flexWrap "wrap"}

@@ -109,7 +109,7 @@
             (assoc-in [:key-file-form :show-generate-option] show-generate-option)
             (assoc-in [:key-file-form :dispatch-on-file-selection] dispatch-on-file-selection))
     :fx [[:dispatch [:load-imported-key-files]]
-         [:dispatch [:common/next-page :key-file-form "page.titles.keyFileForm"]]]}))
+         [:dispatch [:common/next-page :key-file-form "keyFileForm"]]]}))
 
 ;; Any file picked by user is copied to app's private area in a backend api and then this event is called
 (reg-event-fx
@@ -119,7 +119,7 @@
      {:fx [[:dispatch [:load-imported-key-files]]
          ;; Navigate to the previous page after the user picked a file
            [:dispatch [:common/previous-page]]
-           [:dispatch [:common/message-snackbar-open "keyFileSelected"]]
+           [:dispatch [:common/message-snackbar-open 'keyFileSelected]]
            (when next-dipatch-kw
              [:dispatch [next-dipatch-kw kf-info]])]})))
 
@@ -148,7 +148,7 @@
      {:fx [(when next-dipatch-kw
              [:dispatch [next-dipatch-kw kf-info]])
            [:dispatch [:common/previous-page]]
-           [:dispatch [:common/message-snackbar-open "keyFileSelected" ]]]})))
+           [:dispatch [:common/message-snackbar-open 'keyFileSelected ]]]})))
 
 ;; Similar to :database-file-pick-error event in ns onekeepass.mobile.events.open-database
 ;; Need to make it share instead of copying as done here

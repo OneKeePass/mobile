@@ -18,12 +18,12 @@
                            BANK_ACCOUNT_TYPE_NAME
                            ])
 
-(def ADDITIONAL_ONE_TIME_PASSWORDS "Additional One-Time Passwords")
-
 ;; Based on the enum 'EntryCategory'
 (def CATEGORY_ALL_ENTRIES "AllEntries")
 (def CATEGORY_FAV_ENTRIES "Favorites")
 (def CATEGORY_DELETED_ENTRIES "Deleted")
+
+(def ADDITIONAL_ONE_TIME_PASSWORDS "Additional One-Time Passwords")
 
 ;; Labels used for entry grouping section title 
 (def GEN_SECTION_TITLE "General")
@@ -40,6 +40,7 @@
 (def BIOMETRIC-AUTHENTICATION-SUCCESS "AuthenticationSucceeded")
 (def BIOMETRIC-AUTHENTICATION-FAILED "AuthenticationFailed")
 
+(def THEME "theme")
 (def DARK-THEME "dark")
 (def LIGHT-THEME "light")
 (def DEFAULT-SYSTEM-THEME "system")

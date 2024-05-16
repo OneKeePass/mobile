@@ -1,38 +1,38 @@
 (ns onekeepass.mobile.key-file-form
-  (:require
-   [reagent.core :as r] 
-   [onekeepass.mobile.rn-components :as rnc :refer [cust-dialog
-                                            rnp-dialog-title
-                                            rnp-dialog-content
-                                            rnp-dialog-actions
-                                            rn-view
-                                            rnp-text-input
-                                            rnp-button
-                                            rnp-divider
-                                            rnp-text
-                                            primary-container-color
-                                            primary-color
-                                            dots-icon-name
-                                            rn-section-list
-                                            rnp-list-item
-                                            rnp-icon-button
-                                            rnp-menu
-                                            rnp-menu-item
-                                            rnp-portal
-                                            lstr
-                                            rn-safe-area-view]]
-   [onekeepass.mobile.common-components  :refer [menu-action-factory]]
-   [onekeepass.mobile.events.key-file-form :as kf-events]))
+  (:require [onekeepass.mobile.common-components  :refer [menu-action-factory]]
+            [onekeepass.mobile.events.key-file-form :as kf-events]
+            [onekeepass.mobile.rn-components :as rnc :refer [cust-dialog
+                                                             dots-icon-name
+                                                             primary-color
+                                                             primary-container-color
+                                                             rn-safe-area-view
+                                                             rn-section-list
+                                                             rn-view
+                                                             rnp-button
+                                                             rnp-dialog-actions
+                                                             rnp-dialog-content
+                                                             rnp-dialog-title
+                                                             rnp-divider
+                                                             rnp-icon-button
+                                                             rnp-list-item
+                                                             rnp-menu
+                                                             rnp-menu-item
+                                                             rnp-portal
+                                                             rnp-text
+                                                             rnp-text-input]]
+            [onekeepass.mobile.translation :refer [lstr-bl lstr-l lstr-ml
+                                                   lstr-mt]]
+            [reagent.core :as r]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;; Key file name dialog ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn key-file-name-dialog
   [{:keys [dialog-show file-name]}]
   [cust-dialog {:style {} :dismissable false :visible dialog-show :onDismiss #()}
-   [rnp-dialog-title (lstr "keyFileName")]
+   [rnp-dialog-title (lstr-l "keyFileName")]
    [rnp-dialog-content
     [rn-view {:style {:flexDirection "column"  :justify-content "center"}}
-     [rnp-text-input {:label (lstr "name")
+     [rnp-text-input {:label (lstr-l "name")
                       :defaultValue file-name
                       :autoComplete "off"
                       :autoCapitalize "none"
@@ -42,10 +42,10 @@
    [rnp-dialog-actions
     [rnp-button {:mode "text"
                  :onPress #(kf-events/generate-file-name-dialog-hide)}
-     (lstr "button.labels.cancel")]
+     (lstr-bl "cancel")]
     [rnp-button {:mode "text"
                  :onPress #(kf-events/generate-key-file file-name)}
-     (lstr "button.labels.ok")]]])
+     (lstr-bl "ok")]]])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Menus ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -68,15 +68,15 @@
 
 (defn list-action-menu [{:keys [show x y key-file-info]}]
   [rnp-menu {:visible show :onDismiss hide-list-action-menu :anchor (clj->js {:x x :y y})}
-   [rnp-menu-item {:title (lstr "menu.labels.select")
+   [rnp-menu-item {:title (lstr-ml "select")
                    :onPress (list-menu-action-factory
                              kf-events/set-selected-key-file-info key-file-info)}]
 
-   [rnp-menu-item {:title (lstr "menu.labels.remove")
+   [rnp-menu-item {:title (lstr-ml "remove")
                    :onPress (list-menu-action-factory
                              kf-events/delete-key-file (:file-name key-file-info))}]
 
-   [rnp-menu-item {:title (lstr "menu.labels.saveAs")
+   [rnp-menu-item {:title (lstr-ml "saveAs")
                    :onPress (list-menu-action-factory
                              kf-events/key-file-save-as key-file-info)}]])
 
@@ -109,7 +109,7 @@
 
 (defn key-files-list-content []
   (fn [imported-key-files]
-    (let [sections  [{:title (lstr "importedKeyFiles")
+    (let [sections  [{:title (lstr-l "importedKeyFiles")
                       :key "Key Files"
                       ;; imported-key-files is a list of map formed from struct 'KeyFileInfo' 
                       ;; forms the data for this list
@@ -134,9 +134,10 @@
       [rnp-button {:style {:width "50%"}
                 ;;:labelStyle {:fontWeight "bold"}
                    :mode "contained"
-                   :on-press kf-events/pick-key-file} (lstr "button.labels.browse")]
+                   :on-press kf-events/pick-key-file} 
+       (lstr-bl "browse")]
       [rnp-text {:style {:margin-top 10   :textAlign "justify"}}
-       "You can pick any random file that does not change. A hash of the file's content is used as an additional key"]]
+       (lstr-mt 'keyFileForm 'anyRandomFile)]]
      [rnp-divider]
 
      (when show-generate-option?
@@ -144,14 +145,15 @@
         [rnp-button {:style {:width "50%"}
                 ;;:labelStyle {:fontWeight "bold"}
                      :mode "contained"
-                     :on-press #(kf-events/generate-file-name-dialog-show)} (lstr "button.labels.generate")]
+                     :on-press #(kf-events/generate-file-name-dialog-show)} 
+         (lstr-bl "generate")]
         [rnp-text {:style {:margin-top 10   :textAlign "justify"}}
-         "OneKeePass can generate a random key and store it in a xml file to use as an additional key"]])
+         (lstr-mt 'keyFileForm 'generateRandomFile)]])
 
      [rnp-divider]
      [rn-view {:style {:padding 5 :align-items "center"}} ;;:height "100%" 
       [rnp-text {:style {:margin-top 2   :textAlign "justify"}} "Or"]
-      [rnp-text {:style {:margin-top 2   :textAlign "justify"}} "Select from the imported key files"]
+      [rnp-text {:style {:margin-top 2   :textAlign "justify"}} (lstr-mt 'keyFileForm 'selectImportedFile)]
       #_[key-files-list-content @(kf-events/imported-key-files)]]
 
      [key-files-list-content @(kf-events/imported-key-files)]]))

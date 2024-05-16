@@ -9,7 +9,7 @@
    [onekeepass.mobile.background :as bg]))
 
 (defn to-search-page []
-  (dispatch [:common/next-page :search "page.titles.search"]))
+  (dispatch [:common/next-page :search "search"]))
 
 (defn show-selected-entry [entry-id]
   (dispatch [:entry-form/find-entry-by-id entry-id]))

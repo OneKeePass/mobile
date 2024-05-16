@@ -1,42 +1,42 @@
 (ns onekeepass.mobile.appbar
-  (:require [reagent.core :as r]
-            [onekeepass.mobile.rn-components :as rnc :refer [lstr
-                                                             dots-icon-name
-                                                             background-color
-                                                             primary-color
-                                                             on-primary-color 
-                                                             cust-rnp-divider
-                                                             rnp-menu
-                                                             rnp-menu-item
-                                                             rnp-appbar-header
-                                                             rnp-appbar-content
-                                                             rnp-appbar-action
-                                                             rnp-appbar-back-action]]
-            [onekeepass.mobile.events.app-settings :as as-events]
-            [onekeepass.mobile.events.common :as cmn-events]
-            [onekeepass.mobile.events.entry-list :as elist-events]
-            [onekeepass.mobile.events.entry-form :as ef-events]
-            [onekeepass.mobile.events.search :as search-events]
-            [onekeepass.mobile.events.password-generator :as pg-events]
-            [onekeepass.mobile.events.settings :as stgs-events]
+  (:require [onekeepass.mobile.about :as about :refer [about-content
+                                                       privacy-policy-content]]
+            [onekeepass.mobile.app-settings :as app-settings]
             [onekeepass.mobile.common-components :as cc :refer [menu-action-factory]]
             [onekeepass.mobile.constants :refer [CAMERA_SCANNER_PAGE_ID]]
-            [onekeepass.mobile.entry-form :as entry-form]
-            [onekeepass.mobile.group-form :as group-form]
-            [onekeepass.mobile.start-page :refer [open-page-content]]
             [onekeepass.mobile.entry-category :refer [entry-category-content]]
+            [onekeepass.mobile.entry-form :as entry-form]
             [onekeepass.mobile.entry-history-list :as entry-history-list]
             [onekeepass.mobile.entry-list :as entry-list :refer [entry-list-content]]
-            [onekeepass.mobile.search :as search]
+            [onekeepass.mobile.events.app-settings :as as-events]
+            [onekeepass.mobile.events.common :as cmn-events]
+            [onekeepass.mobile.events.entry-form :as ef-events]
+            [onekeepass.mobile.events.entry-list :as elist-events]
+            [onekeepass.mobile.events.password-generator :as pg-events]
+            [onekeepass.mobile.events.search :as search-events]
+            [onekeepass.mobile.events.settings :as stgs-events]
+            [onekeepass.mobile.group-form :as group-form]
             [onekeepass.mobile.icons-list :as icons-list]
-            [onekeepass.mobile.password-generator :as pg]
             [onekeepass.mobile.key-file-form :as kf-form]
-            [onekeepass.mobile.app-settings :as app-settings]
-            [onekeepass.mobile.settings :as settings :refer [db-settings-form-content]]
+            [onekeepass.mobile.password-generator :as pg]
+            [onekeepass.mobile.rn-components :as rnc :refer [background-color
+                                                             cust-rnp-divider
+                                                             dots-icon-name
+                                                             on-primary-color
+                                                             primary-color
+                                                             rnp-appbar-action
+                                                             rnp-appbar-back-action
+                                                             rnp-appbar-content
+                                                             rnp-appbar-header
+                                                             rnp-menu
+                                                             rnp-menu-item]]
             [onekeepass.mobile.scan-otp-qr :as scan-otp-qr]
-            [onekeepass.mobile.about :as about :refer [about-content privacy-policy-content]]
-            
-            [onekeepass.mobile.utils :as u]))
+            [onekeepass.mobile.search :as search]
+            [onekeepass.mobile.settings :as settings :refer [db-settings-form-content]]
+            [onekeepass.mobile.start-page :refer [open-page-content]]
+            [onekeepass.mobile.translation :refer [lstr-ml lstr-pt]]
+            [onekeepass.mobile.utils :as u]
+            [reagent.core :as r]))
 
 (set! *warn-on-infer* true)
 
@@ -108,55 +108,55 @@
    (cond
      (= page :home)
      [:<>
-      [rnp-menu-item {:title (lstr "menu.labels.appSettings")
+      [rnp-menu-item {:title (lstr-ml "appSettings")
                       :onPress (header-menu-action as-events/to-app-settings-page)}]
       #_[cust-rnp-divider]
-      [rnp-menu-item {:title (lstr "menu.labels.about")
-                      :onPress (header-menu-action cmn-events/to-about-page)}] 
-      [rnp-menu-item {:title (lstr "menu.labels.privacyPolicy")
+      [rnp-menu-item {:title (lstr-ml "about")
+                      :onPress (header-menu-action cmn-events/to-about-page)}]
+      [rnp-menu-item {:title (lstr-ml "privacyPolicy")
                       :onPress (header-menu-action cmn-events/to-privacy-policy-page)}]]
 
      (and (= page :entry-list) @(elist-events/deleted-category-showing))
      (let [items @(elist-events/selected-entry-items)]
        ;; items is all entry summary items found under 'Deleted' category and disable this if it is empty
-       [rnp-menu-item {:title (lstr "menu.labels.deleteAll")
+       [rnp-menu-item {:title (lstr-ml "deleteAll")
                        :disabled (empty? items)
                        :onPress (header-menu-action
                                  entry-list/show-delete-all-entries-permanent-confirm-dialog items)}])
 
      (or (= page :entry-category) (= page :entry-list))
      [:<>
-      [rnp-menu-item {:title (lstr "menu.labels.home")
+      [rnp-menu-item {:title (lstr-ml "home")
                       :onPress (header-menu-action cmn-events/to-home-page)}]
-      [rnp-menu-item {:title (lstr "menu.labels.pwdGenerator")
+      [rnp-menu-item {:title (lstr-ml "pwdGenerator")
                       :onPress (header-menu-action pg-events/generate-password)}]
       [cust-rnp-divider]
-      [rnp-menu-item {:title  (lstr "menu.labels.lockdb")
+      [rnp-menu-item {:title  (lstr-ml "lockdb")
                       :onPress (header-menu-action cmn-events/lock-kdbx nil)}]
       [cust-rnp-divider]
-      [rnp-menu-item {:title (lstr "menu.labels.closedb")
+      [rnp-menu-item {:title (lstr-ml "closedb")
                       :onPress (header-menu-action cmn-events/close-current-kdbx-db)}]
       [cust-rnp-divider]
-      [rnp-menu-item {:title (lstr "menu.labels.settings")
+      [rnp-menu-item {:title (lstr-ml "settings")
                       :onPress (header-menu-action stgs-events/load-db-settings)}]]
 
      (= page :entry-history-list)
      [:<>
-      [rnp-menu-item {:title (lstr "menu.labels.deleteAll")
+      [rnp-menu-item {:title (lstr-ml "deleteAll")
                       :onPress (header-menu-action ef-events/show-history-entry-delete-all-confirm-dialog)}]]
 
      (and (= page :entry-form) @(ef-events/history-entry-form?))
      [:<>
-      [rnp-menu-item {:title (lstr "menu.labels.restore")
+      [rnp-menu-item {:title (lstr-ml "restore")
                       :onPress (header-menu-action ef-events/show-history-entry-restore-confirm-dialog)}]
-      [rnp-menu-item {:title (lstr "menu.labels.delete")
+      [rnp-menu-item {:title (lstr-ml "delete")
                       :onPress (header-menu-action ef-events/show-history-entry-delete-confirm-dialog)}]]
 
      (= page :entry-form)
      (let [fav @(ef-events/favorites?)
            entry-uuid @(ef-events/entry-form-uuid)]
        [:<>
-        [rnp-menu-item {:title (lstr "menu.labels.favorite") :trailingIcon (if fav "check" nil)
+        [rnp-menu-item {:title (lstr-ml "favorite") :trailingIcon (if fav "check" nil)
                         :onPress (header-menu-action ef-events/favorite-menu-checked (not fav))}]
         [rnp-menu-item {:title "History"
                         :disabled (not @(ef-events/history-available))
@@ -164,7 +164,7 @@
         ;; [cust-rnp-divider]
         ;; [rnp-menu-item {:title "Password Generator" :onPress #()}]
         [cust-rnp-divider]
-        [rnp-menu-item {:title (lstr "menu.labels.delete")
+        [rnp-menu-item {:title (lstr-ml "delete")
                         :onPress (header-menu-action cc/show-entry-delete-confirm-dialog entry-uuid)}]]))])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -180,7 +180,8 @@
 ;; If we have more than one appbar action icon on right side, the title text is not centered
 ;; One solution is to use appbar content with absolute position based on the discussion here
 ;;https://stackoverflow.com/questions/54120003/how-can-i-center-the-title-in-appbar-header-in-react-native-paper 
-(defn positioned-title [& {:keys [title page style titleStyle]}] 
+(defn positioned-title [& {:keys [title page style titleStyle]}]
+
   [:<>
    ;; Need a dummy content so that icons(from rnp-appbar-action) are placed on the right side 
    ;; We need to use the dummy one's zIndex = -1 so that any click action on the buttons used inside the custom title
@@ -205,54 +206,59 @@
 
                                  (is-settings-page page)
                                  (r/as-element [settings/appbar-title page])
-                                 
+
+                                 ;;TODO 
+                                 ;; Need to add translation of titles for Entry types and General cat types
+                                 ;; Something similar one used in entry category page
+                                 (= page :entry-list)
+                                 title
+
+                                 ;; No translation of text
+                                 (= page :entry-category)
+                                 title
+
                                  ;; Title for all other pages 
+                                 ;; Here title is the key to which pageTitles prefix will be 
+                                 ;; added and value is got from i18n map
                                  (string? title)
-                                 (lstr title)
+                                 (lstr-pt title)
 
                                  :else
                                  "No Title")}]])
 
-(defn- appbar-title [{:keys [page title]}] 
+(defn- appbar-title [{:keys [page title]}]
   (cond
     (or (= page :home)
         (= page :about)
-        (= page :privacy-policy) 
+        (= page :privacy-policy)
         (= page :entry-history-list)
         (= page :search)
         (= page :icons-list)
         (= page :settings)
         (= page :app-settings)
         (= page :key-file-form)
-        (= page CAMERA_SCANNER_PAGE_ID)
-        )
+        (= page CAMERA_SCANNER_PAGE_ID))
     [positioned-title :title title]
-    #_[rnp-appbar-content {:style appbar-content-style :color background-color :title (lstr title)}]
 
     (= page :entry-list)
-    [positioned-title :title @(elist-events/current-page-title)  :titleStyle {:max-width "50%"}] ;;
-    
+    [positioned-title :page page :title @(elist-events/current-page-title)  :titleStyle {:max-width "50%"}] ;;
+
     (= page :entry-category)
-    [positioned-title :title @(cmn-events/current-database-name) :titleStyle {:max-width "50%"}]
+    [positioned-title :page page :title @(cmn-events/current-database-name) :titleStyle {:max-width "50%"}]
 
     (is-settings-page page)
     [positioned-title :page page]
-
-    ;; (= page :app-settings)
-    ;; [positioned-title :page page]
     
     (= page :group-form)
-    [positioned-title :page page :title title]
-    #_[rnp-appbar-content {:style appbar-content-style :title (r/as-element [group-form/appbar-title title])}]
+    [positioned-title :page page :title title] 
 
     (= page :entry-form)
     [positioned-title :page page]
 
     (= page :password-generator)
-    [positioned-title :page page]
-    #_[rnp-appbar-content {:style appbar-content-style :title (r/as-element [pg/appbar-title])}]))
+    [positioned-title :page page]))
 
-(defn appbar-header-content [page-info]
+(defn appbar-header-content [page-info] 
   (let [{:keys [page]} page-info]
 
     (reset! current-page-info page-info)
@@ -309,8 +315,9 @@
 
 (defn appbar-body-content
   "The page body content based on the page info set"
-  [{:keys [page]}]
-  (cond
+  [{:keys [page]}] 
+  (cond 
+    
     (= page :home)
     [open-page-content]
 
@@ -356,28 +363,24 @@
 
     (= page :privacy-policy)
     [privacy-policy-content]
-    
+
     (= page CAMERA_SCANNER_PAGE_ID)
     (scan-otp-qr/content)
     
+    ;; For now, this page is shown after loading the newly selected language translation
+    ;; Other attempts to refresh the app settings page itself did not work
+    (= page :blank)
+    (app-settings/language-update-feedback)
+    
+
     ;; (= page :qr-scanner)
     ;; [totp/content]
-    
     ))
-
-#_(defn appbar-main-content
-    "App bar header and the body combined"
-    []
-    [:<>
-     [appbar-header-content @(cmn-events/page-info)]
-     [appbar-body-content @(cmn-events/page-info)]])
-
-
 
 (defn appbar-main-content
   "An App bar has both header and the body combined"
   []
-  (let [handler-fns-m {:onStartShouldSetPanResponderCapture (fn [] 
+  (let [handler-fns-m {:onStartShouldSetPanResponderCapture (fn []
                                                               (as-events/user-action-detected)
                                                               ;; Returns false so that the event is passed to other 
                                                               ;; listeners

@@ -24,7 +24,7 @@
 
 (defn main-content
   "All reagent atoms are referenced in this component so that the react hook set-translator is called onetime in main"
-  []
+  [] 
   (if-not @(cmn-events/language-translation-loading-completed)
     [rnc/rn-view [rnc/rnp-text "Please wait..."]]
     [:<>

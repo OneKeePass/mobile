@@ -4,7 +4,7 @@
                     :refer  [declare-comp-classes]])
   (:require ["@date-io/date-fns" :as DateAdapter]
             ["@react-native-community/slider" :as rnc-slider]
-            ["react-i18next" :as ri18n]
+            #_["react-i18next" :as ri18n]
             ["react-native-circular-progress" :as rn-circular-progress]
             ["react-native-gesture-handler" :as gh]
             ["react-native-modal-selector" :as rnms]
@@ -12,10 +12,10 @@
             ["react-native-safe-area-context" :as sa-context]
             ["react-native-vector-icons" :as vec-icons]
             ["react-native-vision-camera" :as rn-vision-camera]
-            [clojure.string :as str]
+            
             [onekeepass.mobile.background :refer [is-iOS]]
             [onekeepass.mobile.constants :refer [DEFAULT-SYSTEM-THEME]]
-            [onekeepass.mobile.translation :as t]
+            
             [react]
             [react-native :as rn]
             [reagent.core :as r]))
@@ -263,7 +263,7 @@
 ;; IMPORTANT: Needs to be called before set-translator in any component
 #_(setup-i18n)
 
-(def ^:private translator (atom nil)) ;; (Object.keys  @translator) => #js ["0" "1" "2" "t" "i18n" "ready"]
+#_(def ^:private translator (atom nil)) ;; (Object.keys  @translator) => #js ["0" "1" "2" "t" "i18n" "ready"]
 
 #_(defn set-translator
   " Needs to be called as hook in a functional react/reagent component"
@@ -271,7 +271,7 @@
   ;; (println "set-translator is called")
   (reset! translator (ri18n/useTranslation)))
 
-(defn lstr
+#_(defn lstr
   "Called to get the language specific text based 
    if any translation is available for the current active language
    IMPORTANT:

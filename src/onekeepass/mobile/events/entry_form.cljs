@@ -166,7 +166,7 @@
  (fn [{:keys [db]} [_event-id entry-form-data navigate?]]
    ;; When navigate? is false, we just set the loaded entry data and not change the page 
    {:db  (set-on-entry-load db entry-form-data)
-    :fx [(when navigate? [:dispatch [:common/next-page :entry-form  "page.titles.entry"]])]}))
+    :fx [(when navigate? [:dispatch [:common/next-page :entry-form  "entry"]])]}))
 
 ;; Update a field found in :data
 (reg-event-db
@@ -716,7 +716,7 @@
               (assoc-in-key-db [entry-form-key :edit] true)
               (assoc-in-key-db [entry-form-key :error-fields] {}))
       :fx [(when-not (= :entry-form curr-page)
-             [:dispatch [:common/next-page :entry-form  "page.titles.entry"]])]})))
+             [:dispatch [:common/next-page :entry-form  "entry"]])]})))
 
 (reg-event-db
  :entry-form-group-selected
@@ -749,7 +749,7 @@
      (if errors-found
        {:db (assoc-in-key-db db [entry-form-key :error-fields] error-fields)}
        {:db (assoc-in-key-db db [entry-form-key :error-fields] error-fields)
-        :fx [[:dispatch [:common/message-modal-show nil "Entry insert/update ..."]]
+        :fx [[:dispatch [:common/message-modal-show nil 'entryInsertOrUpdate]]
              (if (= showing :new)
                [:bg-insert-entry [(active-db-key db) form-data]]
                [:bg-update-entry [(active-db-key db) form-data]])]}))))
@@ -923,7 +923,7 @@
    {:db (-> db
             (assoc-in-key-db [entry-form-key :entry-history-form] {})
             (assoc-in-key-db [entry-form-key :entry-history-form :entries-summary-list] summary-list))
-    :fx [[:dispatch [:common/next-page :entry-history-list "page.titles.histories"]]]}))
+    :fx [[:dispatch [:common/next-page :entry-history-list "histories"]]]}))
 
 
 (reg-event-fx
@@ -950,7 +950,7 @@
             (assoc-in-key-db [entry-form-key :edit] false)
             (assoc-in-key-db [entry-form-key :error-fields] {})
             (assoc-in-key-db [entry-form-key :showing] :history-entry))
-    :fx [[:dispatch [:common/next-page :entry-form  "page.titles.historyEntries"]]]}))
+    :fx [[:dispatch [:common/next-page :entry-form  "historyEntries"]]]}))
 
 
 (reg-event-fx
@@ -1004,8 +1004,7 @@
 (reg-event-fx
  :delete-all-history-entries
  (fn [{:keys [db]} [_event-id entry-id]]
-   {:fx [#_[:dispatch [:common/message-modal-show nil "Deleting histories..."]]
-         [:bg-delete-history-entries [(active-db-key db) entry-id]]]}))
+   {:fx [[:bg-delete-history-entries [(active-db-key db) entry-id]]]}))
 
 (reg-fx
  :bg-delete-history-entries

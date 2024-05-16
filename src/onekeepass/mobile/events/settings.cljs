@@ -1,14 +1,14 @@
 (ns onekeepass.mobile.events.settings
-  (:require
-   [re-frame.core :refer [reg-event-db reg-event-fx reg-fx reg-sub dispatch subscribe]]
-   [onekeepass.mobile.events.common :refer [on-error
-                                            on-ok
-                                            assoc-in-key-db
-                                            get-in-key-db
-                                            active-db-key]]
-   [clojure.string :as str]
-   [onekeepass.mobile.utils  :refer [str->int]]
-   [onekeepass.mobile.background :as bg]))
+  (:require [clojure.string :as str]
+            [onekeepass.mobile.background :as bg]
+            [onekeepass.mobile.events.common :refer [active-db-key
+                                                     assoc-in-key-db
+                                                     get-in-key-db on-error
+                                                     on-ok]]
+            [onekeepass.mobile.translation :refer [lstr-mt]]
+            [onekeepass.mobile.utils  :refer [str->int]]
+            [re-frame.core :refer [dispatch reg-event-db reg-event-fx reg-fx
+                                   reg-sub subscribe]]))
 
 (defn load-db-settings []
   (dispatch [:db-settings-read]))
@@ -89,13 +89,13 @@
   (let [{:keys [iterations memory parallelism]} (get-in-key-db app-db [:db-settings :data :kdf :Argon2])
         [iterations memory parallelism] (mapv str->int [iterations memory parallelism])
         errors (if (or (nil? iterations) (or (< iterations 5) (> iterations 100)))
-                 {:iterations "Valid values should be in the range 5 - 100"} {})
+                 {:iterations (lstr-mt 'dbSettings 'iterations)} {})
         errors (merge errors
                       (if (or (nil? memory) (or (< memory 1) (> memory 1000)))
-                        {:memory "Valid values should be in the range 1 - 1000"} {}))
+                        {:memory (lstr-mt 'dbSettings 'memory)} {}))
         errors (merge errors
                       (if (or (nil? parallelism) (or (< parallelism 1) (> parallelism 100)))
-                        {:parallelism "Valid values should be in the range 1 - 100"} {}))]
+                        {:parallelism (lstr-mt 'dbSettings 'parallelism)} {}))]
 
     errors))
 
@@ -104,7 +104,7 @@
   [app-db]
   (let [{:keys [password-used key-file-used]} (get-in-key-db app-db [:db-settings :data])
         errors (if (and (not password-used) (not key-file-used))
-                 {:in-sufficient-credentials "Need to set a password or key file name or both to form a master key"} {})]
+                 {:in-sufficient-credentials (lstr-mt 'dbSettings 'inSufficientCredentials)} {})]
     errors))
 
 (defn- validate-required-fields
@@ -112,7 +112,7 @@
   (cond
     (= panel :settings-general)
     (when (str/blank? (get-in-key-db db [:db-settings :data :meta :database-name]))
-      {:database-name "A valid database name is required"})
+      {:database-name (lstr-mt 'dbSettings 'databaseName)})
 
     (= panel :settings-credentials)
     (validate-credential-fields db)
@@ -151,7 +151,7 @@
               (assoc-in-key-db  [:db-settings :errors] nil)
               (assoc-in-key-db [:db-settings :status] :completed))
 
-      :fx [[:dispatch [:common/next-page :settings "page.titles.settings"]]]})))
+      :fx [[:dispatch [:common/next-page :settings "settings"]]]})))
 
 ;; Valid values for panel-id are :settings-general, :settings-credentials, :settings-encryption, :settings-kdf
 (reg-event-fx

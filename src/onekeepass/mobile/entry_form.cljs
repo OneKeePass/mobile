@@ -34,7 +34,7 @@
             [onekeepass.mobile.icons-list :as icons-list]
             [onekeepass.mobile.rn-components
              :as rnc
-             :refer [appbar-text-color dots-icon-name icon-color lstr
+             :refer [appbar-text-color dots-icon-name icon-color
                      on-primary-color page-background-color
                      page-title-text-variant primary-container-color
                      rn-keyboard rn-keyboard-avoiding-view rn-scroll-view
@@ -42,6 +42,9 @@
                      rnp-helper-text rnp-icon-button rnp-list-icon
                      rnp-list-item rnp-portal rnp-text rnp-text-input
                      rnp-text-input-icon]]
+            [onekeepass.mobile.translation :refer [lstr-bl 
+                                                   lstr-l lstr-pt
+                                                   lstr-section-name]]
             [onekeepass.mobile.utils :as u]
             [reagent.core :as r]))
 
@@ -71,14 +74,14 @@
                     :textColor @appbar-text-color
                     :mode "text"
                     :onPress form-events/cancel-entry-form}
-        (lstr "button.labels.cancel")]
+        (lstr-bl "cancel")]
        [rnp-text {:style {:color @appbar-text-color
                           :max-width 100
                           :margin-right 20 :margin-left 20}
                   :ellipsizeMode "tail"
                   :numberOfLines 1
                   :variant page-title-text-variant}
-        (lstr "page.titles.entry")]
+        (lstr-pt "entry")]
        [rnp-button {:style {}
                     :textColor @appbar-text-color
                     :disabled (not @(form-events/form-modified))
@@ -86,7 +89,7 @@
                     :onPress (fn []
                                (.dismiss rn-keyboard)
                                (form-events/entry-save))}
-        (lstr "button.labels.save")]]
+        (lstr-bl "save")]]
 
       [rn-view {:flexDirection "row"
                 :style {:alignItems "center"
@@ -98,21 +101,21 @@
                     :onPress (if is-history-entry
                                form-events/cancel-history-entry-form
                                form-events/cancel-entry-form)}
-        (lstr "button.labels.close")]
+        (lstr-bl "close")]
        [rnp-text {:style {:color @on-primary-color
                           :max-width "75%"
                           :margin-right 20 :margin-left 20}
                   :ellipsizeMode "tail"
                   :numberOfLines 1
                   :variant page-title-text-variant}
-        (if is-history-entry (lstr "page.titles.historyEntry")
-            (lstr "page.titles.entry"))]
+        (if is-history-entry (lstr-pt "historyEntry")
+            (lstr-pt "entry"))]
        [rnp-button {:style {}
                     :textColor @on-primary-color
                     :disabled (or @(form-events/deleted-category-showing)
                                   is-history-entry)
                     :mode "text" :onPress form-events/edit-mode-on-press}
-        (lstr "button.labels.edit")]])))
+        (lstr-bl "edit")]])))
 
 (declare clear-notes)
 
@@ -121,7 +124,7 @@
                      (mapv (fn [{:keys [name uuid]}]
                              {:key uuid :label name}) @(cmn-events/all-entry-type-headers)))
         entry-type-name-selection (form-events/entry-form-field :entry-type-name-selection)]
-    [select-field {:text-label (str (lstr 'entryType) "*")
+    [select-field {:text-label (str (lstr-l 'entryType) "*")
                    :options entry-types
                    :value @entry-type-name-selection
                    ;;:init-value @entry-type-name-selection  
@@ -145,13 +148,13 @@
 
     (if (and edit (not (nil? error-text)))
       [:<>
-       [select-field {:text-label (str (lstr 'groupOrCategory) "*")
+       [select-field {:text-label (str (lstr-l 'groupOrCategory) "*")
                       :options names
                       :value group-selected-name
                       :on-change on-change}]
        [rnp-helper-text {:type "error" :visible true} error-text]]
 
-      [select-field {:text-label (str (lstr 'groupOrCategory) "*")
+      [select-field {:text-label (str (lstr-l 'groupOrCategory) "*")
                      :options names
                      :value group-selected-name
                      :on-change on-change}])))
@@ -184,7 +187,7 @@
 
 (defn android-title-text-input [title icon-name]
   [rnp-text-input {:style {:width "100%"}
-                   :label (str (lstr 'title) "*")
+                   :label (str (lstr-l 'title) "*")
                    :autoCapitalize "none"
                    :defaultValue title
                    :ref (fn [^js/Ref ref]
@@ -201,7 +204,7 @@
 
 (defn ios-title-text-input [title icon-name]
   [rnp-text-input {:style {:width "100%"}
-                   :label (str (lstr 'title) "*")
+                   :label (str (lstr-l 'title) "*")
                    :autoCapitalize "none"
                    :value title
                    :onChangeText #(form-events/entry-form-data-update-field-value :title %)
@@ -249,7 +252,7 @@
   (let [value @(form-events/entry-form-data-fields :notes)]
     (when (or edit (not (str/blank? value)))
       [rn-view {:style {:padding-right 5 :padding-left 5 :borderWidth .20 :borderRadius 4}}
-       [rnp-text-input {:style {:width "100%"} :multiline true :label (lstr "notes")
+       [rnp-text-input {:style {:width "100%"} :multiline true :label (lstr-l "notes")
                         :defaultValue value
                         :ref (fn [^js/Ref ref]
                                (reset! notes-ref ref)
@@ -259,12 +262,15 @@
 
 (defn section-header [section-name]
   (let [edit @(form-events/entry-form-field :edit)
-        standard-sections @(form-events/entry-form-data-fields :standard-section-names)]
+        standard-sections @(form-events/entry-form-data-fields :standard-section-names)
+        standard-section? (u/contains-val? standard-sections section-name)
+        tr-section-name (if standard-section? (lstr-section-name section-name) section-name)]
     [rn-view {:style {:flexDirection "row"
                       :backgroundColor  @primary-container-color
                       :margin-top 5
                       :min-height 35}}
-     [rnp-text {:style {:alignSelf "center" :width "85%" :padding-left 15} :variant "titleMedium"} section-name]
+     [rnp-text {:style {:alignSelf "center" :width "85%" :padding-left 15} :variant "titleMedium"}
+      tr-section-name]
      (when edit
        ;;
        (if (not= section-name ADDITIONAL_ONE_TIME_PASSWORDS)
@@ -273,7 +279,7 @@
                                                         :backgroundColor @on-primary-color}
                            :onPress (fn [^js/PEvent event]
                                       (section-menu-dialog-show {:section-name section-name
-                                                                 :is-standard-section (u/contains-val? standard-sections section-name)
+                                                                 :is-standard-section standard-section?
                                                                  :event event}))}]
 
          [rnp-icon-button {:icon const/ICON-PLUS
@@ -356,16 +362,19 @@
 
 (defn add-section-btn []
   [rn-view {:style {:padding-top 5 :padding-bottom 5}  :justify-content "center"}
-   [rnp-button {:mode "contained" :onPress #(form-events/open-section-name-dialog)} "Additional section and custom fields"]])
+   [rnp-button {:mode "contained" :onPress #(form-events/open-section-name-dialog)} (lstr-bl 'additionalSection)]])
 
 (defn tags [edit]
   (let [entry-tags @(form-events/entry-form-data-fields :tags)
         tags-availble (boolean (seq entry-tags))]
-    ;;(println "entry-tags empty-tags " entry-tags tags-availble edit)
+    
     (when (or edit tags-availble)
-      [rn-view {:style {:flexDirection "column" :justify-content "center"  :min-height 50  :margin-top 5 :padding 5 :borderWidth .20 :borderRadius 4}}
+      [rn-view {:style {:flexDirection "column" :justify-content "center"  
+                        :min-height 50  :margin-top 5 :padding 5 :borderWidth .20 :borderRadius 4}}
        [rn-view {:style {:flexDirection "row" :backgroundColor  @primary-container-color :min-height 25}}
-        [rnp-text {:style {:alignSelf "center" :width "85%" :padding-left 15} :variant "titleMedium"} "Tags"]
+        [rnp-text {:style {:alignSelf "center" :width "85%" :padding-left 15} :variant "titleMedium"} 
+         (lstr-section-name 'tags)]
+        
         (when edit
           [rnp-icon-button {:icon const/ICON-PLUS :style {:height 35 :margin-right 0 :backgroundColor @on-primary-color}
                             :onPress (fn [] (cmn-events/tags-dialog-init-selected-tags entry-tags))}])]
@@ -412,7 +421,7 @@
                     :backgroundColor  @primary-container-color
                     :margin-top 5
                     :min-height 35}}
-   [rnp-text {:style {:alignSelf "center" :width "85%" :padding-left 15} :variant "titleMedium"} "Attachment"]
+   [rnp-text {:style {:alignSelf "center" :width "85%" :padding-left 15} :variant "titleMedium"} (lstr-section-name 'attachments)]
    (when edit
      [rnp-icon-button {:icon const/ICON-PLUS :style {:height 35
                                                      :margin-right 0
@@ -494,9 +503,9 @@
       [add-modify-section-field-dialog @(form-events/section-field-dialog-data)]
       [select-tags-dialog @(cmn-events/tags-dialog-data) #(form-events/entry-form-data-update-field-value :tags %)]
       [delete-field-confirm-dialog @(form-events/field-delete-dialog-data)
-       [{:label (lstr "button.labels.yes")
+       [{:label "yes"
          :on-press #(form-events/field-delete-confirm true)}
-        {:label (lstr "button.labels.no")
+        {:label "no"
          :on-press #(form-events/field-delete-confirm false)}]]
       [history-entry-delete-dialog]
       [history-entry-restore-dialog]

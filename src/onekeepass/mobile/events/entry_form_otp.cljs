@@ -180,15 +180,17 @@
          errors-found (boolean (seq error-fields))]
      (if errors-found
        {:db (assoc-in-key-db db [entry-form-key :error-fields] error-fields)
+        ;; See onekeepass.mobile.events.entry-form-common/validate-entry-form-data where required field 
+        ;; validations are done. Here the field 'title' found in 'error-fields' map has the error text 
         :fx [[:dispatch [:common/error-box-show 'missingFields (cond
-                                                   (not (nil? title))
-                                                   title
-
-                                                   (not (nil? group-selection))
-                                                   group-selection
-
-                                                   :else
-                                                   "One or more required fields are missing")]]]}
+                                                                 (not (nil? title))
+                                                                 title ;; error text or translation key
+                                                                 
+                                                                 (not (nil? group-selection))
+                                                                 group-selection ;; error text or translation key
+                                                                 
+                                                                 :else
+                                                                 "One or more required fields are missing")]]]}
        (do
          ;; Called the passed callback fn when title and group are not blank
          (call-on-no-error-fn)

@@ -4,6 +4,7 @@
             [onekeepass.mobile.constants :refer [ONE_TIME_PASSWORD_TYPE]]
             [onekeepass.mobile.events.common :as cmn-events :refer [assoc-in-key-db
                                                                     get-in-key-db]]
+            [onekeepass.mobile.translation :refer [lstr-mt]]
             [onekeepass.mobile.utils :as u :refer [contains-val?]]))
 
 
@@ -76,9 +77,11 @@
   "
   [{:keys [group-uuid title]}]
   (let [error-fields (cond-> {}
+                       ;; An entry's group is required
                        (u/uuid-nil-or-default? group-uuid)
-                       (assoc :group-selection "Please select a group ")
+                       (assoc :group-selection (lstr-mt 'entryForm 'selectGroup))
 
+                       ;; Required entry form title is missing
                        (str/blank? title)
-                       (assoc :title "Please enter a title for this form"))]
+                       (assoc :title (lstr-mt 'entryForm 'enterTitleName)))]
     error-fields))
