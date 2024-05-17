@@ -212,7 +212,7 @@
                                                 (r/as-element [section-header title])))}]))
 
 (defn language-update-feedback []
-  [rnc/rn-view {:style {:flex 1 :justify-content "center"}}
+  [rnc/rn-view {:style {:flex 1 :justify-content "center" :backgroundColor @page-background-color}}
    (if-not @(cmn-events/language-translation-loading-completed)
      [rnc/rnp-text {:style {:text-align "center"}} "Please wait..."]
      [rnc/rn-view
