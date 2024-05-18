@@ -777,6 +777,23 @@
   []
   (-> (.getAvailableCameraDevices camera-obj) js->clj))
 
+;; Used for Android FOSS release only
+;; 'CameraView' is the native module name that was taken from the package's platform specifics code 
+;; Android https://github.com/mrousavy/react-native-vision-camera/blob/v3.9.0/package/android/src/main/java/com/mrousavy/camera/CameraViewManager.kt
+;; iOS https://github.com/mrousavy/react-native-vision-camera/blob/147aff8683b6500ede825c4c06d27110af7a0654/package/ios/CameraViewManager.m#L14
+(def camera-view-nm (.-CameraView ^js/RnCameraView rn/NativeModules))
+
+(defn is-rn-native-camera-vison-disabled 
+  "Checks whether the camera vision's native modules are present or not
+  As native-camera-vison package uses some property components (see below), we need to exclude 
+  the use and inclusion of this package (see react-native.config.js) for APK release meant to be fully FOSS 
+  https://developers.google.com/ml-kit/
+  https://firebase.google.com/
+  https://developers.google.com/android/reference/com/google/android/gms/package-summary
+   "
+  []
+  ;;camera-view-nm should be non nil value for iOS and Android play store release
+  (nil? camera-view-nm))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Native Events ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; While compiling with advanced option, if we use '(u/is-iOS)' to check platform

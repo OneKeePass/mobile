@@ -75,7 +75,13 @@ def enableProguardInReleaseBuilds = false
  * give correct results when using with locales other than en-US. Note that
  * this variant is about 6MiB larger per architecture than default.
  */
-def jscFlavor = 'org.webkit:android-jsc:+'
+
+//TODO: (Custom-Jey)
+// Enabled Intl jscFlavor to support the use of react i18next package's compatibilityJSON "v4" mode
+// and use of i18next::pluralResolver
+
+//def jscFlavor = 'org.webkit:android-jsc:+'
+def jscFlavor = 'org.webkit:android-jsc-intl:+'
 
 
 android {
@@ -100,8 +106,8 @@ android {
         applicationId "com.onekeepassmobile"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 9
-        versionName "0.12.0"
+        versionCode 10
+        versionName "0.13.0"
     }
 
     signingConfigs {

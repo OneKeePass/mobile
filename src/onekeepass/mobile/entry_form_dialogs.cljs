@@ -17,7 +17,8 @@
                      rnp-touchable-ripple]]
             [onekeepass.mobile.translation :refer [lstr-bl lstr-dlg-text
                                                    lstr-dlg-title lstr-l]]
-            [reagent.core :as r]))
+            [reagent.core :as r]
+            [onekeepass.mobile.background :as bg]))
 
 ;;;;;;;;;;;;;
 
@@ -57,6 +58,7 @@
     :section-name section-name
     :show-action-as-vertical true
     :actions [{:label "scanQRcode"
+               :disabled (bg/is-rn-native-camera-vison-disabled)
                :on-press (fn []
                            (scan-qr-action (as-map [section-name field-name standard-field]))
                            (dlg-events/setup-otp-action-dialog-close))}

@@ -645,6 +645,8 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_db_service_ffi_checksum_method_commondeviceservice_temp_dir(
     ): Short
+    fun uniffi_db_service_ffi_checksum_method_commondeviceservice_load_language_translation(
+    ): Short
     fun uniffi_db_service_ffi_checksum_method_commondeviceservice_uri_to_file_name(
     ): Short
     fun uniffi_db_service_ffi_checksum_method_commondeviceservice_uri_to_file_info(
@@ -763,6 +765,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_ffi_checksum_method_commondeviceservice_temp_dir() != 13364.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_ffi_checksum_method_commondeviceservice_load_language_translation() != 37179.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_ffi_checksum_method_commondeviceservice_uri_to_file_name() != 18616.toShort()) {
@@ -2254,6 +2259,8 @@ public interface CommonDeviceService {
     
     fun `tempDir`(): String
     
+    fun `loadLanguageTranslation`(`languageId`: String): String?
+    
     fun `uriToFileName`(`fullFileNameUri`: String): String?
     
     fun `uriToFileInfo`(`fullFileNameUri`: String): FileInfo?
@@ -2327,7 +2334,7 @@ internal class UniffiCallbackInterfaceCommonDeviceService : ForeignCallback {
                 // Call the method, write to outBuf and return a status code
                 // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs` for info
                 try {
-                    this.`invokeUriToFileName`(cb, argsData, argsLen, outBuf)
+                    this.`invokeLoadLanguageTranslation`(cb, argsData, argsLen, outBuf)
                 } catch (e: Throwable) {
                     // Unexpected error
                     try {
@@ -2340,6 +2347,22 @@ internal class UniffiCallbackInterfaceCommonDeviceService : ForeignCallback {
                 }
             }
             5 -> {
+                // Call the method, write to outBuf and return a status code
+                // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs` for info
+                try {
+                    this.`invokeUriToFileName`(cb, argsData, argsLen, outBuf)
+                } catch (e: Throwable) {
+                    // Unexpected error
+                    try {
+                        // Try to serialize the error into a string
+                        outBuf.setValue(FfiConverterString.lower(e.toString()))
+                    } catch (e: Throwable) {
+                        // If that fails, then it's time to give up and just return
+                    }
+                    UNIFFI_CALLBACK_UNEXPECTED_ERROR
+                }
+            }
+            6 -> {
                 // Call the method, write to outBuf and return a status code
                 // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs` for info
                 try {
@@ -2403,6 +2426,24 @@ internal class UniffiCallbackInterfaceCommonDeviceService : ForeignCallback {
             val returnValue = kotlinCallbackInterface.`tempDir`(
             )
             outBuf.setValue(FfiConverterString.lowerIntoRustBuffer(returnValue))
+            return UNIFFI_CALLBACK_SUCCESS
+        }
+        fun makeCallAndHandleError() : Int = makeCall()
+
+        return makeCallAndHandleError()
+    }
+    
+    @Suppress("UNUSED_PARAMETER")
+    private fun `invokeLoadLanguageTranslation`(kotlinCallbackInterface: CommonDeviceService, argsData: Pointer, argsLen: Int, outBuf: RustBufferByReference): Int {
+        val argsBuf = argsData.getByteBuffer(0, argsLen.toLong()).also {
+            it.order(ByteOrder.BIG_ENDIAN)
+        }
+        fun makeCall() : Int {
+            val returnValue = kotlinCallbackInterface.`loadLanguageTranslation`(
+                FfiConverterString.read(argsBuf)
+                
+            )
+            outBuf.setValue(FfiConverterOptionalString.lowerIntoRustBuffer(returnValue))
             return UNIFFI_CALLBACK_SUCCESS
         }
         fun makeCallAndHandleError() : Int = makeCall()

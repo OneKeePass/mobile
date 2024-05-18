@@ -213,7 +213,7 @@
    (tr-events/load-language-translation language-ids translations-loaded-callback)))
 
 
-(defn reload-language-translation 
+(defn reload-language-translation
   "Called after language selection is changed"
   []
   (tr-events/reload-language-data [] translations-loaded-callback))
@@ -291,6 +291,19 @@
            #_(println "data  is... " (clj->js (get translations (keyword language))))
            (callback nil (clj->js (get translations (keyword language)))))})
 
+;; Android issue 
+;; When we use ':compatibilityJSON "v4"' to support 'PluralRules', we see the error
+
+;; i18next::pluralResolver: Your environment seems not to be Intl API compatible, 
+;; use an Intl.PluralRules polyfill. Will fallback to the compatibilityJSON v3 format handling
+
+;; Using suggested polyfill from 'https://github.com/eemeli/intl-pluralrules' did not work
+
+;; Then used  'def jscFlavor = 'org.webkit:android-jsc-intl:+''   instead of 'def jscFlavor = 'org.webkit:android-jsc:+''
+;; in mobile/android/app/build.gradle as per the following refrences
+;; https://stackoverflow.com/questions/56943813/using-intl-properly-in-android-react-native-app
+;; https://github.com/formatjs/formatjs/issues/1591
+;; https://github.com/formatjs/formatjs/issues/1591
 
 (defn- setup-i18n-with-backend [language back-end]
   (let [m  {:lng language
@@ -314,4 +327,12 @@
   ;; if we give only the key of a json map, then we get this error string
   (lstr "page.titles")
   ;; => "key 'page.titles (en)' returned an object instead of string."
+
+  ;; To verify whether Intl obj is available
+  ;; Some examples are in https://www.js-howto.com/a-comprehensive-guide-to-the-javascript-intl-api/
+  ;; Also see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl
+
+  (def a (.NumberFormat js/Intl "de-DE"))  ;; a is #object[NumberFormat [object Object]]
+
+  (.format a 1234567.89) ;; => "1.234.567,89"
   )

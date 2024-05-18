@@ -123,27 +123,28 @@
 
 (defn vertical-buttons [actions]
   [rn-view {:style {}}
-   (for [{:keys [label on-press]} actions]
+   (for [{:keys [label disabled on-press]} actions]
      ^{:key label} [rnp-button {:mode "text"
+                                :disabled (if (nil? disabled) false disabled)
                                 :on-press on-press} (lstr-bl label)])])
 
-(defn confirm-dialog-with-lstr 
+(defn confirm-dialog-with-lstr
   "A Generic confirm dialog. It is expected that caller needs to pass 
    translation keys (either as symbol or string key) for the texts (title,confirm-text, labels) and not any texts"
   [{:keys [dialog-show
            title
            confirm-text
            show-action-as-vertical
-           actions]}]
-
+           actions]}] 
   [cust-dialog {:style {} :dismissable true :visible dialog-show}
    [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1} (lstr-dlg-title title)]
    [rnp-dialog-content
     [rnp-text (lstr-dlg-text confirm-text)]]
    [rnp-dialog-actions {:style {:justify-content (if show-action-as-vertical "center" "flex-end")}} ;;
     (if-not show-action-as-vertical
-      (for [{:keys [label on-press]} actions]
+      (for [{:keys [label disabled on-press]} actions]
         ^{:key label} [rnp-button {:mode "text"
+                                   :disabled (if (nil? disabled) false disabled)
                                    :on-press on-press}
                        (lstr-bl label)])
       [vertical-buttons actions])]])

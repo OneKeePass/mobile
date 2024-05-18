@@ -391,7 +391,12 @@
 (defn uuid-times-content []
   (let [{:keys [uuid last-modification-time creation-time]} @(form-events/entry-form-data-fields
                                                               [:uuid :last-modification-time :creation-time])]
-    [rn-view {:style {:margin-top 20}}
+    [rn-view {:style {:margin-top 25 
+                      ;;:background-color @rnc/custom-color0
+                      :padding-right 5 
+                      :padding-left 5 
+                      :borderWidth .20 
+                      :borderRadius 4}}
      [rn-view {:style {:justify-content "space-between"} :flexDirection "row"}
       [rnp-text "Uuid"]
       [rnp-text uuid]]

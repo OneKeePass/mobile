@@ -243,9 +243,9 @@
 
 ;;;;;;;;; i18n ;;;;;;;;;;;;;;;;;;;
 ;; This js/require loads the exported function for the i18n initializations routine 
-(def i18n-support ^js/I18NSupport (js/require "../js/localization/i18n.js"))
+#_(def i18n-support ^js/I18NSupport (js/require "../js/localization/i18n.js"))
 
-(def init-i18n (.-initI18N i18n-support))
+#_(def init-i18n (.-initI18N i18n-support))
 
 ;; loads the i18n initializations routine. This needs to be called before the set-translator hook
 ;; call in any react componnent
