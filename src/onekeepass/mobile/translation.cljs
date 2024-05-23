@@ -3,10 +3,8 @@
             [camel-snake-kebab.core :as csk]
             [camel-snake-kebab.extras :as cske]
             [cljs.core.async :refer [go]]
-            [cljs.core.async.interop :refer-macros [<p!]]
-            #_[onekeepass.mobile.background :as bg]
-            [onekeepass.mobile.events.translation :as tr-events]
-            #_[onekeepass.mobile.events.common :as cmn-events :refer [on-ok]]))
+            [cljs.core.async.interop :refer-macros [<p!]] 
+            [onekeepass.mobile.events.translation :as tr-events]))
 
 (set! *warn-on-infer* true)
 
@@ -211,7 +209,6 @@
    ;; language-ids is a vec of two charater language ids
    ;; e.g ["en" "fr"]
    (tr-events/load-language-translation language-ids translations-loaded-callback)))
-
 
 (defn reload-language-translation
   "Called after language selection is changed"
