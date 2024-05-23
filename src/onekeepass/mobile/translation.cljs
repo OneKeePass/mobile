@@ -3,7 +3,7 @@
             [camel-snake-kebab.core :as csk]
             [camel-snake-kebab.extras :as cske]
             [cljs.core.async :refer [go]]
-            [cljs.core.async.interop :refer-macros [<p!]] 
+            [cljs.core.async.interop :refer-macros [<p!]]
             [onekeepass.mobile.events.translation :as tr-events]))
 
 (set! *warn-on-infer* true)
@@ -182,10 +182,10 @@
 (declare ^:private create-back-end)
 
 (defn- translations-loaded-callback [ok-response]
-  ;; ok-response be nil on error. Then no translation will be available  
+  ;; ok-response may be nil on error. Then no translation will be available  
   (let [{:keys [_current-locale-language prefered-language translations]} ok-response
         ;; translations is a map where key is the language id and value is a json string and 
-        ;; the json string needs to be parsed. After parsing the string in 'v', the type 
+        ;; this value json string needs to be parsed. After parsing the string in 'v', the type 
         ;; of the parsed value is a js object - #object[Object]
         parsed-translations (reduce (fn [m [k v]] (assoc m k (parse-json v)))  {} translations)]
     ;; (println "res is  " res)
@@ -200,8 +200,10 @@
     (setup-i18n-with-backend prefered-language (create-back-end parsed-translations))))
 
 (defn load-language-translation
-  "Needs to be called on app loading in the very begining to load locale language and 'en' 
-   tranalations json files found in app resource dir"
+  "Called in the very begining of the app loading to load language translation json file from app's resource dir 
+   for the current prefered language selection. If the prefered language is not 'en', then 'en.json' also loaded to provide
+   fallback translation support
+  "
   ([]
    (tr-events/load-language-translation [] translations-loaded-callback))
 
@@ -234,7 +236,6 @@
 
       (setup-i18n-with-backend prefered-language (create-back-end parsed-translations))))
 
-
 #_(defn load-language-translation
     "Needs to be called on app loading in the very begining to load locale language and 'en' 
    tranalations json files found in app resource dir"
@@ -247,16 +248,15 @@
      (bg/load-language-translations language-ids translations-loaded)))
 
 (defn- create-i18n-init
-  "The init call on an instance of 'i18n' returns a promise and we need to r
-   esolve here before using any fns from 'i18n'"
+  "The init call on an instance of 'i18n' returns a promise and we need 
+   to resolve here before using any fns from 'i18n'"
   [^js/i18nObj instance options]
   (go
     (try
       (let [_f (<p! (.init instance (clj->js options)))]
         (reset! i18n-instance instance)
         (js/console.log  "i18n init is done successfully")
-        ;; Need to dispatch on successful loading of data
-        #_(cmn-events/load-language-translation-completed)
+        ;; Need to dispatch on successful loading of data 
         (tr-events/load-language-data-complete))
 
       ;; Error should not happen as we have already loaded a valid translations data before calling init 
