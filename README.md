@@ -32,11 +32,13 @@ OneKeePass is also available for **Windows, macOS and Linux desktops** can be do
 - Database quick unlock using biometrics (fingerprint)
 - Upload attachments to an entry
 - Time based One-Time Passwords (TOTP) can added and used
+- Supports Light or Dark Theme
+- Multi-language support
 
 ## Todo
 - [ ] AutoFill support 
 - [ ] Merge changed entries
-- [ ] Multi-language support
+
 
 ## FAQ
 Common FAQ about the application can be found [here](./docs/FAQ.md)
