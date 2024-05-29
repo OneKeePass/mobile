@@ -3,27 +3,22 @@
  onekeepass.mobile.entry-form-dialogs
   (:require-macros [onekeepass.mobile.okp-macros
                     :refer  [as-map]])
-  (:require [reagent.core :as r]
+  (:require [clojure.string :as str]
+            [onekeepass.mobile.common-components :as cc :refer [confirm-dialog
+                                                                confirm-dialog-with-lstr]]
+            [onekeepass.mobile.events.dialogs :as dlg-events]
+            [onekeepass.mobile.events.entry-form :as form-events]
+            [onekeepass.mobile.events.scan-otp-qr :as scan-qr-events]
             [onekeepass.mobile.rn-components
              :as rnc
-             :refer [lstr
-                     rn-view
-                     rnp-checkbox 
-                     rnp-text-input
-                     rnp-text
-                     rnp-touchable-ripple
-                     rnp-helper-text 
-                     rnp-button 
-                     cust-dialog
-                     rnp-dialog-title
-                     rnp-dialog-content
-                     rnp-dialog-actions]]
-            [onekeepass.mobile.common-components :as cc :refer [confirm-dialog
-                                                                confirm-dialog-with-lstr]] 
-            [clojure.string :as str]
-            [onekeepass.mobile.events.entry-form :as form-events] 
-            [onekeepass.mobile.events.dialogs :as dlg-events]
-            [onekeepass.mobile.events.scan-otp-qr :as scan-qr-events]))
+             :refer [cust-dialog rn-view rnp-button rnp-checkbox
+                     rnp-dialog-actions rnp-dialog-content rnp-dialog-title
+                     rnp-helper-text rnp-text rnp-text-input
+                     rnp-touchable-ripple]]
+            [onekeepass.mobile.translation :refer [lstr-bl lstr-dlg-text
+                                                   lstr-dlg-title lstr-l]]
+            [reagent.core :as r]
+            [onekeepass.mobile.background :as bg]))
 
 ;;;;;;;;;;;;;
 
@@ -32,13 +27,15 @@
 
 
 (defn confirm-delete-otp-field-show [section-name key]
+  ;; We pass translation keys for title, confirm-text and for button labels as expected
+  ;; by confirm-dialog-with-lstr
   (dlg-events/confirm-delete-otp-field-dialog-show-with-state
-   {:title "Delete one time password?"
-    :confirm-text "Are you sure you want to delete this permanently?"
+   {:title "deleteOtp"
+    :confirm-text "deleteOtp"
     :call-on-ok-fn #(form-events/entry-form-delete-otp-field section-name key)
-    :actions [{:label "button.labels.yes"
+    :actions [{:label "yes"
                :on-press dlg-events/confirm-delete-otp-field-dialog-on-ok}
-              {:label "button.labels.no"
+              {:label "no"
                :on-press dlg-events/confirm-delete-otp-field-dialog-close}]}))
 
 
@@ -54,20 +51,22 @@
     (otp-settings-dialog-show section-name field-name standard-field :scan-qr)))
 
 (defn setup-otp-action-dialog-show [section-name field-name standard-field]
+  ;; We pass translation keys for title, confirm-text and for button labels
   (dlg-events/setup-otp-action-dialog-show-with-state
-   {:title "dialog.titles.setupOtp"
-    :confirm-text "You can set up TOTP by scanning a QR code or manually entering the secret or an OTPAuth url"
+   {:title "setupOtp"
+    :confirm-text "setupOtp"
     :section-name section-name
     :show-action-as-vertical true
     :actions [{:label "scanQRcode"
+               :disabled (bg/is-rn-native-camera-vison-disabled)
                :on-press (fn []
                            (scan-qr-action (as-map [section-name field-name standard-field]))
                            (dlg-events/setup-otp-action-dialog-close))}
-              {:label "button.labels.enterManually"
+              {:label "enterManually"
                :on-press (fn []
                            (otp-settings-dialog-show section-name field-name standard-field :manual)
                            (dlg-events/setup-otp-action-dialog-close))}
-              {:label "button.labels.cancel"
+              {:label "cancel"
                :on-press dlg-events/setup-otp-action-dialog-close}]}))
 
 (defn otp-settings-dialog
@@ -86,13 +85,17 @@
 
   (let [error (boolean (seq error-fields))]
     [cust-dialog {:style {} :dismissable true :visible dialog-show :onDismiss #()}
+     
      [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1}
-      (if (=  code-entry-type :scan-qr) (lstr "scanQRcode") (lstr "enterCode"))]
+      (if (=  code-entry-type :scan-qr) 
+        (lstr-l "scanQRcode") 
+        (lstr-l "enterCode"))]
+     
      [rnp-dialog-content
       [rn-view {:flexDirection "column"}
        (when-not standard-field
          [:<> ;; Needs to :<> so that a combine comp is returned the condition evaluates
-          [rnp-text-input {:label (lstr "fieldName")
+          [rnp-text-input {:label (lstr-l "fieldName")
                            :autoCapitalize "none"
                            :defaultValue field-name
                            :onChangeText #(dlg-events/otp-settings-dialog-update [:field-name %])}]
@@ -104,7 +107,7 @@
 
        (when  (= code-entry-type :manual)
          [:<>
-          [rnp-text-input {:label (lstr "secretCodeOrUrl")
+          [rnp-text-input {:label (lstr-l "secretCodeOrUrl")
                            :autoCapitalize "none"
                            :defaultValue secret-or-url
                            :onChangeText #(dlg-events/otp-settings-dialog-update [:secret-or-url %])}]
@@ -114,9 +117,9 @@
 
      [rnp-dialog-actions
       [rnp-button {:mode "text"
-                   :onPress dlg-events/otp-settings-dialog-close} (lstr "button.labels.cancel")]
+                   :onPress dlg-events/otp-settings-dialog-close} (lstr-bl "cancel")]
       [rnp-button {:mode "text"
-                   :onPress dlg-events/otp-settings-dialog-complete-ok} (lstr "button.labels.ok")]]]))
+                   :onPress dlg-events/otp-settings-dialog-complete-ok} (lstr-bl "ok")]]]))
 
 (defn otp-settings-dialog-show
   "Called to show the otp settings dialog with initial values
@@ -124,7 +127,7 @@
    This is also called before scanning code if the otp is an additional custom field 
    code-entry-type is one of :scan-qr or :manual
    "
-  [section-name field-name standard-field code-entry-type] 
+  [section-name field-name standard-field code-entry-type]
   (dlg-events/otp-settings-dialog-show-with-state (as-map [section-name field-name standard-field code-entry-type])))
 
 ;;;;;;;;;;;;;;;
@@ -135,10 +138,10 @@
   (let [error (boolean (seq error-fields))]
     [cust-dialog {:style {} :dismissable true :visible dialog-show :onDismiss #()}
      [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1}
-      (if (= mode :add) "New section name" "Modify section name")]
+      (if (= mode :add) (lstr-dlg-title 'newSectionName) (lstr-dlg-title 'modifySectionName))]
      [rnp-dialog-content
       [rn-view {:flexDirection "column"}
-       [rnp-text-input {:label "Section name"
+       [rnp-text-input {:label (lstr-l 'sectionName)
                         :defaultValue section-name
                         :onChangeText #(form-events/section-name-dialog-update :section-name %)}]
        (when error
@@ -147,19 +150,23 @@
      [rnp-dialog-actions]
      [rnp-dialog-actions
       [rnp-button {:mode "text"
-                   :onPress #(form-events/section-name-dialog-update :dialog-show false)} (lstr "button.labels.cancel")]
+                   :onPress #(form-events/section-name-dialog-update :dialog-show false)} (lstr-bl "cancel")]
       [rnp-button {:mode "text"
-                   :onPress #(form-events/section-name-add-modify dialog-data)} (lstr "button.labels.ok")]]]))
+                   :onPress #(form-events/section-name-add-modify dialog-data)} (lstr-bl "ok")]]]))
 
 (defn delete-field-confirm-dialog [{:keys [dialog-show]} actions]
   [cust-dialog {:style {} :dismissable true :visible dialog-show}
-   [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1} "Delete field"]
+   [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1}
+    (lstr-dlg-title 'deleteField)]
+
    [rnp-dialog-content
-    [rnp-text "Are you sure you want to delete this field permanently?"]]
+    [rnp-text
+     (lstr-dlg-text 'deleteField)]]
+
    [rnp-dialog-actions
-    (for [{:keys [label on-press]}  actions]
+    (for [{:keys [label on-press]} actions]
       ^{:key label} [rnp-button {:mode "text"
-                                 :on-press on-press} label])]])
+                                 :on-press on-press} (lstr-bl label)])]])
 
 (defn add-modify-section-field-dialog [{:keys [dialog-show
                                                section-name
@@ -183,66 +190,66 @@
                   :onDismiss #(form-events/close-section-field-dialog)}
      [rnp-dialog-title {:ellipsizeMode "tail"
                         :numberOfLines 1} (if (= mode :add)
-                                            (str "Add field in " section-name)
-                                            (str "Modify field in " section-name))]
+                                            (lstr-dlg-title 'addSectionField {:section-name section-name})
+                                            (lstr-dlg-title 'modifySectionField {:section-name section-name}))]
      [rnp-dialog-content
       [rn-view {:flexDirection "column"}
 
-       [rnp-text-input {:label "Field name" :defaultValue field-name
+       [rnp-text-input {:label (lstr-l 'fieldName)
+                        :defaultValue field-name
                         :onChangeText #(form-events/section-field-dialog-update :field-name %)}]
        (when error
          [rnp-helper-text {:type "error" :visible error}
           (get error-fields field-name)])
-       
+
        [rn-view {:flexDirection "column" :style {}}
         [rn-view {:style {:height 15}}]
         [rnp-touchable-ripple {:style {}
-                               :onPress #(form-events/section-field-dialog-update :protected (not protected))} 
-         [rn-view {:flexDirection "row" 
+                               :onPress #(form-events/section-field-dialog-update :protected (not protected))}
+         [rn-view {:flexDirection "row"
                    :style {:alignItems "center" :justifyContent "center"}}
-          [rnp-text {:style {}} "Protected"]
+          [rnp-text {:style {}} (lstr-l 'protected)]
           [rn-view {:pointerEvents "none"}
-           [rnp-checkbox {:status (if protected "checked" "unchecked")}]]]]
-        ]
+           [rnp-checkbox {:status (if protected "checked" "unchecked")}]]]]]
 
        #_[rn-view {:flexDirection "row"}
-        [rnp-touchable-ripple {:style {:width "45%"}
-                               :onPress #(form-events/section-field-dialog-update :protected (not protected))}
-         [rn-view {:flexDirection "row" :style {:alignItems "center" :justifyContent "space-between"}}
-          [rnp-text "Protected"]
-          [rn-view {:pointerEvents "none"}
-           [rnp-checkbox {:status (if protected "checked" "unchecked")}]]]]
-        [rn-view {:style {:width "10%"}}]
-        [rnp-touchable-ripple {:style {:width "45%"}
-                               :onPress #(form-events/section-field-dialog-update :required (not required))}
-         [rn-view {:flexDirection "row" :style {:alignItems "center" :justifyContent "space-between"}}
-          [rnp-text "Required"]
-          [rn-view {:pointerEvents "none"}
-           [rnp-checkbox {:status (if required "checked" "unchecked")}]]]]]]]
+          [rnp-touchable-ripple {:style {:width "45%"}
+                                 :onPress #(form-events/section-field-dialog-update :protected (not protected))}
+           [rn-view {:flexDirection "row" :style {:alignItems "center" :justifyContent "space-between"}}
+            [rnp-text "Protected"]
+            [rn-view {:pointerEvents "none"}
+             [rnp-checkbox {:status (if protected "checked" "unchecked")}]]]]
+          [rn-view {:style {:width "10%"}}]
+          [rnp-touchable-ripple {:style {:width "45%"}
+                                 :onPress #(form-events/section-field-dialog-update :required (not required))}
+           [rn-view {:flexDirection "row" :style {:alignItems "center" :justifyContent "space-between"}}
+            [rnp-text "Required"]
+            [rn-view {:pointerEvents "none"}
+             [rnp-checkbox {:status (if required "checked" "unchecked")}]]]]]]]
 
      [rnp-dialog-actions
-      [rnp-button {:mode "text" :onPress #(form-events/close-section-field-dialog)} "Cancel"]
-      [rnp-button {:mode "text" :onPress ok-fn} "Ok"]]]))
+      [rnp-button {:mode "text" :onPress #(form-events/close-section-field-dialog)} (lstr-bl "cancel")]
+      [rnp-button {:mode "text" :onPress ok-fn} (lstr-bl "ok")]]]))
 
 (defn history-entry-delete-dialog []
   (let [entry-uuid @(form-events/entry-form-uuid)
         index @(form-events/history-entry-selected-index)]
     [confirm-dialog {:dialog-show @(form-events/history-entry-delete-flag)
-                     :title "Delete history entry"
-                     :confirm-text "Are you sure you want to delete this history entry permanently?"
-                     :actions [{:label (lstr "button.labels.yes")
+                     :title (lstr-dlg-title 'deleteHistoryEntry)
+                     :confirm-text (lstr-dlg-text 'deleteHistoryEntry)
+                     :actions [{:label (lstr-bl "yes")
                                 :on-press #(form-events/delete-history-entry-by-index
                                             entry-uuid index)}
-                               {:label (lstr "button.labels.no")
+                               {:label (lstr-bl "no")
                                 :on-press form-events/close-history-entry-delete-confirm-dialog}]}]))
 
 (defn history-entry-restore-dialog []
   [confirm-dialog {:dialog-show @(form-events/history-entry-restore-flag)
-                   :title "Restore from history entry"
-                   :confirm-text "Are you sure you want to restore the entry from this history entry?"
-                   :actions [{:label (lstr "button.labels.yes")
+                   :title (lstr-dlg-title 'restoreHistoryEntry)
+                   :confirm-text (lstr-dlg-text 'restoreHistoryEntry)
+                   :actions [{:label (lstr-bl "yes")
                               :on-press form-events/restore-entry-from-history}
-                             {:label (lstr "button.labels.no")
+                             {:label (lstr-bl "no")
                               :on-press form-events/close-history-entry-restore-confirm-dialog}]}])
 
 (def delete-attachment-confirm-dialog-data (r/atom {:dialog-show false
@@ -281,10 +288,10 @@
                                              error-text]}]
   [cust-dialog {:style {} :dismissable true :visible dialog-show :onDismiss #()}
    [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1}
-    "Change name"]
+    (lstr-dlg-title 'changeAttachmentName)]
    [rnp-dialog-content
     [rn-view {:flexDirection "column"}
-     [rnp-text-input {:label "Name"
+     [rnp-text-input {:label (lstr-l 'name)
                       :defaultValue name
                       :onChangeText change-attachment-name}]
      (when error-text
@@ -293,9 +300,9 @@
 
    [rnp-dialog-actions
     [rnp-button {:mode "text"
-                 :onPress close-rename-attachment-name-dialog} (lstr "button.labels.cancel")]
+                 :onPress close-rename-attachment-name-dialog} (lstr-bl "cancel")]
     [rnp-button {:mode "text"
                  :disabled (not (nil? error-text))
                  :onPress (fn []
                             (form-events/rename-attachment name data-hash)
-                            (close-rename-attachment-name-dialog))} (lstr "button.labels.ok")]]])
+                            (close-rename-attachment-name-dialog))} (lstr-bl "ok")]]])

@@ -1,19 +1,13 @@
 (ns onekeepass.mobile.events.common
   "All common events that are used across many pages"
-  (:require
-   [clojure.string :as str]
-   [cljs.core.async :refer [go go-loop timeout <!]]
-   [re-frame.core :refer [reg-event-db
-                          reg-event-fx
-                          reg-fx
-                          reg-sub
-                          dispatch
-                          dispatch-sync
-                          subscribe]]
-   [onekeepass.mobile.utils :as u :refer [tags->vec str->int]]
-   [onekeepass.mobile.background :as bg]))
+  (:require [cljs.core.async :refer [<! go timeout]]
+            [clojure.string :as str]
+            [onekeepass.mobile.background :as bg]
+            [onekeepass.mobile.utils :as u :refer [str->int tags->vec]]
+            [re-frame.core :refer [dispatch dispatch-sync reg-event-db
+                                   reg-event-fx reg-fx reg-sub subscribe]]))
 
-(def home-page-title "page.titles.home")
+(def home-page-title "home")
 
 (defn sync-initialize
   "Called just before rendering to set all requied values in re-frame db"
@@ -23,7 +17,7 @@
 
 (defn- default-error-fn [error]
   (println "API returned error: " error)
-  (dispatch [:common/error-box-show "API Call Error" error])
+  (dispatch [:common/error-box-show 'apiError error])
   (dispatch [:common/message-modal-hide]))
 
 (defn on-error
@@ -161,10 +155,16 @@
 (defn remove-from-recent-list [full-file-name-uri]
   (dispatch [:remove-from-recent-list full-file-name-uri]))
 
+#_(defn load-language-translation-completed []
+    (dispatch [:common/load-language-translation-complete]))
+
 (defn opened-database-file-names
   "Gets db info map with keys [db-key database-name file-name key-file-name] from the opened database list"
   []
   (subscribe [:opened-database-file-names]))
+
+(defn language-translation-loading-completed []
+  (subscribe [:language-translation-loading-completed]))
 
 ;; Put an initial value into app-db.
 ;; Using the sync version of dispatch means that value is in
@@ -203,7 +203,7 @@
    (bg/close-kdbx db-key
                   (fn [api-response]
                     (when-not (on-error api-response)
-                      (dispatch [:common/message-snackbar-open "Database closed"])
+                      (dispatch [:common/message-snackbar-open 'databaseClosed])
                       (dispatch [:close-kdbx-completed db-key]))))))
 
 (reg-event-fx
@@ -255,7 +255,7 @@
    ;; This backend call not only removes the recent use file info but also closes the db if it is openned 
    (bg/remove-from-recently-used full-file-name-uri (fn [api-reponse]
                                                       (when-not (on-error api-reponse)
-                                                        (dispatch [:common/message-snackbar-open "Database is removed from the list"])
+                                                        (dispatch [:common/message-snackbar-open 'databaseRemovedFromList])
                                                         ;; As db is closed when this response is received, we call :close-kdbx-completed 
                                                         (dispatch [:close-kdbx-completed full-file-name-uri]))))
    {}))
@@ -275,6 +275,30 @@
                         (:opened-db-list db))]
      ;;(println "new-list " new-list (keys db))
      {:db (assoc db :opened-db-list new-list)})))
+
+(reg-event-fx
+ :common/load-language-translation-complete
+ (fn [{:keys [db]} [_event-id]]
+   {:db (assoc-in db [:background-loading-statuses :load-language-translation] true)}))
+
+;; Called before reloading language translation on change
+#_(reg-event-db
+   :common/reset-load-language-translation-status
+   (fn [db [_event-id]]
+     (assoc-in db [:background-loading-statuses :load-language-translation] false)))
+
+(reg-event-fx
+ :common/reset-load-language-translation-status
+ (fn [{:keys [db]} [_event-id]]
+   {:db (assoc-in db [:background-loading-statuses :load-language-translation] false)
+    ;; When language translations are loaded in settings page, we could not update the page with new language
+    ;; As a workaround, this page is shown and allows user to reresh  with the newly loaded translation data
+    :fx [[:dispatch [:common/next-page :blank nil]]]}))
+
+(reg-sub
+ :language-translation-loading-completed
+ (fn [db _query-vec]
+   (get-in db [:background-loading-statuses :load-language-translation] false)))
 
 (reg-sub
  :active-db-key
@@ -316,7 +340,7 @@
 (reg-fx
  :bg-app-preference
  (fn []
-   (bg/app_preference (fn [api-response]
+   (bg/app-preference (fn [api-response]
                         (when-let [r (on-ok api-response)]
                           (dispatch [:app-preference-loaded r]))))))
 
@@ -381,7 +405,7 @@
  (fn [{:keys [db]} [_event-id]]
    {:db (assoc-in-key-db db [:locked] true)
     :fx [[:dispatch [:to-home-page]]
-         [:dispatch [:common/message-snackbar-open "Database locked"]]]}))
+         [:dispatch [:common/message-snackbar-open 'databaseLocked]]]}))
 
 ;; Called to lock any opened database using the passed db-key - used from home page
 (reg-event-fx
@@ -390,7 +414,7 @@
    {:db (assoc-in-selected-db db db-key [:locked] true)
     :fx [#_[:bg-lock-kdbx [(active-db-key db)]]
          [:dispatch [:to-home-page]]
-         [:dispatch [:common/message-snackbar-open "Database locked"]]]}))
+         [:dispatch [:common/message-snackbar-open 'databaseLocked]]]}))
 
 (reg-event-fx
  :lock-on-session-timeout
@@ -475,14 +499,16 @@
 (reg-event-fx
  :to-about-page
  (fn [{:keys [db]} [_event-id]]
-   {:fx [[:dispatch [:common/next-page :about "page.titles.about"]]]}))
+   {:fx [[:dispatch [:common/next-page :about "about"]]]}))
 
 (reg-event-fx
  :to-privacy-policy-page
  (fn [{:keys [db]} [_event-id]]
-   {:fx [[:dispatch [:common/next-page :privacy-policy "page.titles.privacyPolicy"]]]}))
+   {:fx [[:dispatch [:common/next-page :privacy-policy "privacyPolicy"]]]}))
 
 ;; Called when user navigates to the next page
+;; For most of the cases, the title is expected to be a key to get the translated page title text
+;; See positioned-title component in appbar.cljs 
 (reg-event-db
  :common/next-page
  (fn [db [_event-id page title]]
@@ -530,7 +556,7 @@
  :common/show-icons-to-select
  (fn [{:keys [db]} [_event-id on-icon-selection]]
    {:db (assoc db :on-icon-selection on-icon-selection)
-    :fx [[:dispatch [:common/next-page :icons-list "page.titles.icons"]]]}))
+    :fx [[:dispatch [:common/next-page :icons-list "icons"]]]}))
 
 (reg-event-fx
  :common/icon-selected
@@ -712,7 +738,9 @@
    ;; Incoming 'message' may be a map with key :message or string or an object
    ;; We need to convert message as '(str message)' to ensure it can be used 
    ;; in UI component
-   (let [msg (get message :message (str message))]
+   ;; The message may be a symbol meaning that it is to be used as a key to get the translated text
+   (let [msg (if (symbol? message) message
+                 (get message :message (str message)))]
      (-> db
          (assoc-in [:message-box :dialog-show] true)
          (assoc-in [:message-box :title] title)
@@ -725,7 +753,9 @@
    ;; Incoming 'message' may be a map with key :message or string or an object
    ;; We need to convert message as '(str message)' to ensure it can be used 
    ;; in UI component
-   (let [msg (get message :message (str message))]
+   ;; The message may be a symbol meaning that it is to be used as a key to get the translated text
+   (let [msg (if (symbol? message) message
+                 (get message :message (str message)))]
      (-> db
          (assoc-in [:message-box :dialog-show] true)
          (assoc-in [:message-box :title] (if (str/blank? title) "Error" title))
@@ -779,10 +809,16 @@
 
 ;;;;;;;;;;;;;;;;;;;; Message Modal ;;;;;;;;;;;;;;;;
 
+(defn message-modal-show [message]
+  (dispatch [:common/message-modal-show nil message]))
+
 (defn message-modal-data []
   (subscribe [:message-modal]))
 
 ;; TODO: Need to swap the args order to 'message title' as title is used optional field
+;; It seems we do not use 'title' in the 'message-modal' dialog anymore (see common_components.cljs).
+;; Only the message is used
+;; Need to remove passing the arg 'title' while dispatching this event
 (reg-event-db
  :common/message-modal-show
  (fn [db [_event-id title message]]

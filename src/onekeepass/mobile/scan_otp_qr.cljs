@@ -1,12 +1,10 @@
 (ns onekeepass.mobile.scan-otp-qr
-  (:require [onekeepass.mobile.rn-components
-             :as rnc :refer [rn-view
-                             rnp-button
-                             rn-safe-area-view
-                             rnp-text]]
-            [onekeepass.mobile.constants :refer [CAMERA_PERMISSION_GRANTED]]
+  (:require [onekeepass.mobile.constants :refer [CAMERA_PERMISSION_GRANTED]]
             [onekeepass.mobile.events.entry-form :as form-events]
-            [onekeepass.mobile.events.scan-otp-qr :as scan-qr-events]))
+            [onekeepass.mobile.events.scan-otp-qr :as scan-qr-events]
+            [onekeepass.mobile.rn-components
+             :as rnc :refer [rn-safe-area-view rn-view rnp-button rnp-text]]
+            [onekeepass.mobile.translation :refer [lstr-mt]]))
 
 (def scanned (atom false))
 
@@ -14,7 +12,7 @@
   (when-not @scanned
     (let [codes (js->clj codes :keywordize-keys true)]
       ;; Disable code scanning to prevent rapid scans
-      (when (> (count codes) 0) 
+      (when (> (count codes) 0)
         (scan-qr-events/scan-qr-scanned (-> codes (nth 0) :value))
         (reset! scanned true)))))
 
@@ -38,7 +36,8 @@
        [rn-view {:style {:flex .3}}]
        [rn-view {:style {:flex .7}}
         [rnp-text {:style {:color @rnc/error-color :margin 20}
-                   :variant "titleSmall"} "Back camera is not found. Please enter the secret code manually"]]])))
+                   :variant "titleSmall"} 
+         (lstr-mt 'scanQr 'backCameraNotFound)]]])))
 
 (defn settings-link []
   (let [form-changed @(form-events/form-modified)]
@@ -49,7 +48,9 @@
         [rn-view {:flexDirection "column"  :align-self "center"  :align-items "center"}
                 ;;[rn-view { :style {:margin 10} :flexDirection "row"  :align-self "center"  :align-items "center"}
          [rnp-text {:style {:color @rnc/primary-color :margin 20}
-                    :variant "titleSmall"} "Camera permission is required for OneKeePass to scan a QR code. Please enable it"]
+                    :variant "titleSmall"} 
+          (lstr-mt 'scanQr 'cameraPermissionEnable)]
+         
          [rnp-button {:style {:width "70%"}
                       :labelStyle {:fontWeight "bold"}
                       :mode "outlined"
@@ -59,7 +60,8 @@
         [rn-view {:flexDirection "column"  :align-self "center"  :align-items "center"}
 
          [rnp-text {:style {:color @rnc/primary-color :margin 20}
-                    :variant "titleSmall"} "Camera permission is required for OneKeePass to scan a QR code"]
+                    :variant "titleSmall"} 
+          (lstr-mt 'scanQr 'cameraPermissionRequired)]
 
          [rnp-text {:style {:color @rnc/error-color :margin 20}
                     :variant "titleSmall"}

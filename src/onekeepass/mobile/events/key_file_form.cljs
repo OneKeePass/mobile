@@ -1,15 +1,9 @@
 (ns onekeepass.mobile.events.key-file-form
-  (:require
-   [clojure.string :as str]
-   [re-frame.core :refer [reg-event-db
-                          reg-event-fx
-                          reg-fx
-                          reg-sub
-                          dispatch
-                          subscribe]]
-
-   [onekeepass.mobile.events.common :refer [on-ok on-error]]
-   [onekeepass.mobile.background :as bg]))
+  (:require [clojure.string :as str]
+            [onekeepass.mobile.background :as bg]
+            [onekeepass.mobile.events.common :refer [on-error on-ok]] 
+            [re-frame.core :refer [dispatch reg-event-db reg-event-fx reg-fx
+                                   reg-sub subscribe]]))
 
 (defn set-selected-key-file-info
   "Called with the selected key file info as map"
@@ -44,7 +38,7 @@
   (bg/pick-key-file-to-save full-file-name file-name
                             (fn [api-response] 
                               (when-not (on-error api-response #(dispatch [:key-file-save-error %])) 
-                                (dispatch [:common/message-snackbar-open "Key file saved"])))))
+                                (dispatch [:common/message-snackbar-open 'keyFileSaved])))))
 
 (defn delete-key-file
   "Deletes the key file from local copy. The arg 'file-name' is just name part and 
@@ -54,7 +48,7 @@
   (bg/delete-key-file file-name (fn [api-response]
                                   (when-let [updated-key-files-list (on-ok api-response)]
                                     (dispatch [:key-files-loaded updated-key-files-list])
-                                    (dispatch [:common/message-snackbar-open "Key file removed"])))))
+                                    (dispatch [:common/message-snackbar-open 'keyFileRemoved])))))
 
 ;; Good clojure regex article https://ericnormand.me/mini-guide/clojure-regex
 #_(defn- derive-key-file-name-part
@@ -82,7 +76,7 @@
                             ;;(dispatch [:key-file-copied kf-info])
                             (dispatch [:key-file-generated kf-info])
                             (dispatch [:key-file-form-generate-file-name-dialog false])
-                            (dispatch [:common/message-snackbar-open "Key file generated"])))))
+                            (dispatch [:common/message-snackbar-open 'keyFileGenerated])))))
 
 (defn imported-key-files []
   (subscribe [:imported-key-files]))
@@ -115,7 +109,7 @@
             (assoc-in [:key-file-form :show-generate-option] show-generate-option)
             (assoc-in [:key-file-form :dispatch-on-file-selection] dispatch-on-file-selection))
     :fx [[:dispatch [:load-imported-key-files]]
-         [:dispatch [:common/next-page :key-file-form "page.titles.keyFileForm"]]]}))
+         [:dispatch [:common/next-page :key-file-form "keyFileForm"]]]}))
 
 ;; Any file picked by user is copied to app's private area in a backend api and then this event is called
 (reg-event-fx
@@ -125,7 +119,7 @@
      {:fx [[:dispatch [:load-imported-key-files]]
          ;; Navigate to the previous page after the user picked a file
            [:dispatch [:common/previous-page]]
-           [:dispatch [:common/message-snackbar-open "Key file selected"]]
+           [:dispatch [:common/message-snackbar-open 'keyFileSelected]]
            (when next-dipatch-kw
              [:dispatch [next-dipatch-kw kf-info]])]})))
 
@@ -142,7 +136,7 @@
                              (fn [api-response]
                                (when-not (on-error api-response #(dispatch [:key-file-save-error % kf-info]))
                                  (dispatch [:key-file-copied kf-info])
-                                 (dispatch [:common/message-snackbar-open "Key file saved"]))))))
+                                 (dispatch [:common/message-snackbar-open 'keyFileSaved]))))))
 
 ;; Called with the selected key file info as map and in turns navigates back to the previous 
 ;; and also passing the selected kf info
@@ -154,7 +148,7 @@
      {:fx [(when next-dipatch-kw
              [:dispatch [next-dipatch-kw kf-info]])
            [:dispatch [:common/previous-page]]
-           [:dispatch [:common/message-snackbar-open "Key file selected"]]]})))
+           [:dispatch [:common/message-snackbar-open 'keyFileSelected ]]]})))
 
 ;; Similar to :database-file-pick-error event in ns onekeepass.mobile.events.open-database
 ;; Need to make it share instead of copying as done here
@@ -164,7 +158,7 @@
    ;; If the user cancels any file selection, 
    ;; the RN response is a error due to the use of promise rejecton in Native Module. And we can ignore that error 
    {:fx [(when-not (= "DOCUMENT_PICKER_CANCELED" (:code error))
-           [:dispatch [:common/error-box-show "File Pick Error" error]])]}))
+           [:dispatch [:common/error-box-show 'filePickError error]])]}))
 
 (reg-event-fx
  :key-file-save-error
@@ -178,7 +172,7 @@
    (if kf-info
      (if (= "DOCUMENT_PICKER_CANCELED" (:code error))
        {:fx [[:dispatch [:load-imported-key-files]]
-             [:dispatch [:common/error-box-show "Key file saving cancelled" 
+             [:dispatch [:common/error-box-show 'keyFileSavingCancelled 
                          (str "Recommended to save the generated key file to a secure place."
                               "If you use this file and the file is lost, you will not able to open the database without the key file" 
                               )]]

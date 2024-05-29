@@ -1,15 +1,11 @@
 (ns onekeepass.mobile.events.new-database
-  (:require
-   [onekeepass.mobile.events.common :refer [on-ok]]
-   [re-frame.core :refer [reg-event-db
-                          reg-event-fx
-                          reg-sub
-                          dispatch
-                          reg-fx
-                          subscribe]]
-   [onekeepass.mobile.background :as bg :refer [is-Android]]
-   [clojure.string :as str]
-   [onekeepass.mobile.utils :as u :refer [str->int]]))
+  (:require [clojure.string :as str]
+            [onekeepass.mobile.background :as bg :refer [is-Android]]
+            [onekeepass.mobile.events.common :refer [on-ok]]
+            [onekeepass.mobile.translation :refer [lstr-mt]]
+            [onekeepass.mobile.utils :as u :refer [str->int]]
+            [re-frame.core :refer [dispatch reg-event-db reg-event-fx reg-fx
+                                   reg-sub subscribe]]))
 
 
 (defn new-database-dialog-show []
@@ -71,20 +67,23 @@
 (defn- validate-required-fields
   [db kw-field]
   (let [{:keys [database-name password key-file-name]} (get-in db [:new-database])
+        m1 (lstr-mt 'newDbForm 'validPasswordOrKeyFileRequired)
+        m2 (lstr-mt 'newDbForm 'validPasswordRequired)
+        
         error-fields (cond
                        (and (= kw-field :password) (empty? password) (empty? key-file-name))
-                       (assoc {} :password "Please use a valid password or/and key file")
+                       (assoc {} :password m1)
 
                        (and (= kw-field :database-name) (str/blank? database-name))
-                       (assoc {} :database-name "A valid database name is required")
+                       (assoc {} :database-name m2)
 
                        (= kw-field :all)
                        (cond-> {}
                          (str/blank? database-name)
-                         (assoc :database-name "A valid database name is required")
+                         (assoc :database-name m2)
 
                          (and (empty? password) (empty? key-file-name))
-                         (assoc :password "Please use a valid password or/and key file"))
+                         (assoc :password m1))
 
                        :else
                        {})]
@@ -227,8 +226,7 @@
        {:db (assoc-in db [:new-database :error-fields] error-fields)}
        {:db (-> db (assoc-in [:new-database :status] :in-progress)
                 (assoc-in [:new-database :error-fields] nil))
-        :fx [#_[:dispatch [:common/message-modal-show nil "Creating new database ..."]]
-             [:bg-pick-and-save-new-kdbxFile [(str (get-in db [:new-database :database-name]) ".kdbx")
+        :fx [[:bg-pick-and-save-new-kdbxFile [(str (get-in db [:new-database :database-name]) ".kdbx")
                                               (:new-database db)]]]}))))
 
 (defn- on-database-new-database-save-completed

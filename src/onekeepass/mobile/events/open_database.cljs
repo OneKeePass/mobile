@@ -408,7 +408,7 @@
          [:dispatch [:common/unlock-selected-db (:db-key kdbx-loaded)]]
          [:dispatch [:common/set-active-db-key (:db-key kdbx-loaded)]]
          [:dispatch [:app-settings/update-user-active-time (:db-key kdbx-loaded)]]
-         [:dispatch [:common/message-snackbar-open "Database unlocked"]]]}))
+         [:dispatch [:common/message-snackbar-open 'databaseUnlocked]]]}))
 
 (comment
   (in-ns 'onekeepass.mobile.events.open-database)

@@ -87,7 +87,22 @@ enum CallbackErrors: Error {
 }
 
 class CommonDeviceServiceImpl: CommonDeviceService {
+  
+  
   func appHomeDir() -> String {
+    
+//    let  burl = Bundle.main.bundleURL
+//    cmnLogger.debug("$$$$$ bundleURL is \(burl)")
+//    
+//    let resUrl = Bundle.main.resourceURL
+//    
+//    cmnLogger.debug("$$$$$ resourceURL is \(burl)")
+//    
+//    var p = Bundle.main.path(forResource: "en", ofType: "json", inDirectory: "Translations")
+//    
+//    cmnLogger.debug("$$$$$ orResource is \(String(describing: p))")
+//    
+    
     return NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).first!
   }
   
@@ -98,6 +113,27 @@ class CommonDeviceServiceImpl: CommonDeviceService {
   func tempDir() -> String {
     let tempDirectoryPath = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
     return tempDirectoryPath.absoluteString
+  }
+  
+  func loadLanguageTranslation(_ languageId: String) -> String? {
+    
+    var p = Bundle.main.path(forResource: languageId, ofType: "json", inDirectory: "Translations")
+    
+    // Or use if let jsonFileURL = Bundle.main.path(forResource: languageId, ofType: "json", inDirectory: "Translations") {}
+    // Or use if let jsonFileURL = Bundle.main.url(forResource: languageId, ofType: "json", subdirectory: "Translations") {}
+    
+    let jsonFileURL = Bundle.main.url(forResource: languageId, withExtension: "json", subdirectory: "Translations")
+    guard jsonFileURL != nil  else {
+      return nil
+    }
+    
+    cmnLogger.debug("Translation jsonFileURL for language \(languageId) is \(String(describing: jsonFileURL))")
+    
+    if let fileContents = try? String(contentsOf: jsonFileURL!) {
+        return fileContents
+    }
+    
+    return nil
   }
 
   func uriToFileName(_ fullFileNameUri: String) -> String? {

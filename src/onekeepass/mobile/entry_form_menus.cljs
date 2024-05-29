@@ -1,13 +1,13 @@
 (ns
  onekeepass.mobile.entry-form-menus
   (:require [reagent.core :as r]
-            [onekeepass.mobile.entry-form-dialogs :refer [show-delete-attachment-dialog show-rename-attachment-name-dialog]]
+            [onekeepass.mobile.entry-form-dialogs :refer
+             [show-delete-attachment-dialog show-rename-attachment-name-dialog]]
             [onekeepass.mobile.rn-components
-             :as rnc :refer [lstr
-                             rnp-divider
+             :as rnc :refer [rnp-divider
                              rnp-menu
                              rnp-menu-item]]
-
+            [onekeepass.mobile.translation :refer [lstr-ml]]
             [onekeepass.mobile.events.entry-form :as form-events]))
 
 (def section-menu-dialog-data (r/atom {:section-name nil
@@ -29,11 +29,11 @@
   ;; in achor's coordinate 
   [rnp-menu {:visible show :onDismiss #(swap! section-menu-dialog-data assoc :show false)
              :anchor (clj->js {:x x :y y})} ;;:contentStyle {:backgroundColor  "red"}
-   [rnp-menu-item {:title (lstr "menu.labels.changename") :disabled is-standard-section
+   [rnp-menu-item {:title (lstr-ml "changeName") :disabled is-standard-section
                    :onPress (fn []
                               (form-events/open-section-name-modify-dialog section-name)
                               (swap! section-menu-dialog-data assoc :show false))}]
-   [rnp-menu-item {:title (lstr "menu.labels.addCustomField")
+   [rnp-menu-item {:title (lstr-ml "addCustomField")
                    :onPress (fn []
                               (swap! section-menu-dialog-data assoc :show false)
                               (form-events/open-section-field-dialog section-name))}]])
@@ -61,7 +61,7 @@
   [rnp-menu {:visible show
              :onDismiss custom-field-menu-action-on-dismiss
              :anchor (clj->js {:x x :y y})}
-   [rnp-menu-item {:title (lstr "menu.labels.modifyCustomField")
+   [rnp-menu-item {:title (lstr-ml "modifyCustomField")
                    :onPress (fn [_e]
                               (form-events/open-section-field-modify-dialog
                                {:key field-name
@@ -69,7 +69,7 @@
                                 :required required
                                 :section-name section-name})
                               (custom-field-menu-action-on-dismiss))}]
-   [rnp-menu-item {:title (lstr "menu.labels.deleteField")
+   [rnp-menu-item {:title (lstr-ml "deleteField")
                    :onPress (fn [_e]
                               (form-events/field-delete section-name field-name)
                               (custom-field-menu-action-on-dismiss))}]])
@@ -107,22 +107,22 @@
                               (form-events/view-attachment name data-hash)
                               (dismiss-attachment-long-press-menu))}]
 
-   [rnp-menu-item {:title (lstr "menu.labels.saveAs")
+   [rnp-menu-item {:title (lstr-ml "saveAs")
                    :onPress (fn [_e]
                               (form-events/save-attachment name data-hash)
                               (dismiss-attachment-long-press-menu))}]
 
    [rnp-divider]
-   [rnp-menu-item {:title (lstr "menu.labels.rename")
+   [rnp-menu-item {:title (lstr-ml "rename")
                    :disabled (not edit)
                    :onPress (fn [_e]
                               (show-rename-attachment-name-dialog name data-hash)
                               (dismiss-attachment-long-press-menu))}]
-   [rnp-menu-item {:title (lstr "menu.labels.delete")
+   [rnp-menu-item {:title (lstr-ml "delete")
                    :disabled (not edit)
                    :onPress (fn [_e]
                               (show-delete-attachment-dialog
-                               (lstr "menu.labels.delete") "Do you want to delete this attachment?"
+                               (lstr-ml "delete") "Do you want to delete this attachment?"
                                #(form-events/delete-attachment data-hash))
                               (dismiss-attachment-long-press-menu))}]])
 

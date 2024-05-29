@@ -130,7 +130,9 @@
     :else
     (->> resolved (.parse js/JSON) js->clj)))
 
-(def test-data (atom nil))
+;; We can store the last raw response here and can be used for debugging during
+;; development time. Need to uncomment the '(reset!...) call in fn 'call-api-async' for this
+(def test-raw-response-data (atom nil))
 
 (defn call-api-async
   "Calls the backend APIs asynchronously
@@ -145,12 +147,13 @@
     (try
       (let [r (<p! (aync-fn))
             deserialized-response (transform-api-response r opts)]
-        ;;(reset! test-data r)
+        ;; Uncomment for debugging raw response during dev time only  
+        ;;(reset! test-raw-response-data r)
         (dispatch-fn deserialized-response))
       (catch js/Error err
         (do
 
-          (reset! test-data err)
+          ;;(reset! test-raw-response-data err)
 
           ;; (println "type of err is " (type err))
           ;; (println "type of (ex-cause err) is " (type (ex-cause err))) 
@@ -651,7 +654,7 @@
 #_(defn recently-used-dbs-info [dispatch-fn]
     (invoke-api "recently_used_dbs_info" {} dispatch-fn))
 
-(defn app_preference [dispatch-fn]
+(defn app-preference [dispatch-fn]
   (invoke-api "app_preference" {} dispatch-fn))
 
 (defn get-file-info [full-file-name-uri dispatch-fn]
@@ -687,12 +690,17 @@
   [db-key name data-hash-str dispatch-fn]
   (invoke-api "save_attachment_as_temp_file" {:db-key db-key :name name :data-hash-str data-hash-str} dispatch-fn :no-response-conversion true))
 
-
 (defn update-db-session-timeout [db-session-timeout dispatch-fn]
   (invoke-api "update_session_timeout" {:timeout_type 1, :db-session-timeout db-session-timeout} dispatch-fn))
 
 (defn update-clipboard-timeout [clipboard-timeout dispatch-fn]
   (invoke-api "update_session_timeout" {:timeout_type 1,:clipboard-timeout clipboard-timeout} dispatch-fn))
+
+(defn update-preference [preference-data dispatch-fn]
+  (invoke-api "update_preference" {:preference-data preference-data} dispatch-fn))
+
+(defn load-language-translations [language-ids dispatch-fn] 
+  (invoke-api "load_language_translations" {:language-ids language-ids} dispatch-fn))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;; OTP, Timer etc ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -769,6 +777,23 @@
   []
   (-> (.getAvailableCameraDevices camera-obj) js->clj))
 
+;; Used for Android FOSS release only
+;; 'CameraView' is the native module name that was taken from the package's platform specifics code 
+;; Android https://github.com/mrousavy/react-native-vision-camera/blob/v3.9.0/package/android/src/main/java/com/mrousavy/camera/CameraViewManager.kt
+;; iOS https://github.com/mrousavy/react-native-vision-camera/blob/147aff8683b6500ede825c4c06d27110af7a0654/package/ios/CameraViewManager.m#L14
+(def camera-view-nm (.-CameraView ^js/RnCameraView rn/NativeModules))
+
+(defn is-rn-native-camera-vison-disabled 
+  "Checks whether the camera vision's native modules are present or not
+  As native-camera-vison package uses some property components (see below), we need to exclude 
+  the use and inclusion of this package (see react-native.config.js) for APK release meant to be fully FOSS 
+  https://developers.google.com/ml-kit/
+  https://firebase.google.com/
+  https://developers.google.com/android/reference/com/google/android/gms/package-summary
+   "
+  []
+  ;;camera-view-nm should be non nil value for iOS and Android play store release
+  (nil? camera-view-nm))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Native Events ;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; While compiling with advanced option, if we use '(u/is-iOS)' to check platform
@@ -870,6 +895,8 @@
                     :no-response-conversion true :error-transform false))
 
   (def db-key (-> @re-frame.db/app-db :current-db-file-name))
+  
+  (load-language-translations ["en"] #(println %))
   
   ;; Use this in repl before doing the refresh in metro dev server, particularly when async services
   ;; are sending events to the front end via rust middle layer -see 'init_async_listeners'

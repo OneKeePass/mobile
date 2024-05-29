@@ -1,32 +1,24 @@
 (ns onekeepass.mobile.common-components
-  (:require [reagent.core :as r]
+  (:require [onekeepass.mobile.constants :as const]
+            [onekeepass.mobile.events.common :as cmn-events]
             [onekeepass.mobile.rn-components
              :as rnc
-             :refer [rnms-modal-selector
-                     lstr
-                     tertiary-color
-                     modal-selector-colors
-                     message-modal-background-color
-                     on-background-color
-                     rn-view
-                     rn-scroll-view
-                     rnp-button
-                     rnp-chip
-                     rnp-divider
-                     rnp-dialog
-                     cust-dialog
-                     rnp-dialog-icon
-                     rnp-dialog-title
-                     rnp-dialog-content
-                     rnp-dialog-actions
-                     rnp-modal
-                     rnp-snackbar
-                     rnp-text
-                     rnp-text-input
-                     rnp-text-input-icon]]
+             :refer [cust-dialog message-modal-background-color
+                     modal-selector-colors on-background-color rn-scroll-view
+                     rn-view rnms-modal-selector rnp-button rnp-chip
+                     rnp-dialog rnp-dialog-actions rnp-dialog-content
+                     rnp-dialog-icon rnp-dialog-title rnp-divider rnp-modal
+                     rnp-snackbar rnp-text rnp-text-input rnp-text-input-icon
+                     tertiary-color]]
+            [onekeepass.mobile.translation :refer [lstr-bl lstr-dlg-text
+                                                   lstr-dlg-title
+                                                   lstr-error-dlg-text
+                                                   lstr-error-dlg-title lstr-l
+                                                   lstr-modal-dlg-text
+                                                   lstr-msg-dlg-text
+                                                   lstr-msg-dlg-title lstr-sm]]
             [onekeepass.mobile.utils :as u]
-            [onekeepass.mobile.constants :as const]
-            [onekeepass.mobile.events.common :as cmn-events]))
+            [reagent.core :as r]))
 
 (set! *warn-on-infer* true)
 
@@ -39,22 +31,25 @@
   The value of key 'category' determines whether it is error or message
    "
   [{:keys [dialog-show title category message]}]
-  [rnp-dialog {:style {}
-               :dismissable false
-               :visible dialog-show
-               :onDismiss #()}
-   [rnp-dialog-icon {:icon (if (= category :error) "alert" "information")
-                     :color (if (= category :error)
-                              @rnc/error-color
-                              @rnc/outline-color)}]
-   [rnp-dialog-title {:style {:color (if (= category :error)
-                                       @rnc/error-color
-                                       @rnc/tertiary-color)}} (lstr title)]
-   [rnp-dialog-content
-    [rn-view {:style {:flexDirection "column" :justify-content "center"}}
-     [rnp-text (lstr message)]]]
-   [rnp-dialog-actions
-    [rnp-button {:mode "text" :onPress cmn-events/close-message-dialog} (lstr "button.labels.close")]]])
+  (let [error? (= category :error)
+        title-txt (if error? (lstr-error-dlg-title title) (lstr-msg-dlg-title title))
+        msg-txt (if error? (lstr-error-dlg-text message) (lstr-msg-dlg-text message))]
+    [rnp-dialog {:style {}
+                 :dismissable false
+                 :visible dialog-show
+                 :onDismiss #()}
+     [rnp-dialog-icon {:icon (if error? "alert" "information")
+                       :color (if error?
+                                @rnc/error-color
+                                @rnc/outline-color)}]
+     [rnp-dialog-title {:style {:color (if error?
+                                         @rnc/error-color
+                                         @rnc/tertiary-color)}} title-txt]
+     [rnp-dialog-content
+      [rn-view {:style {:flexDirection "column" :justify-content "center"}}
+       [rnp-text msg-txt]]]
+     [rnp-dialog-actions
+      [rnp-button {:mode "text" :onPress cmn-events/close-message-dialog} (lstr-bl "close")]]]))
 
 (defn select-tags-dialog [{:keys [show all-tags new-tags-str selected-tags]}
                           selected-tags-receiver-fn]
@@ -62,9 +57,9 @@
   (let [sv-ref (atom nil)]
     [cust-dialog {:style {} :dismissable true :visible show :onDismiss #()}
      [rnp-dialog-title [rn-view {}
-                        [rnp-text  {:variant "titleLarge"} "All Tags"]
+                        [rnp-text  {:variant "titleLarge"} (lstr-dlg-title 'allTags)]
                         [rnp-text {:style {:color @tertiary-color}}
-                         "Select or Deselect one or more tags"]]]
+                         (lstr-dlg-text 'allTagsTxt)]]]
      [rnp-dialog-content
       [rn-view {:flexDirection "column"}
        [rn-view {:style {:min-height 100 :max-height 250} :flexDirection "column"}
@@ -83,17 +78,18 @@
        [rnp-divider {:style {:margin-top 10}}]
        [rn-view {:flexDirection "column"}
         [rnp-text-input  {:style {:width "100%"}
-                          :label "Tags"
-                          :placeholder "Comma separated tags"
+                          :label (lstr-l 'tags)
+                          :placeholder (lstr-dlg-text 'allTagsPh)
                           :value new-tags-str
                           :onChangeText #(cmn-events/tags-dialog-update-new-tags-str %)
                           :right (r/as-element [rnp-text-input-icon {:icon const/ICON-PLUS :onPress cmn-events/tags-dialog-add-tags}])}]
-        [rnp-text {:style {:color @tertiary-color}}  "Press + to add tags"]]]]
+        [rnp-text {:style {:color @tertiary-color}} 
+         (lstr-dlg-text 'allTagsAddHint)]]]]
      [rnp-dialog-actions
       [rnp-button {:mode "text" :onPress  (fn []
                                             ;; Send the current selected tags to the caller in entry form or group form
                                             (selected-tags-receiver-fn selected-tags)
-                                            (cmn-events/tags-dialog-done))} "Close"]]]))
+                                            (cmn-events/tags-dialog-done))} (lstr-bl 'close)]]]))
 
 ;;; Uses react-native-modal-selector based selector
 ;; Refer https://github.com/peacechen/react-native-modal-selector#props for all supported props
@@ -113,7 +109,9 @@
                         :onChange on-change}
    [rnp-text-input {:style {:width "100%"} :editable false :label text-label :value value}]])
 
-(defn confirm-dialog [{:keys [dialog-show title confirm-text actions]}]
+(defn confirm-dialog 
+  "A Generic confirm dialog. It is expected all texts should have been translated by caller"
+  [{:keys [dialog-show title confirm-text actions]}]
   [cust-dialog {:style {} :dismissable true :visible dialog-show}
    [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1} title]
    [rnp-dialog-content
@@ -125,27 +123,35 @@
 
 (defn vertical-buttons [actions]
   [rn-view {:style {}}
-   (for [{:keys [label on-press]} actions]
+   (for [{:keys [label disabled on-press]} actions]
      ^{:key label} [rnp-button {:mode "text"
-                                :on-press on-press} (lstr label)])])
+                                :disabled (if (nil? disabled) false disabled)
+                                :on-press on-press} (lstr-bl label)])])
 
-(defn confirm-dialog-with-lstr [{:keys [dialog-show
-                                        title
-                                        confirm-text
-                                        show-action-as-vertical
-                                        actions]}]
+(defn confirm-dialog-with-lstr
+  "A Generic confirm dialog. It is expected that caller needs to pass 
+   translation keys (either as symbol or string key) for the texts (title,confirm-text, labels) and not any texts"
+  [{:keys [dialog-show
+           title
+           confirm-text
+           show-action-as-vertical
+           actions]}] 
   [cust-dialog {:style {} :dismissable true :visible dialog-show}
-   [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1} (lstr title)]
+   [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1} (lstr-dlg-title title)]
    [rnp-dialog-content
-    [rnp-text (lstr confirm-text)]]
+    [rnp-text (lstr-dlg-text confirm-text)]]
    [rnp-dialog-actions {:style {:justify-content (if show-action-as-vertical "center" "flex-end")}} ;;
     (if-not show-action-as-vertical
-      (for [{:keys [label on-press]} actions]
+      (for [{:keys [label disabled on-press]} actions]
         ^{:key label} [rnp-button {:mode "text"
-                                   :on-press on-press} (lstr label)])
+                                   :disabled (if (nil? disabled) false disabled)
+                                   :on-press on-press}
+                       (lstr-bl label)])
       [vertical-buttons actions])]])
 
 (defn message-snackbar
+  "Called to show result of an action for sometime. 
+   The caller needs to pass the translation key for message"
   ([{:keys [open message]}]
    [rnp-snackbar {:visible  open
                   :onDismiss cmn-events/close-message-snackbar
@@ -156,17 +162,20 @@
                   :style {} ;;:zIndex 10 this works in android and not in iOs
                   ;; zIndex in wrapperStyle makes the snackbar to appear on top fab in iOS. 
                   ;; Need to check on android
-                  :wrapperStyle {:bottom 20 :zIndex 10}} (lstr message)])
+                  :wrapperStyle {:bottom 20 :zIndex 10}} (lstr-sm message)])
   ([]
    [message-snackbar @(cmn-events/message-snackbar-data)]))
 
-(defn message-modal [{:keys [dialog-show message]}]
+(defn message-modal 
+  "Called to show the passed message (mostly translation key as symbol) temporarily while 
+   background work is going on without any title"
+  [{:keys [dialog-show message]}] 
   [rnp-modal {:visible dialog-show
               :dismissable false
               ;;:onDismiss #() 
               :contentContainerStyle {:backgroundColor @message-modal-background-color :padding 20}}
    [rn-view {:style {:height 100 :justify-content "center" :align-items "center"}}
-    [rnp-text (lstr message)]]])
+    [rnp-text (lstr-modal-dlg-text message)]]])
 
 (defn menu-action-factory
   "Wraps the hide-menu-action and returns a factory which itself returns another factory
@@ -190,14 +199,15 @@
 
 (defn entry-delete-confirm-dialog [call-on-ok-fn]
   (let [{:keys [dialog-show entry-uuid]} @entry-delete-confirm-dialog-data]
+    ;; title, confirm-text, label etc are to be translated before calling 'confirm-dialog'
     [confirm-dialog {:dialog-show dialog-show
-                     :title  (lstr "dialog.titles.deleteEntry")
-                     :confirm-text (lstr "dialog.texts.deleteEntry")
-                     :actions [{:label (lstr "button.labels.cancel")
+                     :title  (lstr-dlg-title "deleteEntry")
+                     :confirm-text (lstr-dlg-text "deleteEntry")
+                     :actions [{:label (lstr-bl "cancel")
                                 :on-press (fn []
                                             (swap! entry-delete-confirm-dialog-data
                                                    assoc :dialog-show false))}
-                               {:label (lstr "button.labels.continue")
+                               {:label (lstr-bl "continue")
                                 :on-press (fn []
                                             (call-on-ok-fn entry-uuid)
                                             (swap! entry-delete-confirm-dialog-data
@@ -211,12 +221,12 @@
 (defn group-delete-confirm-dialog [call-on-ok-fn]
   (let [{:keys [dialog-show group-uuid]} @group-delete-confirm-dialog-data]
     [confirm-dialog {:dialog-show dialog-show
-                     :title  (lstr "dialog.titles.deleteGroup")
-                     :confirm-text (lstr "dialog.texts.deleteGroup")
-                     :actions [{:label (lstr "button.labels.cancel")
+                     :title  (lstr-dlg-title "deleteGroup")
+                     :confirm-text (lstr-dlg-text "deleteGroup")
+                     :actions [{:label (lstr-bl "cancel")
                                 :on-press #(swap! group-delete-confirm-dialog-data
                                                   assoc :dialog-show false)}
-                               {:label (lstr "button.labels.continue")
+                               {:label (lstr-bl "continue")
                                 :on-press (fn []
                                             (call-on-ok-fn group-uuid)
                                             (swap! group-delete-confirm-dialog-data
@@ -229,12 +239,13 @@
   "This creates an reagent component. The arg 'data-ref' is reagent.core/atom"
   [data-ref]
   (let [{:keys [dialog-show title confirm-text call-on-ok-fn]} @data-ref]
+    ;; title confirm-text have translated texts and translation should be called for them here
     [confirm-dialog {:dialog-show dialog-show
                      :title title
                      :confirm-text confirm-text
-                     :actions [{:label (lstr "button.labels.cancel")
+                     :actions [{:label (lstr-bl "cancel")
                                 :on-press #(swap! data-ref assoc :dialog-show false)}
-                               {:label (lstr "button.labels.continue")
+                               {:label (lstr-bl "continue")
                                 :on-press (fn []
                                             (call-on-ok-fn @data-ref)
                                             (swap! data-ref assoc :dialog-show false))}]}]))

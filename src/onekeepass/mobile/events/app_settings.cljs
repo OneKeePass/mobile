@@ -2,6 +2,7 @@
   (:require
    [cljs.core.async :refer [go-loop timeout <!]]
    [re-frame.core :refer [reg-event-fx reg-fx reg-sub dispatch subscribe]]
+   [onekeepass.mobile.constants :refer [DEFAULT-SYSTEM-THEME]]
    [onekeepass.mobile.events.common :as cmn-events :refer [on-error
                                                            set-clipboard-session-timeout
                                                            active-db-key]]
@@ -106,6 +107,12 @@
 (defn update-clipboard-timeout [value-in-milli-seconds]
   (dispatch [:clipboard-timeout-update value-in-milli-seconds]))
 
+(defn app-theme-update [theme-selected]
+  (dispatch [:app-preference-update-data :theme theme-selected nil]))
+
+(defn app-language-update [lng-selected call-on-success]
+  (dispatch [:app-preference-update-data :language lng-selected call-on-success]))
+
 (defn db-session-timeout-value
   "An atom that gives the db session timeout in milli seconds"
   []
@@ -114,10 +121,17 @@
 (defn clipboard-timeout-value []
   (subscribe [:clipboard-timeout]))
 
+(defn app-theme []
+  (subscribe [:app-preference-data :theme DEFAULT-SYSTEM-THEME])
+  #_(subscribe [:app-theme]))
+
+(defn app-language []
+  (subscribe [:app-preference-data :language "en"]))
+
 (reg-event-fx
  :to-app-settings
  (fn [{:keys [_db]} [_event-id]]
-   {:fx [[:dispatch [:common/next-page :app-settings "page.titles.appSettings"]]]}))
+   {:fx [[:dispatch [:common/next-page :app-settings "appSettings"]]]}))
 
 (reg-event-fx
  :db-session-timeout-update
@@ -148,6 +162,30 @@
                                                       ;; Just show error message if any
                                                     (on-error api-response)))))
 
+#_(defn- on-success [m]
+  #_(when (= kw :language)
+    (dispatch [:common/reset-load-language-translation-status])
+    (dispatch [])
+    )
+  #_(println "Preference field kw " kw " is updated"))
+
+(reg-event-fx
+ :app-preference-update-data
+ (fn [{:keys [db]} [_event-id kw value call-on-success]] 
+   {:db (assoc-in db [:app-preference :data kw] value)
+    ;; This event is called in on-change handler of 'list-item-modal-selector'
+    ;; and as a result calling any modal window (:common/message-modal-show) in this event did not work
+    ;; Need to complete on-change call and then call any messaging then
+    :fx [[:bg-update-preference [kw value call-on-success]]]}))
+
+(reg-fx
+ :bg-update-preference
+ (fn [[kw value call-on-success]]
+   (bg/update-preference {kw value} (fn [api-response] 
+                                      (when-not (on-error api-response)
+                                        (when-not (nil? call-on-success) 
+                                          (call-on-success {kw value})))))))
+
 (reg-sub
  :db-session-timeout
  (fn [db [_event-id]]
@@ -159,6 +197,20 @@
  (fn [db [_event-id]]
    (let [r (get-in db [:app-preference :data :clipboard-timeout])]
      (if (nil? r) 10000 r))))
+
+#_(reg-sub
+   :app-theme
+   (fn [db [_event-id]]
+     (let [r (get-in db [:app-preference :data :theme])]
+       (if (nil? r) DEFAULT-SYSTEM-THEME r))))
+
+(reg-sub
+ :app-preference-data
+ (fn [db [_event-id kw default-value]]
+   ;;(println "kw default-value are " kw default-value)
+   (let [r (get-in db [:app-preference :data kw])
+         r (if-not (nil? r) r default-value)]
+     r)))
 
 ;;;;;;;;;
 

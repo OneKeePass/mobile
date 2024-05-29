@@ -1,47 +1,29 @@
 (ns
  onekeepass.mobile.start-page
-  (:require [reagent.core :as r] 
-            [onekeepass.mobile.rn-components
-             :as rnc
-             :refer [lstr
-                     primary-color
-                     primary-container-color
-                     divider-color-1
-
-                     dots-icon-name
-
-                     rn-keyboard
-                     rn-view
-                     rn-safe-area-view
-                     rn-section-list
-                     rnp-menu
-                     rnp-menu-item
-                     rnp-text
-                     rnp-list-item
-                     rnp-list-icon
-                     rnp-icon-button
-                     rnp-divider
-                     cust-rnp-divider
-                     rnp-text-input
-                     rnp-helper-text
-                     rnp-text-input-icon
-                     rnp-portal
-                     cust-dialog
-                     rnp-dialog-title
-                     rnp-dialog-content
-                     rnp-dialog-actions
-                     rnp-button
-                     rnp-progress-bar]]
-            [onekeepass.mobile.utils :as u]
+  (:require [onekeepass.mobile.background :refer [is-iOS]]
+            [onekeepass.mobile.common-components :as cc  :refer [menu-action-factory
+                                                                 message-dialog]]
             [onekeepass.mobile.constants :as const]
-            [onekeepass.mobile.background :refer [is-iOS]]
             [onekeepass.mobile.date-utils :refer [utc-to-local-datetime-str]]
-            [onekeepass.mobile.common-components :as cc  :refer [menu-action-factory message-dialog]]
+            [onekeepass.mobile.events.common :as cmn-events]
+            [onekeepass.mobile.events.exporting :as exp-events]
             [onekeepass.mobile.events.new-database :as ndb-events]
             [onekeepass.mobile.events.open-database :as opndb-events]
             [onekeepass.mobile.events.settings :as stgs-events]
-            [onekeepass.mobile.events.common :as cmn-events]
-            [onekeepass.mobile.events.exporting :as exp-events]))
+            [onekeepass.mobile.rn-components
+             :as rnc
+             :refer [cust-dialog cust-rnp-divider divider-color-1
+                     dots-icon-name primary-color primary-container-color
+                     rn-keyboard rn-safe-area-view rn-section-list rn-view
+                     rnp-button rnp-dialog-actions rnp-dialog-content
+                     rnp-dialog-title rnp-divider rnp-helper-text
+                     rnp-icon-button rnp-list-icon rnp-list-item rnp-menu
+                     rnp-menu-item rnp-portal rnp-progress-bar rnp-text
+                     rnp-text-input rnp-text-input-icon]]
+            [onekeepass.mobile.translation :refer [lstr-bl lstr-l lstr-dlg-text
+                                                   lstr-dlg-title lstr-ml]]
+            [onekeepass.mobile.utils :as u]
+            [reagent.core :as r]))
 
 ;;(set! *warn-on-infer* true)
 
@@ -53,13 +35,13 @@
                              key-file-name-part
                              error-fields
                              status]}]
-  (let [in-progress? (= :in-progress status)] 
+  (let [in-progress? (= :in-progress status)]
     [cust-dialog
      {:style {} :dismissable false :visible dialog-show :onDismiss #()}
-     [rnp-dialog-title (lstr "dialog.titles.newDatabase")]
+     [rnp-dialog-title (lstr-dlg-title "newDatabase")]
      [rnp-dialog-content
       [rn-view {:style {:flexDirection "column"  :justify-content "center"}}
-       [rnp-text-input {:label (lstr "name")
+       [rnp-text-input {:label (lstr-l "name")
                         ;;:value database-name
                         :defaultValue database-name
                         :autoCapitalize "none" ;; this starts with the lowercase keyboard 
@@ -70,7 +52,7 @@
           (:database-name error-fields)])
 
        [rnp-text-input {:style {:margin-top 10}
-                        :label (lstr "description")
+                        :label (lstr-l "description")
                         ;;:value database-description
                         :defaultValue database-description
                         :autoComplete "off"
@@ -79,7 +61,7 @@
        [rnp-divider {:style {:margin-top 10 :margin-bottom 10 :backgroundColor "grey"}}]
 
        [rnp-text-input {:style {}
-                        :label (lstr "masterPassword")
+                        :label (lstr-l "masterPassword")
                         ;;:value password
                         :defaultValue password
                         :autoCapitalize "none"
@@ -90,7 +72,7 @@
                                  {:icon (if password-visible "eye" "eye-off")
                                   :onPress #(ndb-events/database-field-update
                                              :password-visible (not password-visible))}])
-                        :onChangeText (fn [v] 
+                        :onChangeText (fn [v]
                                         ;; After entering some charaters and delete is used to remove those charaters
                                         ;; password will have a string value "" resulting in a non visible password. Need to use nil instead
                                         (ndb-events/database-field-update :password (if (empty? v) nil v)))}]
@@ -102,7 +84,7 @@
 
        (if key-file-name-part
          [rnp-text-input {:style {:margin-top 10}
-                          :label (lstr "keyFile")
+                          :label (lstr-l "keyFile")
                           :defaultValue key-file-name-part
                           :readOnly (if (is-iOS) true false)
                           :onPressIn #(ndb-events/show-key-file-form true)
@@ -115,17 +97,17 @@
          [rnp-text {:style {:margin-top 15
                             :textDecorationLine "underline"
                             :text-align "center"}
-                    :onPress #(ndb-events/show-key-file-form true)} (lstr "additionalProtection")])]
+                    :onPress #(ndb-events/show-key-file-form true)} (lstr-l "additionalProtection")])]
 
       [rnp-progress-bar {:style {:margin-top 10} :visible in-progress?
                          :indeterminate true}]]
      [rnp-dialog-actions
       [rnp-button {:mode "text" :disabled in-progress?
                    :onPress  ndb-events/cancel-on-click}
-       (lstr "button.labels.cancel")]
+       (lstr-bl "cancel")]
       [rnp-button {:mode "text" :disabled in-progress?
                    :onPress ndb-events/done-on-click}
-       (lstr "button.labels.create")]]]))
+       (lstr-bl "create")]]]))
 
 ;; open-db-dialog is called after user pick a database file open 
 ;; or the database is locked and user needs to use password and keyfile based authentication
@@ -138,10 +120,10 @@
                                key-file-name-part
                                error-fields
                                status]}]
-  
+
   (let [locked? @(cmn-events/locked? database-full-file-name)
         in-progress? (= :in-progress status)
-        dlg-title (if locked? (lstr "dialog.titles.unlockDatabase") (lstr "dialog.titles.openDatabase"))]
+        dlg-title (if locked? (lstr-dlg-title "unlockDatabase") (lstr-dlg-title "openDatabase"))]
     [cust-dialog {:style {}
                   :visible dialog-show
                   :dismissable false
@@ -151,12 +133,12 @@
      [rnp-dialog-content
 
       [rn-view {:style {:flexDirection "column"  :justify-content "center"}}
-       [rnp-text-input {:label (lstr "databaseFile")
-                        :value database-file-name 
+       [rnp-text-input {:label (lstr-l "databaseFile")
+                        :value database-file-name
                         :editable false
                         :onChangeText #()}]
        [rnp-text-input {:style {:margin-top 10}
-                        :label (lstr "masterPassword")
+                        :label (lstr-l "masterPassword")
                         ;;:value password
                         :defaultValue password
                         :autoComplete "off"
@@ -180,7 +162,7 @@
 
        (if  key-file-name-part
          [rnp-text-input {:style {:margin-top 10}
-                          :label "Key File"
+                          :label (lstr-l 'keyFile)
                           :defaultValue key-file-name-part
                           :readOnly (if (is-iOS) true false)
                           :onPressIn #(opndb-events/show-key-file-form)
@@ -193,20 +175,20 @@
          [rnp-text {:style {:margin-top 15
                             :textDecorationLine "underline"
                             :text-align "center"}
-                    :onPress #(opndb-events/show-key-file-form)} "Key File"])]
+                    :onPress #(opndb-events/show-key-file-form)} (lstr-l 'keyFile)])]
 
       [rnp-progress-bar {:style {:margin-top 10} :visible in-progress? :indeterminate true}]]
 
      [rnp-dialog-actions
       [rnp-button {:mode "text" :disabled in-progress?
                    :onPress  opndb-events/cancel-on-press}
-       (lstr "button.labels.cancel")]
+       (lstr-bl "cancel")]
       [rnp-button {:mode "text" :disabled in-progress?
                    :onPress (fn [] ^js/RNKeyboard (.dismiss rn-keyboard)
                               (if locked?
                                 (opndb-events/authenticate-with-credential)
                                 (opndb-events/open-database-read-db-file)))}
-       (lstr "button.labels.continue")]]]))
+       (lstr-bl "continue")]]]))
 
 (defn file-info-dialog [{:keys [dialog-show file-size location last-modified]}]
   [cust-dialog {:style {}
@@ -278,19 +260,19 @@
 (defn db-action-menu [{:keys [show x y file-name db-file-path opened locked]}]
   ;; db-file-path is the full-file-name-uri and used as db-key
   [rnp-menu {:visible show :onDismiss hide-db-action-menu :anchor (clj->js {:x x :y y})}
-   [rnp-menu-item {:title (lstr "menu.labels.settings")
+   [rnp-menu-item {:title (lstr-ml "settings")
                    :disabled (or (not opened) locked)
                    :onPress (db-action-menu-action
                              stgs-events/load-db-settings-with-active-db
                              opened db-file-path)}]
 
-   [rnp-menu-item {:title (lstr "menu.labels.fileinfo")
+   [rnp-menu-item {:title (lstr-ml "fileinfo")
                    :onPress (db-action-menu-action
                              cmn-events/load-file-info
                              db-file-path)}]
 
 
-   [rnp-menu-item {:title (lstr "menu.labels.exportTo")
+   [rnp-menu-item {:title (lstr-ml "exportTo")
                    :onPress (db-action-menu-action
                              exp-events/prepare-export-kdbx-data
                              db-file-path)}]
@@ -298,29 +280,29 @@
    [cust-rnp-divider]
    (when opened
      (if locked
-       [rnp-menu-item {:title  (lstr "menu.labels.unlockdb")
+       [rnp-menu-item {:title  (lstr-ml "unlockdb")
                        :onPress (db-action-menu-action
                                  opndb-events/unlock-selected-db
                                  file-name
                                  db-file-path)}]
-       [rnp-menu-item {:title (lstr "menu.labels.lockdb")
+       [rnp-menu-item {:title (lstr-ml "lockdb")
                        :onPress (db-action-menu-action
                                  cmn-events/lock-kdbx
                                  db-file-path)}]))
 
-   [rnp-menu-item {:title (lstr "menu.labels.closedb")
+   [rnp-menu-item {:title (lstr-ml "closedb")
                    :disabled (not opened)
                    :onPress (db-action-menu-action
                              cmn-events/close-kdbx
                              db-file-path)}]
    ;; Another way of setting the background-color of dividers in menu
    [rnp-divider {:style {:background-color @divider-color-1}}]
-   [rnp-menu-item {:title (lstr "menu.labels.remove")
+   [rnp-menu-item {:title (lstr-ml "remove")
                    :onPress (fn []
                               (hide-db-action-menu)
                               (swap! remove-confirm-dialog-data assoc
-                                     :title (str "Removing" " " file-name)
-                                     :confirm-text (lstr "dialog.texts.remove")
+                                     :title (lstr-dlg-title 'removing {:dbFileName file-name})
+                                     :confirm-text (lstr-dlg-text "remove")
                                      :call-on-ok-fn #(cmn-events/remove-from-recent-list
                                                       db-file-path))
                               (confirm-remove))}]])
@@ -329,28 +311,27 @@
 
 (defn message-repick-database-file-dialog [{:keys [dialog-show file-name reason-code]}]
   (let [[title text] (if (= reason-code const/PERMISSION_REQUIRED_TO_READ)
-                       [(str "Reopen " file-name),(str "Read permission is required again to load this database."
-                                                  " Please open the database file " 
-                                                  file-name " again from its original location")]
+                       [(str (lstr-dlg-title 'reopen) " " file-name),
+                        (str (lstr-dlg-text 'reopenReadPermissionrequired) ". " (lstr-dlg-text 'reopenAgain {:file-name file-name}))]
                        ;; in iOS, seen this happening when we try to open (pressing on the home page dabase list) a database 
                        ;; file stored in iCloud and file is not synched to the mobile yet  
-                       ["Reopen", (str "The database could not be opened with the old reference." 
-                                       " Please open the database file " file-name " again from its original location")])]
+                       [(lstr-dlg-title 'reopen)
+                        (str (lstr-dlg-text 'reopenNotOldRef) ". " (lstr-dlg-text 'reopenAgain {:file-name file-name}))])]
     [cc/confirm-dialog  {:dialog-show dialog-show
                          :title title
                          :confirm-text text
-                         :actions [{:label (lstr "button.labels.cancel")
+                         :actions [{:label (lstr-bl "cancel")
                                     :on-press #(opndb-events/repick-confirm-cancel)}
-                                   {:label (lstr "button.labels.continue")
+                                   {:label (lstr-bl "continue")
                                     :on-press (fn []
                                                 (opndb-events/repick-confirm-close))}]}]))
 
 (defn authenticate-biometric-confirm-dialog [{:keys [dialog-show]}]
   [cc/confirm-dialog  {:dialog-show dialog-show
-                       :title "Unlock Database"
+                       :title (lstr-dlg-title  'biometricConfirm)
                        :confirm-text (if (is-iOS)
-                                       "Use FaceID/TouchID to unlock the database"
-                                       "Use Biometric authentication to unlock the database")
+                                       (lstr-dlg-text 'biometricConfirmTxt1)
+                                       (lstr-dlg-text 'biometricConfirmTxt2))
                        :actions [{:label "Cancel"
                                   :on-press (fn []
                                               (opndb-events/authenticate-biometric-cancel))}
@@ -404,7 +385,7 @@
 (defn databases-list-content []
   (fn [recent-uses]
     (let [opened-databases-files @(cmn-events/opened-database-file-names)
-          sections  [{:title (lstr "databases")
+          sections  [{:title (lstr-l "databases")
                       :key "Databases"
                       ;; Recently used db info forms the data for this list
                       :data recent-uses}]]
@@ -427,10 +408,10 @@
      [rn-view {:style {:flex 1 :justify-content "center" :align-items "center" :margin-top "10%"}}
       [rn-view {:style {:flex .1 :justify-content "center" :width "90%"}}
        [rnp-button {:mode "contained" :onPress ndb-events/new-database-dialog-show}
-        (lstr "button.labels.newdb")]] ;;
+        (lstr-bl "newdb")]] ;;
       [rn-view {:style {:flex .1 :justify-content "center" :width "90%"}}
        [rnp-button {:mode "contained" :onPress #(opndb-events/open-database-on-press)}
-        (lstr "button.labels.opendb")]]
+        (lstr-bl "opendb")]]
 
       [rn-view {:style {:margin-top 20}}
        [rnc/rnp-divider]]

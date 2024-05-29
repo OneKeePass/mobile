@@ -1,37 +1,40 @@
 (ns onekeepass.mobile.core
-  (:require [reagent.core :as r]
-            [react-native :as rn]
-            [onekeepass.mobile.rn-components :as rnc :refer [set-translator
-                                                             react-use-effect
-                                                             reset-colors
-                                                             use-color-scheme
-                                                             rnp-provider
-                                                             rnp-portal]]
-            [onekeepass.mobile.appbar :refer [appbar-main-content hardware-back-pressed]]
-            [onekeepass.mobile.events.app-settings :as as-events]
+  (:require [onekeepass.mobile.appbar :refer [appbar-main-content
+                                              hardware-back-pressed]]
+            [onekeepass.mobile.background :as bg]
+            [onekeepass.mobile.common-components :as cc :refer [message-dialog
+                                                                message-modal
+                                                                message-snackbar]]
+            [onekeepass.mobile.constants :refer [DARK-THEME]]
+            [onekeepass.mobile.events.app-settings :as as-events :refer [app-theme]]
+            [onekeepass.mobile.events.common :as cmn-events]
             [onekeepass.mobile.events.native-events :as native-events]
             [onekeepass.mobile.events.save :as save-events]
-            [onekeepass.mobile.events.common :as cmn-events]
-            [onekeepass.mobile.background :as bg]
+            [onekeepass.mobile.rn-components :as rnc :refer [react-use-effect
+                                                             reset-colors
+                                                             rnp-portal
+                                                             rnp-provider
+                                                             use-color-scheme]]
             [onekeepass.mobile.save-error-dialog :refer [save-error-modal]]
             [onekeepass.mobile.start-page :refer [open-db-dialog]]
-            [onekeepass.mobile.constants :refer [DARK-THEME]]
-            [onekeepass.mobile.common-components :as cc :refer [message-snackbar
-                                                                message-modal
-                                                                message-dialog]]))
+            [onekeepass.mobile.translation :as t]
+            [react-native :as rn]
+            [reagent.core :as r]))
 (set! *warn-on-infer* true)
 
 (defn main-content
   "All reagent atoms are referenced in this component so that the react hook set-translator is called onetime in main"
-  []
-  [:<>
-   [appbar-main-content]
-   [rnp-portal
-    [message-snackbar]
-    [open-db-dialog]
-    [save-error-modal @(save-events/save-error-modal-data)]
-    [message-modal @(cmn-events/message-modal-data)]
-    [message-dialog @(cmn-events/message-dialog-data)]]])
+  [] 
+  (if-not @(cmn-events/language-translation-loading-completed)
+    [rnc/rn-view [rnc/rnp-text "Please wait..."]]
+    [:<>
+     [appbar-main-content]
+     [rnp-portal
+      [message-snackbar]
+      [open-db-dialog]
+      [save-error-modal @(save-events/save-error-modal-data)]
+      [message-modal @(cmn-events/message-modal-data)]
+      [message-dialog @(cmn-events/message-dialog-data)]]]))
 
 
 ;; System back action handler (Android)
@@ -41,7 +44,14 @@
   "A functional component so that we can call the react hook set-translator and use any react useEffects"
   []
   (fn []
-    (let [theme-name (use-color-scheme)]
+    (let [;; Need to use this React hook as it provides and subscribes to color scheme updates in Device settings
+          ;; This ensures that the app detects the system default theme change and updates accordingly
+          ;; Without this hook call, the app theme will not change when the system default theme is changed
+          ;; even when 'app-theme' from our app settings is 'system'
+          _theme-name1 (use-color-scheme)
+          theme-name (rnc/theme-to-use @(app-theme))]
+
+      ;;(println "theme-name1 is " theme-name1)
 
       ;; displays the current time, Wi-Fi and cellular network information, battery level
       ;; In case we want use white color for these, we need to do the following onetime
@@ -78,7 +88,7 @@
          ;; Empty parameter array to useEffect fn
          (clj->js [])))
 
-      (set-translator)
+      #_(set-translator)
 
       [rnp-provider {:theme (if (= DARK-THEME theme-name) rnc/dark-theme rnc/light-theme)}
        [main-content]])))
@@ -100,6 +110,7 @@
   (native-events/register-backend-event-handlers)
   (cmn-events/sync-initialize)
   (as-events/init-session-timeout-tick)
+  (t/load-language-translation)
   (r/as-element [app-root]))
 
 (comment

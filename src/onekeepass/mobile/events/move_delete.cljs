@@ -18,7 +18,7 @@
  :move-delete/entry-delete-start
  (fn [{:keys [db]} [_event-id entry-id from-entry-form?]]
    {:db (-> db (assoc-in-key-db [:entry-delete :from-entry-form] from-entry-form?))
-    :fx [[:dispatch [:common/message-modal-show nil "Deleting entry ..."]]
+    :fx [[:dispatch [:common/message-modal-show nil 'deletingEntry]]
          [:bg-move-entry-to-recycle-bin [(active-db-key db) entry-id]]]}))
 
 (defn- on-entry-delete [api-response]
@@ -63,7 +63,7 @@
    ;; Currently 'from-group-page' is not yet used and will be used once we add 'Delete' to header menu in a page 
    ;; showing the group's content
    {:db (-> db (assoc-in-key-db [:group-delete :from-group-page] from-group-page))
-    :fx [[:dispatch [:common/message-modal-show nil "Deleting group ..."]]
+    :fx [[:dispatch [:common/message-modal-show nil 'deletingGroup]]
          [:bg-move-group-to-recycle-bin [(active-db-key db) group-id]]]}))
 
 (defn- on-group-delete [api-response]
@@ -84,7 +84,7 @@
                                                   :save-message "Delete and Saving...."
                                                   :on-save-ok (fn []
                                                                 (dispatch [:common/refresh-forms])
-                                                                (dispatch [:common/message-snackbar-open "Group/Category deleted"])
+                                                                (dispatch [:common/message-snackbar-open 'groupOrCatDeleted])
                                                                 (when from-group-page
                                                                   ;; Need to go back to the previous page as group delete 
                                                                   ;; is called from the group's header menu
@@ -226,7 +226,7 @@
 (reg-event-fx
  :move-delete/delete-all-entries-start
  (fn [{:keys [db]} [_event-id]]
-   {:fx [[:dispatch [:common/message-modal-show nil "Deleting all entries ..."]]
+   {:fx [[:dispatch [:common/message-modal-show nil 'deletingAllEntries]]
          [:bg-empty-trash [(active-db-key db)]]]}))
 
 (defn- on-delete-all-entries [api-response]
@@ -245,6 +245,6 @@
                                                 :save-message "Deleted permanently and Saving" 
                                                 :on-save-ok (fn []
                                                               (dispatch [:common/refresh-forms])
-                                                              (dispatch [:common/message-snackbar-open "Entries deleted permanently"])
+                                                              (dispatch [:common/message-snackbar-open 'entriesDeletedPermanently])
                                                               (dispatch [:common/previous-page]))}]]]}))
 

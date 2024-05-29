@@ -45,7 +45,7 @@ object DbServiceAPI {
             )
             initialized = true;
         } else {
-            Log.d(TAG,"API initialize is alredy done")
+            Log.d(TAG, "API initialize is alredy done")
         }
     }
 
@@ -134,6 +134,24 @@ class CommonDeviceServiceImpl(val reactContext: ReactApplicationContext) : Commo
 
     override fun tempDir(): String {
         return reactContext.cacheDir.absolutePath
+    }
+
+    override fun loadLanguageTranslation(languageId: String): String? {
+        var fileContent:String? = null
+
+        val assetManager = reactContext.assets
+        val builder = StringBuilder()
+        val fileName = builder.append("Translations").append("/").append(languageId).append(".json").toString()
+        try {
+            fileContent = assetManager.open(fileName).bufferedReader().use {
+                it.readText()
+            }
+            //Log.d(TAG, "JSon File content is ${fileContent}")
+        }
+        catch (e: Exception) {
+            Log.e(TAG,"Translation resource ${fileName} loading failed with exception ${e}")
+        }
+        return fileContent
     }
 
     override fun uriToFileName(fullFileNameUri: String): String? {

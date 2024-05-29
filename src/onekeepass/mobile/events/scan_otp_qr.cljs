@@ -18,8 +18,7 @@
   (let [permission-status (bg/camera-permission-status)]
     (cond
       (empty? (bg/available-cameras))
-      (dispatch [:common/message-box-show
-                 "No Camera" "No camera is found. Please enter the secret code manually"])
+      (dispatch [:common/message-box-show 'noCamera 'noCamera])
 
       (= permission-status CAMERA_PERMISSION_GRANTED)
       (dispatch [:scan-qr-camera-show (assoc field-info-m :camera-permission CAMERA_PERMISSION_GRANTED)])
@@ -33,13 +32,11 @@
       ;;:common/error-box-show or :common/message-box-show with title message
       ;; Ask user to use manual code entering
       (= permission-status CAMERA_PERMISSION_RESTRICTED)
-      (dispatch [:common/error-box-show
-                 "Restricted" "Please enter the secret code instead of scanning QR code"])
+      (dispatch [:common/error-box-show 'restricted 'restricted])
 
       ;; Ask user to use manual code entering
       :else
-      (dispatch [:common/error-box-show
-                 "No scanning" "Please enter the secret code instead of scanning QR code"]))))
+      (dispatch [:common/error-box-show 'noScanning 'noScanning]))))
 
 (defn scan-qr-scanned [scanned-qr-code]
   (dispatch [:scan-qr-scanned scanned-qr-code]))
@@ -55,7 +52,7 @@
  :scan-qr-camera-show
  (fn [{:keys [db]} [_event-id field-info-m]]
    {:db (-> db (assoc-in [:scan-otp-qr] field-info-m))
-    :fx [[:dispatch [:common/next-page CAMERA_SCANNER_PAGE_ID "Scan QR Code"]]]}))
+    :fx [[:dispatch [:common/next-page CAMERA_SCANNER_PAGE_ID "scanQRcode"]]]}))
 
 (reg-fx
  :scan-qr/initiate-scan-qr
@@ -85,11 +82,10 @@
    (if (= permission-status CAMERA_PERMISSION_RESTRICTED)
 
      {:db (-> db (assoc-in [:scan-otp-qr :camera-permission] permission-status))
-      :fx [[:dispatch [:common/error-box-show "Restricted" 
-                       "Please enter the secret code instead of scanning QR code"]]]}
+      :fx [[:dispatch [:common/error-box-show 'restricted 'restricted]]]}
 
      {:db (-> db (assoc-in [:scan-otp-qr :camera-permission] permission-status))
-      :fx [[:dispatch [:common/next-page CAMERA_SCANNER_PAGE_ID "page.titles.scanQRcode"]]]})))
+      :fx [[:dispatch [:common/next-page CAMERA_SCANNER_PAGE_ID "scanQRcode"]]]})))
 
 
 #_(defn callback-on-form-otp-url [api-response]
@@ -109,7 +105,7 @@
    ;;(println "Going to call bg with url and check " url (= (str/lower-case url) OTP_URL_PREFIX))
    (if (str/starts-with? (str/lower-case url) OTP_URL_PREFIX)
      {:fx [[:entry-form/bg-form-otp-url [{:secret-or-url url} callback-on-form-otp-url]]]}
-     {:fx [[:dispatch [:common/error-box-show "errorDialog.titles.scanError" "The scanned url is not an otp type url"]]]})))
+     {:fx [[:dispatch [:common/error-box-show 'scanError 'scannedUrlNotOtpUri]]]})))
 
 (reg-event-fx
  :scan-qr-form-url-success
@@ -124,8 +120,7 @@
 (reg-event-fx
  :scan-qr-form-url-error
  (fn [{:keys [db]} [_event-id error]] 
-   {:fx [[:dispatch [:common/error-box-show 
-                     "errorDialog.titles.scanError" error]]]}))
+   {:fx [[:dispatch [:common/error-box-show 'scanError error]]]}))
 
 ;; Called to show the page with link for openSettings as CAMERA_PERMISSION_DENIED  
 #_(reg-event-fx

@@ -13,7 +13,7 @@
 (reg-event-fx
  :start-export-kdbx-data-preparation
  (fn [{:keys [_db]} [_event-id full-file-name-uri]]
-   {:fx  [[:dispatch [:common/message-modal-show nil "Preparing data to export"]]
+   {:fx  [[:dispatch [:common/message-modal-show nil 'preparingExportData]]
           [:bg-prepare-export-kdbx-data [full-file-name-uri]]]}))
 
 (reg-fx
@@ -36,4 +36,4 @@
    (bg/export-kdbx exported-data-full-file-name
                    (fn [api-response]
                      (when-not (on-error api-response)
-                       (dispatch [:common/message-snackbar-open "Action completed"]))))))
+                       (dispatch [:common/message-snackbar-open  'actionCompleted]))))))

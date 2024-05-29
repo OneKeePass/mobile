@@ -193,6 +193,19 @@ pub fn delete_key_file(key_file_name_component: &str) {
     log::debug!("Delete key file  {:?} result {:?}", &path, r);
 }
 
+#[inline]
+pub fn current_locale_language() -> String {
+  // "en-US" language+region
+  // We use the language part only to locate translation json files
+  let lng = sys_locale::get_locale().unwrap_or_else(|| String::from("en"));
+
+  // Returns the language id ( two letters)
+  lng
+    .split("-")
+    .map(|s| s.to_string())
+    .next()
+    .unwrap_or_else(|| String::from("en"))
+}
 
 #[cfg(test)]
 mod tests {

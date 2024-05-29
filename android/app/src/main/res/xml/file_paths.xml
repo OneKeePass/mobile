@@ -1,6 +1,6 @@
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
 <!--
-    Only files found in dirs decalred here can be used to get uri using FileProvider.getUriForFile
+    Only files found in dirs declared here can be used to get uri using FileProvider.getUriForFile
     For example files found in /data/user/0/com.onekeepassmobile/files/export_data/
 -->
     <files-path name="files" path="export_data"/>

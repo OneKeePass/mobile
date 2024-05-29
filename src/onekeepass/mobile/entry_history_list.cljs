@@ -1,11 +1,8 @@
 (ns onekeepass.mobile.entry-history-list
   (:require
    [reagent.core :as r]
-   [onekeepass.mobile.rn-components :as rnc :refer [lstr
-                                                    
-                                                    icon-color
+   [onekeepass.mobile.rn-components :as rnc :refer [icon-color
                                                     page-background-color
-                                                    
                                                     rnp-menu
                                                     rnp-menu-item
                                                     rn-safe-area-view
@@ -13,7 +10,8 @@
                                                     rnp-list-item
                                                     rnp-divider
                                                     rnp-list-icon
-                                                    rnp-text]] 
+                                                    rnp-text]]
+   [onekeepass.mobile.translation :refer [lstr-ml lstr-bl lstr-dlg-text lstr-dlg-title]]
    [onekeepass.mobile.date-utils :refer [utc-str-to-local-datetime-str]]
    [onekeepass.mobile.icons-list :refer [icon-id->name]]
    [onekeepass.mobile.common-components :refer [confirm-dialog message-modal message-dialog]]
@@ -38,7 +36,7 @@
 ;; TODO: Add Restore menu item. This requires backend api works
 (defn entry-long-press-menu [{:keys [show x y]}]
   [rnp-menu {:visible show :onDismiss hide-entry-long-press-menu :anchor (clj->js {:x x :y y})}
-   [rnp-menu-item {:title (lstr "menu.labels.delete")  
+   [rnp-menu-item {:title (lstr-ml "delete")
                    :onPress (fn [_e]
                               (hide-entry-long-press-menu)
                               (form-events/show-history-entry-delete-confirm-dialog))}]])
@@ -49,21 +47,21 @@
   (let [entry-uuid (:entry-uuid @entry-long-press-menu-data)
         index (:history-index @entry-long-press-menu-data)]
     [confirm-dialog {:dialog-show @(form-events/history-entry-delete-flag)
-                     :title (lstr "dialog.titles.historyDelete")
-                     :confirm-text (lstr "dialog.texts.historyDelete")
-                     :actions [{:label (lstr "button.labels.yes") 
+                     :title (lstr-dlg-title "historyDelete")
+                     :confirm-text (lstr-dlg-text "historyDelete")
+                     :actions [{:label (lstr-bl "yes")
                                 :on-press #(form-events/delete-history-entry-by-index entry-uuid index)}
-                               {:label (lstr "button.labels.no") 
+                               {:label (lstr-bl "no")
                                 :on-press form-events/close-history-entry-delete-confirm-dialog}]}]))
 
 (defn delete-all-dialog []
   (let [entry-uuid @(form-events/entry-form-uuid)]
     [confirm-dialog {:dialog-show @(form-events/history-entry-delete-all-flag)
-                     :title (lstr "dialog.titles.historyDeleteAll")
-                     :confirm-text (lstr "dialog.texts.historyDeleteAll")
-                     :actions [{:label (lstr "button.labels.yes") 
+                     :title (lstr-dlg-title "historyDeleteAll")
+                     :confirm-text (lstr-dlg-text "historyDeleteAll")
+                     :actions [{:label (lstr-bl "yes")
                                 :on-press #(form-events/delete-all-history-entries entry-uuid)}
-                               {:label (lstr "button.labels.no") 
+                               {:label (lstr-bl "no")
                                 :on-press form-events/close-history-entry-delete-all-confirm-dialog}]}]))
 
 (defn row-item []
@@ -74,7 +72,7 @@
                       :title (r/as-element
                               [rnp-text {:variant "titleMedium"} title])
                       :description (utc-str-to-local-datetime-str secondary-title)
-                      :left (fn [_props] (r/as-element 
+                      :left (fn [_props] (r/as-element
                                           [rnp-list-icon
                                            {:style {:align-self "center"}
                                             :icon icon-name

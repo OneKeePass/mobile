@@ -95,7 +95,7 @@
      ;; as we may need to use when we need to call overwrite after 'Save error' resolution by user
      ;; See event ':overwrite-on-save-error' how this handler-fn is used
      {:db (-> db (assoc-in-key-db  [:save-api-response-handler] handler-fn))
-      :fx [[:dispatch [:common/message-modal-show nil (if-not (nil? save-message) save-message "Saving ...")]]
+      :fx [[:dispatch [:common/message-modal-show nil (if-not (nil? save-message) save-message 'saving)]]
            [:bg-save-kdbx [(active-db-key db) false handler-fn]]]})))
 
 ;; Calls the background save kdbx api
@@ -196,7 +196,7 @@
  :overwrite-on-save-error
  (fn [{:keys [db]} [_event-id]]
    ;; (println "overwrite-on-save-error is called ...fn is " (get-in-key-db db [:save-api-response-handler]))
-   {:fx [[:dispatch [:common/message-modal-show nil  "Overwriting the database ..."]]
+   {:fx [[:dispatch [:common/message-modal-show nil 'overwritingDb]]
          [:dispatch [:save-error-modal-hide]]
          [:bg-save-kdbx [(active-db-key db) true (get-in-key-db db [:save-api-response-handler])]]
          #_[:bg-overwrite-kdbx [(active-db-key db)]]]}))

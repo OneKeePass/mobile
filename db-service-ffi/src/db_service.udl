@@ -42,6 +42,7 @@ callback interface CommonDeviceService {
     string app_home_dir();
     string cache_dir();
     string temp_dir();
+    string? load_language_translation(string language_id);
     string? uri_to_file_name(string full_file_name_uri);
     FileInfo? uri_to_file_info(string full_file_name_uri);
 };
