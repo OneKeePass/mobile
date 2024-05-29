@@ -1,10 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!-- Comment out camera feature for APK release meant to be fully FOSS -->
-    <uses-feature
-        android:name="android.hardware.camera"
-        android:required="false" />
-    <uses-permission android:name="android.permission.CAMERA" />
+<!--    <uses-feature-->
+<!--        android:name="android.hardware.camera"-->
+<!--        android:required="false" />-->
+<!--    <uses-permission android:name="android.permission.CAMERA" />-->
 
     <uses-permission android:name="android.permission.INTERNET" />
 

@@ -100,6 +100,15 @@ android {
             include "armeabi-v7a", "arm64-v8a"
         }
     }
+
+    //TODO: (Custom-Jey) Added for APK release time only
+    // needs to be commented out for play store release
+    dependenciesInfo {
+        // Disables dependency metadata when building APKs.
+        includeInApk = false
+        // Disables dependency metadata when building Android App Bundles.
+        includeInBundle = false
+    }
     //
     namespace "com.onekeepassmobile"
     defaultConfig {
@@ -117,7 +126,9 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+
         //TODO: (Custom-Jey) Added for release time upload key
+        // Uncomment this release for Play Store release and comment out out other release
 //        release {
 //            if (project.hasProperty('OKP_APP_UPLOAD_STORE_FILE')) {
 //                storeFile file(OKP_APP_UPLOAD_STORE_FILE)
@@ -126,21 +137,30 @@ android {
 //                keyPassword OKP_APP_UPLOAD_KEY_PASSWORD
 //            }
 //        }
+
+        //TODO: (Custom-Jey) Added for release time APK build key
+        // Uncomment this release only for APK build
+        release {
+            if (project.hasProperty('OKP_APP_APK_STORE_FILE')) {
+                storeFile file(OKP_APP_APK_STORE_FILE)
+                storePassword OKP_APP_APK_STORE_PASSWORD
+                keyAlias OKP_APP_APK_KEY_ALIAS
+                keyPassword OKP_APP_APK_KEY_PASSWORD
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
-//        release {
-//            // Caution! In production, you need to generate your own keystore file.
-//            // see https://reactnative.dev/docs/signed-apk-android.
-//            // Uncomment this for development after commenting out the following one for release
-//            signingConfig signingConfigs.debug
-//            // TODO: (Custom-Jey) Changed to signingConfig signingConfigs.release
-//            // signingConfig signingConfigs.release
-//            minifyEnabled enableProguardInReleaseBuilds
-//            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
-//        }
+        release {
+            // Caution! In production, you need to generate your own keystore file.
+            // see https://reactnative.dev/docs/signed-apk-android.
+            // TODO: (Custom-Jey) Changed to signingConfig signingConfigs.release
+            signingConfig signingConfigs.release
+            minifyEnabled enableProguardInReleaseBuilds
+            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+        }
     }
 }
 
