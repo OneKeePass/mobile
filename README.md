@@ -52,6 +52,12 @@ The apps are built with - [React Native](https://reactnative.dev/),[React Native
 To build and run on a simulator/emulator locally, please follow the instructions [here](./docs/BUILD.md) for both iOS and Android platforms
 
 ## How to Contribute
+
+### Translations
+
+If you want to contribute translation of texts used in this application in your language of choice, please see [OneKeePass Translations](https://github.com/OneKeePass/onekeepass-translations)
+
+### Code
 The CONTRIBUTING document and other guidelines for code contributions are not yet ready. Till that time, please feel free to::
 - [Report bugs, suggest new features](https://github.com/OneKeePass/mobile/issues)
 
