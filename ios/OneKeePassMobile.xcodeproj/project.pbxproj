@@ -695,7 +695,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/OneKeePassMobile/DbServiceFFILib",
 				);
-				MARKETING_VERSION = 0.13.0;
+				MARKETING_VERSION = 0.14.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -739,7 +739,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/OneKeePassMobile/DbServiceFFILib",
 				);
-				MARKETING_VERSION = 0.13.0;
+				MARKETING_VERSION = 0.14.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",

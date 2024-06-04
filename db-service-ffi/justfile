@@ -23,7 +23,7 @@ ios-lib-output := "target/libdb_service_ffi.a"
 ## installed already and version 0.20.0 should match that is used in Cargo.toml)
 
 ## Need to do this one time
-## cd ./uniffi-bindgen
+## cd ../uniffi-bindgen
 ## cargo build --release  
 ## Now on we can use the appropriate version of uniffi-bindgen
 
@@ -101,11 +101,18 @@ cp-ios-ffi-device-release-lib-src:build-ios-device-lib-release generate-swift
 ###############################   Android related ############################### 
 
 ## cargo build --target aarch64-linux-android did not work and cargo-ndk works nice
-## Needs to do one time 'cargo install cargo-ndk' and use that instead of cargo build directly for this target
+## Needs to do one time 'cargo install cargo-ndk' or 'cargo binstall cargo-ndk' 
+## and use that instead of cargo build directly for this target
 ## See https://github.com/bbqsrc/cargo-ndk
-## 'cargo ndk --version' prints 'cargo-ndk 2.12.6'
+## 'cargo ndk --version' prints 'cargo-ndk 3.5.6'
 ## ANDROID_NDK_HOME environment variable should be set to the same version of NDK version used in 
 ## ".... android/build.gradle" 
+
+## From cargo-ndk v3.2.2 onwards, we need to add 
+## export AR_aarch64_linux_android='xxx' and export CXX_aarch64_linux_android='xxx'
+## This is required as cargo-ndk started using 'Read C env vars like the cc crate'
+## https://github.com/bbqsrc/cargo-ndk/compare/v3.2.1...v3.2.2
+## https://docs.rs/cc/latest/cc/#external-configuration-via-environment-variables
 
 generate-kotlin:
     mkdir  -p {{kotlin-src-dir}}
@@ -119,6 +126,9 @@ ndk_botan_build_home := env_var('ANDROID_NDK_HOME') + "/../26.1.10909125"
 ndk_ar := ndk_botan_build_home + "/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ar"
 ndk_cxx := ndk_botan_build_home + "/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android31-clang++"
 
+# Using ndk option -p 31  - means use NDK API 31
+# Using RUST_LOG=debug specifies the log levels to be used by env_logger (of cargo-ndk)
+
 ## Need to ensure to use 'crate-type = ["lib", "staticlib","cdylib"]' in Cargo.toml
 build-android-lib-aarch64 release="":
     #!/usr/bin/env bash
@@ -130,12 +140,14 @@ build-android-lib-aarch64 release="":
     export BOTAN_CONFIGURE_DISABLE_MODULES='tls,pkcs11,sodium,filters'
     export AR={{ndk_ar}}
     export CXX={{ndk_cxx}}
+    export AR_aarch64_linux_android={{ndk_ar}}
+    export CXX_aarch64_linux_android={{ndk_cxx}}
 
-    cargo ndk -t aarch64-linux-android  -o ./target/jniLibs build {{ if release == "true" {"--release" } else {""}  }}
+    RUST_LOG=debug cargo ndk -t aarch64-linux-android -o ./target/jniLibs build {{ if release == "true" {"--release" } else {""} }} 
 
 build-android-lib-all release="":
     just build-android-lib-aarch64 {{release}}
-    cargo ndk -t armv7-linux-androideabi  -o ./target/jniLibs build {{ if release == "true" {"--release" } else {""}  }}
+    cargo ndk -t armv7-linux-androideabi -o ./target/jniLibs build {{ if release == "true" {"--release" } else {""}  }} 
 
 ## Dev time used 
 ## Call 'just bca' 
@@ -157,3 +169,46 @@ test-env:
     export BOTAN_CONFIGURE_CPU='arm64'
 
     echo "BOTAN_CONFIGURE_CPU is: '${BOTAN_CONFIGURE_CPU}'"
+    echo "BOTAN_CONFIGURE_OS is: '${BOTAN_CONFIGURE_OS}'"
+
+
+## Botan notes
+
+# Reference: 
+# https://botan.randombit.net/handbook/building.html#for-ios-using-xcode
+# https://botan.randombit.net/handbook/building.html#for-android
+
+# All botan build related arguments are passed through environment variales like
+# BOTAN_CONFIGURE_XXXX = 'XXX' etc for both iOS and Android build 
+
+# In case of Android, additionally we need to pass 'AR' and 'CXX' environment variales
+
+# Based on these values, arguments for 'configure.py' are generated and botan build files are created and used. 
+# See the sample files generated like these  
+
+# mobile/db-service-ffi/target/aarch64-linux-android/release/build/botan-sys-8602c22497417f85/out/botan/build/build.h 
+# mobile/db-service-ffi/target/aarch64-linux-android/release/build/botan-sys-8602c22497417f85/out/output
+
+## We should see something similar in build.h of android build 
+# * @file  build.h
+# * @brief Build configuration for Botan 3.1.1
+# *
+# * Automatically generated from
+# * 'configure.py --with-build-dir=/Users/jeyasankar/Development/repositories/github/OneKeePass-Organization/mobile/db-service-ffi/target/aarch64-linux-android/release/build/botan-sys-8602c22497417f85/out/botan --build-targets=static --without-documentation --no-install-python-module --distribution-info=https://crates.io/crates/botan-src --os=android --cpu=arm64 --cc=clang '--cc-abi-flags=-arch arm64' --disable-modules=tls,pkcs11,sodium,filters'
+# *
+# * Target
+# *  - Compiler: /Users/jeyasankar/Library/Android/sdk/ndk/25.1.8937393/../26.1.10909125/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android31-clang++ -fstack-protector -pthread -arch arm64 -std=c++20 -D_REENTRANT -O3
+# *  - Arch: arm64
+# *  - OS: android
+
+
+## We should see somthing similar in build.h of ios build 
+# * Automatically generated from
+# * 'configure.py --with-build-dir=/Users/jeyasankar/Development/repositories/github/OneKeePass-Organization/mobile/db-service-ffi/target/aarch64-apple-ios/release/build/botan-sys-694d75f6f41dacae/out/botan --build-targets=static --without-documentation --no-install-python-module --distribution-info=https://crates.io/crates/botan-src --os=ios --cpu=armv8-a --cc=clang '--cc-abi-flags=-arch arm64''
+# *
+# * Target
+# *  - Compiler: clang++ -fstack-protector -pthread -stdlib=libc++ -arch arm64 -std=c++20 -D_REENTRANT -O3
+# *  - Arch: arm64
+# *  - OS: ios
+
+
