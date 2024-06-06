@@ -6,7 +6,7 @@
 
 .bundle/
 .cpcache/
-
+cljs-ios-autofill-extension/.cpcache/
 
 # clj related
 target/
@@ -19,6 +19,7 @@ docs/.clj-kondo/.cache
 .rebel_readline_history
 
 /target
+/target-ios-autofill-extension
 /checkouts
 /src/gen
 

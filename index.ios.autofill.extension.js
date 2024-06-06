@@ -7,7 +7,7 @@ import {
     Text
 } from 'react-native';
 import {name as appName} from './app.json';
-import {krellUpdateRoot, onKrellReload} from './target/main.js';
+import {krellUpdateRoot, onKrellReload} from './target-ios-autofill-extension/main.js';
 
 let plainStyle = {
     flex: 1,
