@@ -4,73 +4,116 @@
 //
 //  Created  on 6/6/24.
 //
-import Foundation
-import AuthenticationServices
 
-class CredentialProviderViewController: ASCredentialProviderViewController {
-  
- private  let logger = OkpLogger(tag: "CredentialProviderViewController")
-  
+
+// https://reactnative.dev/docs/integration-with-existing-apps 
+
+import AuthenticationServices
+import Foundation
+
+@objc
+class CredentialProviderViewController: ASCredentialProviderViewController, RCTBridgeDelegate {
+  private let logger = OkpLogger(tag: "CredentialProviderViewController")
+
   override func viewDidLoad() {
     super.viewDidLoad()
     debugPrint("viewDidLoad is called")
   }
-  
+
   override func viewWillAppear(_ animated: Bool) {
     super.viewWillAppear(animated)
     logger.debug("viewWillAppear is called")
+    //prepareUI()
   }
-  
+
   override func didReceiveMemoryWarning() {
     super.didReceiveMemoryWarning()
     logger.debug("didReceiveMemoryWarning is called")
   }
 
-    /*
-     Prepare your UI to list available credentials for the user to choose from. The items in
-     'serviceIdentifiers' describe the service the user is logging in to, so your extension can
-     prioritize the most relevant credentials in the list.
-    */
-    override func prepareCredentialList(for serviceIdentifiers: [ASCredentialServiceIdentifier]) {
-    }
+  func getBundleURL() -> URL! {
+    #if DEBUG
+      // index.ios.autofill.extension.js is the extension specific entry file
+      return RCTBundleURLProvider.sharedSettings()?.jsBundleURL(forBundleRoot: "index.ios.autofill.extension")
+    #else
+      // Same as return [[NSBundle mainBundle] URLForResource:@"main" withExtension:@"jsbundle"];
+      return Bundle.main.url(forResource: "main", withExtension: "jsbundle")
+    #endif
+  }
 
-    /*
-     Implement this method if your extension supports showing credentials in the QuickType bar.
-     When the user selects a credential from your app, this method will be called with the
-     ASPasswordCredentialIdentity your app has previously saved to the ASCredentialIdentityStore.
-     Provide the password by completing the extension request with the associated ASPasswordCredential.
-     If using the credential would require showing custom UI for authenticating the user, cancel
-     the request with error code ASExtensionError.userInteractionRequired.
+  // This fn implementation is to conform to protocol 'RCTBridgeDelegate'
+  func sourceURL(for bridge: RCTBridge!) -> URL! {
+    getBundleURL()
+  }
 
-    override func provideCredentialWithoutUserInteraction(for credentialIdentity: ASPasswordCredentialIdentity) {
-        let databaseIsUnlocked = true
-        if (databaseIsUnlocked) {
-            let passwordCredential = ASPasswordCredential(user: "j_appleseed", password: "apple1234")
-            self.extensionContext.completeRequest(withSelectedCredential: passwordCredential, completionHandler: nil)
-        } else {
-            self.extensionContext.cancelRequest(withError: NSError(domain: ASExtensionErrorDomain, code:ASExtensionError.userInteractionRequired.rawValue))
-        }
-    }
-    */
+  func prepareUI() {
+    let bridge = RCTBridge(delegate: self, launchOptions: nil)!
 
-    /*
-     Implement this method if provideCredentialWithoutUserInteraction(for:) can fail with
-     ASExtensionError.userInteractionRequired. In this case, the system may present your extension's
-     UI and call this method. Show appropriate UI for authenticating the user then provide the password
-     by completing the extension request with the associated ASPasswordCredential.
+    let rootView = RCTRootView(
+      bridge: bridge,
+      moduleName: "OneKeePassMobile",
+      initialProperties: nil
+    )
 
-    override func prepareInterfaceToProvideCredential(for credentialIdentity: ASPasswordCredentialIdentity) {
-    }
-    */
+    let vc = UIViewController()
+    vc.view = rootView
+    present(vc, animated: true, completion: nil)
+  }
 
-    @IBAction func cancel(_ sender: AnyObject?) {
-      logger.debug("Cancel is called")
-        self.extensionContext.cancelRequest(withError: NSError(domain: ASExtensionErrorDomain, code: ASExtensionError.userCanceled.rawValue))
-    }
+  /*
+    Prepare your UI to list available credentials for the user to choose from. The items in
+    'serviceIdentifiers' describe the service the user is logging in to, so your extension can
+    prioritize the most relevant credentials in the list.
+   */
+  override func prepareCredentialList(for serviceIdentifiers: [ASCredentialServiceIdentifier]) {
+    logger.debug("dprepareCredentialList is called")
+    prepareUI()
+  }
 
-    @IBAction func passwordSelected(_ sender: AnyObject?) {
-        let passwordCredential = ASPasswordCredential(user: "j_appleseed", password: "apple1234")
-        self.extensionContext.completeRequest(withSelectedCredential: passwordCredential, completionHandler: nil)
-    }
+  /*
+    Implement this method if your extension supports showing credentials in the QuickType bar.
+    When the user selects a credential from your app, this method will be called with the
+    ASPasswordCredentialIdentity your app has previously saved to the ASCredentialIdentityStore.
+    Provide the password by completing the extension request with the associated ASPasswordCredential.
+    If using the credential would require showing custom UI for authenticating the user, cancel
+    the request with error code ASExtensionError.userInteractionRequired.
 
+   override func provideCredentialWithoutUserInteraction(for credentialIdentity: ASPasswordCredentialIdentity) {
+       let databaseIsUnlocked = true
+       if (databaseIsUnlocked) {
+           let passwordCredential = ASPasswordCredential(user: "j_appleseed", password: "apple1234")
+           self.extensionContext.completeRequest(withSelectedCredential: passwordCredential, completionHandler: nil)
+       } else {
+           self.extensionContext.cancelRequest(withError: NSError(domain: ASExtensionErrorDomain, code:ASExtensionError.userInteractionRequired.rawValue))
+       }
+   }
+   */
+
+  /*
+    Implement this method if provideCredentialWithoutUserInteraction(for:) can fail with
+    ASExtensionError.userInteractionRequired. In this case, the system may present your extension's
+    UI and call this method. Show appropriate UI for authenticating the user then provide the password
+    by completing the extension request with the associated ASPasswordCredential.
+
+   override func prepareInterfaceToProvideCredential(for credentialIdentity: ASPasswordCredentialIdentity) {
+   }
+   */
+
+  @IBAction func cancel(_ sender: AnyObject?) {
+    logger.debug("Cancel is called")
+    extensionContext.cancelRequest(withError: NSError(domain: ASExtensionErrorDomain, code: ASExtensionError.userCanceled.rawValue))
+  }
+
+  @IBAction func passwordSelected(_ sender: AnyObject?) {
+    let passwordCredential = ASPasswordCredential(user: "j_appleseed", password: "apple1234")
+    extensionContext.completeRequest(withSelectedCredential: passwordCredential, completionHandler: nil)
+  }
+  
+  @IBAction func showRN(_ sender: AnyObject?) {
+//    let a = getBundleURL()
+//    let b = ""
+    
+    prepareUI()
+    
+  }
 }

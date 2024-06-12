@@ -46,6 +46,18 @@ clj-main-build type="simple" :
     clj -M -m krell.main -O {{type}}  -co build.edn -c
 
 
+# clj -M -m krell.main --host 192.168.1.5 -co  build-ios-autofill-extension.edn --index-js-out index.ios.autofill.extension.js -c -r
+
+# rm -rf target-ios-autofill-extension
+# clj -M -m krell.main -O simple -co build-ios-autofill-extension.edn --index-js-out index.ios.autofill.extension.js -c
+# clj -M -m krell.main -O simple -co build-ios-autofill-extension.edn -c 
+
+ext-port := "5002"
+ext-dir := "./cljs-ios-autofill-extension/src"
+ext-cr:
+    rm -rf target-ios-autofill-extension
+    clj -A:ios-ext -M -m krell.main --host {{host}} -p {{ext-port}} -co  build-ios-autofill-extension.edn --index-js-out index.ios.autofill.extension.js -wd {{ext-dir}}  -c  -r
+
 npx-rn-start:
     npx react-native start
 
