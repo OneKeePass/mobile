@@ -310,6 +310,13 @@
    [rn-view {:style {:flex .8}}
     [db-settings-list-content]] 
    
+   ;; A temp one for autofill 
+   [rn-view {:style {:flex .2}}
+    [rnp-text {:style {:textDecorationLine "underline"
+                       :text-align "center"}
+               :variant "titleMedium"
+               :onPress cmn-events/ios-copy-file-to-group} "Autofill copy"]]
+   
    [rn-view {:style {:flex .2}}
     [rnp-text {:style {:textDecorationLine "underline"
                        :text-align "center"}

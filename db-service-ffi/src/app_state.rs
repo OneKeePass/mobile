@@ -16,6 +16,7 @@ use crate::{udl_types::SecureKeyOperation, util};
 // Any mutable field needs to be behind Mutex
 pub struct AppState {
     pub app_home_dir: String,
+    pub app_group_home_dir:Option<String>,
     pub cache_dir: String,
     pub temp_dir: String,
     pub backup_dir_path: PathBuf,
@@ -45,6 +46,13 @@ impl AppState {
         let cache_dir = util::url_to_unix_file_name(&common_device_service.cache_dir());
         let temp_dir = util::url_to_unix_file_name(&common_device_service.temp_dir());
 
+        // iOS specific
+        let app_group_home_dir = if let Some(d) = &common_device_service.app_group_home_dir()  {
+            Some(util::url_to_unix_file_name(&d))
+        } else {
+            None
+        };
+
         debug!(
             "app_dir {}, cache_dir {}, temp_dir {}",
             &app_dir, &cache_dir, &temp_dir
@@ -63,6 +71,7 @@ impl AppState {
 
         let app_state = AppState {
             app_home_dir: app_dir.into(),
+            app_group_home_dir,
             cache_dir,
             temp_dir,
             backup_dir_path,
@@ -133,7 +142,6 @@ impl AppState {
             .find(|r| r.db_file_path == full_file_name_uri)
             .map(|r| RecentlyUsed { ..r.clone() })
     }
-
 
     pub fn language(&self) -> String {
         let pref = self.preference.lock().unwrap();

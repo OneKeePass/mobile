@@ -1103,6 +1103,7 @@ PODS:
   - RNSVG (15.1.0):
     - React-Core
   - SocketRocket (0.6.1)
+  - SwiftyMessenger (0.4.0)
   - VisionCamera (3.9.0):
     - React
     - React-callinvoker
@@ -1191,6 +1192,7 @@ DEPENDENCIES:
   - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
   - RNReanimated (from `../node_modules/react-native-reanimated`)
   - RNSVG (from `../node_modules/react-native-svg`)
+  - SwiftyMessenger (~> 0.4.0)
   - VisionCamera (from `../node_modules/react-native-vision-camera`)
   - Yoga (from `../node_modules/react-native/ReactCommon/yoga`)
 
@@ -1209,6 +1211,7 @@ SPEC REPOS:
     - libevent
     - OpenSSL-Universal
     - SocketRocket
+    - SwiftyMessenger
 
 EXTERNAL SOURCES:
   boost:
@@ -1401,9 +1404,10 @@ SPEC CHECKSUMS:
   RNReanimated: 57f436e7aa3d277fbfed05e003230b43428157c0
   RNSVG: 0eea30725f92fc53f86d2a427ee75f28bdfb8692
   SocketRocket: f32cd54efbe0f095c4d7594881e52619cfe80b17
+  SwiftyMessenger: 0b1af5397679f400785c666b0c22862bf50d04b0
   VisionCamera: 7a5c87805b13adaaa557132b44879ed1e1e39786
   Yoga: 64cd2a583ead952b0315d5135bf39e053ae9be70
 
-PODFILE CHECKSUM: 8a85ec8085ca694861562d886290e32475993376
+PODFILE CHECKSUM: 4775b736ecdfd4ba1586f1b4002cc9b128baa858
 
 COCOAPODS: 1.11.3

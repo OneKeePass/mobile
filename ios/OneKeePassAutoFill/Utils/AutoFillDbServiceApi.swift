@@ -6,7 +6,7 @@ import Foundation
 // Only one logger with variable 'cmnLogger' be declared
 let cmnLogger = OkpLogger(tag: "common ios ffi")
 
-class DbServiceAPI {
+class AutoFillDbServiceAPI {
   static let logger = OkpLogger(tag: "DbServiceAPI")
   
   private static var _iosSupportService = IosSupportService()
@@ -29,7 +29,7 @@ class DbServiceAPI {
       let cmnService = CommonDeviceServiceImpl()
       let secKeyOps = SecureKeyOperationImpl()
       let eventDispatcher = BackendEventDispatcher()
-      dbServiceInitialize(cmnService,secKeyOps,eventDispatcher)
+      dbServiceInitialize(cmnService, secKeyOps, eventDispatcher)
       initialized = true
       Swift.debugPrint("API initialize is done")
     } else {
@@ -61,7 +61,7 @@ class DbServiceAPI {
 
   static func saveKdbx(_ fullFileName: String, _ overwrite: Bool) -> ApiResponse {
     let fileArgs = FileArgs.fullFileName(fullFileName: fullFileName)
-    return OneKeePassAutoFill.saveKdbx(fileArgs,overwrite)
+    return OneKeePassAutoFill.saveKdbx(fileArgs, overwrite)
   }
   
   static func copyPickedKeyFile(_ fullFileName: String) -> String {
@@ -69,7 +69,7 @@ class DbServiceAPI {
     return OneKeePassAutoFill.copyPickedKeyFile(fileArgs)
   }
   
-  static func uploadAttachment(_ fullFileName: String,_ jsonArgs: String) -> String {
+  static func uploadAttachment(_ fullFileName: String, _ jsonArgs: String) -> String {
     let fileArgs = FileArgs.fullFileName(fullFileName: fullFileName)
     return OneKeePassAutoFill.uploadAttachment(fileArgs, jsonArgs)
   }
@@ -82,17 +82,31 @@ class DbServiceAPI {
     return OneKeePassAutoFill.writeToBackupOnError(fullFileName)
   }
   
+  static func invokeCommand(_ commandName: String, _ args: String) -> String {
+    // https://matteomanferdini.com/swift-switch/
+    
+    switch (commandName, args) {
+    case let ("list_app_group_db_files", args):
+      return _iosSupportService.listAppGroupDbFiles()
+      
+    case let ("all_entries_on_db_open", args):
+      return _iosSupportService.allEntriesOnDbOpen(args)
+    
+    case let ("read_kdbx_from_app_group", args):
+      return _iosSupportService.readKdbxFromAppGroup(args)
+      
+    default:
+      return OneKeePassAutoFill.invokeCommand(commandName, args)
+    }
+  }
 }
 
 enum CallbackErrors: Error {
-    case apiIsNotSupported
+  case apiIsNotSupported
 }
 
 class CommonDeviceServiceImpl: CommonDeviceService {
-  
-  
   func appHomeDir() -> String {
-    
 //    let  burl = Bundle.main.bundleURL
 //    cmnLogger.debug("$$$$$ bundleURL is \(burl)")
 //
@@ -117,22 +131,29 @@ class CommonDeviceServiceImpl: CommonDeviceService {
     return tempDirectoryPath.absoluteString
   }
   
+  func appGroupHomeDir() -> String? {
+    guard let appGroupContainerUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.onekeepass.afshared") else {
+      return nil
+    }
+    cmnLogger.debug("appGroupContainerUrl is \(appGroupContainerUrl)")
+    return appGroupContainerUrl.absoluteString
+  }
+  
   func loadLanguageTranslation(_ languageId: String) -> String? {
-    
     var p = Bundle.main.path(forResource: languageId, ofType: "json", inDirectory: "Translations")
     
     // Or use if let jsonFileURL = Bundle.main.path(forResource: languageId, ofType: "json", inDirectory: "Translations") {}
     // Or use if let jsonFileURL = Bundle.main.url(forResource: languageId, ofType: "json", subdirectory: "Translations") {}
     
     let jsonFileURL = Bundle.main.url(forResource: languageId, withExtension: "json", subdirectory: "Translations")
-    guard jsonFileURL != nil  else {
+    guard jsonFileURL != nil else {
       return nil
     }
     
     cmnLogger.debug("Translation jsonFileURL for language \(languageId) is \(String(describing: jsonFileURL))")
     
     if let fileContents = try? String(contentsOf: jsonFileURL!) {
-        return fileContents
+      return fileContents
     }
     
     return nil
@@ -165,7 +186,7 @@ class CommonDeviceServiceImpl: CommonDeviceService {
       return fileInfo
 
     } catch {
-      DbServiceAPI.logger.error("Failed to get file info [reason: \(error.localizedDescription)]")
+      AutoFillDbServiceAPI.logger.error("Failed to get file info [reason: \(error.localizedDescription)]")
       return FileInfo(fileName: nil,
                       fileSize: nil,
                       lastModified: nil,
@@ -173,4 +194,3 @@ class CommonDeviceServiceImpl: CommonDeviceService {
     }
   }
 }
-

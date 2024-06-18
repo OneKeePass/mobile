@@ -1,6 +1,5 @@
 import Foundation
 
-
 // Only one logger with variable 'cmnLogger' be declared
 let cmnLogger = OkpLogger(tag: "common ios ffi")
 
@@ -27,7 +26,7 @@ class DbServiceAPI {
       let cmnService = CommonDeviceServiceImpl()
       let secKeyOps = SecureKeyOperationImpl()
       let eventDispatcher = BackendEventDispatcher()
-      dbServiceInitialize(cmnService,secKeyOps,eventDispatcher)
+      dbServiceInitialize(cmnService, secKeyOps, eventDispatcher)
       initialized = true
       Swift.debugPrint("API initialize is done")
     } else {
@@ -59,7 +58,7 @@ class DbServiceAPI {
 
   static func saveKdbx(_ fullFileName: String, _ overwrite: Bool) -> ApiResponse {
     let fileArgs = FileArgs.fullFileName(fullFileName: fullFileName)
-    return OneKeePassMobile.saveKdbx(fileArgs,overwrite)
+    return OneKeePassMobile.saveKdbx(fileArgs, overwrite)
   }
   
   static func copyPickedKeyFile(_ fullFileName: String) -> String {
@@ -67,7 +66,7 @@ class DbServiceAPI {
     return OneKeePassMobile.copyPickedKeyFile(fileArgs)
   }
   
-  static func uploadAttachment(_ fullFileName: String,_ jsonArgs: String) -> String {
+  static func uploadAttachment(_ fullFileName: String, _ jsonArgs: String) -> String {
     let fileArgs = FileArgs.fullFileName(fullFileName: fullFileName)
     return OneKeePassMobile.uploadAttachment(fileArgs, jsonArgs)
   }
@@ -79,29 +78,25 @@ class DbServiceAPI {
   static func writeToBackupOnError(_ fullFileName: String) -> ApiResponse {
     return OneKeePassMobile.writeToBackupOnError(fullFileName)
   }
-  
 }
 
 enum CallbackErrors: Error {
-    case apiIsNotSupported
+  case apiIsNotSupported
 }
 
 class CommonDeviceServiceImpl: CommonDeviceService {
-  
-  
   func appHomeDir() -> String {
-    
 //    let  burl = Bundle.main.bundleURL
 //    cmnLogger.debug("$$$$$ bundleURL is \(burl)")
-//    
+//
 //    let resUrl = Bundle.main.resourceURL
-//    
+//
 //    cmnLogger.debug("$$$$$ resourceURL is \(burl)")
-//    
+//
 //    var p = Bundle.main.path(forResource: "en", ofType: "json", inDirectory: "Translations")
-//    
+//
 //    cmnLogger.debug("$$$$$ orResource is \(String(describing: p))")
-//    
+//
     
     return NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).first!
   }
@@ -115,22 +110,29 @@ class CommonDeviceServiceImpl: CommonDeviceService {
     return tempDirectoryPath.absoluteString
   }
   
+  func appGroupHomeDir() -> String? {
+    guard let appGroupContainerUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.onekeepass.afshared") else {
+      return nil
+    }
+    cmnLogger.debug("appGroupContainerUrl is \(appGroupContainerUrl)")
+    return appGroupContainerUrl.absoluteString
+  }
+  
   func loadLanguageTranslation(_ languageId: String) -> String? {
-    
-    var p = Bundle.main.path(forResource: languageId, ofType: "json", inDirectory: "Translations")
+    //var p = Bundle.main.path(forResource: languageId, ofType: "json", inDirectory: "Translations")
     
     // Or use if let jsonFileURL = Bundle.main.path(forResource: languageId, ofType: "json", inDirectory: "Translations") {}
     // Or use if let jsonFileURL = Bundle.main.url(forResource: languageId, ofType: "json", subdirectory: "Translations") {}
     
     let jsonFileURL = Bundle.main.url(forResource: languageId, withExtension: "json", subdirectory: "Translations")
-    guard jsonFileURL != nil  else {
+    guard jsonFileURL != nil else {
       return nil
     }
     
     cmnLogger.debug("Translation jsonFileURL for language \(languageId) is \(String(describing: jsonFileURL))")
     
     if let fileContents = try? String(contentsOf: jsonFileURL!) {
-        return fileContents
+      return fileContents
     }
     
     return nil

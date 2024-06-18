@@ -17,7 +17,15 @@
 		F92CB0FF28FDCABF00A79F60 /* OkpDocumentPickerServiceBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = F92CB0FE28FDCABF00A79F60 /* OkpDocumentPickerServiceBridge.m */; };
 		F92CB10128FDCBC400A79F60 /* OkpDocumentPickerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F92CB10028FDCBC400A79F60 /* OkpDocumentPickerService.swift */; };
 		F92CB10328FF7A7500A79F60 /* DbServiceAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = F92CB10228FF7A7500A79F60 /* DbServiceAPI.swift */; };
-		F955AC002C17740F00D0DFB6 /* BackendEventDispatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = F955ABFF2C17740F00D0DFB6 /* BackendEventDispatcher.swift */; };
+		F955AC022C1A6C5A00D0DFB6 /* AutoFillMessageHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = F955AC012C1A6C5A00D0DFB6 /* AutoFillMessageHandler.swift */; };
+		F955AC0B2C1C978A00D0DFB6 /* BackendEventDispatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = F955AC082C1C978A00D0DFB6 /* BackendEventDispatcher.swift */; };
+		F955AC0C2C1C978A00D0DFB6 /* AutoFillDbServiceApi.swift in Sources */ = {isa = PBXBuildFile; fileRef = F955AC092C1C978A00D0DFB6 /* AutoFillDbServiceApi.swift */; };
+		F955AC0D2C1C978A00D0DFB6 /* MessageHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = F955AC0A2C1C978A00D0DFB6 /* MessageHandler.swift */; };
+		F955AC102C1C983300D0DFB6 /* OkpDbService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F955AC0F2C1C983300D0DFB6 /* OkpDbService.swift */; };
+		F955AC122C1C9B2500D0DFB6 /* OkpDbServiceBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = F955AC112C1C9B2500D0DFB6 /* OkpDbServiceBridge.m */; };
+		F955AC152C1E31CC00D0DFB6 /* MaterialCommunityIcons.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F9CD349D28E2AABC00B6C59C /* MaterialCommunityIcons.ttf */; };
+		F955AC192C20C42700D0DFB6 /* AutoFillEvents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F955AC182C20C42700D0DFB6 /* AutoFillEvents.swift */; };
+		F955AC1B2C20C51F00D0DFB6 /* AutoFillEventsBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = F955AC1A2C20C51F00D0DFB6 /* AutoFillEventsBridge.m */; };
 		F969C3F128D4C8D90020FA62 /* OkpDbService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F969C3EF28D4C8D90020FA62 /* OkpDbService.swift */; };
 		F969C3F228D4C8D90020FA62 /* OkpDbServiceBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = F969C3F028D4C8D90020FA62 /* OkpDbServiceBridge.m */; };
 		F9AD1B6729B63B6C00BED32A /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9AD1B6629B63B6C00BED32A /* SceneDelegate.swift */; };
@@ -58,10 +66,8 @@
 		F9F81C252C137C4300E1FE8C /* libdb_service_ffi.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F9E4235B29E62B3400A8F366 /* libdb_service_ffi.a */; };
 		F9F81C402C1380A200E1FE8C /* db_service.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9F81C3E2C1380A200E1FE8C /* db_service.swift */; };
 		F9F81C502C1382A400E1FE8C /* OkpLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9F81C4B2C1382A400E1FE8C /* OkpLogger.swift */; };
-		F9F81C582C138DCE00E1FE8C /* FileUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9F81C552C138DCE00E1FE8C /* FileUtils.swift */; };
 		F9F81C592C138DCE00E1FE8C /* SecureKeyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9F81C562C138DCE00E1FE8C /* SecureKeyService.swift */; };
 		F9F81C5E2C138E6300E1FE8C /* OkpError.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9F81C5B2C138E6300E1FE8C /* OkpError.swift */; };
-		F9F81C622C1393AD00E1FE8C /* DbServiceApi.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9F81C612C1393AD00E1FE8C /* DbServiceApi.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -118,7 +124,14 @@
 		F92CB10028FDCBC400A79F60 /* OkpDocumentPickerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OkpDocumentPickerService.swift; sourceTree = "<group>"; };
 		F92CB10228FF7A7500A79F60 /* DbServiceAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DbServiceAPI.swift; sourceTree = "<group>"; };
 		F94CD9A82AE7360B00649D28 /* libbotan-3.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libbotan-3.a"; path = "OneKeePassMobile/DbServiceFFILib/libbotan-3.a"; sourceTree = "<group>"; };
-		F955ABFF2C17740F00D0DFB6 /* BackendEventDispatcher.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = BackendEventDispatcher.swift; path = Utils/BackendEventDispatcher.swift; sourceTree = "<group>"; };
+		F955AC012C1A6C5A00D0DFB6 /* AutoFillMessageHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoFillMessageHandler.swift; sourceTree = "<group>"; };
+		F955AC082C1C978A00D0DFB6 /* BackendEventDispatcher.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BackendEventDispatcher.swift; sourceTree = "<group>"; };
+		F955AC092C1C978A00D0DFB6 /* AutoFillDbServiceApi.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AutoFillDbServiceApi.swift; sourceTree = "<group>"; };
+		F955AC0A2C1C978A00D0DFB6 /* MessageHandler.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MessageHandler.swift; sourceTree = "<group>"; };
+		F955AC0F2C1C983300D0DFB6 /* OkpDbService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OkpDbService.swift; sourceTree = "<group>"; };
+		F955AC112C1C9B2500D0DFB6 /* OkpDbServiceBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OkpDbServiceBridge.m; sourceTree = "<group>"; };
+		F955AC182C20C42700D0DFB6 /* AutoFillEvents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoFillEvents.swift; sourceTree = "<group>"; };
+		F955AC1A2C20C51F00D0DFB6 /* AutoFillEventsBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AutoFillEventsBridge.m; sourceTree = "<group>"; };
 		F969C3EF28D4C8D90020FA62 /* OkpDbService.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OkpDbService.swift; sourceTree = "<group>"; };
 		F969C3F028D4C8D90020FA62 /* OkpDbServiceBridge.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OkpDbServiceBridge.m; sourceTree = "<group>"; };
 		F969C3F528D4CC570020FA62 /* OneKeePassMobile-Bridging-Header.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "OneKeePassMobile-Bridging-Header.h"; sourceTree = "<group>"; };
@@ -165,10 +178,8 @@
 		F9F81C3E2C1380A200E1FE8C /* db_service.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = db_service.swift; path = OneKeePassMobile/DbServiceFFI/db_service.swift; sourceTree = SOURCE_ROOT; };
 		F9F81C3F2C1380A200E1FE8C /* db_serviceFFI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = db_serviceFFI.h; path = OneKeePassMobile/DbServiceFFI/db_serviceFFI.h; sourceTree = SOURCE_ROOT; };
 		F9F81C4B2C1382A400E1FE8C /* OkpLogger.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = OkpLogger.swift; path = OneKeePassMobile/Utils/OkpLogger.swift; sourceTree = SOURCE_ROOT; };
-		F9F81C552C138DCE00E1FE8C /* FileUtils.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = FileUtils.swift; path = OneKeePassMobile/Utils/FileUtils.swift; sourceTree = SOURCE_ROOT; };
 		F9F81C562C138DCE00E1FE8C /* SecureKeyService.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = SecureKeyService.swift; path = OneKeePassMobile/Utils/SecureKeyService.swift; sourceTree = SOURCE_ROOT; };
 		F9F81C5B2C138E6300E1FE8C /* OkpError.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = OkpError.swift; path = OneKeePassMobile/RnModules/OkpError.swift; sourceTree = SOURCE_ROOT; };
-		F9F81C612C1393AD00E1FE8C /* DbServiceApi.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; name = DbServiceApi.swift; path = Utils/DbServiceApi.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -300,6 +311,27 @@
 			path = Pods;
 			sourceTree = "<group>";
 		};
+		F955AC072C1C971E00D0DFB6 /* Utils */ = {
+			isa = PBXGroup;
+			children = (
+				F955AC082C1C978A00D0DFB6 /* BackendEventDispatcher.swift */,
+				F955AC092C1C978A00D0DFB6 /* AutoFillDbServiceApi.swift */,
+				F955AC0A2C1C978A00D0DFB6 /* MessageHandler.swift */,
+			);
+			path = Utils;
+			sourceTree = "<group>";
+		};
+		F955AC0E2C1C97D200D0DFB6 /* RnModules */ = {
+			isa = PBXGroup;
+			children = (
+				F955AC0F2C1C983300D0DFB6 /* OkpDbService.swift */,
+				F955AC112C1C9B2500D0DFB6 /* OkpDbServiceBridge.m */,
+				F955AC182C20C42700D0DFB6 /* AutoFillEvents.swift */,
+				F955AC1A2C20C51F00D0DFB6 /* AutoFillEventsBridge.m */,
+			);
+			path = RnModules;
+			sourceTree = "<group>";
+		};
 		F9AE2F3729043D970013D9AB /* RnModules */ = {
 			isa = PBXGroup;
 			children = (
@@ -325,6 +357,7 @@
 				F9AE2F3F290440380013D9AB /* FileUtils.swift */,
 				F90DF3742A466FF00041F9F5 /* SecureKeyService.swift */,
 				F9B3CE612BAF307C006BDCFA /* BackendEventDispatcher.swift */,
+				F955AC012C1A6C5A00D0DFB6 /* AutoFillMessageHandler.swift */,
 			);
 			name = Utils;
 			path = OneKeePassMobile/Utils;
@@ -375,7 +408,8 @@
 		F9F81BFE2C1227D900E1FE8C /* OneKeePassAutoFill */ = {
 			isa = PBXGroup;
 			children = (
-				F9F81C512C1384B400E1FE8C /* Utils */,
+				F955AC0E2C1C97D200D0DFB6 /* RnModules */,
+				F955AC072C1C971E00D0DFB6 /* Utils */,
 				F9F81C312C137DE300E1FE8C /* Shared */,
 				F9F81BFF2C1227D900E1FE8C /* CredentialProviderViewController.swift */,
 				F9F81C012C1227D900E1FE8C /* MainInterface.storyboard */,
@@ -408,20 +442,10 @@
 		F9F81C462C13828200E1FE8C /* Utils */ = {
 			isa = PBXGroup;
 			children = (
-				F9F81C552C138DCE00E1FE8C /* FileUtils.swift */,
 				F9F81C562C138DCE00E1FE8C /* SecureKeyService.swift */,
 				F9F81C4B2C1382A400E1FE8C /* OkpLogger.swift */,
 			);
 			path = Utils;
-			sourceTree = "<group>";
-		};
-		F9F81C512C1384B400E1FE8C /* Utils */ = {
-			isa = PBXGroup;
-			children = (
-				F955ABFF2C17740F00D0DFB6 /* BackendEventDispatcher.swift */,
-				F9F81C612C1393AD00E1FE8C /* DbServiceApi.swift */,
-			);
-			name = Utils;
 			sourceTree = "<group>";
 		};
 		F9F81C542C138D9000E1FE8C /* RnModules */ = {
@@ -581,6 +605,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F955AC152C1E31CC00D0DFB6 /* MaterialCommunityIcons.ttf in Resources */,
 				F9F81C032C1227D900E1FE8C /* MainInterface.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -763,6 +788,8 @@
 			inputFileListPaths = (
 			);
 			inputPaths = (
+				"$(SRCROOT)/.xcode.env.local",
+				"$(SRCROOT)/.xcode.env",
 			);
 			name = "Bundle React Native code and images";
 			outputFileListPaths = (
@@ -771,7 +798,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# See notes\n# export NODE_BINARY=node\n# export ENTRY_FILE=index.ios.autofill.extension.js\n# ../node_modules/react-native/scripts/react-native-xcode.sh\n\nset -e\n\nENTRY_FILE=index.ios.autofill.extension.js\nWITH_ENVIRONMENT=\"../node_modules/react-native/scripts/xcode/with-environment.sh\"\nREACT_NATIVE_XCODE=\"../node_modules/react-native/scripts/react-native-xcode.sh\"\n\n/bin/sh -c \"$WITH_ENVIRONMENT $REACT_NATIVE_XCODE\"\n";
+			shellScript = "# See notes\nexport NODE_BINARY=node\nexport ENTRY_FILE=index.ios.autofill.extension.js\n../node_modules/react-native/scripts/react-native-xcode.sh\n\n# set -e\n\n# ENTRY_FILE=index.ios.autofill.extension.js\n# WITH_ENVIRONMENT=\"../node_modules/react-native/scripts/xcode/with-environment.sh\"\n# REACT_NATIVE_XCODE=\"../node_modules/react-native/scripts/react-native-xcode.sh\"\n\n# /bin/sh -c \"$WITH_ENVIRONMENT $REACT_NATIVE_XCODE\"\n";
 		};
 		FD10A7F022414F080027D42C /* Start Packager */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -819,6 +846,7 @@
 				F9D88149291430B500467986 /* OkpError.swift in Sources */,
 				F9AD1B6B29B78F1200BED32A /* AppDelegate.swift in Sources */,
 				F92CB10328FF7A7500A79F60 /* DbServiceAPI.swift in Sources */,
+				F955AC022C1A6C5A00D0DFB6 /* AutoFillMessageHandler.swift in Sources */,
 				F9C4D29729AFE1CE00B83DEB /* OkpEvents.swift in Sources */,
 				F9C4D29929AFEC8A00B83DEB /* OkpEventsBridge.m in Sources */,
 				F9E4235929E5F45900A8F366 /* db_service.swift in Sources */,
@@ -832,13 +860,17 @@
 			buildActionMask = 2147483647;
 			files = (
 				F9F81C502C1382A400E1FE8C /* OkpLogger.swift in Sources */,
+				F955AC0D2C1C978A00D0DFB6 /* MessageHandler.swift in Sources */,
 				F9F81C592C138DCE00E1FE8C /* SecureKeyService.swift in Sources */,
-				F955AC002C17740F00D0DFB6 /* BackendEventDispatcher.swift in Sources */,
+				F955AC1B2C20C51F00D0DFB6 /* AutoFillEventsBridge.m in Sources */,
+				F955AC0B2C1C978A00D0DFB6 /* BackendEventDispatcher.swift in Sources */,
+				F955AC102C1C983300D0DFB6 /* OkpDbService.swift in Sources */,
 				F9F81C402C1380A200E1FE8C /* db_service.swift in Sources */,
+				F955AC122C1C9B2500D0DFB6 /* OkpDbServiceBridge.m in Sources */,
+				F955AC192C20C42700D0DFB6 /* AutoFillEvents.swift in Sources */,
 				F9F81C5E2C138E6300E1FE8C /* OkpError.swift in Sources */,
-				F9F81C622C1393AD00E1FE8C /* DbServiceApi.swift in Sources */,
 				F9F81C002C1227D900E1FE8C /* CredentialProviderViewController.swift in Sources */,
-				F9F81C582C138DCE00E1FE8C /* FileUtils.swift in Sources */,
+				F955AC0C2C1C978A00D0DFB6 /* AutoFillDbServiceApi.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1194,7 +1226,7 @@
 					"$(PROJECT_DIR)/OneKeePassMobile/DbServiceFFILib",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 0.14.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				OTHER_LDFLAGS = (
@@ -1280,7 +1312,7 @@
 					"$(PROJECT_DIR)/OneKeePassMobile/DbServiceFFILib",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 0.14.0;
 				MTL_FAST_MATH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = com.onekeepass.ios.OneKeePassAutoFill;
 				PRODUCT_NAME = "$(TARGET_NAME)";

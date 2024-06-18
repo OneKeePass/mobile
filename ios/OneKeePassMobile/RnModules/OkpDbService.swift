@@ -83,6 +83,18 @@ class OkpDbService: NSObject {
       resolve(OneKeePassMobile.invokeCommand(commandName, args))
     }
   }
+  
+  @objc
+  func copyFileToAppGroup(_ args: String,
+                     resolve: @escaping RCTPromiseResolveBlock,
+                     reject _: @escaping RCTPromiseRejectBlock) {
+    
+    DispatchQueue.global(qos: .userInteractive).async { [unowned self] in
+      logger.debug("copyFileToAppGroup called with args \(args) and delegating to api call")
+      resolve(DbServiceAPI.iosSupportService().copyFileToAppGroup(args))
+    }
+    
+  }
 
   // Called when user picked a file to save the changed kdbx during the 'Save As' call
   // This is used by user after a change detected on the previously read database

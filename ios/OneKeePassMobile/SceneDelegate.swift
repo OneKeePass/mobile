@@ -77,5 +77,7 @@ class SceneDelegate: NSObject, UIWindowSceneDelegate {
   
   func sceneDidBecomeActive(_ scene: UIScene) {
     logger.debug("sceneDidBecomeActive.....")
+//    let m = AutoFillMessageHandler()
+//    m.listen2()
   }
 }

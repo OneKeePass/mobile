@@ -370,6 +370,13 @@
                           (api-args->json {:db-key db-key :new-db-key new-db-key})))
                   dispatch-fn))
 
+;; A temp one for autofill 
+(defn ios-copy-file-to-group [db-key dispatch-fn]
+  (call-api-async (fn [] (.copyFileToAppGroup
+                          okp-db-service
+                          (api-args->json {:db-key db-key})))
+                  dispatch-fn))
+
 ;; 
 (defn android-pick-on-save-error-save-as [kdbx-file-name dispatch-fn]
   (pick-document-to-create kdbx-file-name dispatch-fn))

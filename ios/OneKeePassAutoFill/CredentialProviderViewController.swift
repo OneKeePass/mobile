@@ -14,16 +14,29 @@ import Foundation
 @objc
 class CredentialProviderViewController: ASCredentialProviderViewController, RCTBridgeDelegate {
   private let logger = OkpLogger(tag: "CredentialProviderViewController")
-
+  
+  static var extContext:ASCredentialProviderExtensionContext?
+  
+  static func cancelExtension() {
+    if extContext != nil {
+      debugPrint("Going to cancel the extension view...")
+      extContext!.cancelRequest(withError: NSError(domain: ASExtensionErrorDomain, code: ASExtensionError.userCanceled.rawValue))
+    }
+    
+    debugPrint("Extension view is cancelled")
+    
+  }
+ 
   override func viewDidLoad() {
     super.viewDidLoad()
+    CredentialProviderViewController.extContext = extensionContext
     debugPrint("viewDidLoad is called")
   }
 
   override func viewWillAppear(_ animated: Bool) {
     super.viewWillAppear(animated)
     logger.debug("viewWillAppear is called")
-    //prepareUI()
+    prepareUI()
   }
 
   override func didReceiveMemoryWarning() {
@@ -67,7 +80,7 @@ class CredentialProviderViewController: ASCredentialProviderViewController, RCTB
    */
   override func prepareCredentialList(for serviceIdentifiers: [ASCredentialServiceIdentifier]) {
     logger.debug("dprepareCredentialList is called")
-    prepareUI()
+    //prepareUI()
   }
 
   /*
@@ -114,6 +127,10 @@ class CredentialProviderViewController: ASCredentialProviderViewController, RCTB
 //    let b = ""
     
     prepareUI()
+    
+//    let m = MessageHandler()
+//    m.post()
+    
     
   }
 }

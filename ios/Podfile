@@ -41,6 +41,8 @@ target 'OneKeePassMobile' do
     # An absolute path to your application root.
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
+  
+  pod 'SwiftyMessenger', '~>0.4.0'
 
   target 'OneKeePassMobileTests' do
     inherit! :complete
@@ -69,12 +71,13 @@ end
 
 target 'OneKeePassAutoFill' do
   config = use_native_modules!(packages_to_skip:['RNBootSplash','RNSVG', 'RNCClipboard','RNSVG','RNReanimated','RNFileViewer', 'VisionCamera', 
-      'RNVectorIcons', 'RNGestureHandler','RNDateTimePicker'
-      # ,'AppDelegate'
-      # 'React-Fabric','React-FabricImage','React-RCTFabric', 'React-ImageManager'
+      'RNVectorIcons','RNDateTimePicker'
+      #'RNGestureHandler'
 
     
     ])
+    
+    ## pod 'RNDeviceInfo', :configurations => ['Debug']
 
   use_react_native!(
     :path => config[:reactNativePath],
@@ -84,6 +87,10 @@ target 'OneKeePassAutoFill' do
     # An absolute path to your application root.
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
+  
+  
+  
+  pod 'SwiftyMessenger', '~>0.4.0'
 
 end
 

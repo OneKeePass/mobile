@@ -40,6 +40,7 @@ interface EventDispatch {
 // From Rust to Swift or Kotlin
 callback interface CommonDeviceService {
     string app_home_dir();
+    string? app_group_home_dir(); // iOS specific
     string cache_dir();
     string temp_dir();
     string? load_language_translation(string language_id);
@@ -97,6 +98,16 @@ interface IosSupportService {
     void delete_book_mark_data([ByRef] string full_file_name_uri);
     string? copy_last_backup_to_temp_file(string kdbx_file_name,string full_file_name_uri);
     string complete_save_as_on_error([ByRef] string json_args);
+
+    ////// Autofill specific
+    // Used in app
+    string copy_file_to_app_group([ByRef] string json_args);
+    
+    // Used in autofill extension
+    string list_app_group_db_files();
+    string read_kdbx_from_app_group([ByRef] string json_args);
+    string all_entries_on_db_open([ByRef] string json_args);
+    //////
 };
 
 // Android specific APIs. Called from Kotlin side to Rust

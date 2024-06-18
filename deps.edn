@@ -11,18 +11,8 @@
  ;; See https://clojure.org/reference/clojure_cli 
  ;; https://clojure.org/reference/clojure_cli#options (exec-opts, clj-opts,)
 
- ;;:paths ["src" "target"  "cljs-ios-autofill-extension/src" "target-ios-autofill-extension"]
+ ;; This is the paths for the main app and ios ext uses paths from alias 'ios-ext'
  :paths ["src" "target"]
- ;;:paths ["cljs-ios-autofill-extension/src" "target-ios-autofill-extension"]
-
+ 
  :aliases {:ios-ext
-           {:paths ["cljs-ios-autofill-extension/src" "target-ios-autofill-extension"]}
-
-           ;; This one or instruction as in https://calva.io/krell/ not yet working
-           :nrepl
-           {:extra-deps {nrepl/nrepl {:mvn/version "1.0.0"}
-                         cider/piggieback {:mvn/version "0.5.3"}
-                         cider/cider-nrepl {:mvn/version "0.28.5"} ;;
-                         }
-                   ;;:main-opts ["-m" "nrepl.cmdline" "--middleware" "[cider.piggieback/wrap-cljs-repl]"]
-            }}}
+           {:paths ["cljs-ios-autofill-extension/src" "target-ios-autofill-extension"]}}}

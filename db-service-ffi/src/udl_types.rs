@@ -67,6 +67,7 @@ pub trait CommonDeviceService: Send + Sync {
     fn app_home_dir(&self) -> String;
     fn cache_dir(&self) -> String;
     fn temp_dir(&self) -> String;
+    fn app_group_home_dir(&self) -> Option<String>;
     fn load_language_translation(&self, language_id:String) -> Option<String>;
     fn uri_to_file_name(&self, full_file_name_uri: String) -> Option<String>;
     fn uri_to_file_info(&self, full_file_name_uri: String) -> Option<FileInfo>;
