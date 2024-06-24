@@ -421,13 +421,21 @@ internal interface UniffiLib : Library {
     ): Unit
     fun uniffi_db_service_ffi_fn_constructor_iossupportservice_new(uniffi_out_err: UniffiRustCallStatus, 
     ): Pointer
+    fun uniffi_db_service_ffi_fn_method_iossupportservice_all_entries_on_db_open(`ptr`: Pointer,`jsonArgs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_db_service_ffi_fn_method_iossupportservice_complete_save_as_on_error(`ptr`: Pointer,`jsonArgs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_db_service_ffi_fn_method_iossupportservice_copy_file_to_app_group(`ptr`: Pointer,`jsonArgs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_db_service_ffi_fn_method_iossupportservice_copy_last_backup_to_temp_file(`ptr`: Pointer,`kdbxFileName`: RustBuffer.ByValue,`fullFileNameUri`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_db_service_ffi_fn_method_iossupportservice_delete_book_mark_data(`ptr`: Pointer,`fullFileNameUri`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
+    fun uniffi_db_service_ffi_fn_method_iossupportservice_list_app_group_db_files(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun uniffi_db_service_ffi_fn_method_iossupportservice_load_book_mark_data(`ptr`: Pointer,`url`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_db_service_ffi_fn_method_iossupportservice_read_kdbx_from_app_group(`ptr`: Pointer,`jsonArgs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_db_service_ffi_fn_method_iossupportservice_save_book_mark_data(`ptr`: Pointer,`url`: RustBuffer.ByValue,`data`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Byte
@@ -615,13 +623,21 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_db_service_ffi_checksum_method_eventdispatch_send_tick_update(
     ): Short
+    fun uniffi_db_service_ffi_checksum_method_iossupportservice_all_entries_on_db_open(
+    ): Short
     fun uniffi_db_service_ffi_checksum_method_iossupportservice_complete_save_as_on_error(
+    ): Short
+    fun uniffi_db_service_ffi_checksum_method_iossupportservice_copy_file_to_app_group(
     ): Short
     fun uniffi_db_service_ffi_checksum_method_iossupportservice_copy_last_backup_to_temp_file(
     ): Short
     fun uniffi_db_service_ffi_checksum_method_iossupportservice_delete_book_mark_data(
     ): Short
+    fun uniffi_db_service_ffi_checksum_method_iossupportservice_list_app_group_db_files(
+    ): Short
     fun uniffi_db_service_ffi_checksum_method_iossupportservice_load_book_mark_data(
+    ): Short
+    fun uniffi_db_service_ffi_checksum_method_iossupportservice_read_kdbx_from_app_group(
     ): Short
     fun uniffi_db_service_ffi_checksum_method_iossupportservice_save_book_mark_data(
     ): Short
@@ -640,6 +656,8 @@ internal interface UniffiLib : Library {
     fun uniffi_db_service_ffi_checksum_constructor_jsonservice_new(
     ): Short
     fun uniffi_db_service_ffi_checksum_method_commondeviceservice_app_home_dir(
+    ): Short
+    fun uniffi_db_service_ffi_checksum_method_commondeviceservice_app_group_home_dir(
     ): Short
     fun uniffi_db_service_ffi_checksum_method_commondeviceservice_cache_dir(
     ): Short
@@ -722,7 +740,13 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_db_service_ffi_checksum_method_eventdispatch_send_tick_update() != 63104.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_db_service_ffi_checksum_method_iossupportservice_all_entries_on_db_open() != 3998.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_db_service_ffi_checksum_method_iossupportservice_complete_save_as_on_error() != 682.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_ffi_checksum_method_iossupportservice_copy_file_to_app_group() != 55345.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_ffi_checksum_method_iossupportservice_copy_last_backup_to_temp_file() != 7066.toShort()) {
@@ -731,7 +755,13 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_db_service_ffi_checksum_method_iossupportservice_delete_book_mark_data() != 12126.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_db_service_ffi_checksum_method_iossupportservice_list_app_group_db_files() != 558.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_db_service_ffi_checksum_method_iossupportservice_load_book_mark_data() != 25936.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_ffi_checksum_method_iossupportservice_read_kdbx_from_app_group() != 28200.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_ffi_checksum_method_iossupportservice_save_book_mark_data() != 62381.toShort()) {
@@ -759,6 +789,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_ffi_checksum_method_commondeviceservice_app_home_dir() != 32526.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_ffi_checksum_method_commondeviceservice_app_group_home_dir() != 25448.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_ffi_checksum_method_commondeviceservice_cache_dir() != 56663.toShort()) {
@@ -1589,13 +1622,21 @@ public object FfiConverterTypeEventDispatch: FfiConverter<EventDispatch, Pointer
 
 public interface IosSupportServiceInterface {
     
+    fun `allEntriesOnDbOpen`(`jsonArgs`: String): String
+    
     fun `completeSaveAsOnError`(`jsonArgs`: String): String
+    
+    fun `copyFileToAppGroup`(`jsonArgs`: String): String
     
     fun `copyLastBackupToTempFile`(`kdbxFileName`: String, `fullFileNameUri`: String): String?
     
     fun `deleteBookMarkData`(`fullFileNameUri`: String)
     
+    fun `listAppGroupDbFiles`(): String
+    
     fun `loadBookMarkData`(`url`: String): List<UByte>
+    
+    fun `readKdbxFromAppGroup`(`jsonArgs`: String): String
     
     fun `saveBookMarkData`(`url`: String, `data`: List<UByte>): Boolean
     
@@ -1640,10 +1681,32 @@ open class IosSupportService : FFIObject, IosSupportServiceInterface {
         }
     }
 
+    override fun `allEntriesOnDbOpen`(`jsonArgs`: String): String =
+        callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_method_iossupportservice_all_entries_on_db_open(it,
+        FfiConverterString.lower(`jsonArgs`),
+        _status)
+}
+        }.let {
+            FfiConverterString.lift(it)
+        }
+    
     override fun `completeSaveAsOnError`(`jsonArgs`: String): String =
         callWithPointer {
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_method_iossupportservice_complete_save_as_on_error(it,
+        FfiConverterString.lower(`jsonArgs`),
+        _status)
+}
+        }.let {
+            FfiConverterString.lift(it)
+        }
+    
+    override fun `copyFileToAppGroup`(`jsonArgs`: String): String =
+        callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_method_iossupportservice_copy_file_to_app_group(it,
         FfiConverterString.lower(`jsonArgs`),
         _status)
 }
@@ -1672,6 +1735,17 @@ open class IosSupportService : FFIObject, IosSupportServiceInterface {
         }
     
     
+    override fun `listAppGroupDbFiles`(): String =
+        callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_method_iossupportservice_list_app_group_db_files(it,
+        
+        _status)
+}
+        }.let {
+            FfiConverterString.lift(it)
+        }
+    
     override fun `loadBookMarkData`(`url`: String): List<UByte> =
         callWithPointer {
     uniffiRustCall() { _status ->
@@ -1681,6 +1755,17 @@ open class IosSupportService : FFIObject, IosSupportServiceInterface {
 }
         }.let {
             FfiConverterSequenceUByte.lift(it)
+        }
+    
+    override fun `readKdbxFromAppGroup`(`jsonArgs`: String): String =
+        callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_method_iossupportservice_read_kdbx_from_app_group(it,
+        FfiConverterString.lower(`jsonArgs`),
+        _status)
+}
+        }.let {
+            FfiConverterString.lift(it)
         }
     
     override fun `saveBookMarkData`(`url`: String, `data`: List<UByte>): Boolean =
@@ -2255,6 +2340,8 @@ public interface CommonDeviceService {
     
     fun `appHomeDir`(): String
     
+    fun `appGroupHomeDir`(): String?
+    
     fun `cacheDir`(): String
     
     fun `tempDir`(): String
@@ -2302,7 +2389,7 @@ internal class UniffiCallbackInterfaceCommonDeviceService : ForeignCallback {
                 // Call the method, write to outBuf and return a status code
                 // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs` for info
                 try {
-                    this.`invokeCacheDir`(cb, argsData, argsLen, outBuf)
+                    this.`invokeAppGroupHomeDir`(cb, argsData, argsLen, outBuf)
                 } catch (e: Throwable) {
                     // Unexpected error
                     try {
@@ -2318,7 +2405,7 @@ internal class UniffiCallbackInterfaceCommonDeviceService : ForeignCallback {
                 // Call the method, write to outBuf and return a status code
                 // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs` for info
                 try {
-                    this.`invokeTempDir`(cb, argsData, argsLen, outBuf)
+                    this.`invokeCacheDir`(cb, argsData, argsLen, outBuf)
                 } catch (e: Throwable) {
                     // Unexpected error
                     try {
@@ -2334,7 +2421,7 @@ internal class UniffiCallbackInterfaceCommonDeviceService : ForeignCallback {
                 // Call the method, write to outBuf and return a status code
                 // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs` for info
                 try {
-                    this.`invokeLoadLanguageTranslation`(cb, argsData, argsLen, outBuf)
+                    this.`invokeTempDir`(cb, argsData, argsLen, outBuf)
                 } catch (e: Throwable) {
                     // Unexpected error
                     try {
@@ -2350,7 +2437,7 @@ internal class UniffiCallbackInterfaceCommonDeviceService : ForeignCallback {
                 // Call the method, write to outBuf and return a status code
                 // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs` for info
                 try {
-                    this.`invokeUriToFileName`(cb, argsData, argsLen, outBuf)
+                    this.`invokeLoadLanguageTranslation`(cb, argsData, argsLen, outBuf)
                 } catch (e: Throwable) {
                     // Unexpected error
                     try {
@@ -2363,6 +2450,22 @@ internal class UniffiCallbackInterfaceCommonDeviceService : ForeignCallback {
                 }
             }
             6 -> {
+                // Call the method, write to outBuf and return a status code
+                // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs` for info
+                try {
+                    this.`invokeUriToFileName`(cb, argsData, argsLen, outBuf)
+                } catch (e: Throwable) {
+                    // Unexpected error
+                    try {
+                        // Try to serialize the error into a string
+                        outBuf.setValue(FfiConverterString.lower(e.toString()))
+                    } catch (e: Throwable) {
+                        // If that fails, then it's time to give up and just return
+                    }
+                    UNIFFI_CALLBACK_UNEXPECTED_ERROR
+                }
+            }
+            7 -> {
                 // Call the method, write to outBuf and return a status code
                 // See docs of ForeignCallback in `uniffi_core/src/ffi/foreigncallbacks.rs` for info
                 try {
@@ -2400,6 +2503,19 @@ internal class UniffiCallbackInterfaceCommonDeviceService : ForeignCallback {
             val returnValue = kotlinCallbackInterface.`appHomeDir`(
             )
             outBuf.setValue(FfiConverterString.lowerIntoRustBuffer(returnValue))
+            return UNIFFI_CALLBACK_SUCCESS
+        }
+        fun makeCallAndHandleError() : Int = makeCall()
+
+        return makeCallAndHandleError()
+    }
+    
+    @Suppress("UNUSED_PARAMETER")
+    private fun `invokeAppGroupHomeDir`(kotlinCallbackInterface: CommonDeviceService, argsData: Pointer, argsLen: Int, outBuf: RustBufferByReference): Int {
+        fun makeCall() : Int {
+            val returnValue = kotlinCallbackInterface.`appGroupHomeDir`(
+            )
+            outBuf.setValue(FfiConverterOptionalString.lowerIntoRustBuffer(returnValue))
             return UNIFFI_CALLBACK_SUCCESS
         }
         fun makeCallAndHandleError() : Int = makeCall()

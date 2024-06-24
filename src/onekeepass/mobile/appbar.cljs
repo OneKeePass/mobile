@@ -2,8 +2,10 @@
   (:require [onekeepass.mobile.about :as about :refer [about-content
                                                        privacy-policy-content]]
             [onekeepass.mobile.app-settings :as app-settings]
+            [onekeepass.mobile.autofill :as af-settings]
             [onekeepass.mobile.common-components :as cc :refer [menu-action-factory]]
-            [onekeepass.mobile.constants :refer [CAMERA_SCANNER_PAGE_ID]]
+            [onekeepass.mobile.constants :refer [AUTOFILL_SETTINGS_PAGE_ID
+                                                 CAMERA_SCANNER_PAGE_ID]]
             [onekeepass.mobile.entry-category :refer [entry-category-content]]
             [onekeepass.mobile.entry-form :as entry-form]
             [onekeepass.mobile.entry-history-list :as entry-history-list]
@@ -70,6 +72,7 @@
      (= page :group-form)
      (= page :settings)
      (= page :app-settings)
+     (= page AUTOFILL_SETTINGS_PAGE_ID)
      (= page :key-file-form)
      (= page CAMERA_SCANNER_PAGE_ID)
      (= page :about)
@@ -236,6 +239,7 @@
         (= page :icons-list)
         (= page :settings)
         (= page :app-settings)
+        (= page AUTOFILL_SETTINGS_PAGE_ID)
         (= page :key-file-form)
         (= page CAMERA_SCANNER_PAGE_ID))
     [positioned-title :title title]
@@ -282,6 +286,7 @@
         (= page :search)
         (= page :settings)
         (= page :app-settings)
+        (= page AUTOFILL_SETTINGS_PAGE_ID)
         (= page CAMERA_SCANNER_PAGE_ID)
         (= page :key-file-form))
        [rnp-appbar-back-action {:color @background-color
@@ -350,6 +355,9 @@
 
     (= page :app-settings)
     [app-settings/content]
+    
+    (= page AUTOFILL_SETTINGS_PAGE_ID)
+    [af-settings/content]
 
     (= page :key-file-form)
     (kf-form/content)

@@ -1,9 +1,18 @@
 use log::debug;
 use onekeepass_core::db_service;
 
-use crate::{commands::{full_path_file_to_create, CommandArg}, event_dispatcher, open_backup_file, udl_types::EventDispatch, InvokeResult};
+use crate::{
+    commands::{full_path_file_to_create, CommandArg},
+    event_dispatcher, open_backup_file,
+    udl_types::EventDispatch,
+    InvokeResult,
+};
 use std::{
-    fs::{File, OpenOptions}, io::Seek, os::fd::IntoRawFd, path::Path, sync::Arc
+    fs::{File, OpenOptions},
+    io::Seek,
+    os::fd::IntoRawFd,
+    path::Path,
+    sync::Arc,
 };
 
 use crate::{
@@ -63,15 +72,21 @@ pub(crate) fn db_service_enable_logging() {
     }
 }
 
-// Called from Swift/Kotlin side to initialize callbacks, 
+// Called from Swift/Kotlin side to initialize callbacks,
 // backend tokio runtime etc when Native Modules are loaded - See db_service.udl
 pub(crate) fn db_service_initialize(
     common_device_service: Box<dyn CommonDeviceService>,
     secure_key_operation: Box<dyn SecureKeyOperation>,
-    event_dispatcher:Arc<dyn EventDispatch>,
+    event_dispatcher: Arc<dyn EventDispatch>,
 ) {
-    AppState::setup(common_device_service, secure_key_operation,event_dispatcher,);
-    log::info!("AppState with CommonDeviceService,secure_key_operation,event_dispatcher is initialized");
+    AppState::setup(
+        common_device_service,
+        secure_key_operation,
+        event_dispatcher,
+    );
+    log::info!(
+        "AppState with CommonDeviceService,secure_key_operation,event_dispatcher is initialized"
+    );
 
     key_secure::init_key_main_store();
     log::info!("key_secure::init_key_main_store call done after AppState setup");

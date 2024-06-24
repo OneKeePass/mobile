@@ -69,6 +69,8 @@
 
 ;;; Page ids
 (def CAMERA_SCANNER_PAGE_ID :scan-otp-qr)
+(def AUTOFILL_SETTINGS_PAGE_ID :autofill-settings)
+
 
 
 ;;;;;;; Icon names ;;;;;

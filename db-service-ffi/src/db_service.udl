@@ -99,7 +99,8 @@ interface IosSupportService {
     string? copy_last_backup_to_temp_file(string kdbx_file_name,string full_file_name_uri);
     string complete_save_as_on_error([ByRef] string json_args);
 
-    ////// Autofill specific
+    // To be Removed
+    // Autofill specific
     // Used in app
     string copy_file_to_app_group([ByRef] string json_args);
     
@@ -107,7 +108,7 @@ interface IosSupportService {
     string list_app_group_db_files();
     string read_kdbx_from_app_group([ByRef] string json_args);
     string all_entries_on_db_open([ByRef] string json_args);
-    //////
+    
 };
 
 // Android specific APIs. Called from Kotlin side to Rust

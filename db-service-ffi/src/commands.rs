@@ -249,6 +249,42 @@ macro_rules! wrap_no_arg_ok_call {
     }};
 }
 
+#[macro_export]
+macro_rules! parse_command_args_or_json_error {
+    ($json_args:expr,$enum_name:tt {$($enum_vals:tt)*}) => {
+        {
+            let Ok(CommandArg::$enum_name{$($enum_vals)*}) = serde_json::from_str::<CommandArg>($json_args) else {
+                let ename = stringify!($enum_name);
+                let error_msg = format!("Invalid command args received {} for the api call. Expected a valid CommandArg::{}",
+                                        &$json_args.clone(), &ename);
+                return error_json_str(&error_msg)
+            };
+            ($($enum_vals)*,)
+        }
+    };
+}
+
+// Parses the passed json string to a matched CommandArg enum
+// Returns the field values of the matched enum member as tuple or Err
+#[macro_export]
+macro_rules! parse_command_args_or_err {
+    ($json_args:expr,$enum_name:tt {$($enum_vals:tt)*}) => {
+        {
+            let Ok(CommandArg::$enum_name{$($enum_vals)*}) = serde_json::from_str::<CommandArg>($json_args) else {
+                let ename = stringify!($enum_name);
+                let error_msg = format!("Invalid command args received {} for the api call. Expected a valid CommandArg::{}",
+                                        &$json_args.clone(), &ename);
+                return Err(OkpError::UnexpectedError(error_msg));
+                // return Err(OkpError::UnexpectedError(format!(
+                //     "Unexpected argument {:?} for copy_file_to_app_group api call",
+                //     $json_args
+                // )));
+            };
+            ($($enum_vals)*,)
+        }
+    };
+}
+
 pub struct Commands {}
 
 impl Commands {
@@ -410,7 +446,7 @@ impl Commands {
 
             //// Async related
             "start_polling_entry_otp_fields" => {
-                service_ok_call! (args, StartEntryOtpArg {db_key,entry_uuid,otp_fields} => 
+                service_ok_call! (args, StartEntryOtpArg {db_key,entry_uuid,otp_fields} =>
                     async_service start_polling_entry_otp_fields(&db_key,&entry_uuid,otp_fields))
             }
 
@@ -587,7 +623,7 @@ impl Commands {
         Ok(())
     }
 
-    fn update_preference(preference_data:PreferenceData) -> OkpResult<()>   {
+    fn update_preference(preference_data: PreferenceData) -> OkpResult<()> {
         Ok(AppState::global().update_preference(preference_data))
     }
 
@@ -674,20 +710,11 @@ impl Commands {
         }
     }
 
-    fn remove_from_recently_used(args: &str) -> String {
-        if let Ok(CommandArg::DbKey { db_key }) = serde_json::from_str(args) {
-            remove_app_files(&db_key);
-            log::debug!(
-                "Calling close_kdbx for {} after deleting recent infos, backfiles etc",
-                &db_key
-            );
-            InvokeResult::from(db_service::close_kdbx(&db_key)).json_str()
-        } else {
-            error_json_str(&format!(
-                "Unexpected args passed to remove db from list {:?}",
-                args
-            ))
-        }
+    fn remove_from_recently_used(args: &str) -> ResponseJson {
+        let (db_key,) = parse_command_args_or_json_error!(args, DbKey { db_key });
+        remove_app_files(&db_key);
+
+        InvokeResult::from(db_service::close_kdbx(&db_key)).json_str()
     }
 
     // Gets the recent files list
@@ -704,10 +731,10 @@ impl Commands {
     fn load_language_translations(language_ids: Vec<String>) -> OkpResult<TranslationResource> {
         let current_locale_language = util::current_locale_language();
         debug!("current_locale is {}", &current_locale_language);
-        
-        let prefered_language = AppState::global().language(); //current_locale_language.clone(); 
+
+        let prefered_language = AppState::global().language(); //current_locale_language.clone();
         debug!("prefered_language is {}", &prefered_language);
-        
+
         let language_ids_to_load = if !language_ids.is_empty() {
             language_ids
         } else {
@@ -779,6 +806,12 @@ pub fn remove_app_files(db_key: &str) {
 
     #[cfg(target_os = "ios")]
     ios::delete_book_mark_data(&db_key);
+
+    #[cfg(target_os = "ios")]
+    {
+        let r = crate::ios::app_group::delete_copied_autofill_details(&db_key);
+        log::debug!("Delete of copied db data done with result {:?}", r);
+    }
 }
 
 pub fn ok_json_str<T: serde::Serialize>(val: T) -> ResponseJson {

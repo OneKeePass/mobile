@@ -16,7 +16,10 @@ kotlin-src-dir := "./target/kotlin"
 
 ios-db-service-ffi-dir  := "../ios/OneKeePassMobile/DbServiceFFI"
 ios-db-service-ffi-lib-dir  := "../ios/OneKeePassMobile/DbServiceFFILib"
-ios-lib-output := "target/libdb_service_ffi.a"
+#ios-lib-output := "target/libdb_service_ffi.a"
+
+ios-sim-debug-lib-output := "target/aarch64-apple-ios-sim/debug/libdb_service_ffi.dylib"
+ios-device-release-lib-output := "target/aarch64-apple-ios/release/libdb_service_ffi.dylib"
 
 
 ## cargo install uniffi_bindgen 
@@ -36,10 +39,28 @@ ios_sim_sdk_root := `xcrun --sdk iphonesimulator  --show-sdk-path`
 
 ios_sdk_root := `xcrun --sdk iphoneos --show-sdk-path`
 
+uniffi-generate := "../uniffi-bindgen/target/release/uniffi-bindgen generate"
 
 generate-swift:
     mkdir  -p {{swift-src-dir}}
     ../uniffi-bindgen/target/release/uniffi-bindgen generate -l swift {{udl_src}} --out-dir {{swift-src-dir}}
+
+
+generate-swift-sim-debug:
+    mkdir  -p {{swift-src-dir}}
+    {{ uniffi-generate }} -l swift --lib-file {{ios-sim-debug-lib-output}} --out-dir {{swift-src-dir}} {{udl_src}}
+
+generate-swift-device-release:
+    mkdir  -p {{swift-src-dir}}
+    {{ uniffi-generate }} -l swift --lib-file {{ios-device-release-lib-output}} --out-dir {{swift-src-dir}} {{udl_src}}
+
+# generate-swift-use-lib type="":
+#     mkdir  -p {{swift-src-dir}}
+#     ../uniffi-bindgen/target/release/uniffi-bindgen generate -l swift --lib-file {{ if type == "sim-debug" {ios-sim-debug-lib-output} else {ios-device-release-lib-output} }} --out-dir {{swift-src-dir}} {{udl_src}}
+
+# generate-swift-test:
+#     mkdir  -p {{swift-src-dir}}
+#     ../uniffi-bindgen/target/release/uniffi-bindgen generate -l swift --lib-file target/aarch64-apple-ios-sim/debug/libdb_service_ffi.dylib --out-dir {{swift-src-dir}} {{udl_src}}
 
 
 # build-ios-device-lib-release:
@@ -79,7 +100,7 @@ build-ios-device-lib release="":
     cargo build --target aarch64-apple-ios {{ if release == "true" {"--release" } else {""}  }}
 
 ## Call 'just bcis'
-cp-ios-ffi-sim-debug-lib-src: build-ios-sim-lib-debug generate-swift
+cp-ios-ffi-sim-debug-lib-src: build-ios-sim-lib-debug generate-swift-sim-debug
     cp -R {{swift-src-dir}}/ {{ios-db-service-ffi-dir}}
     cp target/aarch64-apple-ios-sim/debug/libdb_service_ffi.a {{ios-db-service-ffi-lib-dir}} 
       

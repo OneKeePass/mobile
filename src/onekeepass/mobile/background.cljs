@@ -370,12 +370,54 @@
                           (api-args->json {:db-key db-key :new-db-key new-db-key})))
                   dispatch-fn))
 
-;; A temp one for autofill 
-(defn ios-copy-file-to-group [db-key dispatch-fn]
+;;;;;;   For autofill and ios app group related calls
+
+(defn ios-autofill-invoke-api
+  "Called to invoke commands from ffi
+   The arg 'name' is the name of backend fn to call
+   The args 'api-args' is map that provides arguments to the ffi fns (commands.rs) on the backend 
+   The arg 'dispatch-fn' is called with the returned map (parsed from a json string)
+   The final arg is an optional map 
+  "
+  [name api-args dispatch-fn &
+   {:keys [convert-request args-keys-excluded convert-response convert-response-fn]
+    :or {convert-request true
+         args-keys-excluded nil
+         convert-response true}}]
+  (call-api-async (fn [] (.autoFillInvokeCommand okp-db-service
+                                         name
+                                         (api-args->json api-args
+                                                         :convert-request convert-request
+                                                         :args-keys-excluded args-keys-excluded)))
+                  dispatch-fn :convert-response convert-response :convert-response-fn convert-response-fn))
+
+
+(defn ios-copy-files-to-group [db-key dispatch-fn] 
+  (ios-autofill-invoke-api "copy_files_to_app_group" {:db-key db-key} dispatch-fn))
+
+(defn ios-delete-copied-autofill-details [db-key dispatch-fn]
+  (ios-autofill-invoke-api "delete_copied_autofill_details" {:db-key db-key} dispatch-fn))
+
+(defn ios-query-autofill-db-info [db-key dispatch-fn] 
+  (ios-autofill-invoke-api "query_autofill_db_info" {:db-key db-key} dispatch-fn))
+
+#_(defn ios-copy-files-to-group 
+  "Called to copy this db's content and its associated files (key files, bookmarks? etc ) to app group container"
+  [db-key dispatch-fn]
   (call-api-async (fn [] (.copyFileToAppGroup
                           okp-db-service
                           (api-args->json {:db-key db-key})))
                   dispatch-fn))
+
+#_(defn ios-delete-app-group-files 
+  "Called to delete all previously copied files from app group container dir for this db"
+  [db-key dispatch-fn]
+  (call-api-async (fn [] (.deleteAppGroupFiles
+                          okp-db-service
+                          (api-args->json {:db-key db-key})))
+                  dispatch-fn))
+
+;;;;;;;;
 
 ;; 
 (defn android-pick-on-save-error-save-as [kdbx-file-name dispatch-fn]

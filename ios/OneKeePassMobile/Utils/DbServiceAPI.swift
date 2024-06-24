@@ -7,6 +7,7 @@ class DbServiceAPI {
   static let logger = OkpLogger(tag: "DbServiceAPI")
   
   private static var _iosSupportService = IosSupportService()
+  private static var _iosAppGroupSupportService = IosAppGroupSupportService()
   private static var _jsonService = JsonService()
 
   static var initialized = false
@@ -36,6 +37,13 @@ class DbServiceAPI {
 
   static func iosSupportService() -> IosSupportService {
     _iosSupportService
+  }
+
+  //IMPORTANT:
+  //'IosSupportService()' is swift class contruction  whereas 'iosSupportService()' is func defined here
+  // Note the diff between 'Ios' (First letter is uppercase) vs 'ios' (all are lowercase) 
+  static func iosAppGroupSupportService() -> IosAppGroupSupportService {
+    _iosAppGroupSupportService
   }
   
   static func jsonService() -> JsonService {
@@ -97,6 +105,14 @@ class CommonDeviceServiceImpl: CommonDeviceService {
 //
 //    cmnLogger.debug("$$$$$ orResource is \(String(describing: p))")
 //
+    
+    
+    
+    // TODO:
+    // Need to use "Libary" or "Library/Application Support"  instead of using 'Documents' as app_home dir
+    // Existing prefernce.json, bookmarked,backup and keyfiles are need to be copied to the new app_home accordingly
+    // See
+    //https://developer.apple.com/library/archive/documentation/FileManagement/Conceptual/FileSystemProgrammingGuide/FileSystemOverview/FileSystemOverview.html#//apple_ref/doc/uid/TP40010672-CH2-SW13
     
     return NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).first!
   }

@@ -195,16 +195,81 @@ pub fn delete_key_file(key_file_name_component: &str) {
 
 #[inline]
 pub fn current_locale_language() -> String {
-  // "en-US" language+region
-  // We use the language part only to locate translation json files
-  let lng = sys_locale::get_locale().unwrap_or_else(|| String::from("en"));
+    // "en-US" language+region
+    // We use the language part only to locate translation json files
+    let lng = sys_locale::get_locale().unwrap_or_else(|| String::from("en"));
 
-  // Returns the language id ( two letters)
-  lng
-    .split("-")
-    .map(|s| s.to_string())
-    .next()
-    .unwrap_or_else(|| String::from("en"))
+    // Returns the language id ( two letters)
+    lng.split("-")
+        .map(|s| s.to_string())
+        .next()
+        .unwrap_or_else(|| String::from("en"))
+}
+
+////
+
+/*
+fn copy_dir_all(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> io::Result<()> {
+    fs::create_dir_all(&dst)?;
+    for entry in fs::read_dir(src)? {
+        let entry = entry?;
+        let ty = entry.file_type()?;
+        if ty.is_dir() {
+            copy_dir_all(entry.path(), dst.as_ref().join(entry.file_name()))?;
+        } else {
+            fs::copy(entry.path(), dst.as_ref().join(entry.file_name()))?;
+        }
+    }
+    Ok(())
+}
+*/
+
+// Copies all files found under a source dir to the target directory
+// Sub directories are ignored
+
+pub fn copy_files<P: AsRef<Path>, Q: AsRef<Path>>(src_dir: P, target_dir: Q) {
+    if let Ok(entries) = fs::read_dir(src_dir) {
+        for entry in entries {
+            if let Ok(e) = entry {
+                //  we only copy key files and sub dir copying done
+                if let Ok(ft) = e.file_type() {
+                    if ft.is_file() {
+                        match fs::copy(e.path(), target_dir.as_ref().join(e.file_name())) {
+                            Ok(_) => {}
+                            Err(e) => {
+                                log::error!(
+                                    "Copying a file to dir {:?} failed with error {} ",
+                                    &target_dir.as_ref(),
+                                    e
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub fn is_dir_empty<P: AsRef<Path>>(parent_dir: P) -> bool {
+    let mut cnt = 0;
+    if let Ok(entries) = parent_dir.as_ref().read_dir() {
+        // In simulator, macOS creates ".DS_Store" file and we need to ignore
+        // this file to check whether the dir is empty or not
+        // In iOS, this meta file is not created
+        for e in entries {
+            if let Ok(v) = e {
+                debug!("File name under data dir is {:?}", v.file_name());
+                if v.file_name() == ".DS_Store" {
+                    continue;
+                } else {
+                    cnt += 1;
+                    break;
+                }
+            }
+        }
+    }
+    cnt == 0
 }
 
 #[cfg(test)]
@@ -214,5 +279,4 @@ mod tests {
     fn verify1() {
         println!("A test module");
     }
-
 }

@@ -1,8 +1,14 @@
+#[cfg(target_os = "ios")]
+pub(crate) mod app_group;
+#[cfg(target_os = "ios")]
+pub use app_group::*;
+
 use crate::app_state::AppState;
 use crate::commands::{
     error_json_str, remove_app_files, result_json_str, CommandArg, InvokeResult, ResponseJson,
 };
 use crate::{open_backup_file, util, OkpError, OkpResult};
+
 use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -218,36 +224,13 @@ impl IosSupportService {
     }
 
     pub fn read_kdbx_from_app_group(&self, json_args: &str) -> ResponseJson {
-        // let inner_fn = || -> OkpResult<db_service::KdbxLoaded> {
-        //     let CommandArg::OpenDbArg {
-        //         db_file_name,
-        //         password,
-        //         key_file_name,
-        //     } = serde_json::from_str(&json_args)?
-        //     else {
-        //         return Err(OkpError::UnexpectedError(format!(
-        //             "Argument 'json_args' {:?} parsing failed for readkdbx api call",
-        //             json_args
-        //         )));
-        //     };
-        //     let mut file = File::open(&util::url_to_unix_file_name(&db_file_name))?;
-        //     let file_name = AppState::global().uri_to_file_name(&db_file_name);
-
-        //     let kdbx_loaded = db_service::read_kdbx(
-        //         &mut file,
-        //         &db_file_name,
-        //         password.as_deref(),
-        //         key_file_name.as_deref(),
-        //         Some(&file_name),
-        //     )?;
-
-        //     Ok(kdbx_loaded)
-        // };
-
         result_json_str(self.internal_read_kdbx_from_app_group(&json_args))
     }
 
-    fn internal_read_kdbx_from_app_group(&self, json_args: &str) -> OkpResult<db_service::KdbxLoaded>{
+    fn internal_read_kdbx_from_app_group(
+        &self,
+        json_args: &str,
+    ) -> OkpResult<db_service::KdbxLoaded> {
         let CommandArg::OpenDbArg {
             db_file_name,
             password,
@@ -275,12 +258,16 @@ impl IosSupportService {
 
     pub fn all_entries_on_db_open(&self, json_args: &str) -> ResponseJson {
         let Ok(kdbx_loaded) = self.internal_read_kdbx_from_app_group(json_args) else {
-            return error_json_str(&format!("Opening databse failed from the app group location"));
+            return error_json_str(&format!(
+                "Opening databse failed from the app group location"
+            ));
         };
-        let r = db_service::entry_summary_data(&kdbx_loaded.db_key, db_service::EntryCategory::AllEntries);
+        let r = db_service::entry_summary_data(
+            &kdbx_loaded.db_key,
+            db_service::EntryCategory::AllEntries,
+        );
         result_json_str(r)
     }
-
 }
 
 // Dummy implemenation
@@ -311,6 +298,24 @@ impl IosSupportService {
     }
 
     pub fn complete_save_as_on_error(&self, _json_args: &str) -> String {
+        unimplemented!();
+    }
+
+    ///
+
+    pub fn copy_file_to_app_group(&self, json_args: &str) -> ResponseJson {
+        unimplemented!();
+    }
+
+    pub fn list_app_group_db_files(&self) -> ResponseJson {
+        unimplemented!();
+    }
+
+    pub fn read_kdbx_from_app_group(&self, json_args: &str) -> ResponseJson {
+        unimplemented!();
+    }
+
+    pub fn all_entries_on_db_open(&self, json_args: &str) -> ResponseJson {
         unimplemented!();
     }
 }

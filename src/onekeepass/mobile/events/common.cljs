@@ -916,25 +916,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; A temp one for autofill 
-
-(defn ios-copy-file-to-group []
-  (dispatch [:ios-copy-file-to-group]))
-
-;;ios-copy-file-to-group
-(reg-event-fx
- :ios-copy-file-to-group
- (fn [{:keys [db]} [_event-id]]
-   {:fx [[:bg-ios-copy-file-to-group [(active-db-key db)]]]}))
-
-(reg-fx
- :bg-ios-copy-file-to-group
- (fn [[db-key]]
-   (bg/ios-copy-file-to-group db-key (fn [api-reponse]
-                                       (when-not (on-error api-reponse)
-                                         (dispatch [:common/message-snackbar-open "Databse Autofill ready"]))))))
-
-
 (comment
   (in-ns 'onekeepass.mobile.events.common)
 
