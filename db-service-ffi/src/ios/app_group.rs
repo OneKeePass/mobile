@@ -1,10 +1,12 @@
 use std::{
-    fs,
+    fs::{self, File},
     path::{Path, PathBuf},
 };
 
 use log::debug;
-use onekeepass_core::db_service::{copy_and_write_autofill_ready_db, string_to_simple_hash};
+use onekeepass_core::db_service::{
+    self, copy_and_write_autofill_ready_db, string_to_simple_hash, EntrySummary,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -12,6 +14,8 @@ use crate::{
     commands::{error_json_str, result_json_str, CommandArg, InvokeResult, ResponseJson},
     parse_command_args_or_err, util, OkpError, OkpResult,
 };
+
+use super::IosApiCallbackImpl;
 
 const AG_DATA_FILES: &str = "db_files";
 
@@ -22,11 +26,6 @@ const META_JSON_FILE_NAME: &str = "autofill_meta.json";
 const META_JSON_FILE_VERSION: &str = "1.0.0";
 
 /////////  Some public exposed fns ////////////////
-
-// Called from app side when a db is removed from the list of dbs shown on the home page
-// pub(crate) fn remove_from_copied_db_list(db_key: &str) {
-//     AutoFillMeta::read().remove_copied_db_info(db_key);
-// }
 
 pub(crate) fn delete_copied_autofill_details(db_key: &str) -> OkpResult<()> {
     let db_file_root = app_group_root_sub_dir(AG_DATA_FILES)?;
@@ -69,11 +68,11 @@ fn app_group_root_sub_dir(sub_dir_name: &str) -> OkpResult<PathBuf> {
 
 fn autofill_meta_json_file() -> Option<PathBuf> {
     let Some(app_group_home_dir) = &AppState::global().app_group_home_dir else {
-        return None
+        return None;
     };
-    
+
     let pref_file_name = Path::new(app_group_home_dir).join(META_JSON_FILE_NAME);
-        debug!("AutoFillMeta is {:?} ", &pref_file_name);
+    debug!("AutoFillMeta is {:?} ", &pref_file_name);
 
     Some(pref_file_name)
 }
@@ -120,16 +119,7 @@ impl Default for AutoFillMeta {
 
 impl AutoFillMeta {
     fn read() -> Self {
-        // let Some(app_group_home_dir) = &AppState::global().app_group_home_dir else {
-        //     // This else clause should not happen!
-        //     return Self::default();
-        // };
-
-        // let pref_file_name = Path::new(app_group_home_dir).join(META_JSON_FILE_NAME);
-        
-
-
-        let Some(pref_file_name) = autofill_meta_json_file() else  {
+        let Some(pref_file_name) = autofill_meta_json_file() else {
             return Self::default();
         };
 
@@ -146,25 +136,8 @@ impl AutoFillMeta {
         }
     }
 
-    // fn write(&self, app_group_home_dir: &str) {
-    //     let json_str_result = serde_json::to_string_pretty(self);
-    //     let pref_file_name = Path::new(app_group_home_dir).join(META_JSON_FILE_NAME);
-    //     if let Ok(json_str) = json_str_result {
-    //         if let Err(err) = fs::write(pref_file_name, json_str.as_bytes()) {
-    //             log::error!(
-    //                 "AutoFillMeta file write failed and error is {}",
-    //                 err.to_string()
-    //             );
-    //         }
-    //     }
-    // }
-
     fn write_to_app_group_dir(&self) {
-        // if let Some(app_group_home_dir) = &AppState::global().app_group_home_dir {
-        //     self.write(&app_group_home_dir);
-        // };
-
-        if let Some(pref_file_name) = autofill_meta_json_file()   {
+        if let Some(pref_file_name) = autofill_meta_json_file() {
             let json_str_result = serde_json::to_string_pretty(self);
             if let Ok(json_str) = json_str_result {
                 if let Err(err) = fs::write(pref_file_name, json_str.as_bytes()) {
@@ -175,7 +148,6 @@ impl AutoFillMeta {
                 }
             }
         };
-
     }
 
     fn find_copied_dbs_info(&self, org_db_file_path: &str) -> Option<CopiedDbFileInfo> {
@@ -183,6 +155,10 @@ impl AutoFillMeta {
             .iter()
             .find(|v| v.org_db_file_path == org_db_file_path)
             .cloned()
+    }
+
+    fn get_copied_dbs_info(&self) -> &Vec<CopiedDbFileInfo> {
+        &self.copied_dbs_info
     }
 
     fn add_copied_db_info(&mut self, copied_db_info: CopiedDbFileInfo) -> &mut Self {
@@ -216,7 +192,6 @@ impl AutoFillMeta {
 
 // See the targets 'generate-swift-sim-debug', 'generate-swift-device-release' where we use '--lib-file'  option
 
-
 // #[uniffi::export]
 // pub fn my_app_group_init() {
 //     debug!("app_group_init is called");
@@ -231,8 +206,6 @@ struct IosAppGroupSupportService {}
 impl IosAppGroupSupportService {
     fn internal_copy_files_to_app_group(&self, json_args: &str) -> OkpResult<CopiedDbFileInfo> {
         let (db_key,) = parse_command_args_or_err!(json_args, DbKey { db_key });
-
-        //let vals1 = command_ok_vals!(json_args,EntrySummaryArg {db_key,entry_category});
 
         let file_name = AppState::global().uri_to_file_name(&db_key);
         debug!("File name from db_file_name  is {} ", &file_name);
@@ -290,11 +263,70 @@ impl IosAppGroupSupportService {
 
         result_json_str(inner_fn())
     }
+
+    fn list_of_autofill_db_infos(&self) -> ResponseJson {
+        let v = AutoFillMeta::read().get_copied_dbs_info().clone();
+        result_json_str(Ok(v))
+    }
+
+    fn all_entries_on_db_open(&self, json_args: &str) -> ResponseJson {
+        let inner_fn = || -> OkpResult<Vec<EntrySummary>> {
+            let (db_file_name, password, key_file_name) = parse_command_args_or_err!(
+                json_args,
+                OpenDbArg {
+                    db_file_name,
+                    password,
+                    key_file_name
+                }
+            );
+
+            let mut file = File::open(&util::url_to_unix_file_name(&db_file_name))?;
+            let file_name = AppState::global().uri_to_file_name(&db_file_name);
+
+            let kdbx_loaded = db_service::read_kdbx(
+                &mut file,
+                &db_file_name,
+                password.as_deref(),
+                key_file_name.as_deref(),
+                Some(&file_name),
+            )?;
+
+            let r = db_service::entry_summary_data(
+                &kdbx_loaded.db_key,
+                db_service::EntryCategory::AllEntries,
+            );
+
+            r
+        };
+
+        result_json_str(inner_fn())
+    }
+
+    fn clipboard_copy(&self, json_args: &str) -> ResponseJson {
+
+        let inner_fn = || -> OkpResult<()> {
+            let (_field_name,field_value,_protected,cleanup_after) = parse_command_args_or_err!(
+                json_args,
+                ClipboardCopyArg {
+                    field_name,field_value,protected,cleanup_after
+                }
+            );
+
+            IosApiCallbackImpl::api_service().clipboard_copy_string(field_value, cleanup_after)?;
+
+            Ok(())
+        };
+
+        result_json_str(inner_fn())
+    }
+
 }
 
 // Here we implement all fns of this struct that are exported
 // as part of 'interface IosAppGroupSupportService' and they are bindings
 // generated in Swift which are used in ios layer
+
+// All fns implemented here are exported to use in Swift because of '#[uniffi::export]'
 
 #[uniffi::export]
 impl IosAppGroupSupportService {
@@ -307,127 +339,68 @@ impl IosAppGroupSupportService {
 
     pub fn invoke(&self, command_name: &str, json_args: &str) -> ResponseJson {
         let r = match command_name {
+            // Used in app
             "copy_files_to_app_group" => self.copy_files_to_app_group(json_args),
             "delete_copied_autofill_details" => self.delete_copied_autofill_details(json_args),
             "query_autofill_db_info" => self.query_autofill_db_info(json_args),
-            x => error_json_str(&format!("Invalid command or args: Command call {} with args {} failed",x,&json_args)),
+
+            // Used in extension
+            "list_of_autofill_db_infos" => self.list_of_autofill_db_infos(),
+            "all_entries_on_db_open" => self.all_entries_on_db_open(json_args),
+
+            "clipboard_copy" => self.clipboard_copy(json_args),
+
+            x => error_json_str(&format!(
+                "Invalid command or args: Command call {} with args {} failed",
+                x, &json_args
+            )),
         };
 
         r
     }
-    /*
-    pub fn copy_files_to_app_group(&self, json_args: &str) -> ResponseJson {
-        let d = self.internal_copy_files_to_app_group(json_args);
-        result_json_str(d)
-    }
-
-    pub fn delete_copied_autofill_details(&self, json_args: &str) -> ResponseJson {
-        let inner_fn = || -> OkpResult<()> {
-            let (db_key,) = parse_command_args_or_err!(json_args, DbKey { db_key });
-            delete_copied_autofill_details(&db_key)?;
-            Ok(())
-        };
-        result_json_str(inner_fn())
-    }
-
-    pub fn query_autofill_db_info(&self, json_args: &str) -> ResponseJson {
-        let inner_fn = || -> OkpResult<Option<CopiedDbFileInfo>> {
-            let (db_key,) = parse_command_args_or_err!(json_args, DbKey { db_key });
-            let r = AutoFillMeta::read().find_copied_dbs_info(&db_key);
-            Ok(r)
-        };
-
-        result_json_str(inner_fn())
-    }
-    */
 }
 
 /*
-pub fn delete_app_group_files(&self, json_args: &str) -> ResponseJson {
-        let inner_fn = || -> OkpResult<()> {
-            let (db_key,) = parse_command_args_or_err!(json_args, DbKey { db_key });
-
-            let db_file_root = app_group_root_sub_dir(AG_DATA_FILES)?;
-            let hash_of_db_key = string_to_simple_hash(&db_key).to_string();
-
-            let group_db_file_dir = Path::new(&db_file_root).join(&hash_of_db_key);
-
-            let r = fs::remove_dir_all(&group_db_file_dir);
-            log::debug!(
-                "Delete data file dir {:?} result {:?}",
-                &group_db_file_dir,
-                r
-            );
-
-            // for entry in db_file_root.read_dir().unwrap() {
-            //     debug!("Entry is {:?}",entry);
-            // }
-
-            // if let Ok(entries) = db_file_root.read_dir() {
-            //     let mut cnt = 0;
-            //     // In simulator, macOS creates ".DS_Store" file and we need to ignore
-            //     // this file to check whether the dir is empty or not
-            //     // In iOS, this meta file is not created
-            //     for e in entries {
-            //         if let Ok(v) = e {
-            //             debug!("File name under data dir is {:?}",v.file_name());
-            //             if v.file_name() == ".DS_Store" {
-            //                 continue;
-            //             } else {
-            //                 cnt +=1 ;
-            //                 break;
-            //             }
-            //         }
-            //     }
-            //     if cnt == 0 {
-            //         let app_group_key_file_dir = app_group_root_sub_dir(AG_KEY_FILES)?;
-            //         let _r = fs::remove_dir_all(&app_group_key_file_dir);
-            //         debug!("Removed key files ....")
-            //     }
-            // }
-
-            if util::is_dir_empty(&db_file_root) {
-                let app_group_key_file_dir = app_group_root_sub_dir(AG_KEY_FILES)?;
-                let r = fs::remove_dir_all(&app_group_key_file_dir);
-                log::debug!(
-                    "Delete key files dir {:?} result {:?}",
-                    &group_db_file_dir,
-                    r
-                );
-            }
-
-            AutoFillMeta::read().remove_copied_db_info(&db_key);
-
-            Ok(())
-        };
-
-        result_json_str(inner_fn())
-    }
-
-*/
-
-/*
-fn create_sub_dir(dir_name:&str) -> OkpResult<PathBuf>  {
-    let Some(app_group_home_dir) = &AppState::global().app_group_home_dir else {
-        return Err(OkpError::UnexpectedError(
-            "No app group home dir is found".into(),
-        ));
-    };
-    debug!("App group home dir is {:?} ", &app_group_home_dir);
-
-    let db_file_root = Path::new(&app_group_home_dir).join(dir_name);
-    // Ensure that the parent dir exists
-    if !db_file_root.exists() {
-        if let Err(e) = std::fs::create_dir_all(&db_file_root) {
-            log::error!("Directory creation under app group home dir failed {:?}", e);
+fn internal_read_kdbx_from_app_group(
+        &self,
+        json_args: &str,
+    ) -> OkpResult<db_service::KdbxLoaded> {
+        let CommandArg::OpenDbArg {
+            db_file_name,
+            password,
+            key_file_name,
+        } = serde_json::from_str(&json_args)?
+        else {
             return Err(OkpError::UnexpectedError(format!(
-                "Directory creation under app group home dir failed {:?}",
-                e
+                "Argument 'json_args' {:?} parsing failed for readkdbx api call",
+                json_args
             )));
-        }
-        log::debug!("Created dir {:?}", &db_file_root);
+        };
+        let mut file = File::open(&util::url_to_unix_file_name(&db_file_name))?;
+        let file_name = AppState::global().uri_to_file_name(&db_file_name);
+
+        let kdbx_loaded = db_service::read_kdbx(
+            &mut file,
+            &db_file_name,
+            password.as_deref(),
+            key_file_name.as_deref(),
+            Some(&file_name),
+        )?;
+
+        Ok(kdbx_loaded)
     }
-    Ok(db_file_root)
-}
+
+    pub fn all_entries_on_db_open(&self, json_args: &str) -> ResponseJson {
+        let Ok(kdbx_loaded) = self.internal_read_kdbx_from_app_group(json_args) else {
+            return error_json_str(&format!(
+                "Opening databse failed from the app group location"
+            ));
+        };
+        let r = db_service::entry_summary_data(
+            &kdbx_loaded.db_key,
+            db_service::EntryCategory::AllEntries,
+        );
+        result_json_str(r)
+    }
 
 */

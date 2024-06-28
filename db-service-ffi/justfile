@@ -4,7 +4,7 @@ alias bca := build-android-lib-cp-src
 ## Android release
 alias bca-r := build-android-lib-cp-src-release 
 
-alias gs := generate-swift
+#alias gs := generate-swift
 alias bcis := cp-ios-ffi-sim-debug-lib-src
 alias bcid := cp-ios-ffi-device-debug-lib-src
 ## iOS release
@@ -19,6 +19,9 @@ ios-db-service-ffi-lib-dir  := "../ios/OneKeePassMobile/DbServiceFFILib"
 #ios-lib-output := "target/libdb_service_ffi.a"
 
 ios-sim-debug-lib-output := "target/aarch64-apple-ios-sim/debug/libdb_service_ffi.dylib"
+
+ios-device-debug-lib-output := "target/aarch64-apple-ios/debug/libdb_service_ffi.dylib"
+
 ios-device-release-lib-output := "target/aarch64-apple-ios/release/libdb_service_ffi.dylib"
 
 
@@ -41,14 +44,19 @@ ios_sdk_root := `xcrun --sdk iphoneos --show-sdk-path`
 
 uniffi-generate := "../uniffi-bindgen/target/release/uniffi-bindgen generate"
 
-generate-swift:
-    mkdir  -p {{swift-src-dir}}
-    ../uniffi-bindgen/target/release/uniffi-bindgen generate -l swift {{udl_src}} --out-dir {{swift-src-dir}}
+# This uses only the udl file
+# generate-swift:
+#     mkdir  -p {{swift-src-dir}}
+#     ../uniffi-bindgen/target/release/uniffi-bindgen generate -l swift {{udl_src}} --out-dir {{swift-src-dir}}
 
 
 generate-swift-sim-debug:
     mkdir  -p {{swift-src-dir}}
     {{ uniffi-generate }} -l swift --lib-file {{ios-sim-debug-lib-output}} --out-dir {{swift-src-dir}} {{udl_src}}
+
+generate-swift-device-debug:
+    mkdir  -p {{swift-src-dir}}
+    {{ uniffi-generate }} -l swift --lib-file {{ios-device-debug-lib-output}} --out-dir {{swift-src-dir}} {{udl_src}}
 
 generate-swift-device-release:
     mkdir  -p {{swift-src-dir}}
@@ -108,14 +116,14 @@ cp-ios-ffi-sim-debug-lib-src: build-ios-sim-lib-debug generate-swift-sim-debug
 ## Builds the debug ios static lib for device and copies that lib file and the swift bindings generated 
 ## Used during dev time device testing
 ## Call 'just bcid'
-cp-ios-ffi-device-debug-lib-src: build-ios-device-lib-debug generate-swift
+cp-ios-ffi-device-debug-lib-src: build-ios-device-lib-debug generate-swift-device-debug
     cp -R {{swift-src-dir}}/ {{ios-db-service-ffi-dir}}
     cp target/aarch64-apple-ios/debug/libdb_service_ffi.a {{ios-db-service-ffi-lib-dir}} 
     
 
 ## Builds the release ios static lib for device and copies that lib file and the swift bindings generated
 ## Call 'just bcid-r'
-cp-ios-ffi-device-release-lib-src:build-ios-device-lib-release generate-swift
+cp-ios-ffi-device-release-lib-src:build-ios-device-lib-release generate-swift-device-release
     cp -R {{swift-src-dir}}/ {{ios-db-service-ffi-dir}}
     cp target/aarch64-apple-ios/release/libdb_service_ffi.a {{ios-db-service-ffi-lib-dir}} 
 

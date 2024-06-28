@@ -60,15 +60,12 @@
 
 (def OTP_URL_PREFIX "otpauth://totp")
 
-;; 'granted' | 'not-determined' | 'denied' | 'restricted'
-(def CAMERA_PERMISSION_GRANTED "granted")
-(def CAMERA_PERMISSION_DENIED "denied")
-(def CAMERA_PERMISSION_NOT_DETERMINED "not-determined")
-(def CAMERA_PERMISSION_RESTRICTED "restricted")
-
 
 ;;; Page ids
-(def CAMERA_SCANNER_PAGE_ID :scan-otp-qr)
+
+(def FLEX-DIR-ROW "row")
+
+(def FLEX-DIR-COL "column")
 
 
 ;;;;;;; Icon names ;;;;;

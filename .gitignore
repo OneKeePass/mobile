@@ -14,9 +14,12 @@ node_modules/
 .lsp/
 .calva/
 .clj-kondo/.cache
+js/.clj-kondo/.cache
+cljs-ios-autofill-extension/.clj-kondo/.cache
 src/.clj-kondo/.cache
 docs/.clj-kondo/.cache
 .rebel_readline_history
+
 
 /target
 /target-ios-autofill-extension

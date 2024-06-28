@@ -161,10 +161,30 @@
                                                          :args-keys-excluded args-keys-excluded)))
                   dispatch-fn :convert-response convert-response :convert-response-fn convert-response-fn))
 
-(defn list-app-group-db-files [dispatch-fn]
-  (invoke-api  "list_app_group_db_files" {} dispatch-fn))
 
-(defn read-kdbx-from-app-group
+(defn autofill-invoke-api
+  "Called to invoke commands from ffi
+   The arg 'name' is the name of backend fn to call
+   The args 'api-args' is map that provides arguments to the ffi fns (commands.rs) on the backend 
+   The arg 'dispatch-fn' is called with the returned map (parsed from a json string)
+   The final arg is an optional map 
+  "
+  [name api-args dispatch-fn &
+   {:keys [convert-request args-keys-excluded convert-response convert-response-fn]
+    :or {convert-request true
+         args-keys-excluded nil
+         convert-response true}}]
+  (call-api-async (fn [] (.autoFillInvokeCommand okp-db-service
+                                                 name
+                                                 (api-args->json api-args
+                                                                 :convert-request convert-request
+                                                                 :args-keys-excluded args-keys-excluded)))
+                  dispatch-fn :convert-response convert-response :convert-response-fn convert-response-fn))
+
+(defn list-app-group-db-files [dispatch-fn]
+  (autofill-invoke-api  "list_of_autofill_db_infos" {} dispatch-fn))
+
+#_(defn read-kdbx-from-app-group
   "Calls the API to read a kdbx file.
    Calls the dispatch-fn with the received map of type 'KdbxLoaded' 
   "
@@ -173,18 +193,43 @@
                              :password password
                              :key-file-name key-file-name} dispatch-fn))
 
-
 (defn all-entries-on-db-open
   "Calls the API to read a kdbx file.
    Calls the dispatch-fn with the received map of type 'KdbxLoaded' 
   "
   [db-key password key-file-name dispatch-fn]
-  (invoke-api "all_entries_on_db_open" {:db-file-name db-key
+  (autofill-invoke-api "all_entries_on_db_open" {:db-file-name db-key
                                           :password password
                                           :key-file-name key-file-name} dispatch-fn))
 
 (defn cancel-extension [dispatch-fn]
   (call-api-async (fn [] (.cancelExtension okp-db-service)) dispatch-fn))
+
+
+;;;;
+
+(defn search-term
+  [db-key term dispatch-fn]
+  (invoke-api "search_term" {:db-key db-key :term term} dispatch-fn))
+
+(defn- transform-response-entry-form-data
+  "
+  The response is a map with keys 'ok' and 'error'
+  All keys in the incoming raw EntryFormData map (found if there is no 'error' ) from backend will be transformed
+  using a custom key transformer "
+  [response]
+  (let [;; Get the entry data from "ok" key of the response
+        entry-form-data (get response "ok")
+        keys_exclude (->  entry-form-data (get "section_fields") keys vec)
+        t-fn (fn [k]
+               (if (contains-val? keys_exclude k)
+                 k
+                 (csk/->kebab-case-keyword k)))]
+    (cske/transform-keys t-fn response)))
+
+(defn find-entry-by-id [db-key entry-uuid dispatch-fn]
+  (invoke-api "get_entry_form_data_by_id" {:db_key db-key :uuid entry-uuid} dispatch-fn :convert-response-fn transform-response-entry-form-data))
+
 
 (comment
   ;;(call-api-async (fn [] (.cancelExtension okp-db-service)) #(println %))

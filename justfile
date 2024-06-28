@@ -51,7 +51,7 @@ ios-ext-cljcr:
     rm -rf target-ios-autofill-extension
     clj -A:ios-ext -M -m krell.main --host {{host}} -p {{ios-ext-port}} -co  build-ios-autofill-extension.edn --index-js-out index.ios.autofill.extension.js -wd {{ios-ext-dir}}  -c  -r
 
-# use 'just  ex-cljb advanced' for advanced compilation
+# use 'just ex-cljb advanced' for advanced compilation
 ios-ext-clj-build type="simple" :
     rm -rf target-ios-autofill-extension
     clj -A:ios-ext -M -m krell.main -O {{type}}  -co build-ios-autofill-extension.edn --index-js-out index.ios.autofill.extension.js -c

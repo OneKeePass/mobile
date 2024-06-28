@@ -10,6 +10,7 @@ class AutoFillDbServiceAPI {
   static let logger = OkpLogger(tag: "DbServiceAPI")
   
   private static var _iosSupportService = IosSupportService()
+  private static var _iosAppGroupSupportService = IosAppGroupSupportService()
   private static var _jsonService = JsonService()
 
   static var initialized = false
@@ -30,6 +31,10 @@ class AutoFillDbServiceAPI {
       let secKeyOps = SecureKeyOperationImpl()
       let eventDispatcher = BackendEventDispatcher()
       dbServiceInitialize(cmnService, secKeyOps, eventDispatcher)
+      
+      let apiCallBackService = ApiCallBackService()
+      iosCallbackServiceInitialize(apiCallBackService)
+      
       initialized = true
       Swift.debugPrint("API initialize is done")
     } else {
@@ -43,6 +48,13 @@ class AutoFillDbServiceAPI {
   
   static func jsonService() -> JsonService {
     _jsonService
+  }
+  
+  //IMPORTANT:
+  //'IosSupportService()' is swift class contruction  whereas 'iosSupportService()' is func defined here
+  // Note the diff between 'Ios' (First letter is uppercase) vs 'ios' (all are lowercase)
+  static func iosAppGroupSupportService() -> IosAppGroupSupportService {
+    _iosAppGroupSupportService
   }
 
   static func formJsonWithFileName(_ fullFileName: String) -> String {
@@ -83,21 +95,23 @@ class AutoFillDbServiceAPI {
   }
   
   static func invokeCommand(_ commandName: String, _ args: String) -> String {
+    OneKeePassAutoFill.invokeCommand(commandName, args)
+    
     // https://matteomanferdini.com/swift-switch/
     
-    switch (commandName, args) {
-    case let ("list_app_group_db_files", args):
-      return _iosSupportService.listAppGroupDbFiles()
-      
-    case let ("all_entries_on_db_open", args):
-      return _iosSupportService.allEntriesOnDbOpen(args)
-    
-    case let ("read_kdbx_from_app_group", args):
-      return _iosSupportService.readKdbxFromAppGroup(args)
-      
-    default:
-      return OneKeePassAutoFill.invokeCommand(commandName, args)
-    }
+//    switch (commandName, args) {
+//    case let ("list_app_group_db_files", args):
+//      return _iosSupportService.listAppGroupDbFiles()
+//      
+//    case let ("all_entries_on_db_open", args):
+//      return _iosSupportService.allEntriesOnDbOpen(args)
+//    
+//    case let ("read_kdbx_from_app_group", args):
+//      return _iosSupportService.readKdbxFromAppGroup(args)
+//      
+//    default:
+//      return OneKeePassAutoFill.invokeCommand(commandName, args)
+//    }
   }
 }
 

@@ -28,6 +28,11 @@ class DbServiceAPI {
       let secKeyOps = SecureKeyOperationImpl()
       let eventDispatcher = BackendEventDispatcher()
       dbServiceInitialize(cmnService, secKeyOps, eventDispatcher)
+      
+      let apiCallBackService = ApiCallBackService()
+      
+      iosCallbackServiceInitialize(apiCallBackService)
+      
       initialized = true
       Swift.debugPrint("API initialize is done")
     } else {

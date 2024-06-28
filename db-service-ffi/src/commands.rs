@@ -165,6 +165,13 @@ pub enum CommandArg {
         timer_id: Option<TimerID>,
     },
 
+    ClipboardCopyArg {
+        field_name:String,
+        field_value:String,
+        protected:bool,
+        cleanup_after:u32,
+    },
+
     // Should come after StartTimerArg
     StopTimerArg {
         timer_id: TimerID,

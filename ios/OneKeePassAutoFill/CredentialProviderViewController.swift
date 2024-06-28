@@ -17,14 +17,25 @@ class CredentialProviderViewController: ASCredentialProviderViewController, RCTB
   
   static var extContext:ASCredentialProviderExtensionContext?
   
+  class OkpViewController:UIViewController {
+    override func viewDidLoad() {
+      debugPrint("OkpViewController viewDidLoad is called")
+    }
+    
+    override func viewDidDisappear(_ animated: Bool) {
+      super.viewDidDisappear(animated)
+      debugPrint("OkpViewController viewDidDisappear is called \(animated)")
+      CredentialProviderViewController.cancelExtension()
+    }
+  }
+  
+    
   static func cancelExtension() {
     if extContext != nil {
       debugPrint("Going to cancel the extension view...")
       extContext!.cancelRequest(withError: NSError(domain: ASExtensionErrorDomain, code: ASExtensionError.userCanceled.rawValue))
     }
-    
     debugPrint("Extension view is cancelled")
-    
   }
  
   override func viewDidLoad() {
@@ -32,7 +43,18 @@ class CredentialProviderViewController: ASCredentialProviderViewController, RCTB
     CredentialProviderViewController.extContext = extensionContext
     debugPrint("viewDidLoad is called")
   }
-
+  
+  override func viewWillDisappear(_ animated: Bool) {
+    super.viewWillDisappear(animated)
+    debugPrint("viewWillDisappear is called \(animated)")
+  }
+  
+  
+  override func viewDidDisappear(_ animated: Bool) {
+    super.viewDidDisappear(animated)
+    debugPrint("viewDidDisappear is called \(animated)")
+  }
+  
   override func viewWillAppear(_ animated: Bool) {
     super.viewWillAppear(animated)
     logger.debug("viewWillAppear is called")
@@ -43,7 +65,7 @@ class CredentialProviderViewController: ASCredentialProviderViewController, RCTB
     super.didReceiveMemoryWarning()
     logger.debug("didReceiveMemoryWarning is called")
   }
-
+  
   func getBundleURL() -> URL! {
     #if DEBUG
       // index.ios.autofill.extension.js is the extension specific entry file
@@ -67,8 +89,8 @@ class CredentialProviderViewController: ASCredentialProviderViewController, RCTB
       moduleName: "OneKeePassMobile",
       initialProperties: nil
     )
-
-    let vc = UIViewController()
+    
+    let vc = OkpViewController() //UIViewController()
     vc.view = rootView
     present(vc, animated: true, completion: nil)
   }

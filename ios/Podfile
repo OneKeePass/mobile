@@ -70,9 +70,11 @@ end
 
 
 target 'OneKeePassAutoFill' do
-  config = use_native_modules!(packages_to_skip:['RNBootSplash','RNSVG', 'RNCClipboard','RNSVG','RNReanimated','RNFileViewer', 'VisionCamera', 
+  config = use_native_modules!(packages_to_skip:['RNBootSplash', 'RNCClipboard','RNReanimated','RNFileViewer', 'VisionCamera',
       'RNVectorIcons','RNDateTimePicker'
+      # 'RNSVG',
       #'RNGestureHandler'
+                               
 
     
     ])

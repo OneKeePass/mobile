@@ -5,7 +5,7 @@
   (:require #_["@date-io/date-fns" :as DateAdapter]
             ["@react-native-community/slider" :as rnc-slider]
             #_["react-i18next" :as ri18n]
-            #_["react-native-circular-progress" :as rn-circular-progress]
+            ["react-native-circular-progress" :as rn-circular-progress]
             ["react-native-gesture-handler" :as gh]
             ["react-native-modal-selector" :as rnms]
             ["react-native-paper" :as rnp]
@@ -236,7 +236,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; react-native-circular-progress ;;;;;;;;;;;;;;;;;;;;
 
-#_(def animated-circular-progress (r/adapt-react-class (.-AnimatedCircularProgress ^js/RNCircularProgress rn-circular-progress)))
+(def animated-circular-progress (r/adapt-react-class (.-AnimatedCircularProgress ^js/RNCircularProgress rn-circular-progress)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  All example components ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

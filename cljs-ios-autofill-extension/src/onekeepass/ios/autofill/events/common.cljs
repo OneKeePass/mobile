@@ -2,6 +2,7 @@
   "All common events that are used across many pages"
   (:require [clojure.string :as str]
             [onekeepass.ios.autofill.background :as bg]
+            [onekeepass.ios.autofill.events.common-dialogs] 
             [onekeepass.ios.autofill.utils :as u :refer [str->int tags->vec]]
             [re-frame.core :refer [dispatch dispatch-sync reg-event-db
                                    reg-event-fx reg-fx reg-sub subscribe]]))
@@ -22,8 +23,9 @@
 ;;;;;;;;;;;;;;;;
 
 (defn- default-error-fn [error]
-  (println "API returned error: " error)
+  ;;(println "API returned error: " error)
   #_(dispatch [:common/error-box-show 'apiError error])
+  (dispatch [:common/error-box-show "Api Error" error])
   #_(dispatch [:common/message-modal-hide]))
 
 (defn on-error
@@ -76,16 +78,24 @@
  (fn [{:keys [db]} [_event-id files-info]]
    {:db (-> db (assoc-in [:autofill-db-files-info] files-info))}))
 
+#_(reg-fx
+   :bg-list-app-group-db-files
+   (fn []
+     (bg/list-app-group-db-files (fn [api-response]
+                                   (when-let [files (on-ok api-response)]
+                                   ;; files-info is the same struct as 'RecentlyUsed'
+                                     (let [files-info (map (fn [name]
+                                                             {:db-file-path name
+                                                              :file-name (last (str/split name #"/"))}) files)]
+                                       (dispatch [:autofill-db-files-info-loaded files-info])))))))
+
+
 (reg-fx
  :bg-list-app-group-db-files
  (fn []
    (bg/list-app-group-db-files (fn [api-response]
-                                 (when-let [files (on-ok api-response)]
-                                   ;; files-info is the same struct as 'RecentlyUsed'
-                                   (let [files-info (map (fn [name]
-                                                           {:db-file-path name
-                                                            :file-name (last (str/split name #"/"))}) files)]
-                                     (dispatch [:autofill-db-files-info-loaded files-info])))))))
+                                 (when-let [files-info (on-ok api-response)]
+                                   (dispatch [:autofill-db-files-info-loaded files-info]))))))
 
 
 (reg-fx
@@ -116,12 +126,16 @@
 (def HOME_PAGE_ID :home)
 (def LOGIN_PAGE_ID :login)
 (def ENTRY_LIST_PAGE_ID :entry-list)
+(def ENTRY_FORM_PAGE_ID :entry-form)
 
 (defn to-home []
   (dispatch [:common/next-page HOME_PAGE_ID "Home"]))
 
 (defn to-page [page-id title]
   (dispatch [:common/next-page page-id title]))
+
+(defn to-entry-form-page []
+  (dispatch [:common/next-page ENTRY_FORM_PAGE_ID  "Entry"]))
 
 (defn to-previous-page
   "Called to navigate to the previous page"
@@ -256,7 +270,7 @@
                               (fn [api-response]
                                 (when-let [entry-summaries (on-ok api-response #(dispatch [:open-database-read-kdbx-error %]))]
                                   #_(println "Result is " entry-summaries)
-                                  (dispatch [:update-selected-entry-items entry-summaries]))))))
+                                  (dispatch [:update-selected-entry-items db-key entry-summaries]))))))
 
 
 (reg-sub
@@ -266,20 +280,114 @@
 
 ;;;;;;;;;;;;;;;;;; Entry list ;;;;;;;;;;;;;;;
 
-(defn selected-entry-items []
-  (subscribe [:selected-entry-items]))
+;; (defn find-entry-by-id [entry-uuid]
+;;   (dispatch [:entry-form/find-entry-by-id entry-uuid]))
+
+;; (defn selected-entry-items []
+;;   (subscribe [:selected-entry-items]))
+
+;; ;; On successful loading of entries, we also set current-db-file-name to db-key so that
+;; ;; we can use 'active-db-key' though only one db is opened at a time
+;; (reg-event-fx
+;;  :update-selected-entry-items
+;;  (fn [{:keys [db]} [_event-id db-key entry-summaries]]
+;;    {:db (-> db
+;;             (assoc-in [:current-db-file-name] db-key)
+;;             (assoc-in  [:entry-list :selected-entry-items] entry-summaries))
+;;     :fx [[:dispatch [:common/next-page ENTRY_LIST_PAGE_ID "Entries"]]]}))
+
+
+;; (reg-sub
+;;  :selected-entry-items
+;;  (fn [db _query-vec]
+;;    (get-in db [:entry-list :selected-entry-items])))
+
+
+;;;;;;;;;;;;;;;;;;;; Search  ;;;;;;;;;;;;;;
+
+
+#_(defn show-selected-entry [entry-id]
+  (dispatch [:entry-form/find-entry-by-id entry-id]))
+
+(defn search-term-update [term]
+  (dispatch [:search-term-update term]))
+
+(defn search-result-entry-items
+  "Returns an atom that has a list of all search term matched entry items "
+  []
+  (subscribe [:search-result-entry-items]))
+
+(defn search-term []
+  (subscribe [:search-term]))
 
 (reg-event-fx
- :update-selected-entry-items
- (fn [{:keys [db]} [_event-id entry-summaries]]
-   {:db (assoc-in db [:entry-list :selected-entry-items] entry-summaries)
-    :fx [[:dispatch [:common/next-page ENTRY_LIST_PAGE_ID "Entries"]]]}))
+ :search-term-update
+ (fn [{:keys [db]} [_event-id term]]
+   {:db (assoc-in db [:search :term] term)
+    :fx [[:bg-start-term-search [(active-db-key db) term]]]}))
 
+(reg-event-fx
+ :search-term-completed
+ (fn [{:keys [db]} [_event-id result]]
+   ;; result is a map {:entry-items [map of entry summary]} as defined in struct EntrySearchResult
+   (let [not-matched (empty? (:entry-items result))]
+     {:db (-> db (assoc-in  [:search :result] (:entry-items result))
+              (assoc-in [:search :selected-entry-id] nil)
+              (assoc-in  [:search :error-text] nil)
+              (assoc-in  [:search :not-matched] not-matched))})))
+
+
+(reg-event-db
+ :search-term-clear
+ (fn [db [_event-id]]
+   (-> db (assoc-in [:search :term] nil)
+       (assoc-in  [:search :error-text] nil)
+       (assoc-in [:search :selected-entry-id] nil)
+       (assoc-in  [:search :result] []))))
+
+
+;; Backend API call 
+(reg-fx
+ :bg-start-term-search
+ ;; fn in 'reg-fx' accepts only single argument
+ (fn [[db-key term]] 
+   (bg/search-term db-key term
+                   (fn [api-response]
+                     (when-let [result (on-ok api-response #(dispatch [:search-error-text %]))]
+                       (dispatch [:search-term-completed result]))))))
+
+
+;; Gets the matched entry items if any
+(reg-sub
+ :search-result-entry-items
+ (fn [db _query-vec]
+   (let [r (get-in db [:search :result])]
+     ;; Note: if the ':search' key is not present in app-db, the r will be nil
+     (if (nil? r)
+       []
+       r))))  
 
 (reg-sub
- :selected-entry-items
+ :search-selected-entry-id
  (fn [db _query-vec]
-   (get-in db [:entry-list :selected-entry-items])))
+   (get-in db [:search :selected-entry-id])))
+
+(reg-sub
+ :search-term
+ (fn [db _query-vec]
+   (get-in db [:search :term])))
+
+
+;;;;;;;;;;;;;;; Error dialog ;;;;;;;;;;;;;
+
+;; Events are defined in common_dialogs.cljs
+
+(defn close-message-dialog []
+  (dispatch [:message-box-hide]))
+
+(defn message-dialog-data []
+  (subscribe [:message-box]))
+
 
 
 (comment

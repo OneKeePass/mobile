@@ -48,6 +48,17 @@ class OkpDbService: NSObject {
     }
   }
   
+  /// All app group realted API calls
+  
+  @objc
+  func autoFillInvokeCommand(_ commandName: String, args: String, resolve: @escaping RCTPromiseResolveBlock,reject _: @escaping RCTPromiseRejectBlock)
+  {
+    DispatchQueue.global(qos: .userInteractive).async { [unowned self] in
+      logger.debug("InvokeCommand for \(commandName) called with args \(args) and delegating to api call")
+      resolve(AutoFillDbServiceAPI.iosAppGroupSupportService().invoke(commandName, args))
+    }
+  }
+  
   @objc
   func cancelExtension(_ resolve:@escaping RCTPromiseResolveBlock,
                        reject _: @escaping RCTPromiseRejectBlock) {
