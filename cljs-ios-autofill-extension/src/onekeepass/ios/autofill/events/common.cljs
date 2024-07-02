@@ -2,8 +2,8 @@
   "All common events that are used across many pages"
   (:require [clojure.string :as str]
             [onekeepass.ios.autofill.background :as bg]
-            [onekeepass.ios.autofill.events.common-dialogs] 
-            [onekeepass.ios.autofill.utils :as u :refer [str->int tags->vec]]
+            [onekeepass.ios.autofill.events.common-dialogs]
+            [onekeepass.ios.autofill.utils :as u :refer [str->int tags->vec find-match]]
             [re-frame.core :refer [dispatch dispatch-sync reg-event-db
                                    reg-event-fx reg-fx reg-sub subscribe]]))
 
@@ -13,12 +13,6 @@
   []
   ;; For now load-app-preference also gets any uri of kdbx database in case user pressed .kdbx file 
   (dispatch-sync [:load-autofill-db-files-info]))
-
-(defn load-autofill-db-files-info []
-  (dispatch [:load-autofill-db-files-info]))
-
-(defn autofill-db-files-info []
-  (subscribe [:autofill-db-files-info]))
 
 ;;;;;;;;;;;;;;;;
 
@@ -68,6 +62,19 @@
   ([app-db]
    (:current-db-file-name app-db)))
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+#_(defn load-autofill-db-files-info []
+  (dispatch [:load-autofill-db-files-info]))
+
+(defn autofill-db-files-info []
+  (subscribe [:autofill-db-files-info]))
+
+(defn key-files-info []
+  (subscribe [:key-files-info]))
+
+
 (reg-event-fx
  :load-autofill-db-files-info
  (fn [{:keys [db]} [_event-id]]
@@ -76,7 +83,8 @@
 (reg-event-fx
  :autofill-db-files-info-loaded
  (fn [{:keys [db]} [_event-id files-info]]
-   {:db (-> db (assoc-in [:autofill-db-files-info] files-info))}))
+   {:db (-> db (assoc-in [:autofill-db-files-info] files-info))
+    :fx [[:bg-list-key-files]]}))
 
 #_(reg-fx
    :bg-list-app-group-db-files
@@ -97,10 +105,20 @@
                                  (when-let [files-info (on-ok api-response)]
                                    (dispatch [:autofill-db-files-info-loaded files-info]))))))
 
-
 (reg-fx
- :bg-read-kdbx-from-app-group
- (fn []))
+ :bg-list-key-files
+ (fn []
+   (bg/list-key-files (fn [api-response]
+                        (when-let [key-files (on-ok api-response)] 
+                          (dispatch [:autofill-key-files-info-loaded key-files]))))))
+(reg-event-fx
+ :autofill-key-files-info-loaded
+ (fn [{:keys [db]} [_event-id key-files]]
+   ;; key-files is a Vec<String> - full key file path url and file name is extracted 
+   (let [key-files-info (map (fn [name]
+                               {:full-key-file-path  name
+                                :file-name (last (str/split name #"/"))}) key-files)]
+     {:db (-> db (assoc-in [:key-files-info] key-files-info))})))
 
 (reg-sub
  :autofill-db-files-info
@@ -108,6 +126,11 @@
    (let [r (:autofill-db-files-info db)]
      (if-not (nil? r) r  []))))
 
+(reg-sub
+ :key-files-info
+ (fn [db _query-vec]
+   (let [r (:key-files-info db)]
+     (if-not (nil? r) r  []))))
 
 (reg-sub
  :active-db-key
@@ -259,9 +282,8 @@
 
 (reg-event-fx
  :open-database-read-kdbx-error
- (fn [{:keys [db]} [_event-id error]]
-   (println "Error " error)
-   {}))
+ (fn [{:keys [_db]} [_event-id error]] 
+   {:fx [[:dispatch [:common/error-box-show "Database Open Error" error]]]}))
 
 (reg-fx
  :bg-all-entries-on-db-open
@@ -271,43 +293,16 @@
                                 (when-let [entry-summaries (on-ok api-response #(dispatch [:open-database-read-kdbx-error %]))]
                                   #_(println "Result is " entry-summaries)
                                   (dispatch [:update-selected-entry-items db-key entry-summaries]))))))
-
-
 (reg-sub
  :open-database-login-data
  (fn [db _query-vec]
    (get-in db [:open-database])))
 
-;;;;;;;;;;;;;;;;;; Entry list ;;;;;;;;;;;;;;;
-
-;; (defn find-entry-by-id [entry-uuid]
-;;   (dispatch [:entry-form/find-entry-by-id entry-uuid]))
-
-;; (defn selected-entry-items []
-;;   (subscribe [:selected-entry-items]))
-
-;; ;; On successful loading of entries, we also set current-db-file-name to db-key so that
-;; ;; we can use 'active-db-key' though only one db is opened at a time
-;; (reg-event-fx
-;;  :update-selected-entry-items
-;;  (fn [{:keys [db]} [_event-id db-key entry-summaries]]
-;;    {:db (-> db
-;;             (assoc-in [:current-db-file-name] db-key)
-;;             (assoc-in  [:entry-list :selected-entry-items] entry-summaries))
-;;     :fx [[:dispatch [:common/next-page ENTRY_LIST_PAGE_ID "Entries"]]]}))
-
-
-;; (reg-sub
-;;  :selected-entry-items
-;;  (fn [db _query-vec]
-;;    (get-in db [:entry-list :selected-entry-items])))
-
-
 ;;;;;;;;;;;;;;;;;;;; Search  ;;;;;;;;;;;;;;
 
 
 #_(defn show-selected-entry [entry-id]
-  (dispatch [:entry-form/find-entry-by-id entry-id]))
+    (dispatch [:entry-form/find-entry-by-id entry-id]))
 
 (defn search-term-update [term]
   (dispatch [:search-term-update term]))
@@ -350,7 +345,7 @@
 (reg-fx
  :bg-start-term-search
  ;; fn in 'reg-fx' accepts only single argument
- (fn [[db-key term]] 
+ (fn [[db-key term]]
    (bg/search-term db-key term
                    (fn [api-response]
                      (when-let [result (on-ok api-response #(dispatch [:search-error-text %]))]
@@ -365,7 +360,7 @@
      ;; Note: if the ':search' key is not present in app-db, the r will be nil
      (if (nil? r)
        []
-       r))))  
+       r))))
 
 (reg-sub
  :search-selected-entry-id
@@ -388,9 +383,40 @@
 (defn message-dialog-data []
   (subscribe [:message-box]))
 
+;;;;;;;;;;;;;;;;;;;;; Common snackbar ;;;;;;;;;;;;;;;;
 
+(defn show-snackbar
+  [message]
+  (dispatch [:common/message-snackbar-open message]))
+
+(defn close-message-snackbar []
+  (dispatch [:message-snackbar-close]))
+
+(defn message-snackbar-data []
+  (subscribe [:message-snackbar-data]))
+
+
+;;;;;;;;;;;;;;;;;;; Loading translation data related ;;;;;;;;;;;;
+
+(defn language-translation-loading-completed []
+  (subscribe [:language-translation-loading-completed]))
+
+(reg-event-fx
+ :common/load-language-translation-complete
+ (fn [{:keys [db]} [_event-id]]
+   {:db (assoc-in db [:background-loading-statuses :load-language-translation] true)}))
+
+(reg-sub
+ :language-translation-loading-completed
+ (fn [db _query-vec]
+   (get-in db [:background-loading-statuses :load-language-translation] false)))
 
 (comment
-  (in-ns 'onekeepass.ios.autofill.events.common))
+  (in-ns 'onekeepass.ios.autofill.events.common)
+  
+  (def db-key (-> @re-frame.db/app-db :current-db-file-name))
+  (-> @re-frame.db/app-db (get db-key) keys)
+  
+  )
 
 

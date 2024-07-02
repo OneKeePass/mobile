@@ -13,15 +13,6 @@
 
 (def autofill-events ^js/AutoFillEvents (.-AutoFillEvents rn/NativeModules))
 
-;; A dummy function definition for type inference of ^js/OkpEvents to work
-(defn check-okp-event []
-  (try
-    (.getConstants autofill-events)
-    (catch js/Object e
-      (js/console.log e))))
-
-(def event-emitter (rn/NativeEventEmitter. autofill-events))
-
 (defn is-biometric-available []
   ;; Valid values expected for BiometricAvailable are "true" or "false" for both iOS and Android
   (= (-> okp-db-service .getConstants .-BiometricAvailable) "true"))
@@ -62,6 +53,20 @@
       ;; Here the api-args map has all its keys of 'snake_case' form as they converted in the calling
       ;; fn itself
       (->>  api-args clj->js  (.stringify js/JSON)))))
+
+(defn transform-response-excluding-keys
+  "Called to transform the keys recursively in all maps found in the json response except those 
+   keys returned by keys-excluded-fn. 
+   Typically a partial fn is created with some 'keys-excluded-fn' as first arg and then the resulting fn
+   is passed in 'convert-response-fn' to transform-api-response
+   "
+  [keys-excluded-fn response]
+  (let [keys-exclude-vec  (keys-excluded-fn (get response "ok"))
+        t-fn (fn [k]
+               (if (contains-val? keys-exclude-vec k)
+                 k
+                 (csk/->kebab-case-keyword k)))]
+    (cske/transform-keys t-fn response)))
 
 (defn transform-api-response
   "Transforms the resolved value and returns a result map with key :ok or :error
@@ -161,7 +166,6 @@
                                                          :args-keys-excluded args-keys-excluded)))
                   dispatch-fn :convert-response convert-response :convert-response-fn convert-response-fn))
 
-
 (defn autofill-invoke-api
   "Called to invoke commands from ffi
    The arg 'name' is the name of backend fn to call
@@ -184,6 +188,9 @@
 (defn list-app-group-db-files [dispatch-fn]
   (autofill-invoke-api  "list_of_autofill_db_infos" {} dispatch-fn))
 
+(defn list-key-files [dispatch-fn]
+  (autofill-invoke-api "list_of_key_files" {} dispatch-fn))
+
 #_(defn read-kdbx-from-app-group
   "Calls the API to read a kdbx file.
    Calls the dispatch-fn with the received map of type 'KdbxLoaded' 
@@ -202,11 +209,21 @@
                                           :password password
                                           :key-file-name key-file-name} dispatch-fn))
 
+(defn copy-to-clipboard
+  "Called to copy a selected field value to clipboard
+   The arg field-info is a map that statifies the enum member 
+   ClipboardCopyArg {field_name,field_value,protected,cleanup_after}
+   "
+  [field-info dispatch-fn]
+  (autofill-invoke-api "clipboard_copy" field-info dispatch-fn))
+
 (defn cancel-extension [dispatch-fn]
   (call-api-async (fn [] (.cancelExtension okp-db-service)) dispatch-fn))
 
+(defn credentials-selected [user-name password dispatch-fn]
+  (call-api-async (fn [] (.credentialSelected okp-db-service user-name password)) dispatch-fn))
 
-;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn search-term
   [db-key term dispatch-fn]
@@ -231,7 +248,68 @@
   (invoke-api "get_entry_form_data_by_id" {:db_key db-key :uuid entry-uuid} dispatch-fn :convert-response-fn transform-response-entry-form-data))
 
 
+(defn start-polling-entry-otp-fields [db-key entry-uuid otp-fields dispatch-fn]
+  ;; otp-fields is a map where keys are otp field names and values are a map with keys [ttl period]
+  (let [exclude-keys (-> otp-fields keys vec)]
+    ;; exclude-keys is vec of all otp field names and we use exclude-keys from not transforming these keys
+    (invoke-api "start_polling_entry_otp_fields"
+                {:db-key db-key
+                 :entry-uuid entry-uuid
+                 :otp-fields {:token-ttls otp-fields}}
+                dispatch-fn
+                ;; keys in the passed args map are transformed except those in this exclude vec
+                :args-keys-excluded exclude-keys)))
+
+(defn stop-polling-all-entries-otp-fields [_db-key dispatch-fn]
+  #_(invoke-api "stop_polling_all_entries_otp_fields" {:db-key db-key} dispatch-fn)
+  (invoke-api "stop_polling_all_entries_otp_fields" {} dispatch-fn))
+
+;;Note: load_language_translations uses data from AppState's default Preference struct and because of 
+;; that the current locale language is used. Any ln overriden in the App's settings is not used
+;; The same applies for the theme
+(defn load-language-translations [language-ids dispatch-fn]
+  (invoke-api "load_language_translations" {:language-ids language-ids} dispatch-fn))
+
+;;;;;;;;;;;;;;; Native Events ;;;;;;;;;;;;;;;;;;
+
+;; A dummy function definition for type inference of ^js/OkpEvents to work
+(defn check-okp-event []
+  (try
+    (.getConstants autofill-events)
+    (catch js/Object e
+      (js/console.log e))))
+
+(def event-emitter (rn/NativeEventEmitter. autofill-events))
+
+(def ^:private native-event-listeners
+  "This is a map where keys are the event name (kw) and values the native listeners" (atom {}))
+
+(defn register-event-listener
+  "Called to register an event handler to listen for a named event message emitted in the backend service 
+   event-name is the event name kw 
+   event-handler-fn is the handler function
+   "
+  ([caller-name event-name event-handler-fn]
+   ;;(println (js/Date.) "caller-name event-name event-handler-fn " caller-name event-name event-handler-fn)
+   (let [el (get @native-event-listeners [caller-name event-name])]
+    ;;Register the event handler function only if the '[caller-name event-name]' is not already registered
+     (when (nil? el)
+       (try
+         (let [subscription (.addListener event-emitter event-name event-handler-fn)]
+           (swap! native-event-listeners assoc [caller-name event-name] subscription))
+         (catch js/Error err
+           (do
+             (println "error is " (ex-cause err))
+             (js/console.log (ex-cause err)))))
+      ;;To log the following messsage use 'if' instead of 'when' form
+       #_(println "Tauri event listener for " event-name " is already registered"))))
+  ([event-name event-handler-fn]
+   (register-event-listener :common event-name event-handler-fn)))
+
+
 (comment
   ;;(call-api-async (fn [] (.cancelExtension okp-db-service)) #(println %))
   (in-ns 'onekeepass.ios.autofill.background)
+  ;; Use this to see :MainBundleDir, :LibraryDir, :DocumentDir etc
+  (-> okp-db-service .getConstants .-MainBundleDir)
   )

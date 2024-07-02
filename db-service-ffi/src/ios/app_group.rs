@@ -53,6 +53,23 @@ pub(crate) fn delete_copied_autofill_details(db_key: &str) -> OkpResult<()> {
     Ok(())
 }
 
+// If this db is used in Autofill extension, then we need to copy the database (with essentail data and kdf adjusted) when it is 
+// read or saved 
+
+// We need to copy autofill files during read in addition to save time 
+// so that we can ensure the latest opened database is used in autofill 
+pub(crate) fn copy_files_to_app_group_on_save_or_read(db_key: &str) {
+    // Ensure that we copy files only if this db is used in autofill
+    let Some(_) = AutoFillMeta::read().find_copied_dbs_info(&db_key) else {
+        return;
+    };
+
+    if let Err(e) = copy_files_to_app_group(db_key) {
+        log::error!("Unexpected error in copying the files for autofill on save: {} ",e);
+    }
+}
+
+
 /////////////////////////////////////////////
 
 fn app_group_root_sub_dir(sub_dir_name: &str) -> OkpResult<PathBuf> {
@@ -75,6 +92,38 @@ fn autofill_meta_json_file() -> Option<PathBuf> {
     debug!("AutoFillMeta is {:?} ", &pref_file_name);
 
     Some(pref_file_name)
+}
+
+fn copy_files_to_app_group(db_key: &str) -> OkpResult<CopiedDbFileInfo> {
+    let file_name = AppState::global().uri_to_file_name(&db_key);
+    debug!("File name from db_file_name  is {} ", &file_name);
+
+    let db_file_root = app_group_root_sub_dir(AG_DATA_FILES)?;
+
+    let hash_of_db_key = string_to_simple_hash(&db_key).to_string();
+
+    let group_db_file_name = Path::new(&db_file_root)
+        .join(&hash_of_db_key)
+        .join(&file_name);
+
+    debug!("group_db_file_name is {:?} ", &group_db_file_name);
+
+    copy_and_write_autofill_ready_db(&db_key, &group_db_file_name.as_os_str().to_string_lossy())?;
+
+    // Add and persist the copied file info
+    let db_file_path = group_db_file_name.as_os_str().to_string_lossy().to_string();
+    let copied_db_info = CopiedDbFileInfo::new(file_name, db_file_path, db_key.to_string());
+    AutoFillMeta::read().add_copied_db_info(copied_db_info.clone());
+
+    let app_group_key_file_dir = app_group_root_sub_dir(AG_KEY_FILES)?;
+
+    // Copies all the key files available 
+    util::copy_files(
+        &AppState::global().key_files_dir_path,
+        &app_group_key_file_dir,
+    );
+
+    Ok(copied_db_info)
 }
 
 // Possible Enhancement:
@@ -206,7 +255,8 @@ struct IosAppGroupSupportService {}
 impl IosAppGroupSupportService {
     fn internal_copy_files_to_app_group(&self, json_args: &str) -> OkpResult<CopiedDbFileInfo> {
         let (db_key,) = parse_command_args_or_err!(json_args, DbKey { db_key });
-
+        copy_files_to_app_group(&db_key)
+        /* 
         let file_name = AppState::global().uri_to_file_name(&db_key);
         debug!("File name from db_file_name  is {} ", &file_name);
 
@@ -238,13 +288,18 @@ impl IosAppGroupSupportService {
         );
 
         Ok(copied_db_info)
+        */
     }
 
+    // Copies the selected db's data content and all key file used to the shared location
+    // for the extension to use
     fn copy_files_to_app_group(&self, json_args: &str) -> ResponseJson {
         let d = self.internal_copy_files_to_app_group(json_args);
         result_json_str(d)
     }
 
+    // Called to delete any previously copied data file for this database and removes 
+    // any reference to this databse in the app group's autofill_meta file
     fn delete_copied_autofill_details(&self, json_args: &str) -> ResponseJson {
         let inner_fn = || -> OkpResult<()> {
             let (db_key,) = parse_command_args_or_err!(json_args, DbKey { db_key });
@@ -254,6 +309,7 @@ impl IosAppGroupSupportService {
         result_json_str(inner_fn())
     }
 
+    // Finds out whether the given databse is enabled for autofill or not
     fn query_autofill_db_info(&self, json_args: &str) -> ResponseJson {
         let inner_fn = || -> OkpResult<Option<CopiedDbFileInfo>> {
             let (db_key,) = parse_command_args_or_err!(json_args, DbKey { db_key });
@@ -264,11 +320,24 @@ impl IosAppGroupSupportService {
         result_json_str(inner_fn())
     }
 
+    // Gets the list of database info that are enabled for autofill
     fn list_of_autofill_db_infos(&self) -> ResponseJson {
         let v = AutoFillMeta::read().get_copied_dbs_info().clone();
         result_json_str(Ok(v))
     }
 
+    // Gets the list of key files that may be used to authenticate a selected database in autofill extension
+    fn list_of_key_files(&self) -> ResponseJson {
+        let inner_fn = || -> OkpResult<Vec<String>> {
+            let app_group_key_file_dir = app_group_root_sub_dir(AG_KEY_FILES)?;
+            let v = util::list_dir_files(&app_group_key_file_dir);
+            Ok(v)
+        };
+
+        result_json_str(inner_fn())
+    }
+
+    // Gets the list of all entries in a database that is openned in autofill extension
     fn all_entries_on_db_open(&self, json_args: &str) -> ResponseJson {
         let inner_fn = || -> OkpResult<Vec<EntrySummary>> {
             let (db_file_name, password, key_file_name) = parse_command_args_or_err!(
@@ -303,15 +372,17 @@ impl IosAppGroupSupportService {
     }
 
     fn clipboard_copy(&self, json_args: &str) -> ResponseJson {
-
         let inner_fn = || -> OkpResult<()> {
-            let (_field_name,field_value,_protected,cleanup_after) = parse_command_args_or_err!(
+            let (_field_name, field_value, _protected, cleanup_after) = parse_command_args_or_err!(
                 json_args,
                 ClipboardCopyArg {
-                    field_name,field_value,protected,cleanup_after
+                    field_name,
+                    field_value,
+                    protected,
+                    cleanup_after
                 }
             );
-
+            // Delegates to the ios api
             IosApiCallbackImpl::api_service().clipboard_copy_string(field_value, cleanup_after)?;
 
             Ok(())
@@ -319,7 +390,6 @@ impl IosAppGroupSupportService {
 
         result_json_str(inner_fn())
     }
-
 }
 
 // Here we implement all fns of this struct that are exported
@@ -346,6 +416,7 @@ impl IosAppGroupSupportService {
 
             // Used in extension
             "list_of_autofill_db_infos" => self.list_of_autofill_db_infos(),
+            "list_of_key_files" => self.list_of_key_files(),
             "all_entries_on_db_open" => self.all_entries_on_db_open(json_args),
 
             "clipboard_copy" => self.clipboard_copy(json_args),

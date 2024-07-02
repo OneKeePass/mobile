@@ -5,19 +5,22 @@
 //  Created  on 6/6/24.
 //
 
-
-// https://reactnative.dev/docs/integration-with-existing-apps 
+// https://reactnative.dev/docs/integration-with-existing-apps
 
 import AuthenticationServices
 import Foundation
 
 @objc
 class CredentialProviderViewController: ASCredentialProviderViewController, RCTBridgeDelegate {
-  private let logger = OkpLogger(tag: "CredentialProviderViewController")
   
-  static var extContext:ASCredentialProviderExtensionContext?
+  static let logger1 = OkpLogger(tag: "CredentialProviderViewController")
   
-  class OkpViewController:UIViewController {
+  private let logger = logger1
+  
+  static var extContext: ASCredentialProviderExtensionContext?
+  
+  // Need this inner class so that we can handle viewDidDisappear call and cancel the CredentialProviderViewController sheet
+  class OkpViewController: UIViewController {
     override func viewDidLoad() {
       debugPrint("OkpViewController viewDidLoad is called")
     }
@@ -29,13 +32,22 @@ class CredentialProviderViewController: ASCredentialProviderViewController, RCTB
     }
   }
   
-    
   static func cancelExtension() {
     if extContext != nil {
-      debugPrint("Going to cancel the extension view...")
+      logger1.debug("Going to cancel the extension view...")
       extContext!.cancelRequest(withError: NSError(domain: ASExtensionErrorDomain, code: ASExtensionError.userCanceled.rawValue))
     }
     debugPrint("Extension view is cancelled")
+  }
+  
+  static func credentialSelected(_ user: String, _ password: String) {
+    guard extContext != nil else {
+      logger1.error("The func credentialSelected but extContext is not set")
+      return
+    }
+    
+    let passwordCredential = ASPasswordCredential(user: user, password: password)
+    extContext!.completeRequest(withSelectedCredential: passwordCredential, completionHandler: nil)
   }
  
   override func viewDidLoad() {
@@ -48,7 +60,6 @@ class CredentialProviderViewController: ASCredentialProviderViewController, RCTB
     super.viewWillDisappear(animated)
     debugPrint("viewWillDisappear is called \(animated)")
   }
-  
   
   override func viewDidDisappear(_ animated: Bool) {
     super.viewDidDisappear(animated)
@@ -90,7 +101,7 @@ class CredentialProviderViewController: ASCredentialProviderViewController, RCTB
       initialProperties: nil
     )
     
-    let vc = OkpViewController() //UIViewController()
+    let vc = OkpViewController() // UIViewController()
     vc.view = rootView
     present(vc, animated: true, completion: nil)
   }
@@ -101,8 +112,18 @@ class CredentialProviderViewController: ASCredentialProviderViewController, RCTB
     prioritize the most relevant credentials in the list.
    */
   override func prepareCredentialList(for serviceIdentifiers: [ASCredentialServiceIdentifier]) {
-    logger.debug("dprepareCredentialList is called")
-    //prepareUI()
+    logger.debug("prepareCredentialList is called")
+    for si in serviceIdentifiers {
+      switch si.type {
+      case .domain:
+        logger.debug("Domain identified \(si.identifier)")
+      case .URL:
+        logger.debug("Url identified \(si.identifier)")
+      @unknown default:
+        logger.debug("Unknown identifier \(si.type)")
+      }
+    }
+    // prepareUI()
   }
 
   /*
@@ -134,25 +155,37 @@ class CredentialProviderViewController: ASCredentialProviderViewController, RCTB
    }
    */
 
-  @IBAction func cancel(_ sender: AnyObject?) {
-    logger.debug("Cancel is called")
-    extensionContext.cancelRequest(withError: NSError(domain: ASExtensionErrorDomain, code: ASExtensionError.userCanceled.rawValue))
-  }
+  /*
+   @IBAction func cancel(_ sender: AnyObject?) {
+     logger.debug("Cancel is called")
+     extensionContext.cancelRequest(withError: NSError(domain: ASExtensionErrorDomain, code: ASExtensionError.userCanceled.rawValue))
+   }
 
-  @IBAction func passwordSelected(_ sender: AnyObject?) {
-    let passwordCredential = ASPasswordCredential(user: "j_appleseed", password: "apple1234")
-    extensionContext.completeRequest(withSelectedCredential: passwordCredential, completionHandler: nil)
-  }
+   @IBAction func passwordSelected(_ sender: AnyObject?) {
+     let passwordCredential = ASPasswordCredential(user: "j_appleseed", password: "apple1234")
+     extensionContext.completeRequest(withSelectedCredential: passwordCredential, completionHandler: nil)
+   }
   
-  @IBAction func showRN(_ sender: AnyObject?) {
-//    let a = getBundleURL()
-//    let b = ""
+   @IBAction func showRN(_ sender: AnyObject?) {
+     prepareUI()
     
-    prepareUI()
-    
-//    let m = MessageHandler()
-//    m.post()
-    
-    
-  }
+   }
+   */
 }
+
+/*** ========== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== =====  **/
+/*
+ // Use NSExtensionMainStoryboard just to test the basic autofill testing
+ // Need to uncomment all @IBAction
+
+ <key>NSExtension</key>
+ 		<dict>
+ 			<key>NSExtensionMainStoryboard</key>
+ 			<string>MainInterface</string>
+			
+       <!--		<key>NSExtensionPrincipalClass</key> -->
+ 			<!--		<string>$(PRODUCT_MODULE_NAME).CredentialProviderViewController</string> -->
+ 			<!--		<key>NSExtensionPointIdentifier</key> -->
+ 			<!--		<string>com.apple.authentication-services-credential-provider-ui</string> -->
+ 		</dict>
+ */

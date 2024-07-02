@@ -1,41 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
+<dict>
+	<key>NSAppTransportSecurity</key>
 	<dict>
-		<key>NSAppTransportSecurity</key>
-		<dict>
-			<key>NSAllowsArbitraryLoads</key>
-			<false />
-			<key>NSAllowsLocalNetworking</key>
-			<true />
-		</dict>
-		<key>CFBundleDisplayName</key>
-		<string>OneKeePass AutoFill</string>
-		<key>CFBundleExecutable</key>
-		<string>$(EXECUTABLE_NAME)</string>
-		<key>CFBundleIdentifier</key>
-		<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
-
-		<key>CFBundleShortVersionString</key>
-		<string>$(MARKETING_VERSION)</string>
-
-		<key>CFBundleVersion</key>
-		<string>$(CURRENT_PROJECT_VERSION)</string>
-
-		<key>UIAppFonts</key>
-		<array>
-			<string>MaterialCommunityIcons.ttf</string>
-		</array>
-
-
-		<key>NSExtension</key>
-		<dict>
-			<!--		<key>NSExtensionMainStoryboard</key>-->
-			<!--		<string>MainInterface</string>-->
-			<key>NSExtensionPrincipalClass</key>
-			<string>$(PRODUCT_MODULE_NAME).CredentialProviderViewController</string>
-			<key>NSExtensionPointIdentifier</key>
-			<string>com.apple.authentication-services-credential-provider-ui</string>
-		</dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
 	</dict>
+	<key>NSExtension</key>
+	<dict>
+		<key>NSExtensionPointIdentifier</key>
+		<string>com.apple.authentication-services-credential-provider-ui</string>
+		<key>NSExtensionPrincipalClass</key>
+		<string>$(PRODUCT_MODULE_NAME).CredentialProviderViewController</string>
+	</dict>
+	<key>UIAppFonts</key>
+	<array>
+		<string>MaterialCommunityIcons.ttf</string>
+	</array>
+</dict>
 </plist>

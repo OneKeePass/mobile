@@ -60,3 +60,26 @@
  :message-box
  (fn [db _query-vec]
    (-> db :message-box)))
+
+
+;;;;;;;;;;;;;;;;;;;;; Common snackbar ;;;;;;;;;;;;;;;;
+
+
+(reg-event-db
+ :common/message-snackbar-open
+ (fn [db [_event-id message]]
+   (-> db
+       (assoc-in [:message-snackbar-data :open] true)
+       ;; lstr is used in 'common-components/message-snackbar' to provide a language specific message
+       (assoc-in [:message-snackbar-data :message] message))))
+
+(reg-event-db
+ :message-snackbar-close
+ (fn [db [_event-id]]
+   (-> db
+       (assoc-in [:message-snackbar-data :open] false))))
+
+(reg-sub
+ :message-snackbar-data
+ (fn [db _query-vec]
+   (-> db :message-snackbar-data)))

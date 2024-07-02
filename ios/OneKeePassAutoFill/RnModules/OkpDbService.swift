@@ -60,12 +60,17 @@ class OkpDbService: NSObject {
   }
   
   @objc
-  func cancelExtension(_ resolve:@escaping RCTPromiseResolveBlock,
-                       reject _: @escaping RCTPromiseRejectBlock) {
+  func cancelExtension(_ resolve:@escaping RCTPromiseResolveBlock, reject _: @escaping RCTPromiseRejectBlock) {
     
     logger.debug("cancelExtension is called")
     CredentialProviderViewController.cancelExtension()
     resolve("{}")
+  }
+  
+  @objc
+  func credentialSelected(_ user:String, password:String,resolve: @escaping RCTPromiseResolveBlock,reject _: @escaping RCTPromiseRejectBlock) {
+    logger.debug("credentialSelected is called ")
+    CredentialProviderViewController.credentialSelected(user, password)
   }
   
   //read_kdbx_from_app_group

@@ -50,7 +50,6 @@
                                              otp-fields]]]}
        {}))))
 
-
 ;; Called to stop polling from use effect
 (reg-event-fx
  :entry-form-otp-stop-polling

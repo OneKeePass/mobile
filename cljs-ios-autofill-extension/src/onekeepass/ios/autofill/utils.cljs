@@ -61,3 +61,19 @@
   "
   [obj]
   (js->clj (-> obj js/JSON.stringify js/JSON.parse) :keywordize-keys true))
+
+(defn find-match 
+  "Finds a map that has a matching value for a given keyword key
+   The arg 'seq-of-maps' is a vec of map elements. 
+   The first match is returned ignoring any other subsequent ones
+   "
+  [seq-of-maps kw-key value]
+  (first
+   (filter
+    (fn [m]
+      (= value (kw-key m)))
+    seq-of-maps)))
+
+(comment 
+  (in-ns 'onekeepass.ios.autofill.utils)
+  )

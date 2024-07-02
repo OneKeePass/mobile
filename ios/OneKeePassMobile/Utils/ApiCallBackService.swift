@@ -12,5 +12,6 @@ import Foundation
 class ApiCallBackService:IosApiService {
   func clipboardCopyString(_ text: String, _ timeout: UInt32) throws {
     cmnLogger.debug("Called clipboardCopyString text \(text) and timeout \(timeout)")
+    ClipboardHelper.impl.copyString(text: text, timeout: Double(timeout))
   }
 }

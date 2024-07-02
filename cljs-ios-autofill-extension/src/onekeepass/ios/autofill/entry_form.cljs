@@ -1,22 +1,24 @@
 (ns onekeepass.ios.autofill.entry-form
   (:require [clojure.string :as str]
-            [onekeepass.ios.autofill.common-components :refer [select-field]]
+            [onekeepass.ios.autofill.common-components :as cc :refer [select-field-view]]
             [onekeepass.ios.autofill.constants :as const :refer [ONE_TIME_PASSWORD_TYPE
                                                                  OTP]]
             [onekeepass.ios.autofill.events.entry-form :as form-events]
             [onekeepass.ios.autofill.rn-components :as rnc :refer [animated-circular-progress
                                                                    dots-icon-name
-                                                                   on-primary-color
                                                                    page-background-color
                                                                    primary-container-color
                                                                    rn-view
                                                                    rnp-button
-                                                                   rnp-helper-text
                                                                    rnp-chip
+                                                                   rnp-helper-text
                                                                    rnp-icon-button
                                                                    rnp-text
                                                                    rnp-text-input
                                                                    rnp-text-input-icon]]
+            [onekeepass.ios.autofill.translation :refer [lstr-field-name
+                                                         lstr-l
+                                                         lstr-section-name]]
             [onekeepass.ios.autofill.utils :as u]
             [reagent.core :as r]))
 
@@ -43,7 +45,7 @@
                                    edit
                                    on-change-text]} is-password-edit? custom-field-edit-focused?]
   ;;(println "Key is " key " and value " value)
-  [rnp-text-input {:label key #_(if standard-field (lstr-field-name key) key)
+  [rnp-text-input {:label (if standard-field (lstr-field-name key) key)
                    :value value
                    :showSoftInputOnFocus edit
                    :autoCapitalize "none"
@@ -64,7 +66,7 @@
                    :onFocus #(field-focus-action key true)
                    :onBlur #(field-focus-action key false)
                    :onChangeText (if edit on-change-text nil)
-                   :onPressOut #() #_(if-not edit
+                   :onPressOut #(form-events/copy-field-to-clipboard key) #_(if-not edit
                                        #(cmn-events/write-string-to-clipboard {:field-name key
                                                                                :protected protected
                                                                                :value value})
@@ -154,7 +156,7 @@
         valid-token-found (not (nil? token))]
     [rn-view
      [rn-view {:flexDirection "row" :style {:flex 1}}
-      [rnp-text-input {:label (if (= OTP key) "One TimePassword Totp" #_(lstr-l 'oneTimePasswordTotp) key)
+      [rnp-text-input {:label (if (= OTP key) (lstr-l 'oneTimePasswordTotp) key)
                        :value (if valid-token-found (formatted-token token) "  ")
                        :showSoftInputOnFocus false
                        :autoCapitalize "none"
@@ -168,10 +170,7 @@
                        :onFocus #(field-focus-action key true)
                        :onBlur #(field-focus-action key false)
                        :onChangeText nil
-                       :onPressOut #() #_#(cmn-events/write-string-to-clipboard
-                                           {:field-name key
-                                            :protected protected
-                                            :value token})
+                       :onPressOut #(form-events/copy-otp-token-to-clipboard key token)
                        :secureTextEntry false
                        :right nil}]
       [rn-view {:style {:width "10%" :justify-content "center"}}
@@ -231,7 +230,6 @@
       (not edit)
       [otp-field-with-token-update kv])))
 
-
 ;;;;;;;;;;;;;
 
 (def notes-ref (atom nil))
@@ -243,14 +241,12 @@
   (let [value @(form-events/entry-form-data-fields :notes)]
     (when (or edit (not (str/blank? value)))
       [rn-view {:style {:padding-right 5 :padding-left 5 :borderWidth .20 :borderRadius 4}}
-       [rnp-text-input {:style {:width "100%"} :multiline true :label "Notes " #_(lstr-l "notes")
+       [rnp-text-input {:style {:width "100%"} :multiline true :label (lstr-l "notes")
                         :defaultValue value
                         :ref (fn [^js/Ref ref]
                                (reset! notes-ref ref))
                         :showSoftInputOnFocus edit
                         :onChangeText #()  #_(when edit #(form-events/entry-form-data-update-field-value :notes %))}]])))
-
-
 
 (defn tags [edit]
   (let [entry-tags @(form-events/entry-form-data-fields :tags)
@@ -261,8 +257,7 @@
                         :min-height 50  :margin-top 5 :padding 5 :borderWidth .20 :borderRadius 4}}
        [rn-view {:style {:flexDirection "row" :backgroundColor  @primary-container-color :min-height 25}}
         [rnp-text {:style {:alignSelf "center" :width "85%" :padding-left 15} :variant "titleMedium"}
-         "Tags"
-         #_(lstr-section-name 'tags)]
+         (lstr-section-name 'tags)]
 
         #_(when edit
             [rnp-icon-button {:icon const/ICON-PLUS :style {:height 35 :margin-right 0 :backgroundColor @on-primary-color}
@@ -277,22 +272,19 @@
                                                       (form-events/entry-form-data-update-field-value
                                                        :tags (filterv #(not= tag %) entry-tags))))} tag]))]]])))
 
-
 ;;;;;;;;;;;
-
 
 (defn section-header [section-name]
   (let [edit @(form-events/entry-form-field :edit)
         standard-sections @(form-events/entry-form-data-fields :standard-section-names)
         standard-section? (u/contains-val? standard-sections section-name)
-        tr-section-name section-name #_(if standard-section? (lstr-section-name section-name) section-name)]
+        tr-section-name (if standard-section? (lstr-section-name section-name) section-name)]
     [rn-view {:style {:flexDirection "row"
                       :backgroundColor  @primary-container-color
                       :margin-top 5
                       :min-height 35}}
      [rnp-text {:style {:alignSelf "center" :width "85%" :padding-left 15} :variant "titleMedium"}
       tr-section-name]]))
-
 
 (defn section-content [edit section-name section-data]
   (let [errors @(form-events/entry-form-field :error-fields)]
@@ -316,12 +308,12 @@
           (when (or edit (not (str/blank? value))) #_(or edit (or required (not (str/blank? value))))
                 (cond
                   (not (nil? select-field-options))
-                  ^{:key key} [select-field {:text-label key #_(if required (str key "*") key)
-                                             :options  (mapv (fn [v] {:key v :label v}) select-field-options)
-                                             :value value
-                                             :disabled (not edit)
-                                             :on-change #() #_#(form-events/update-section-value-on-change
-                                                                section-name key (.-label ^js/SelOption %))}]
+                  ^{:key key} [select-field-view {:text-label key #_(if required (str key "*") key)
+                                                  :options  (mapv (fn [v] {:key v :label v}) select-field-options)
+                                                  :value value
+                                                  :disabled (not edit)
+                                                  :pressable-on-press #(form-events/copy-field-to-clipboard key)
+                                                  :on-change #()}]
 
                   (= data-type ONE_TIME_PASSWORD_TYPE)
                   ^{:key key} [otp-field (assoc kv
@@ -340,16 +332,15 @@
                                                  :password-score password-score
                                                  :visible @(form-events/visible? key))]))))])))
 
-
 (defn all-sections-content []
   (let [{:keys [edit showing]
          {:keys [section-names section-fields]} :data} @(form-events/entry-form)]
-    #_(rnc/react-use-effect
+    (rnc/react-use-effect
        (fn []
        ;; cleanup fn is returned which is called when this component unmounts or any passed dependencies are changed
-       ;; (println "all-sections-content effect init - showing edit in-deleted-category: " showing edit in-deleted-category)
-         (when (and (= showing :selected) (not edit) (not in-deleted-category))
-         ;; (println "From effect init entry-form-otp-start-polling is called")
+       ;;(println "all-sections-content effect init - showing edit : " showing edit )
+         (when (and (= showing :selected) (not edit))
+         ;;(println "From effect init entry-form-otp-start-polling is called")
            (form-events/entry-form-otp-start-polling))
 
          (fn []
@@ -358,7 +349,7 @@
            (form-events/entry-form-otp-stop-polling)))
 
      ;; Need to pass the list of all reactive values (dependencies) referenced inside of the setup code or empty list
-       (clj->js [showing edit in-deleted-category]))
+       (clj->js [showing edit]))
 
     ;; section-names is a list of section names
     ;; section-fields is a list of map - one map for each field in that section
@@ -366,7 +357,6 @@
      (doall
       (for [section-name section-names]
         ^{:key section-name} [section-content edit section-name (get section-fields section-name)]))]))
-
 
 (defn main-content []
   (let [edit @(form-events/form-edit-mode)]

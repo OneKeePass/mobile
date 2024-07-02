@@ -40,7 +40,7 @@ public class AutoFillEvents: RCTEventEmitter {
   
   override public func supportedEvents() -> [String]! {
     // At this time, only one event is supported
-    return [ AutoFillEvents.EVENT_ENTRY_OTP_UPDATE]
+    return [AutoFillEvents.EVENT_ENTRY_OTP_UPDATE]
   }
   
   

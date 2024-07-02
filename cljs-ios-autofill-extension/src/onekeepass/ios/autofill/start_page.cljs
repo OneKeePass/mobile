@@ -1,59 +1,83 @@
 (ns onekeepass.ios.autofill.start-page
-  (:require [onekeepass.ios.autofill.constants :as const :refer [FLEX-DIR-ROW]]
-            [onekeepass.ios.autofill.entry-list :as entry-list]
+  (:require [onekeepass.ios.autofill.common-components :refer [message-dialog
+                                                               message-snackbar
+                                                               select-field]]
+            [onekeepass.ios.autofill.constants :as const :refer [FLEX-DIR-ROW]]
             [onekeepass.ios.autofill.entry-form :as entry-form]
+            [onekeepass.ios.autofill.entry-list :as entry-list]
             [onekeepass.ios.autofill.events.common :as cmn-events]
             [onekeepass.ios.autofill.events.entry-form :as form-events]
-            [onekeepass.ios.autofill.common-components :refer [message-dialog]]
             [onekeepass.ios.autofill.rn-components :as rnc
              :refer [appbar-text-color dots-icon-name page-title-text-variant
                      primary-color primary-container-color rn-keyboard
                      rn-safe-area-view rn-section-list rn-view rnp-button
-                     rnp-divider rnp-icon-button rnp-list-icon rnp-list-item rnp-searchbar rnp-portal
-                     rnp-text rnp-text-input rnp-text-input-icon]]
+                     rnp-divider rnp-icon-button rnp-list-icon rnp-list-item
+                     rnp-portal rnp-searchbar rnp-text rnp-text-input
+                     rnp-text-input-icon]]
+            [onekeepass.ios.autofill.translation :refer [lstr-bl lstr-l
+                                                         lstr-pt]]
             [reagent.core :as r]))
 
 
-(defn open-db-page [{:keys [database-file-name database-full-file-name
-                            password
-                            password-visible
-                            key-file-name-part]}]
-  [rn-view {:style {:flex 1
-                    :flexDirection "column"
-                    :width "90%"
-                    ;;:justify-content "center"
-                    :margin-top "10%"}}
-   [rnp-text-input {:label "Database File"
-                    :value database-file-name
-                    :editable false
-                    :onChangeText #()}]
-   [rnp-text-input {:style {:margin-top 10}
-                    :label "Master Password"
-                           ;;:value password
-                    :defaultValue password
-                    :autoComplete "off"
-                    :autoCapitalize "none"
-                    :autoCorrect false
-                    :secureTextEntry (not password-visible)
-                    :right (r/as-element
-                            [rnp-text-input-icon
-                             {:icon (if password-visible "eye" "eye-off")
-                              :onPress #(cmn-events/database-field-update :password-visible (not password-visible))}])
-                    :onChangeText (fn [v]
-                                           ;; After entering some charaters and delete is used to remove those charaters
-                                           ;; password will have a string value "" resulting in a non visible password. Need to use nil instead
-                                    (cmn-events/database-field-update :password (if (empty? v) nil v)))}]
+(defn open-db-page []
 
-   [rn-view {:flexDirection FLEX-DIR-ROW :style {:margin-top 20 :justify-content "center"}}
-    [rnp-button {:mode "text"
-                 :onPress  cmn-events/cancel-login}
-     "Back"]
-    [rnp-button {:mode "text"
-                 :onPress (fn []
-                            (.dismiss rn-keyboard)
-                            ;;^js/RNKeyboard (.dismiss rn-keyboard)
-                            (cmn-events/open-database-read-db-file))}
-     "Continue"]]])
+  (let [{:keys [database-file-name 
+                _database-full-file-name
+                password
+                password-visible
+                key-file-name-part]} @(cmn-events/login-page-data)
+        key-files-info @(cmn-events/key-files-info)
+        
+        names (mapv (fn [{:keys [full-key-file-path file-name]}] 
+                      {:key full-key-file-path :label file-name}) key-files-info)
+
+        on-change (fn [^js/SelOption option]
+                    ;; option is the selected member from the names list passed as :options  
+                    (cmn-events/database-field-update :key-file-name (.-key option))
+                    (cmn-events/database-field-update :key-file-name-part (.-label option)))]
+    [rn-view {:style {:flex 1
+                      :flexDirection "column"
+                      :width "90%"
+                        ;;:justify-content "center"
+                      :margin-top "10%"}}
+     [rnp-text-input {:label (lstr-l 'databaseFile)
+                      :value database-file-name
+                      :editable false
+                      :onChangeText #()}]
+     [rnp-text-input {:style {:margin-top 10}
+                      :label (lstr-l 'masterPassword)
+                               ;;:value password
+                      :defaultValue password
+                      :autoComplete "off"
+                      :autoCapitalize "none"
+                      :autoCorrect false
+                      :secureTextEntry (not password-visible)
+                      :right (r/as-element
+                              [rnp-text-input-icon
+                               {:icon (if password-visible "eye" "eye-off")
+                                :onPress #(cmn-events/database-field-update :password-visible (not password-visible))}])
+                      :onChangeText (fn [v]
+                                               ;; After entering some charaters and delete is used to remove those charaters
+                                               ;; password will have a string value "" resulting in a non visible password. Need to use nil instead
+                                      (cmn-events/database-field-update :password (if (empty? v) nil v)))}]
+
+
+     [rn-view {}
+      [select-field {:text-label (str (lstr-l 'keyFile)"(Optional)"  )  #_"Key File (Optional)" #_(str (lstr-l 'groupOrCategory) "*")
+                     :options names
+                     :value key-file-name-part
+                     :on-change on-change}]]
+
+     [rn-view {:flexDirection FLEX-DIR-ROW :style {:margin-top 20 :justify-content "center"}}
+      [rnp-button {:mode "text"
+                   :onPress  cmn-events/cancel-login}
+       (lstr-bl 'back)]
+      [rnp-button {:mode "text"
+                   :onPress (fn []
+                              (.dismiss rn-keyboard)
+                                ;;^js/RNKeyboard (.dismiss rn-keyboard)
+                              (cmn-events/open-database-read-db-file))}
+       (lstr-bl 'continue)]]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -118,7 +142,7 @@
 (defn databases-list-content []
   (fn []
     (let [db-infos @(cmn-events/autofill-db-files-info)
-          sections  [{:title "Databases" #_(lstr-l "databases")
+          sections  [{:title (lstr-l "databases")
                       :key "Databases"
                       ;; Recently used db info forms the data for this list
                       :data db-infos}]]
@@ -141,16 +165,16 @@
     [databases-list-content]]])
 
 (defn login-page []
-  [open-db-page @(cmn-events/login-page-data)])
+  [open-db-page])
 
 (defn top-bar-left-action [page]
   (if (= page cmn-events/ENTRY_FORM_PAGE_ID)
     {:action form-events/cancel-entry-form
-     :label "Back"
-     :title "Entry details"}
+     :label (lstr-bl 'back)
+     :title (lstr-pt 'entry)}
     {:action cmn-events/cancel-extension
-     :label "Cancel"
-     :title "AutoFill Password"}))
+     :label (lstr-bl 'cancel)
+     :title (lstr-pt 'autoFillPassword)}))
 
 (defn top-bar [page]
   (let [{:keys [action label title]} (top-bar-left-action page)]
@@ -222,5 +246,7 @@
          [home-page])]])
 
    [rnp-portal
-    [message-dialog @(cmn-events/message-dialog-data)]]])
+    [message-dialog @(cmn-events/message-dialog-data)]
+    [message-snackbar]
+    ]])
 

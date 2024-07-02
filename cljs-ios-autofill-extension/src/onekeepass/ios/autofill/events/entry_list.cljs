@@ -3,7 +3,7 @@
             [re-frame.core :refer [dispatch reg-event-fx reg-sub subscribe]]))
 
 
-(defn find-entry-by-id [entry-uuid]
+#_(defn find-entry-by-id [entry-uuid]
   (dispatch [:entry-form/find-entry-by-id entry-uuid]))
 
 (defn selected-entry-items []
@@ -19,19 +19,25 @@
             (assoc-in  [:entry-list :selected-entry-items] entry-summaries))
     :fx [[:dispatch [:common/next-page ENTRY_LIST_PAGE_ID "Entries"]]]}))
 
-
 (reg-sub
  :selected-entry-items
  (fn [db _query-vec]
    (get-in db [:entry-list :selected-entry-items])))
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Menu Related ;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Short and Long press related ;;;;;;;;;;;;;;;;;;;;;;
+
+(defn entry-pressed
+  "Called when user just presses on an entry"
+  [entry-uuid]
+  (dispatch [:entry-form/send-credentials-selected entry-uuid]))
 
 (defn long-press-menu-hide []
   (dispatch [:long-press-menu-hide]))
 
-(defn long-press-start [x y entry-uuid]
+(defn long-press-start
+  "Called when user does a long press on an entry"
+  [x y entry-uuid]
   (dispatch [:long-press-start x y entry-uuid]))
 
 (defn entry-list-long-press-data []
@@ -44,7 +50,7 @@
             (assoc-in  [:entry-list-long-press :x] x)
             (assoc-in  [:entry-list-long-press :y] y)
             (assoc-in  [:entry-list-long-press :show] false))
-    :fx [[:dispatch [:entry-form/find-entry-by-id-1 entry-uuid]]]}))
+    :fx [[:dispatch [:entry-form/find-entry-by-id entry-uuid]]]}))
 
 (reg-event-fx
  :long-press-menu-hide
@@ -52,6 +58,8 @@
    {:db (-> db (assoc-in  [:entry-list-long-press :show] false))}))
 
 
+;; Called when an entry data is loaded
+;; See  entry-form find-entry-by-id event
 (reg-event-fx
  :entry-list/form-loaded
  (fn [{:keys [db]} [_event-id]]
@@ -64,7 +72,6 @@
      (if (empty? d)
        {:show false
         :x 0
-        :y 0
-        }
+        :y 0}
        d))))
 

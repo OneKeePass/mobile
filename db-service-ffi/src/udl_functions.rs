@@ -163,6 +163,12 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
 
     AppState::global().add_recent_db_use_info(&db_file_name);
 
+    #[cfg(target_os = "ios")]
+    {
+        // iOS specific copying when we read a database if this db is used in Autofill extension
+        crate::ios::app_group::copy_files_to_app_group_on_save_or_read(&db_file_name);
+    }
+
     Ok(kdbx_loaded)
 }
 
@@ -231,6 +237,13 @@ pub(crate) fn save_kdbx(file_args: FileArgs, overwrite: bool) -> ApiResponse {
                         return_api_response_failure!(e)
                     }
                     log::debug!("New hash for checksum is done and set");
+
+                    #[cfg(target_os = "ios")]
+                    {
+                        // iOS specific copying of a datbase when we save a  database if this db is used in Autofill extension
+                        crate::ios::app_group::copy_files_to_app_group_on_save_or_read(&db_key);
+                    }
+
                     r
                 }
                 Err(e) => return_api_response_failure!(e),
@@ -264,7 +277,6 @@ pub(crate) fn save_kdbx(file_args: FileArgs, overwrite: bool) -> ApiResponse {
         result: api_response,
     }
 }
-
 
 ///////////
 
