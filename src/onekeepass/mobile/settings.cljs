@@ -253,7 +253,7 @@
     (= page-id :settings-security)
     [security-content]))
 
-(defn section-header [title] 
+(defn section-header [title]
   [rn-view  {:style {:flexDirection "row"
                      :width "100%"
                      :backgroundColor @inverse-onsurface-color
@@ -265,9 +265,9 @@
                       :text-align "center"
                       :padding-left 5} :variant "titleSmall"} (lstr-l title)]])
 
-(def ^:private ^:const SEC-KEY-DB-SETTINGS "DbSettings")
-(def ^:private ^:const SEC-KEY-APP-SETTINGS "AppSettings")
-(def ^:private ^:const SEC-KEY-AUTOFILL "AutofillSettings")
+(def ^:private ^:const SECTION-KEY-DB-SETTINGS "DbSettings")
+(def ^:private ^:const SECTION-KEY-APP-SETTINGS "AppSettings")
+(def ^:private ^:const SECTION-KEY-AUTOFILL "AutofillSettings")
 
 (defn row-item [_m]
   (fn [{:keys [title page-id]} section-key]
@@ -276,41 +276,40 @@
     [rnp-list-item {:style {}
                     :contentStyle {}
                     :onPress (fn []
-                               (condp = section-key
-                                 SEC-KEY-DB-SETTINGS
+                               (cond
+                                 (= section-key SECTION-KEY-DB-SETTINGS)
                                  (stgs-events/select-db-settings-panel (keyword page-id))
 
-                                 SEC-KEY-AUTOFILL
+                                 (and (= section-key SECTION-KEY-AUTOFILL) (is-iOS))
                                  (af-events/to-autofill-settings-page)
 
-                                 SEC-KEY-APP-SETTINGS
-                                 (as-events/to-app-settings-page))
-
-                               #_(if-not (= "AppSettings" section-key)
-                                 ;; Database settings pages
-                                   (stgs-events/select-db-settings-panel (keyword page-id))
-                                 ;; App level settings page
-                                   (as-events/to-app-settings-page)))
+                                 (= section-key SECTION-KEY-APP-SETTINGS)
+                                 (as-events/to-app-settings-page)))
                     :title (r/as-element
                             [rnp-text {:style {}
                                        :variant "titleMedium"} (lstr-l title)])
                     :right (fn [_props] (r/as-element [rnp-list-icon {:icon const/ICON-CHEVRON-RIGHT}]))}]))
 
-(defn db-settings-list-content []
-  (let [sections [{:title "dbSettings"
-                   :key SEC-KEY-DB-SETTINGS
-                   :data [{:title "general" :page-id :settings-general}
-                          {:title "credentials" :page-id :settings-credentials}
-                          {:title "security" :page-id :settings-security}]}
 
-                  {:title "autofillSettings"
-                   :key SEC-KEY-AUTOFILL
-                   :data [{:title "autofillSettings"}]}
+(defn sections-data []
+  [{:title "dbSettings"
+    :key SECTION-KEY-DB-SETTINGS
+    :data [{:title "general" :page-id :settings-general}
+           {:title "credentials" :page-id :settings-credentials}
+           {:title "security" :page-id :settings-security}]}
+   ;; For android this is nil and need to be filtered out
+   (when (is-iOS)
+     {:title "autofillSettings"
+      :key SECTION-KEY-AUTOFILL
+      :data [{:title "autofillSettings"}]})
 
-                  {:title "appSettings"
-                   :key SEC-KEY-APP-SETTINGS
-                   :data [{:title "allAppSettings"}]}]]
-    [rn-section-list  {:style {} 
+   {:title "appSettings"
+    :key SECTION-KEY-APP-SETTINGS
+    :data [{:title "allAppSettings"}]}])
+
+(defn settings-list-content []
+  (let [sections (filterv (complement nil?) (sections-data)) ]
+    [rn-section-list  {:style {}
                        :sections (clj->js sections)
                        :renderItem  (fn [props]
                                       ;; keys are (:item :index :section :separators)
@@ -329,7 +328,7 @@
   [rn-view {:style {:flex 1}}
 
    [rn-view {:style {:flex .8}}
-    [db-settings-list-content]] 
+    [settings-list-content]]
 
    [rn-view {:style {:flex .2}}
     [rnp-text {:style {:textDecorationLine "underline"

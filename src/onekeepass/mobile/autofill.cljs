@@ -1,14 +1,15 @@
 (ns onekeepass.mobile.autofill
-  (:require [onekeepass.mobile.events.autofill :as af-events]
+  (:require [onekeepass.mobile.constants :refer [TR-KEY-AUTOFILL]]
+            [onekeepass.mobile.events.autofill :as af-events]
             [onekeepass.mobile.rn-components :as rnc :refer [inverse-onsurface-color
                                                              page-background-color
                                                              rn-safe-area-view
-                                                             rnp-divider
-                                                             rnp-list-item
-                                                             rnp-switch
                                                              rn-section-list
-                                                             rn-view rnp-text]]
-            [onekeepass.mobile.translation :refer [lstr-l]]
+                                                             rn-view
+                                                             rnp-divider
+                                                             rnp-switch
+                                                             rnp-text]]
+            [onekeepass.mobile.translation :refer [lstr-l lstr-mt]]
             [reagent.core :as r]))
 
 (defn section-header [title]
@@ -34,7 +35,7 @@
   (fn [_m]
     (let [info @(af-events/ios-autofill-db-info)
           enabled? (if (nil? info) false true)
-          text (if enabled? "Enabled"  "Enable Autofill for this database")]
+          text (if enabled? (lstr-l 'enabled)  (lstr-mt TR-KEY-AUTOFILL 'enableMsg1))]
 
       [rn-view  {:style {}}
        [rn-view {:style {:flexDirection "row" :min-height 50 :justify-content "space-between"}}
@@ -50,17 +51,22 @@
        (if-not enabled?
          [rn-view {:style (merge box-style-1 {:margin-top 20})}
           [rnp-text {:style {:padding-top 20 :padding-bottom 20} :variant "titleSmall"}
-           "1. You need to enable this database to use in autofill"]
+           (str "1. " (lstr-mt TR-KEY-AUTOFILL 'enableMsg2))
+           #_"1. You need to enable this database to use in autofill"
+           ]
           #_[rnp-divider {:style {}}]
           #_[rnp-text {:style {:padding-top 20  :padding-bottom 20} :variant "titleSmall"}
              "2. Also select OneKeePass as your preferred provider in the iOS System Settings"]]
 
          [rn-view {:style (merge box-style-1 {:margin-top 20})}
           [rnp-text {:style {:padding-top 20 :padding-bottom 20} :variant "titleSmall"}
-           "1. This database is ready to use in autofill"]
+           (str "1. " (lstr-mt TR-KEY-AUTOFILL 'enableMsg3))
+           #_"1. This database is ready to use in autofill"
+           ]
           [rnp-divider {:style {}}]
           [rnp-text {:style {:padding-top 20  :padding-bottom 20} :variant "titleSmall"}
-           "2. Also select OneKeePass as your preferred provider in the iOS System Settings"]])])))
+           (str "2. " (lstr-mt TR-KEY-AUTOFILL 'enableMsg4))
+           #_"2. Also select OneKeePass as your preferred provider in the iOS System Settings"]])])))
 
 (defn settings-list-content []
   (let  [sections [{:title "databaseAutoFill"

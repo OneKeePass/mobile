@@ -66,7 +66,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 #_(defn load-autofill-db-files-info []
-  (dispatch [:load-autofill-db-files-info]))
+    (dispatch [:load-autofill-db-files-info]))
 
 (defn autofill-db-files-info []
   (subscribe [:autofill-db-files-info]))
@@ -86,16 +86,6 @@
    {:db (-> db (assoc-in [:autofill-db-files-info] files-info))
     :fx [[:bg-list-key-files]]}))
 
-#_(reg-fx
-   :bg-list-app-group-db-files
-   (fn []
-     (bg/list-app-group-db-files (fn [api-response]
-                                   (when-let [files (on-ok api-response)]
-                                   ;; files-info is the same struct as 'RecentlyUsed'
-                                     (let [files-info (map (fn [name]
-                                                             {:db-file-path name
-                                                              :file-name (last (str/split name #"/"))}) files)]
-                                       (dispatch [:autofill-db-files-info-loaded files-info])))))))
 
 
 (reg-fx
@@ -109,7 +99,7 @@
  :bg-list-key-files
  (fn []
    (bg/list-key-files (fn [api-response]
-                        (when-let [key-files (on-ok api-response)] 
+                        (when-let [key-files (on-ok api-response)]
                           (dispatch [:autofill-key-files-info-loaded key-files]))))))
 (reg-event-fx
  :autofill-key-files-info-loaded
@@ -142,7 +132,6 @@
 
 (defn cancel-extension []
   (bg/cancel-extension #(println %)))
-
 
 (def home-page-title "home")
 
@@ -282,17 +271,37 @@
 
 (reg-event-fx
  :open-database-read-kdbx-error
- (fn [{:keys [_db]} [_event-id error]] 
+ (fn [{:keys [_db]} [_event-id error]]
    {:fx [[:dispatch [:common/error-box-show "Database Open Error" error]]]}))
 
+;; Backend call to get all entries on openning a databse
 (reg-fx
  :bg-all-entries-on-db-open
  (fn [[db-key password key-file-name]]
    (bg/all-entries-on-db-open db-key password key-file-name
                               (fn [api-response]
                                 (when-let [entry-summaries (on-ok api-response #(dispatch [:open-database-read-kdbx-error %]))]
-                                  #_(println "Result is " entry-summaries)
-                                  (dispatch [:update-selected-entry-items db-key entry-summaries]))))))
+                                  #_(dispatch [:entry-list/update-selected-entry-items db-key entry-summaries])
+                                  (dispatch [:all-entries-loaded db-key entry-summaries]))))))
+
+;; Called after retreiving all entries for the opened database
+(reg-event-fx
+ :all-entries-loaded
+ (fn [{:keys [_db]} [_event-id db-key entry-summaries]]
+   {:fx [[:dispatch [:entry-list/update-selected-entry-items db-key entry-summaries]]
+         [:bg-credential-service-identifier-filtering [db-key]]]}))
+
+;; Called to load any matching entries based on ios autofill credential identifiers 
+;; This is called after loading all entries summary - see the above event
+(reg-fx
+ :bg-credential-service-identifier-filtering
+ (fn [[db-key]]
+   (bg/credential-service-identifier-filtering
+    db-key
+    (fn [api-response]
+      (when-let [result (on-ok api-response)]
+        (dispatch [:search-term-completed result]))))))
+
 (reg-sub
  :open-database-login-data
  (fn [db _query-vec]
@@ -312,7 +321,9 @@
   []
   (subscribe [:search-result-entry-items]))
 
-(defn search-term []
+(defn search-term 
+  "Gets the search term"
+  []
   (subscribe [:search-term]))
 
 (reg-event-fx
@@ -326,7 +337,9 @@
  (fn [{:keys [db]} [_event-id result]]
    ;; result is a map {:entry-items [map of entry summary]} as defined in struct EntrySearchResult
    (let [not-matched (empty? (:entry-items result))]
-     {:db (-> db (assoc-in  [:search :result] (:entry-items result))
+     {:db (-> db
+              (assoc-in  [:search :result] (:entry-items result))
+              (assoc-in  [:search :term] (:term result))
               (assoc-in [:search :selected-entry-id] nil)
               (assoc-in  [:search :error-text] nil)
               (assoc-in  [:search :not-matched] not-matched))})))
@@ -372,7 +385,6 @@
  (fn [db _query-vec]
    (get-in db [:search :term])))
 
-
 ;;;;;;;;;;;;;;; Error dialog ;;;;;;;;;;;;;
 
 ;; Events are defined in common_dialogs.cljs
@@ -413,10 +425,8 @@
 
 (comment
   (in-ns 'onekeepass.ios.autofill.events.common)
-  
+
   (def db-key (-> @re-frame.db/app-db :current-db-file-name))
-  (-> @re-frame.db/app-db (get db-key) keys)
-  
-  )
+  (-> @re-frame.db/app-db (get db-key) keys))
 
 

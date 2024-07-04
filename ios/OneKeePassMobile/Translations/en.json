@@ -25,6 +25,7 @@
         "dbTimeout": "Database Timeout",
         "deleted": "Deleted",
         "description": "Description",
+        "enabled":"Enabled",
         "encriptionAlgorithm": "Encription Algorithm",
         "enterCode": "Enter code",
         "entries": "Entries",
@@ -337,6 +338,16 @@
             "languageTransLoaded":"Language data loaded",
             "remainLocked": "Database will remain open till locked or closed"
         },
+        "autoFill": {
+            "enableMsg1":"Enable Autofill for this database",
+            "enableMsg2":"You need to enable this database to use in autofill",
+            "enableMsg3":"This database is ready to use in autofill",
+            "enableMsg4":"Also select OneKeePass as your preferred provider in the iOS System Settings",
+            "enableMsgExt1":"No database is enabled for AutoFill use",
+            "enableMsgExt2":"Please open a database in OneKeePass App, go to its settings page and enable that database to use in AutoFill",
+            "noEntryFound": "No matching entry is found"
+        },
+
         "dbSettings": {
             "currrentPasswordRemoved": "The current password is removed and will not be used for the master key",
             "databaseName": "A valid database name is required",

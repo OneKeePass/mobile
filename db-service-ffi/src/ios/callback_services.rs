@@ -1,6 +1,6 @@
 use log::debug;
 use once_cell::sync::OnceCell;
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use crate::{udl_types::ApiCallbackResult, OkpResult};
 
@@ -58,4 +58,6 @@ pub fn ios_callback_service_initialize(ios_api_service: Arc<dyn IosApiService>) 
 #[uniffi::export(with_foreign)]
 pub trait IosApiService: Send + Sync {
     fn clipboard_copy_string(&self, text: String, timeout: u32) -> ApiCallbackResult<()>;
+    // Autofill specific
+    fn asc_credential_service_identifiers(&self,) -> ApiCallbackResult<HashMap<String,String>>;
 }

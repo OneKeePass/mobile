@@ -8,6 +8,7 @@ use onekeepass_core::db_service::{
     self, copy_and_write_autofill_ready_db, string_to_simple_hash, EntrySummary,
 };
 use serde::{Deserialize, Serialize};
+use url::Url;
 
 use crate::{
     app_state::AppState,
@@ -53,11 +54,11 @@ pub(crate) fn delete_copied_autofill_details(db_key: &str) -> OkpResult<()> {
     Ok(())
 }
 
-// If this db is used in Autofill extension, then we need to copy the database (with essentail data and kdf adjusted) when it is 
-// read or saved 
+// If this db is used in Autofill extension, then we need to copy the database (with essentail data and kdf adjusted) when it is
+// read or saved
 
-// We need to copy autofill files during read in addition to save time 
-// so that we can ensure the latest opened database is used in autofill 
+// We need to copy autofill files during read in addition to save time
+// so that we can ensure the latest opened database is used in autofill
 pub(crate) fn copy_files_to_app_group_on_save_or_read(db_key: &str) {
     // Ensure that we copy files only if this db is used in autofill
     let Some(_) = AutoFillMeta::read().find_copied_dbs_info(&db_key) else {
@@ -65,30 +66,67 @@ pub(crate) fn copy_files_to_app_group_on_save_or_read(db_key: &str) {
     };
 
     if let Err(e) = copy_files_to_app_group(db_key) {
-        log::error!("Unexpected error in copying the files for autofill on save: {} ",e);
+        log::error!(
+            "Unexpected error in copying the files for autofill on save: {} ",
+            e
+        );
     }
 }
 
-
 /////////////////////////////////////////////
 
-fn app_group_root_sub_dir(sub_dir_name: &str) -> OkpResult<PathBuf> {
+fn temp_delete_old_af_files() {
+    let Some(app_group_home_dir) = &AppState::global().app_group_home_dir else {
+        return;
+    };
+    let pref_file_name = Path::new(app_group_home_dir).join(META_JSON_FILE_NAME);
+
+    // if !pref_file_name.exists() {
+    //     return;
+    // }
+
+    let _r = fs::remove_file(&pref_file_name);
+
+    debug!("Removed old AutoFillMeta file {:?}  ", &pref_file_name);
+
+    let db_file_root = Path::new(&app_group_home_dir).join(AG_DATA_FILES);
+    let _r = fs::remove_dir_all(&db_file_root);
+    debug!("Removed old data file dir {:?}  ", &db_file_root);
+
+    let app_group_key_file_dir = Path::new(&app_group_home_dir).join(AG_KEY_FILES);
+    let _r = fs::remove_dir_all(&app_group_key_file_dir);
+    debug!("Removed old key file dir {:?}  ", &app_group_key_file_dir);
+}
+
+fn app_extension_root() -> OkpResult<PathBuf> {
     let Some(app_group_home_dir) = &AppState::global().app_group_home_dir else {
         return Err(OkpError::UnexpectedError(
             "No app group home dir is found".into(),
         ));
     };
-    let p = util::create_sub_dir(app_group_home_dir, sub_dir_name);
 
+    temp_delete_old_af_files(); // Need to be removed
+
+    let full_path_dir = Path::new(&app_group_home_dir).join("okp");
+    Ok(full_path_dir.to_path_buf())
+}
+
+fn app_group_root_sub_dir(sub_dir_name: &str) -> OkpResult<PathBuf> {
+    let app_group_home_dir = app_extension_root()?;
+    let p = util::create_sub_dir(app_group_home_dir.to_string_lossy().as_ref(), sub_dir_name);
     Ok(p)
 }
 
 fn autofill_meta_json_file() -> Option<PathBuf> {
-    let Some(app_group_home_dir) = &AppState::global().app_group_home_dir else {
+    // let Some(app_group_home_dir) = &AppState::global().app_group_home_dir else {
+    //     return None;
+    // };
+
+    let Ok(app_group_home_dir) = app_extension_root() else {
         return None;
     };
 
-    let pref_file_name = Path::new(app_group_home_dir).join(META_JSON_FILE_NAME);
+    let pref_file_name = app_group_home_dir.join(META_JSON_FILE_NAME); //Path::new(app_group_home_dir).join(META_JSON_FILE_NAME);
     debug!("AutoFillMeta is {:?} ", &pref_file_name);
 
     Some(pref_file_name)
@@ -117,7 +155,7 @@ fn copy_files_to_app_group(db_key: &str) -> OkpResult<CopiedDbFileInfo> {
 
     let app_group_key_file_dir = app_group_root_sub_dir(AG_KEY_FILES)?;
 
-    // Copies all the key files available 
+    // Copies all the key files available
     util::copy_files(
         &AppState::global().key_files_dir_path,
         &app_group_key_file_dir,
@@ -252,43 +290,11 @@ impl AutoFillMeta {
 struct IosAppGroupSupportService {}
 
 // Here we implement all fns of this struct that are not exported as part of 'interface IosAppGroupSupportService'
+// To use any of these internal fns in the background.cljs, that fn should be used in  "invoke" fn of this struct- See below
 impl IosAppGroupSupportService {
     fn internal_copy_files_to_app_group(&self, json_args: &str) -> OkpResult<CopiedDbFileInfo> {
         let (db_key,) = parse_command_args_or_err!(json_args, DbKey { db_key });
         copy_files_to_app_group(&db_key)
-        /* 
-        let file_name = AppState::global().uri_to_file_name(&db_key);
-        debug!("File name from db_file_name  is {} ", &file_name);
-
-        let db_file_root = app_group_root_sub_dir(AG_DATA_FILES)?;
-
-        let hash_of_db_key = string_to_simple_hash(&db_key).to_string();
-
-        let group_db_file_name = Path::new(&db_file_root)
-            .join(&hash_of_db_key)
-            .join(&file_name);
-
-        debug!("group_db_file_name is {:?} ", &group_db_file_name);
-
-        copy_and_write_autofill_ready_db(
-            &db_key,
-            &group_db_file_name.as_os_str().to_string_lossy(),
-        )?;
-
-        // Add and persist the copied file info
-        let db_file_path = group_db_file_name.as_os_str().to_string_lossy().to_string();
-        let copied_db_info = CopiedDbFileInfo::new(file_name, db_file_path, db_key);
-        AutoFillMeta::read().add_copied_db_info(copied_db_info.clone());
-
-        let app_group_key_file_dir = app_group_root_sub_dir(AG_KEY_FILES)?;
-
-        util::copy_files(
-            &AppState::global().key_files_dir_path,
-            &app_group_key_file_dir,
-        );
-
-        Ok(copied_db_info)
-        */
     }
 
     // Copies the selected db's data content and all key file used to the shared location
@@ -298,7 +304,7 @@ impl IosAppGroupSupportService {
         result_json_str(d)
     }
 
-    // Called to delete any previously copied data file for this database and removes 
+    // Called to delete any previously copied data file for this database and removes
     // any reference to this databse in the app group's autofill_meta file
     fn delete_copied_autofill_details(&self, json_args: &str) -> ResponseJson {
         let inner_fn = || -> OkpResult<()> {
@@ -371,6 +377,34 @@ impl IosAppGroupSupportService {
         result_json_str(inner_fn())
     }
 
+    fn credential_service_identifier_filtering(&self, json_args: &str) -> ResponseJson {
+        let inner_fn = || -> OkpResult<db_service::EntrySearchResult> {
+            let (db_key,) = parse_command_args_or_err!(json_args, DbKey { db_key });
+
+            let identifiers =
+                IosApiCallbackImpl::api_service().asc_credential_service_identifiers()?;
+
+            // See serviceIdentifiersReceived
+            let term = if let Some(domain) = identifiers.get("domain") {
+                domain.into()
+            } else if let Some(url) = identifiers.get("url") {
+                if let Ok(u) = Url::parse(url) {
+                    u.host_str().map_or_else(|| String::default(), |s| s.to_string())
+                } else {
+                    url.to_string()
+                }
+            } else {
+                String::default()
+            };
+
+            debug!("The serviceIdentifiersReceived term is {}", &term);
+            let search_result = db_service::search_term(&db_key, &term)?;
+            Ok(search_result)
+        };
+
+        result_json_str(inner_fn())
+    }
+
     fn clipboard_copy(&self, json_args: &str) -> ResponseJson {
         let inner_fn = || -> OkpResult<()> {
             let (_field_name, field_value, _protected, cleanup_after) = parse_command_args_or_err!(
@@ -418,6 +452,9 @@ impl IosAppGroupSupportService {
             "list_of_autofill_db_infos" => self.list_of_autofill_db_infos(),
             "list_of_key_files" => self.list_of_key_files(),
             "all_entries_on_db_open" => self.all_entries_on_db_open(json_args),
+            "credential_service_identifier_filtering" => {
+                self.credential_service_identifier_filtering(json_args)
+            }
 
             "clipboard_copy" => self.clipboard_copy(json_args),
 

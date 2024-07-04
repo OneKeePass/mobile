@@ -50,8 +50,8 @@ class AutoFillDbServiceAPI {
     _jsonService
   }
   
-  //IMPORTANT:
-  //'IosSupportService()' is swift class contruction  whereas 'iosSupportService()' is func defined here
+  // IMPORTANT:
+  // 'IosSupportService()' is swift class contruction  whereas 'iosSupportService()' is func defined here
   // Note the diff between 'Ios' (First letter is uppercase) vs 'ios' (all are lowercase)
   static func iosAppGroupSupportService() -> IosAppGroupSupportService {
     _iosAppGroupSupportService
@@ -102,13 +102,13 @@ class AutoFillDbServiceAPI {
 //    switch (commandName, args) {
 //    case let ("list_app_group_db_files", args):
 //      return _iosSupportService.listAppGroupDbFiles()
-//      
+//
 //    case let ("all_entries_on_db_open", args):
 //      return _iosSupportService.allEntriesOnDbOpen(args)
-//    
+//
 //    case let ("read_kdbx_from_app_group", args):
 //      return _iosSupportService.readKdbxFromAppGroup(args)
-//      
+//
 //    default:
 //      return OneKeePassAutoFill.invokeCommand(commandName, args)
 //    }
@@ -146,6 +146,8 @@ class CommonDeviceServiceImpl: CommonDeviceService {
   }
   
   func appGroupHomeDir() -> String? {
+    // https://developer.apple.com/documentation/foundation/filemanager/1412643-containerurl
+    // The system creates only the Library/Caches subdirectory automatically
     guard let appGroupContainerUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.onekeepass.afshared") else {
       return nil
     }

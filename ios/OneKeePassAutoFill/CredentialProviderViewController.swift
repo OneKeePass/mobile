@@ -15,9 +15,12 @@ class CredentialProviderViewController: ASCredentialProviderViewController, RCTB
   
   static let logger1 = OkpLogger(tag: "CredentialProviderViewController")
   
-  private let logger = logger1
-  
   static var extContext: ASCredentialProviderExtensionContext?
+  
+  static var serviceIdentifierDomain:String?
+  static var serviceIdentifierUrl:String?
+  
+  private let logger = logger1
   
   // Need this inner class so that we can handle viewDidDisappear call and cancel the CredentialProviderViewController sheet
   class OkpViewController: UIViewController {
@@ -31,6 +34,8 @@ class CredentialProviderViewController: ASCredentialProviderViewController, RCTB
       CredentialProviderViewController.cancelExtension()
     }
   }
+  
+  // ================================== //
   
   static func cancelExtension() {
     if extContext != nil {
@@ -50,6 +55,18 @@ class CredentialProviderViewController: ASCredentialProviderViewController, RCTB
     extContext!.completeRequest(withSelectedCredential: passwordCredential, completionHandler: nil)
   }
  
+  
+  static func serviceIdentifiersReceived() -> [String: String]{
+    var dict: [String: String] = [:]
+    
+    dict["domain"] = serviceIdentifierDomain
+    dict["url"] = serviceIdentifierUrl
+    
+    return dict
+  }
+  
+  // ================================== //
+  
   override func viewDidLoad() {
     super.viewDidLoad()
     CredentialProviderViewController.extContext = extensionContext
@@ -117,8 +134,10 @@ class CredentialProviderViewController: ASCredentialProviderViewController, RCTB
       switch si.type {
       case .domain:
         logger.debug("Domain identified \(si.identifier)")
+        CredentialProviderViewController.serviceIdentifierDomain = si.identifier
       case .URL:
         logger.debug("Url identified \(si.identifier)")
+        CredentialProviderViewController.serviceIdentifierUrl = si.identifier
       @unknown default:
         logger.debug("Unknown identifier \(si.type)")
       }

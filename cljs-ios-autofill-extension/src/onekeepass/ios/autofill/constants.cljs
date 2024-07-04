@@ -68,6 +68,8 @@
 
 (def FLEX-DIR-COL "column")
 
+(def TR-KEY-AUTOFILL 'autoFill)
+
 
 ;;;;;;; Icon names ;;;;;
 

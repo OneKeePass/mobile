@@ -2,7 +2,8 @@
   (:require [onekeepass.ios.autofill.common-components :refer [message-dialog
                                                                message-snackbar
                                                                select-field]]
-            [onekeepass.ios.autofill.constants :as const :refer [FLEX-DIR-ROW]]
+            [onekeepass.ios.autofill.constants :as const :refer [FLEX-DIR-ROW
+                                                                 TR-KEY-AUTOFILL]]
             [onekeepass.ios.autofill.entry-form :as entry-form]
             [onekeepass.ios.autofill.entry-list :as entry-list]
             [onekeepass.ios.autofill.events.common :as cmn-events]
@@ -15,20 +16,20 @@
                      rnp-portal rnp-searchbar rnp-text rnp-text-input
                      rnp-text-input-icon]]
             [onekeepass.ios.autofill.translation :refer [lstr-bl lstr-l
-                                                         lstr-pt]]
+                                                         lstr-mt lstr-pt]]
             [reagent.core :as r]))
 
 
 (defn open-db-page []
 
-  (let [{:keys [database-file-name 
+  (let [{:keys [database-file-name
                 _database-full-file-name
                 password
                 password-visible
                 key-file-name-part]} @(cmn-events/login-page-data)
         key-files-info @(cmn-events/key-files-info)
-        
-        names (mapv (fn [{:keys [full-key-file-path file-name]}] 
+
+        names (mapv (fn [{:keys [full-key-file-path file-name]}]
                       {:key full-key-file-path :label file-name}) key-files-info)
 
         on-change (fn [^js/SelOption option]
@@ -63,7 +64,7 @@
 
 
      [rn-view {}
-      [select-field {:text-label (str (lstr-l 'keyFile)"(Optional)"  )  #_"Key File (Optional)" #_(str (lstr-l 'groupOrCategory) "*")
+      [select-field {:text-label (str (lstr-l 'keyFile) "(Optional)")
                      :options names
                      :value key-file-name-part
                      :on-change on-change}]]
@@ -124,7 +125,7 @@
       [rnp-list-item {:style {}
                       :onPress #(cmn-events/show-login file-name db-file-path)
                       :title (r/as-element
-                              [rnp-text {:style {:color color #_(if found primary-color rnc/outline-color)}
+                              [rnp-text {:style {:color color}
                                          :variant (if found "titleMedium" "titleSmall")} file-name])
                       :left (fn [_props]
                               (r/as-element
@@ -146,18 +147,29 @@
                       :key "Databases"
                       ;; Recently used db info forms the data for this list
                       :data db-infos}]]
-      [rn-section-list
-       {:style {}
-        :sections (clj->js sections)
-        :renderItem  (fn [props] ;; keys are (:item :index :section :separators)
-                       (let [props (js->clj props :keywordize-keys true)]
-                         (r/as-element [row-item (-> props :item)])))
-        :ItemSeparatorComponent (fn [_p]
-                                  (r/as-element [rnp-divider]))
-        :renderSectionHeader (fn [props] ;; key is :section
-                               (let [props (js->clj props :keywordize-keys true)
-                                     {:keys [title]} (-> props :section)]
-                                 (r/as-element [databases-list-header title])))}])))
+      (if-not (empty? db-infos)
+        [rn-section-list
+         {:style {}
+          :sections (clj->js sections)
+          :renderItem  (fn [props] ;; keys are (:item :index :section :separators)
+                         (let [props (js->clj props :keywordize-keys true)]
+                           (r/as-element [row-item (-> props :item)])))
+          :ItemSeparatorComponent (fn [_p]
+                                    (r/as-element [rnp-divider]))
+          :renderSectionHeader (fn [props] ;; key is :section
+                                 (let [props (js->clj props :keywordize-keys true)
+                                       {:keys [title]} (-> props :section)]
+                                   (r/as-element [databases-list-header title])))}]
+
+        [rn-view {:style {:flex 1 :justify-content "center"
+                          :padding 20}}
+         [rnp-text {:style {:text-align "center"} :variant "titleSmall"} 
+          (lstr-mt TR-KEY-AUTOFILL 'enableMsgExt1)
+          #_"No database is enabled for AutoFill use"]
+         [rn-view {:height 20}]
+         [rnp-text {:style {:text-align "center"} :variant "titleSmall"} 
+          (lstr-mt TR-KEY-AUTOFILL 'enableMsgExt2)
+          #_"Please open a database in OneKeePass App, go to its settings page and enable that database to use in AutoFill"]]))))
 
 (defn home-page []
   [rn-view {:style {:flex 1 :width "100%"}}
@@ -247,6 +259,5 @@
 
    [rnp-portal
     [message-dialog @(cmn-events/message-dialog-data)]
-    [message-snackbar]
-    ]])
+    [message-snackbar]]])
 

@@ -12,8 +12,8 @@
 ;; On successful loading of entries, we also set current-db-file-name to db-key so that
 ;; we can use 'active-db-key' though only one db is opened at a time
 (reg-event-fx
- :update-selected-entry-items
- (fn [{:keys [db]} [_event-id db-key entry-summaries]]
+ :entry-list/update-selected-entry-items
+ (fn [{:keys [db]} [_event-id db-key entry-summaries]] 
    {:db (-> db
             (assoc-in [:current-db-file-name] db-key)
             (assoc-in  [:entry-list :selected-entry-items] entry-summaries))

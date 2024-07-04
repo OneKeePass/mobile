@@ -401,21 +401,13 @@
 (defn ios-query-autofill-db-info [db-key dispatch-fn] 
   (ios-autofill-invoke-api "query_autofill_db_info" {:db-key db-key} dispatch-fn))
 
-#_(defn ios-copy-files-to-group 
-  "Called to copy this db's content and its associated files (key files, bookmarks? etc ) to app group container"
-  [db-key dispatch-fn]
-  (call-api-async (fn [] (.copyFileToAppGroup
-                          okp-db-service
-                          (api-args->json {:db-key db-key})))
-                  dispatch-fn))
-
-#_(defn ios-delete-app-group-files 
-  "Called to delete all previously copied files from app group container dir for this db"
-  [db-key dispatch-fn]
-  (call-api-async (fn [] (.deleteAppGroupFiles
-                          okp-db-service
-                          (api-args->json {:db-key db-key})))
-                  dispatch-fn))
+(defn ios-copy-to-clipboard
+  "Called to copy a selected field value to clipboard
+   The arg field-info is a map that statifies the enum member 
+   ClipboardCopyArg {field_name,field_value,protected,cleanup_after}
+   "
+  [field-info dispatch-fn]
+  (ios-autofill-invoke-api "clipboard_copy" field-info dispatch-fn))
 
 ;;;;;;;;
 

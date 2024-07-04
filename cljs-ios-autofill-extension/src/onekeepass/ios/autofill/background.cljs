@@ -209,6 +209,14 @@
                                           :password password
                                           :key-file-name key-file-name} dispatch-fn))
 
+(defn credential-service-identifier-filtering 
+  "Prepares search term based on the domain or url passed by iOS on autofill launch and uses that term
+  to search any matching entries.
+  The 'dispatch-fn' is called with same result as the api call 'search_term' does
+  "
+  [db-key dispatch-fn]
+  (autofill-invoke-api "credential_service_identifier_filtering" {:db-key db-key} dispatch-fn))
+
 (defn copy-to-clipboard
   "Called to copy a selected field value to clipboard
    The arg field-info is a map that statifies the enum member 
@@ -310,6 +318,8 @@
 (comment
   ;;(call-api-async (fn [] (.cancelExtension okp-db-service)) #(println %))
   (in-ns 'onekeepass.ios.autofill.background)
+  
+  (def db-key (-> @re-frame.db/app-db :current-db-file-name))
   ;; Use this to see :MainBundleDir, :LibraryDir, :DocumentDir etc
   (-> okp-db-service .getConstants .-MainBundleDir)
   )
