@@ -45,7 +45,6 @@ object EventEmitter {
         }
     }
 
-
     fun emitOtpUpdate(jsonString: String) {
         reactApplicationContext.getJSModule(RCTDeviceEventEmitter::class.java)
                 .emit(EVENT_ENTRY_OTP_UPDATE, jsonString)

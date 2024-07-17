@@ -128,6 +128,13 @@ class CommonDeviceServiceImpl(val reactContext: ReactApplicationContext) : Commo
         return reactContext.filesDir.absolutePath
     }
 
+    override fun appGroupHomeDir(): String? {
+        // This iis not implemented as it is iOS specific
+        //TODO("Not yet implemented")
+
+        return null
+    }
+
     override fun cacheDir(): String {
         return reactContext.cacheDir.absolutePath
     }

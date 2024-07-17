@@ -1,0 +1,3 @@
+<autofill-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:settingsActivity="com.example.android.autofill.service.settings.SettingsActivity">
+</autofill-service>

@@ -2,7 +2,7 @@
   "All common events that are used across many pages"
   (:require [cljs.core.async :refer [<! go timeout]]
             [clojure.string :as str]
-            [onekeepass.mobile.background :as bg]
+            [onekeepass.mobile.background :as bg :refer [is-Android]]
             [onekeepass.mobile.utils :as u :refer [str->int tags->vec]]
             [re-frame.core :refer [dispatch dispatch-sync reg-event-db
                                    reg-event-fx reg-fx reg-sub subscribe]]))
@@ -161,7 +161,7 @@
 (defn opened-database-file-names
   "Gets db info map with keys [db-key database-name file-name key-file-name] from the opened database list"
   []
-  (subscribe [:opened-database-file-names]))
+  (subscribe [:common/opened-database-file-names]))
 
 (defn language-translation-loading-completed []
   (subscribe [:language-translation-loading-completed]))
@@ -232,9 +232,35 @@
       :fx [[:dispatch [:entry-category/load-categories-to-show]]
            [:dispatch [:common/next-page :entry-category database-name]]]})))
 
+(defn notify-android-af
+  "Wrapps android autofill specific events if required from main app events
+
+  The arg 'main-events-vec' is a vector of vector of main app's events 
+     e.g [[:dispatch [:load-app-preference]]]
+  The arg 'args' is an optional args that is passed to the autofill event
+
+  Returns the combined events which is set to :fx key
+    e.g If the android autofill activity is opened and then we may see  
+        [[:dispatch [:load-app-preference]] 
+         [:dispatch [:android-af/main-app-event-happened {:main-event-id :close-kdbx-completed :db-key \"some val\"}]
+        ]
+       For iOS, it returns the original event vec 
+       [[:dispatch [:load-app-preference]]]
+  "
+  [db main-events-vec args]
+  (if (is-Android)
+    (let [;; If the android autofill activity is already launched, then 
+          ;; we may have non nil value in [:android-af :main-event-handler]
+          event-name-kw (get-in db [:android-af :main-event-handler])
+          main-events-vec (if-not (nil? event-name-kw)
+                            (into main-events-vec [[:dispatch [event-name-kw args]]])
+                            main-events-vec)]
+      main-events-vec)
+    main-events-vec))
+
 (reg-event-fx
  :close-kdbx-completed
- (fn [{:keys [db]} [_event-id db-key]]
+ (fn [{:keys [db]} [event-id db-key]]
    (let [;; Remove the closed db-key summary map from list
          dbs (filterv (fn [m] (not= (:db-key m) db-key)) (:opened-db-list db))
          ;; For now make the last db if any as the active one  
@@ -245,7 +271,10 @@
               (assoc :current-db-file-name next-active-db-key)
               ;; clears all entry-form, group-form, categories etc for this db-key
               (dissoc db-key))
-      :fx [[:dispatch [:load-app-preference]]]})))
+      :fx (notify-android-af db
+                             [[:dispatch [:load-app-preference]]]
+                             {:main-event-id event-id
+                              :db-key db-key})  #_[[:dispatch [:load-app-preference]]]})))
 
 (reg-event-fx
  :remove-from-recent-list
@@ -312,11 +341,14 @@
 
 ;; Gets all db keys / full database file names
 (reg-sub
- :opened-database-file-names
+ :common/opened-database-file-names
  (fn [db _query-vec]
    (mapv (fn [m] (:db-key m)) (:opened-db-list db))))
 
 ;;;;;;;;;;;;;;;;;;  App preference, Recent dbs etc ;;;;;;;;;;;;;;;;;;;;
+
+(defn app-preference-status-loaded []
+  (subscribe [:app-preference-status-loaded]))
 
 (defn recently-used
   "Returns a vec of maps (from struct RecentlyUsed) with keys :file-name and :db-file-path 
@@ -377,6 +409,20 @@
  :biometric-available
  (fn [db [_event-id]]
    (get db :biometric-available)))
+
+(reg-sub
+ :app-preference-status-loaded
+ (fn [db [_event-id]]
+   (let [s (get-in db [:app-preference :status])]
+     (cond
+       (nil? s)
+       false
+
+       (= s :loaded)
+       true
+
+       :else
+       false))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  DB Lock ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

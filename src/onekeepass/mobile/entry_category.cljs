@@ -297,7 +297,7 @@
                                (when-not (= key GENERAL_KEY)
                                  (r/as-element [category-header title group-by]))))}]))
 
-(defn entry-category-content []
+(defn entry-category-content [] 
   [rn-safe-area-view {:style {:flex 1 :background-color @page-background-color}}
    [categories-content]
    [fab-action-menu @fab-action-menu-data @(ecat-events/root-group)]

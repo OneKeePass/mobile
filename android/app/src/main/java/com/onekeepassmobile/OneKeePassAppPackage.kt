@@ -1,5 +1,6 @@
 package com.onekeepassmobile
 
+import android.util.Log
 import android.view.View
 import com.facebook.react.ReactPackage
 import com.facebook.react.bridge.NativeModule
@@ -11,13 +12,23 @@ class OneKeePassAppPackage : ReactPackage {
 
     override fun createViewManagers(
             reactContext: ReactApplicationContext
-    ): MutableList<ViewManager<View, ReactShadowNode<*>>> = mutableListOf()
+    ): MutableList<ViewManager<View, ReactShadowNode<*>>> {
+        Log.d(TAG,"createViewManagers is called with context $reactContext")
+        return mutableListOf()
+    }
 
     override fun createNativeModules(
             reactContext: ReactApplicationContext
-    ): MutableList<NativeModule> = listOf(
-            DbServiceModule(reactContext) ,
-            DocumentPickerServiceModule(reactContext),
-            ExportServiceModule(reactContext),
-            ).toMutableList()
+    ): MutableList<NativeModule>  {
+        Log.d(TAG,"createNativeModules is called with context $reactContext")
+        return listOf(
+                DbServiceModule(reactContext) ,
+                DocumentPickerServiceModule(reactContext),
+                ExportServiceModule(reactContext),
+        ).toMutableList()
+    }
+
+    companion object {
+        private val TAG = "OneKeePassAppPackage"
+    }
 }

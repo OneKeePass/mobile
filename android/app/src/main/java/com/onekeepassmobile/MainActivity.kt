@@ -5,9 +5,10 @@ import android.os.Bundle
 import android.util.Log
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
+import com.facebook.react.ReactApplication
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
 import com.facebook.react.defaults.DefaultReactActivityDelegate
-import com.onekeepassmobile.EventEmitter.onCreateIntent
+import com.onekeepassmobile.EventEmitter
 import com.zoontek.rnbootsplash.RNBootSplash
 
 class MainActivity : ReactActivity() {
@@ -24,6 +25,10 @@ class MainActivity : ReactActivity() {
      * (aka React 18) with two boolean flags.
      */
     override fun createReactActivityDelegate(): ReactActivityDelegate {
+        //Log.d(TAG, "Creating and returning DefaultReactActivityDelegate")
+
+        //return OkpReactActivityDelegate(this,mainComponentName!!,fabricEnabled)
+
         return DefaultReactActivityDelegate(
                 this,
                 mainComponentName!!,  // If you opted-in for the New Architecture, we enable the Fabric Renderer.
@@ -39,15 +44,17 @@ class MainActivity : ReactActivity() {
      * recently supplied in [.onSaveInstanceState].  ***Note: Otherwise it is null.***
      */
     override fun onCreate(savedInstanceState: Bundle?) {
+        Log.d("MainActivity", "onCreate is called...with intent ${intent}")
         // initialize the splash screen and need to call hide with duration in UI side
         // See the use of react-use-effect in onekeepass.mobile.core.main fn
         RNBootSplash.init(this)
-        super.onCreate(savedInstanceState)
 
+        super.onCreate(savedInstanceState)
+        
         // We may receive an intent for android.intent.action.VIEW if the user presses a db file with
         // the extension .kdbx and the app is not previously running and it is started now
         // See the required intent-filter that are added for this in AndroidManifest.xml
-        onCreateIntent(intent)
+        EventEmitter.onCreateIntent(intent)
 
 //    https://stackoverflow.com/questions/49153747/how-can-i-get-the-current-reactcontext-in-mainactivitys-oncreate-function
 //    Though the ReactApplicationContext is available so we can do emitKdbxUriToOpenEvent, the event
@@ -74,7 +81,9 @@ class MainActivity : ReactActivity() {
      */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        Log.d("MainActivity", "onNewIntent is called...with intent ${intent}")
         EventEmitter.onNewIntent(intent)
+        //Log.d("MainActivity", "EventEmitter.onNewIntent is called...")
     }
 
     override fun onPause() {
@@ -85,5 +94,9 @@ class MainActivity : ReactActivity() {
     override fun onResume() {
         super.onResume()
         Log.d("MainActivity", "On resume is called...")
+    }
+
+    companion object {
+        private val TAG = "MainActivity"
     }
 }

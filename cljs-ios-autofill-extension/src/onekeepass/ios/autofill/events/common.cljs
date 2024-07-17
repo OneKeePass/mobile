@@ -86,8 +86,6 @@
    {:db (-> db (assoc-in [:autofill-db-files-info] files-info))
     :fx [[:bg-list-key-files]]}))
 
-
-
 (reg-fx
  :bg-list-app-group-db-files
  (fn []

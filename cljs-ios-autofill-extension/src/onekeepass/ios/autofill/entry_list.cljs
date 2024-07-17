@@ -33,9 +33,6 @@
   (swap! entry-long-press-menu-data assoc :show false))
 
 
-
-
-
 (def entry-long-press-menu-action (menu-action-factory el-events/long-press-menu-hide))
 
 (defn show-entry-long-press-menu [^js/PEvent event uuid]
@@ -55,7 +52,6 @@
      [rnp-menu-item {:title (lstr-ml 'entryDetails)
                      :onPress (entry-long-press-menu-action cmn-events/to-entry-form-page)}]]))
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn row-item []
@@ -71,7 +67,6 @@
                                           [rnp-list-icon {:icon icon-name
                                                           :color @icon-color
                                                           :style {:margin-left 5 :align-self "center"}}]))}])))
-
 
 (defn section-header [title]
   [rn-view  {:style {:flexDirection "row"
@@ -110,7 +105,6 @@
                                               (let [props (js->clj props :keywordize-keys true)
                                                     {:keys [title _data]} (-> props :section)]
                                                 (r/as-element [section-header title])))}]]))
-
 
 (defn content []
   [rn-safe-area-view {:style {:flex 1 :background-color @page-background-color}}

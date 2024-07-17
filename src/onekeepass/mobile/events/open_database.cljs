@@ -39,7 +39,7 @@
 
 (defn open-database-read-db-file
   "Called when user clicks the continue button. By this time user would have picked a file to open in the 
-  previous pick file call
+  previous pick file call and provided credentials that are stored in a map in :open-database 
   "
   []
   (dispatch [:open-database-read-db-file]))
@@ -118,6 +118,7 @@
  (fn []
    (bg/pick-database-to-read-write
     (fn [api-response]
+      (println " pick-database-to-read-write response " api-response)
       (when-let [picked-response (on-ok
                                   api-response
                                   #(dispatch [:database-file-pick-error %]))]

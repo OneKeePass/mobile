@@ -1,32 +1,34 @@
 (ns onekeepass.mobile.core
-  (:require [onekeepass.mobile.appbar :refer [appbar-main-content
-                                              hardware-back-pressed]]
-            [onekeepass.mobile.background :as bg]
-            [onekeepass.mobile.common-components :as cc :refer [message-dialog
-                                                                message-modal
-                                                                message-snackbar]]
-            [onekeepass.mobile.constants :refer [DARK-THEME]]
-            [onekeepass.mobile.events.app-settings :as as-events :refer [app-theme]]
-            [onekeepass.mobile.events.common :as cmn-events]
-            [onekeepass.mobile.events.native-events :as native-events]
-            [onekeepass.mobile.events.save :as save-events]
-            [onekeepass.mobile.rn-components :as rnc :refer [react-use-effect
-                                                             reset-colors
-                                                             rnp-portal
-                                                             rnp-provider
-                                                             use-color-scheme]]
-            [onekeepass.mobile.save-error-dialog :refer [save-error-modal]]
-            [onekeepass.mobile.start-page :refer [open-db-dialog]]
-            [onekeepass.mobile.translation :as t]
-            [react-native :as rn]
-            [reagent.core :as r]))
-(set! *warn-on-infer* true)
+  (:require
+   [onekeepass.mobile.android.autofill.core :as android-core]
+   [onekeepass.mobile.appbar :refer [appbar-main-content
+                                     hardware-back-pressed]]
+   [onekeepass.mobile.background :as bg]
+   [onekeepass.mobile.common-components :as cc :refer [message-dialog
+                                                       message-modal
+                                                       message-snackbar]]
+   [onekeepass.mobile.constants :refer [DARK-THEME]]
+   [onekeepass.mobile.events.app-settings :as as-events :refer [app-theme]]
+   [onekeepass.mobile.events.common :as cmn-events]
+   [onekeepass.mobile.events.native-events :as native-events]
+   [onekeepass.mobile.events.save :as save-events]
+   [onekeepass.mobile.rn-components :as rnc :refer [react-use-effect
+                                                    reset-colors
+                                                    rnp-portal
+                                                    rnp-provider
+                                                    use-color-scheme]]
+   [onekeepass.mobile.save-error-dialog :refer [save-error-modal]]
+   [onekeepass.mobile.start-page :refer [open-db-dialog]]
+   [onekeepass.mobile.translation :as t]
+   [react-native :as rn]
+   [reagent.core :as r]))
+;;(set! *warn-on-infer* true)
 
 (defn main-content
   "All reagent atoms are referenced in this component so that the react hook set-translator is called onetime in main"
-  [] 
+  []
   (if-not @(cmn-events/language-translation-loading-completed)
-    [rnc/rn-view [rnc/rnp-text "Please wait..."]]
+    [rnc/rn-view [rnc/rnp-text "Please wait."]]
     [:<>
      [appbar-main-content]
      [rnp-portal
@@ -104,14 +106,21 @@
   [rnc/gh-gesture-handler-root-view {:style {:flex 1}}
    [:f> main]])
 
+
 (defn ^:export -main
-  []
-  #_(native-events/register-open-url-handler)
-  (native-events/register-backend-event-handlers)
-  (cmn-events/sync-initialize)
-  (as-events/init-session-timeout-tick)
-  (t/load-language-translation)
-  (r/as-element [app-root]))
+  [args]
+  (println "Main is called with args..." args)
+
+  (let [{:keys [androidAutofill :as options]} (js->clj args :keywordize-keys true)]
+    (println "options are " options)
+    (native-events/register-backend-event-handlers)
+    (cmn-events/sync-initialize)
+    (as-events/init-session-timeout-tick)
+    (t/load-language-translation)
+
+    (if androidAutofill
+      (r/as-element [android-core/app-root])
+      (r/as-element [app-root]))))
 
 (comment
   (in-ns 'onekeepass.mobile.core))

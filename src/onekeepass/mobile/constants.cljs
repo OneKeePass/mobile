@@ -50,6 +50,7 @@
 (def MODIFIED_TIME "Modified Time")
 (def CREATED_TIME "Created Time")
 (def PASSWORD "Password")
+(def USERNAME "UserName")
 
 (def ASCENDING "Ascending")
 (def DESCENDING "Descending")
