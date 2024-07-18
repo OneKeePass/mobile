@@ -20,7 +20,7 @@
                        :title title}])
 
 (defn appbar-body-content  [{:keys [page]}]
-  (println "Page id is " page)
+  #_(println "Page id is " page)
   (cond
 
     (= page HOME_PAGE_ID)

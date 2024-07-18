@@ -239,7 +239,6 @@
      (when-not valid-token-found
        [rnp-helper-text {:type "error" :visible true} "Invalid otp url. No token is generated"])]))
 
-
 (defn opt-field-no-token
   "This field will not show token and instead it is a text input with otp url.
    This is used during edit mode

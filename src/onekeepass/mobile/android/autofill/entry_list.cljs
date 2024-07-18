@@ -27,7 +27,7 @@
 
 (defn entry-long-press-menu []
   (let [{:keys [show x y]} @(el-events/entry-list-long-press-data)]
-    (println "entry-long-press-menu is called with show " show)
+    ;;(println "entry-long-press-menu is called with show " show)
     [rnp-menu {:visible show :onDismiss el-events/long-press-menu-hide :anchor (clj->js {:x x :y y})}
      [rnp-menu-item {:title (lstr-ml 'copyUserName)
                      :onPress #() #_(entry-long-press-menu-action

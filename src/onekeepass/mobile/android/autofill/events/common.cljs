@@ -184,7 +184,7 @@
 (reg-event-fx
  :android-af/database-file-picked
  (fn [{:keys [db]} [_event-id {:keys [file-name full-file-name-uri]}]]
-   (println "android-af/database-file-picked is called")
+   #_(println "android-af/database-file-picked is called")
    {:db (-> db init-open-database-data
             ;; database-file-name is just the 'file name' part derived from full uri 'database-full-file-name'
             ;; to show in the dialog
@@ -218,24 +218,22 @@
 (reg-event-fx
  :android-af/pick-database-file
  (fn [{:keys [_db]} [_event-id]]
-   (println "android-af/pick-database-file is called ")
+   #_(println "android-af/pick-database-file is called ")
    {:fx [[:android-af/bg-pick-database-file]]}))
 
 (reg-fx
  :android-af/bg-pick-database-file
  (fn []
-   (println "android-af/bg-pick-database-file is called")
+   #_(println "android-af/bg-pick-database-file is called")
    (bg/pick-database-to-read-write
-    (fn [api-response] 
-      (println " pick-database-to-read-write response " api-response)
+    (fn [api-response]
+      #_(println " pick-database-to-read-write response " api-response)
       (when-let [picked-response (on-ok
                                   api-response
                                   ;; main app's :database-file-pick-error reused 
                                   (fn [error]
-                                    (println "Error is " error)
-                                    (dispatch [:database-file-pick-error error])
-                                    )
-                                  )]
+                                    #_(println "Error is " error)
+                                    (dispatch [:database-file-pick-error error])))]
         (dispatch [:android-af/database-file-picked picked-response]))))))
 
 ;; This will make dialog open status true
@@ -355,7 +353,7 @@
 (reg-event-fx
  :android-af/main-app-event-happened
  (fn [{:keys [db]} [_event_id args]]
-   (println ":android-af/main-app-event-happened is called with args" args)
+   #_(println ":android-af/main-app-event-happened is called with args" args)
    {:fx [[:dispatch [:android-af-common/next-page HOME_PAGE_ID "Home"]]]}))
 
 (reg-sub

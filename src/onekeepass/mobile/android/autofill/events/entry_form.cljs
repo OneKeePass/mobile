@@ -4,6 +4,7 @@
             [onekeepass.mobile.events.common :refer [on-ok]]
             [onekeepass.mobile.events.entry-form-common :refer [entry-form-key
                                                                 extract-form-otp-fields]]
+            [onekeepass.mobile.events.native-events :as native-events]
             [onekeepass.mobile.utils :as u :refer [contains-val?]]
             [re-frame.core :refer [dispatch reg-event-db reg-event-fx reg-fx
                                    reg-sub subscribe]]))
@@ -126,6 +127,92 @@
 ;;  :entry-form-edit
 ;;  (fn [db _query-vec]
 ;;    (get-in db [entry-form-key :edit])))
+
+
+;;;;;;;;;;;;;;;;;;;;; OTP ;;;;;;;;;;;;;;;;;;;;;;
+
+(defn entry-form-otp-start-polling
+  "Called to start polling from use effect"
+  []
+  (dispatch [:android-af/entry-form-otp-start-polling]))
+
+(defn entry-form-otp-stop-polling
+  "Called to stop polling from use effect"
+  []
+  (dispatch [:android-af/entry-form-otp-stop-polling]))
+
+(defn otp-currrent-token [opt-field-name]
+  (subscribe [:android-af/otp-currrent-token opt-field-name]))
+
+;; Called to start polling from use effect
+(reg-event-fx
+ :android-af/entry-form-otp-start-polling
+ (fn [{:keys [db]} [_event-id]]
+   (let [form-status (get-in db [:android-af entry-form-key :showing])
+         entry-uuid (get-in db [:android-af entry-form-key :data :uuid])
+         otp-fields (extract-form-otp-fields (get-in db [:android-af entry-form-key :data]))]
+     (if (= form-status :selected)
+       {:fx [[:otp/start-polling-otp-fields [(android-af-active-db-key db)
+                                             entry-uuid
+                                             otp-fields]]]}
+       {}))))
+
+;; Called to stop polling from use effect
+(reg-event-fx
+ :android-af/entry-form-otp-stop-polling
+ (fn [{:keys [db]} [_event-id]]
+   (let [form-status (get-in db [:android-af entry-form-key :showing])]
+     (if (= form-status :selected)
+       {:fx [[:otp/stop-all-entry-form-polling [(android-af-active-db-key db) nil]]]}
+       {}))))
+
+;; Called from backend event handler (see native_events.cljs) to update with the current tokens 
+(reg-event-fx
+ :android-af/entry-form-update-otp-tokens
+ (fn [{:keys [db]} [_event-id entry-uuid current-opt-tokens-by-field]]
+   ;; First we need to ensure that the incoming entry id is the same one showing
+   (if (= entry-uuid (get-in db [:android-af entry-form-key :data :uuid]))
+
+     ;; otp-fields is a map with otp field name as key and its token info with time ttl 
+     (let [db (reduce (fn [db [otp-field-name {:keys [token ttl]}]]
+                        (let [otp-field-name (name otp-field-name) ;; make sure field name is string
+                              otp-field-m (get-in db [:android-af entry-form-key :otp-fields otp-field-name])
+                              otp-field-m (if (nil? token)
+                                            (assoc otp-field-m :ttl ttl)
+                                            (assoc otp-field-m :token token :ttl ttl))]
+                          (assoc-in db [:android-af entry-form-key :otp-fields otp-field-name] otp-field-m)))
+                      db current-opt-tokens-by-field)]
+
+       ;;(println "After otp-fields " (get-in db [entry-form-key :otp-fields]))
+
+       {:db db})
+     {})))
+
+;; Returns a map with otp fileds as key and its token info as value
+;; e.g {"My Git OTP Code" {:token "576331", :ttl 9, :period 30}, "otp" {:token "145214", :ttl 9, :period 30}}
+(reg-sub
+ :android-af/otp-currrent-token
+ (fn [db [_query-id otp-field-name]]
+   (get-in db [:android-af entry-form-key :otp-fields otp-field-name])))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Native event listener ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn register-entry-otp-update-handler 
+ "The register-event-listener is called to register android autofill specific listener " 
+  []
+  #_(println "register-entry-otp-update-handler is called")
+  (bg/register-event-listener :android-af  native-events/EVENT_ENTRY_OTP_UPDATE
+                              (fn [event-message]
+                                (let [converted (bg/transform-api-response event-message 
+                                                                           {:convert-response-fn native-events/token-response-converter})]
+                                  (when-let [{:keys [entry-uuid reply-field-tokens]} (on-ok converted)]
+                                    (dispatch [:android-af/entry-form-update-otp-tokens entry-uuid reply-field-tokens]))))))
+
+
+(register-entry-otp-update-handler)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 (comment

@@ -1,16 +1,19 @@
 (ns onekeepass.mobile.android.autofill.entry-form
   (:require [clojure.string :as str]
-            [onekeepass.mobile.events.entry-form :as main-ef-events]
             [onekeepass.mobile.android.autofill.events.entry-form :as android-af-ef-events]
             [onekeepass.mobile.common-components :refer [select-field-view]]
-            [onekeepass.mobile.constants :as const :refer [ONE_TIME_PASSWORD_TYPE]]
-            [onekeepass.mobile.entry-form-fields :refer [otp-field text-field]]
+            [onekeepass.mobile.constants :as const :refer [ONE_TIME_PASSWORD_TYPE
+                                                           OTP]]
+            [onekeepass.mobile.entry-form-fields :refer [field-focus-action
+                                                         formatted-token text-field]]
             [onekeepass.mobile.rn-components
              :as rnc
-             :refer [page-background-color primary-container-color
-                     rn-scroll-view rn-view rnp-chip rnp-text rnp-text-input]]
+             :refer [animated-circular-progress page-background-color
+                     primary-container-color rn-view rnp-chip rnp-helper-text
+                     rnp-text rnp-text-input]]
             [onekeepass.mobile.translation :refer [lstr-l lstr-section-name]]
-            [onekeepass.mobile.utils :as u]))
+            [onekeepass.mobile.utils :as u]
+            [reagent.core :as r]))
 
 
 (def box-style-1 {:flexDirection "column"
@@ -62,6 +65,52 @@
                                                       (form-events/entry-form-data-update-field-value
                                                        :tags (filterv #(not= tag %) entry-tags))))} tag]))]]])))
 
+;; This is based on the original from the main app's entry-form
+;; TODO: Need to make it generic by passing few subscribe/event calls in args 
+(defn otp-field-with-token-update
+  "Shows token value which is updated to a new value based on its 'period' value - Typically every 30sec 
+   Also there is progress indicator that is updated every second
+   This is shown only when the form is in an non edit mode - that is when in read mode and edit is false
+   "
+  [{:keys [key
+           _protected
+           _edit]}]
+  (let [{:keys [token ttl period]} @(android-af-ef-events/otp-currrent-token key)
+        valid-token-found (not (nil? token))]
+    [rn-view
+     [rn-view {:flexDirection "row" :style {:flex 1}}
+      [rnp-text-input {:label (if (= OTP key) (lstr-l 'oneTimePasswordTotp) key)
+                       :value (if valid-token-found (formatted-token token) "  ")
+                       :showSoftInputOnFocus false
+                       :autoCapitalize "none"
+                       :keyboardType "email-address"
+                       :autoCorrect false
+                       :selectTextOnFocus false
+                       :spellCheck false
+                       :textContentType "none"
+                       :style {:width "90%" :fontSize 30}
+                           ;;:textColor @rnc/custom-color0
+                       :onFocus #(field-focus-action key true)
+                       :onBlur #(field-focus-action key false)
+                       :onChangeText nil
+                       :onPressOut #() #_#(cmn-events/write-string-to-clipboard
+                                     {:field-name key
+                                      :protected protected
+                                      :value token})
+                       :secureTextEntry false
+                       :right nil}]
+      [rn-view {:style {:width "10%" :justify-content "center"}}
+           ;; Use {:transform [{:scaleX -1} to reverse direction
+       [animated-circular-progress {:style {:transform [{:scaleX 1}]}
+                                    :tintColor @rnc/circular-progress-color
+                                    :size 35
+                                    :width 2
+                                    :fill (js/Math.round (* 100 (/ ttl period)))
+                                    :rotation 360}
+        (fn [_v] (r/as-element [rnp-text {:style {:transform [{:scaleX 1}]}} ttl]))]]]
+
+     (when-not valid-token-found
+       [rnp-helper-text {:type "error" :visible true} "Invalid otp url. No token is generated"])]))
 
 (defn section-header [section-name] 
   (let [standard-sections @(android-af-ef-events/entry-form-data-fields :standard-section-names)
@@ -88,8 +137,7 @@
                       value
                       data-type
                       standard-field
-                      select-field-options
-                      required
+                      select-field-options 
                       password-score] :as kv} section-data]
           ;; All fields of this section is shown in edit mode. In case of non edit mode, 
           ;; all required fields and other fields with values are shown
@@ -103,11 +151,12 @@
                                                   :pressable-on-press #() #_#(android-af-ef-events/copy-field-to-clipboard key)
                                                   :on-change #()}]
 
+                  ;; otp-field-with-token-update is called instead of otp-field as this the entry form is read only
                   (= data-type ONE_TIME_PASSWORD_TYPE)
-                  ^{:key key} [otp-field (assoc kv
-                                                :edit edit
-                                                :section-name section-name
-                                                :standard-field standard-field)]
+                  ^{:key key} [otp-field-with-token-update (assoc kv
+                                                                  :edit edit
+                                                                  :section-name section-name
+                                                                  :standard-field standard-field)]
 
                   :else
                   ^{:key key} [text-field (assoc kv
@@ -123,18 +172,18 @@
 (defn all-sections-content []
   (let [{:keys [edit showing]
          {:keys [section-names section-fields]} :data} @(android-af-ef-events/entry-form)] 
-    #_(rnc/react-use-effect
+    (rnc/react-use-effect
        (fn []
        ;; cleanup fn is returned which is called when this component unmounts or any passed dependencies are changed
        ;;(println "all-sections-content effect init - showing edit : " showing edit )
          (when (and (= showing :selected) (not edit))
          ;;(println "From effect init entry-form-otp-start-polling is called")
-           (main-ef-events/entry-form-otp-start-polling))
+           (android-af-ef-events/entry-form-otp-start-polling))
 
          (fn []
          ;; (println "all-sections-content effect cleanup - showing edit in-deleted-category: " showing edit in-deleted-category)
          ;; (println "From effect cleanup entry-form-otp-stop-polling is called")
-           (main-ef-events/entry-form-otp-stop-polling)))
+           (android-af-ef-events/entry-form-otp-stop-polling)))
 
      ;; Need to pass the list of all reactive values (dependencies) referenced inside of the setup code or empty list
        (clj->js [showing edit]))

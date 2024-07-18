@@ -28,6 +28,16 @@ class AuthenticatedAutofillService : AutofillService() {
         val packageName: String = structure.activityComponent.packageName
         Log.d(TAG, "Package name of activity triggered autofill ${packageName}")
 
+        // When our app's form with 'rnp-text-input' shown, the Autofill service is triggered for our app (why?)
+        if (packageName == "com.onekeepassmobile") {
+            //callback.onFailure("No user and password hints are found")
+            Log.d(TAG,"Autofill is called for our app input field and fill request is skipped")
+            callback.onSuccess(null)
+            return
+        }
+
+        cancellationSignal.setOnCancelListener { Log.w(TAG, "Cancel autofill not implemented in OneKeePass yet.") }
+
         // Traverse the structure looking for nodes to fill out
 
         val parsedStructure: ParseResult = ViewAutofillParser().traverseStructure(structure)//parseStructure(structure)
@@ -42,22 +52,26 @@ class AuthenticatedAutofillService : AutofillService() {
             b.add(parsedStructure.passwordId!!)
         }
 
-        this.auth(b, callback)
-
+        if (b.isEmpty()) {
+            //callback.onFailure("No user and password hints are found")
+            Log.d(TAG,"Autofill is called but no valid autofill ids are found and fill request is skipped")
+            callback.onSuccess(null)
+            return
+        } else {
+            // Found valid autofill ids and needs to launch the Auth Activity
+            this.auth(b, callback)
+        }
     }
-
-    override fun onSaveRequest(request: SaveRequest, callback: SaveCallback) {
-        TODO("Not yet implemented")
-    }
-
 
     fun auth(autofillIds: ArrayList<AutofillId>, callback: FillCallback) {
 
         Log.d(TAG, "Authentication will be triggered")
 
-        val authPresentation = RemoteViews(packageName, R.layout.simple_list_item_1).apply {
-            setTextViewText(android.R.id.text1, "OneKeePass Login")
-        }
+//        val authPresentation = RemoteViews(packageName, R.layout.simple_list_item_1).apply {
+//            setTextViewText(android.R.id.text1, "OneKeePass Login")
+//        }
+
+        val authPresentation = RemoteViewsHelper.overlayPresentation(packageName)
 
         Log.d(TAG, "authPresentation is built")
 
@@ -103,6 +117,37 @@ class AuthenticatedAutofillService : AutofillService() {
 //            putExtra("AF_LOGIN_DATA_SET", "AF_LOGIN_DATA_SET")
 //        }
     }
+
+    override fun onSaveRequest(request: SaveRequest, callback: SaveCallback) {
+        Log.d(TAG, "onSaveRequest is called ")
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        Log.d(TAG, "=== Autofill onCreate is called ")
+    }
+
+    override fun onConnected() {
+        super.onConnected()
+        Log.d(TAG, "=== Autofill onConnected is called ")
+    }
+
+    override fun onDisconnected() {
+        super.onDisconnected()
+        Log.d(TAG, "=== Autofill onDisconnected is called ")
+    }
+
+    override fun onTimeout(startId: Int) {
+        super.onTimeout(startId)
+        Log.d(TAG, "=== Autofill onTimeout is called with id $startId")
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        Log.d(TAG, "=== Autofill onDestroy is called ")
+    }
+
+
 
     companion object {
         private val TAG = "OkpAF"
