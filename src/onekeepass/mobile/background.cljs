@@ -185,6 +185,8 @@
                                  (ex-cause err))})
           (js/console.log (ex-cause err)))))))
 
+
+;;TODO: Combine android-invoke-api,ios-autofill-invoke-api and invoke-api
 (defn invoke-api
   "Called to invoke commands from ffi
    The arg 'name' is the name of backend fn to call
@@ -318,7 +320,6 @@
                   dispatch-fn
                   :error-transform true))
 
-
 ;; This works for both iOS and Android
 (defn pick-key-file-to-save
   "Called to save the selected key file to a user chosen location
@@ -391,7 +392,6 @@
                                                          :args-keys-excluded args-keys-excluded)))
                   dispatch-fn :convert-response convert-response :convert-response-fn convert-response-fn))
 
-
 (defn ios-copy-files-to-group [db-key dispatch-fn] 
   (ios-autofill-invoke-api "copy_files_to_app_group" {:db-key db-key} dispatch-fn))
 
@@ -409,16 +409,49 @@
   [field-info dispatch-fn]
   (ios-autofill-invoke-api "clipboard_copy" field-info dispatch-fn))
 
-;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Android specific ;;;;;;;;;;;;;;;;;;;;;;
 
-;; 
+(defn android-invoke-api
+  "Called to invoke commands from ffi
+   The arg 'name' is the name of backend fn to call
+   The args 'api-args' is map that provides arguments to the ffi fns (commands.rs) on the backend 
+   The arg 'dispatch-fn' is called with the returned map (parsed from a json string)
+   The final arg is an optional map 
+  "
+  [name api-args dispatch-fn &
+   {:keys [convert-request args-keys-excluded convert-response convert-response-fn]
+    :or {convert-request true
+         args-keys-excluded nil
+         convert-response true}}]
+  (call-api-async (fn [] (.androidInvokeCommand okp-db-service
+                                         name
+                                         (api-args->json api-args
+                                                         :convert-request convert-request
+                                                         :args-keys-excluded args-keys-excluded)))
+                  dispatch-fn :convert-response convert-response :convert-response-fn convert-response-fn))
+
+
 (defn android-pick-on-save-error-save-as [kdbx-file-name dispatch-fn]
   (pick-document-to-create kdbx-file-name dispatch-fn))
 
 (defn android-complete-save-as-on-error [db-key new-db-key dispatch-fn]
   (call-api-async (fn [] (.completeSaveAsOnError okp-db-service db-key new-db-key)) dispatch-fn :error-transform true))
 
-;;;;;;
+(defn android-copy-to-clipboard
+  "Called to copy a selected field value to clipboard
+   The arg field-info is a map that statifies the enum member 
+   ClipboardCopyArg {field_name,field_value,protected,cleanup_after}
+   "
+  [field-info dispatch-fn]
+  (android-invoke-api "clipboard_copy" field-info dispatch-fn))
+
+(defn android-autofill-filtered-entries [db-key dispatch-fn]
+  (android-invoke-api "autofill_filtered_entries" {:db-key db-key} dispatch-fn))
+
+(defn android-complete-login-autofill [username password dispatch-fn]
+  (android-invoke-api "complete_autofill" {:type "Login" :username username :password password} dispatch-fn))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn copy-key-file
   "After user picks up a file to use as Key File, this api is called to copy to a dir inside the app"

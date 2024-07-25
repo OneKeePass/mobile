@@ -3,7 +3,6 @@ package com.onekeepassmobile
 import android.net.Uri
 import android.os.ParcelFileDescriptor
 import android.util.Log
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import com.facebook.react.bridge.*
 import onekeepass.mobile.ffi.ApiResponse
@@ -74,12 +73,21 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
 
     // See https://stackoverflow.com/questions/36330551/why-is-this-call-to-a-react-native-native-module-blocking-the-ui
 
-
     @ReactMethod
     fun invokeCommand(commandName: String, args: String, promise: Promise) {
         executorService.execute {
             Log.d(TAG, "invokeCommand is called with command name $commandName and args $args")
             val response = DbServiceAPI.invokeCommand(commandName, args)
+            promise.resolve(response)
+        }
+    }
+
+    // Calls any android specific invoke commands
+    @ReactMethod
+    fun androidInvokeCommand(commandName: String, args: String, promise: Promise) {
+        executorService.execute {
+            Log.d(TAG, "androidInvokeCommand is called with command name $commandName and args $args")
+            val response = DbServiceAPI.androidInvokeCommand(commandName, args)
             promise.resolve(response)
         }
     }
@@ -415,6 +423,28 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
             return true // resolved
         }
     }
+
+    //////  Autofill specific one for testing?
+
+    // To be removed
+    @ReactMethod
+    fun completeAutofill(promise: Promise) {
+        if (currentActivity == null) {
+            promise.reject("NO_CURRENT_ACTIVITY_FOUND", "No current activity is found")
+        }
+        Log.d(TAG,"completeAutofill is called..activity: $this.currentActivity  and context: $this.reactApplicationContext ")
+        com.onekeepassmobile.autofill.OkpFillResponseBuilder.completeAutofill(
+                activity = this.currentActivity!!,
+                context =  this.reactApplicationContext,
+                username = "User1",
+                password = "pass123")
+
+
+        promise.resolve("{}")
+    }
+
+
+
 
     companion object {
         private const val E_PERMISSION_REQUIRED_TO_READ = "PERMISSION_REQUIRED_TO_READ"

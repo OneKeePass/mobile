@@ -342,8 +342,27 @@
  (fn [[db-key category]]
    (bg/entry-summary-data db-key category
                           (fn [api-response]
-                            (when-let [result (on-ok api-response)]
-                              (dispatch [:android-af/entry-list-load-complete result]))))))
+                            (when-let [entry-summaries (on-ok api-response)]
+                              (dispatch [:android-af-all-entries-loaded db-key entry-summaries])
+                              #_(dispatch [:android-af/entry-list-load-complete entry-summaries]))))))
+
+;; Called after retreiving all entries for the opened database
+(reg-event-fx
+ :android-af-all-entries-loaded
+ (fn [{:keys [_db]} [_event-id db-key entry-summaries]]
+   {:fx [[:dispatch [:android-af/entry-list-load-complete entry-summaries]]
+         [:bg-android-af-autofill-filtered-entries [db-key]]]}))
+
+;; Called to load any matching entries based on ios autofill credential identifiers 
+;; This is called after loading all entries summary - see the above event
+(reg-fx
+ :bg-android-af-autofill-filtered-entries
+ (fn [[db-key]]
+   (bg/android-autofill-filtered-entries
+    db-key
+    (fn [api-response]
+      (when-let [result (on-ok api-response)]
+        (dispatch [:android-af-search-term-completed result]))))))
 
 ;; This event name is stored in [:android-af :main-event-handler] and is called 
 ;; by any main app event
@@ -362,7 +381,90 @@
    (get-in db [:android-af :current-db-file-name])))
 
 
-;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;; Search  ;;;;;;;;;;;;;;
+
+
+#_(defn show-selected-entry [entry-id]
+    (dispatch [:entry-form/find-entry-by-id entry-id]))
+
+(defn search-term-update [term]
+  (dispatch [:android-af-search-term-update term]))
+
+(defn search-result-entry-items
+  "Returns an atom that has a list of all search term matched entry items "
+  []
+  (subscribe [:android-af-search-result-entry-items]))
+
+(defn search-term 
+  "Gets the search term"
+  []
+  (subscribe [:android-af-search-term]))
+
+(reg-event-fx
+ :android-af-search-term-update
+ (fn [{:keys [db]} [_event-id term]]
+   {:db (assoc-in db [:android-af :search :term] term)
+    :fx [[:bg-android-af-start-term-search [(android-af-active-db-key db) term]]]}))
+
+(reg-event-fx
+ :android-af-search-term-completed
+ (fn [{:keys [db]} [_event-id result]]
+   ;; result is a map {:entry-items [map of entry summary]} as defined in struct EntrySearchResult
+   (let [not-matched (empty? (:entry-items result))]
+     {:db (-> db
+              (assoc-in  [:android-af :search :result] (:entry-items result))
+              (assoc-in  [:android-af :search :term] (:term result))
+              (assoc-in  [:android-af :search :selected-entry-id] nil)
+              (assoc-in  [:android-af :search :error-text] nil)
+              (assoc-in  [:android-af :search :not-matched] not-matched))})))
+
+
+(reg-event-db
+ :android-af-search-term-clear
+ (fn [db [_event-id]]
+   (-> db (assoc-in [:android-af :search :term] nil)
+       (assoc-in  [:android-af :search :error-text] nil)
+       (assoc-in [:android-af :search :selected-entry-id] nil)
+       (assoc-in  [:android-af :search :result] []))))
+
+(reg-event-db
+ :android-af-search-error-text
+ (fn [db [_event-id error-text]]
+   (-> db (assoc-in  [:android-af :search :error-text] error-text)
+          (assoc-in  [:android-af :search :selected-entry-id] nil)
+          (assoc-in  [:android-af :search :result] []))))
+
+
+;; Backend API call 
+(reg-fx
+ :bg-android-af-start-term-search
+ ;; fn in 'reg-fx' accepts only single argument
+ (fn [[db-key term]]
+   (bg/search-term db-key term
+                   (fn [api-response]
+                     (when-let [result (on-ok api-response #(dispatch [:android-af-search-error-text %]))]
+                       (dispatch [:android-af-search-term-completed result]))))))
+
+
+;; Gets the matched entry items if any
+(reg-sub
+ :android-af-search-result-entry-items
+ (fn [db _query-vec]
+   (let [r (get-in db [:android-af :search :result])]
+     ;; Note: if the ':search' key is not present in app-db, the r will be nil
+     (if (nil? r)
+       []
+       r))))
+
+(reg-sub
+ :android-af-search-selected-entry-id
+ (fn [db _query-vec]
+   (get-in db [:android-af :search :selected-entry-id])))
+
+(reg-sub
+ :android-af-search-term
+ (fn [db _query-vec]
+   (get-in db [:android-af :search :term])))
 
 (comment
   (in-ns 'onekeepass.mobile.android.autofill.events.common)

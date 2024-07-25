@@ -19,8 +19,12 @@ private const val TAG = "DbServiceAPI";
 
 object DbServiceAPI {
 
+    // Provides apis that are called from Kotlin to rust implementations
     private var jsonService = onekeepass.mobile.ffi.JsonService();
     private var androidSupportService = onekeepass.mobile.ffi.AndroidSupportService();
+    // AndroidSupportService is declared in UDL file whereas AndroidSupportServiceExtra uses
+    // uniffi annotations (macro attributes)
+    private var androidSupportServiceExtra = onekeepass.mobile.ffi.AndroidSupportServiceExtra()
 
     // This flag 'initialized' is used so that we call rust lib initialization only one time
     // And this is mostly relevant during dev time when we do refreshing
@@ -43,14 +47,26 @@ object DbServiceAPI {
                     SecureKeyOperationImpl(reactContext),
                     BackendEventDispatcher(reactContext)
             )
+
+            val apiCallBackService = ApiCallbackServiceImpl(reactContext)
+            androidCallbackServiceInitialize(apiCallBackService)
+
             initialized = true;
         } else {
-            Log.d(TAG, "API initialize is alredy done")
+            Log.d(TAG, "API initialize is already done")
         }
     }
 
     fun invokeCommand(commandName: String, args: String): String {
         return dbServiceFFIInvokeCommand(commandName, args)
+    }
+
+    fun androidInvokeCommand(commandName: String, args: String): String {
+        return androidSupportServiceExtra.invoke(commandName, args)
+    }
+
+    fun androidSupportServiceExtra(): AndroidSupportServiceExtra {
+        return androidSupportServiceExtra
     }
 
     fun cleanExportDataDir(): String {

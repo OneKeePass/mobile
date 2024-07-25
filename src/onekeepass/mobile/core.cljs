@@ -109,7 +109,7 @@
 
 (defn ^:export -main
   [args]
-  (println "Main is called with args......" args)
+  (println "Main is called with args.." args)
 
   (let [{:keys [androidAutofill :as options]} (js->clj args :keywordize-keys true)]
     (println "options are " options)

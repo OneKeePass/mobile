@@ -159,8 +159,7 @@
     :else
     [const/ICON-DATABASE-OUTLINE @rnc/secondary-color]))
 
-(defn row-item-on-press [file-name db-file-path found locked]
-  (println "row-item-on-press is called  " file-name db-file-path found locked)
+(defn row-item-on-press [file-name db-file-path found locked] 
   (android-af-cmn-events/open-selected-database file-name db-file-path found)
   #_(cond
       locked
@@ -228,7 +227,6 @@
    #_[rn-view {:style {:flex 1}}
       [databases-list-content @(cmn-events/recently-used)]]])
 
-
 #_(defn home-page []
     [rnc/rn-keyboard-avoiding-view {:style {:flex 1}
                                     :behavior "height"}
@@ -282,8 +280,6 @@
     #_[message-repick-database-file-dialog @(opndb-events/repick-confirm-data)]
     #_[authenticate-biometric-confirm-dialog @(opndb-events/authenticate-biometric-confirm-dialog-data)]
     [message-snackbar]]])
-
-
 
 
 #_(defn open-page-content []

@@ -8,10 +8,33 @@
             [onekeepass.mobile.android.autofill.start-page :refer [open-page-content]]
             [onekeepass.mobile.rn-components :as rnc :refer [background-color
                                                              primary-color
+                                                             rnp-appbar-header
                                                              rnp-appbar-back-action
-                                                             rnp-appbar-content
-                                                             rnp-appbar-header]]))
+                                                             rnp-appbar-content]]))
 
+(defn back-action
+  "Called when user presses the hardware or os provided back button 
+   This is somewhat similar to the app back action - see inside appbar-header-content
+   Returns 
+      true - the app handles the back action and the event will not be bubbled up
+      false - the system's default back action to be executed
+   "
+  [{:keys [page]}]
+  (println "back-action is called for page " page)
+  (if 
+   (= page HOME_PAGE_ID)
+    false 
+    (do
+      (to-previous-page)
+      true)))
+
+
+;; holds additional copy of the current page
+(def ^:private current-page-info (atom nil))
+
+(defn hardware-back-pressed []
+  (println "hardware-back-pressed is called ")
+  (back-action @current-page-info))
 
 (defn positioned-title [& {:keys [title page style titleStyle]}]
   [rnp-appbar-content {:style (merge {:marginLeft 0  :position "absolute", :left 0, :right 0, :zIndex -1} style)
@@ -19,8 +42,8 @@
                        :titleStyle (merge {:align-self "center"} titleStyle)
                        :title title}])
 
-(defn appbar-body-content  [{:keys [page]}]
-  #_(println "Page id is " page)
+(defn appbar-body-content  [{:keys [page] :as page-info}]
+  #_(println "Page id is " page) 
   (cond
 
     (= page HOME_PAGE_ID)
@@ -39,13 +62,17 @@
 
 (defn appbar-header-content
   "The page body content based on the page info set"
-  [{:keys [page title]}]
+  [{:keys [page title] :as page-info}]
 
+  (reset! current-page-info page-info)
+  
   [rnp-appbar-header {:style {:backgroundColor @primary-color}}
 
-   [rnp-appbar-back-action {:style {}
-                            :color @background-color
-                            :onPress (fn [] (to-previous-page))}]
+   (when-not (= page HOME_PAGE_ID)
+     [rnp-appbar-back-action {:style {}
+                              :color @background-color
+                              :onPress (fn [] (to-previous-page))}]
+     )
 
 
    [positioned-title :title title]])

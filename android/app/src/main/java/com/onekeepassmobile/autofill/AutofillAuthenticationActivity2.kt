@@ -30,11 +30,13 @@ class AutofillAuthenticationActivity2 : Activity(), DefaultHardwareBackBtnHandle
         }
         reactRootView?.startReactApplication(reactInstanceManager, "OneKeePassMobile", initialProperties)
 
+        autofillActivity = this
         Log.d(TAG, "Started reactRootView ....and setting the root view")
         setContentView(reactRootView)
     }
 
     override fun invokeDefaultOnBackPressed() {
+        Log.d(TAG, "AF invokeDefaultOnBackPressed is called ")
         super.onBackPressed()
     }
 
@@ -42,6 +44,8 @@ class AutofillAuthenticationActivity2 : Activity(), DefaultHardwareBackBtnHandle
         Log.d(TAG, "AF onPause is called ")
         super.onPause()
         reactInstanceManager.onHostPause(this)
+
+        autofillActivity = null
         Log.d(TAG, "AF onPause ends")
         // Need to use some emit event to cljs here ?
     }
@@ -50,6 +54,8 @@ class AutofillAuthenticationActivity2 : Activity(), DefaultHardwareBackBtnHandle
         Log.d(TAG, "AF onResume start")
         super.onResume()
         reactInstanceManager.onHostResume(this, this)
+
+        autofillActivity = this
         Log.d(TAG, "AF onResume is called ")
         // Need to use some emit event to cljs here ?
     }
@@ -62,7 +68,7 @@ class AutofillAuthenticationActivity2 : Activity(), DefaultHardwareBackBtnHandle
     }
 
     override fun onBackPressed() {
-        Log.d(TAG, "AF onBackPressed is called ")
+        Log.d(TAG, "AF onBackPressed is called and reactInstanceManager.onBackPressed will be called ")
         reactInstanceManager.onBackPressed()
         super.onBackPressed()
         // Need to use some emit event to cljs here ?
@@ -77,5 +83,11 @@ class AutofillAuthenticationActivity2 : Activity(), DefaultHardwareBackBtnHandle
     companion object {
         //private val TAG = "AutofillAuthenticationActivity"
         private val TAG = "OkpAF AutofillAuthenticationActivity2"
+
+        private var autofillActivity:AutofillAuthenticationActivity2? = null
+
+        fun getActivityToComplteFill():AutofillAuthenticationActivity2? {
+            return autofillActivity
+        }
     }
 }

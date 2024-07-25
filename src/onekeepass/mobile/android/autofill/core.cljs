@@ -1,10 +1,13 @@
 (ns onekeepass.mobile.android.autofill.core
-  (:require [onekeepass.mobile.android.autofill.appbar :refer [appbar-main-content]]
+  (:require [onekeepass.mobile.android.autofill.appbar :refer [appbar-main-content
+                                                               hardware-back-pressed]]
+            [onekeepass.mobile.background :as bg]
             [onekeepass.mobile.common-components :refer [message-dialog
                                                          message-snackbar]]
             [onekeepass.mobile.constants :refer [DARK-THEME]]
             [onekeepass.mobile.events.common :as cmn-events]
-            [onekeepass.mobile.rn-components :as rnc :refer [reset-colors
+            [onekeepass.mobile.rn-components :as rnc :refer [react-use-effect
+                                                             reset-colors
                                                              rn-view
                                                              rnp-portal
                                                              rnp-provider
@@ -71,10 +74,28 @@
 
       #_[sp/open-page-content])))
 
+
+;; System back action handler (Android)
+(def ^:private back-handler (atom nil))
+
 (defn main-content []
   (fn []
     (let [theme-name (use-color-scheme)]
       (reset-colors theme-name)
+      
+      #_(when (bg/is-Android)
+        (react-use-effect
+         (fn []
+           (reset! back-handler (.addEventListener rnc/rn-back-handler "hardwareBackPress" hardware-back-pressed))
+           (println "Android af back-handler is registered ")
+           ;; Returns a fn
+           (fn []
+             (when-not (nil? @back-handler)
+               (.remove ^js/BackHanler @back-handler)
+               (reset! back-handler nil))))
+               ;; Empty parameter array to useEffect fn
+         (clj->js [])))
+      
       [rnc/rnp-provider {:theme (if (= DARK-THEME theme-name) rnc/dark-theme rnc/light-theme)}
        [main-content-tr]
        #_[sp/open-page-content]])))

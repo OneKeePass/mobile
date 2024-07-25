@@ -20,6 +20,82 @@ import android.widget.RemoteViews
 
 class AuthenticatedAutofillService : AutofillService() {
     override fun onFillRequest(request: FillRequest, cancellationSignal: CancellationSignal, callback: FillCallback) {
+        authAutoFillResponse(request,cancellationSignal,callback)
+    }
+
+    private fun authAutoFillResponse(request: FillRequest, cancellationSignal: CancellationSignal, callback: FillCallback) {
+        // Get the structure from the request
+        val context: List<FillContext> = request.fillContexts
+        val structure: AssistStructure = context[context.size - 1].structure
+
+        // Gets the package name from the calling activity
+        val packageName: String = structure.activityComponent.packageName
+        Log.d(TAG, "Package name of activity triggered autofill ${packageName}")
+
+        // When our app's form with 'rnp-text-input' shown, the Autofill service is triggered for our app (why?)
+        if (packageName == "com.onekeepassmobile") {
+            //callback.onFailure("No user and password hints are found")
+            Log.d(TAG,"Autofill is called for our app input field and fill request is skipped")
+            callback.onSuccess(null)
+            return
+        }
+
+        val parsedAutofillRequest =  ViewAutofillParser.startParsing(request)
+
+        if (parsedAutofillRequest == null) {
+            Log.d(TAG, "Parser result 'parsedAutofillRequest' is null and OneKeePass does not have any autofill value to fill")
+
+            //callback.onFailure("Failed to handle AF ")
+            //callback.onFailure will throw runtim exception with error message 'Error calling on fill request'
+            // callback.onSuccess(null) silently returns
+
+            callback.onSuccess(null)
+            return
+        }
+
+        val resp = OkpFillResponseBuilder.build(this.applicationContext,parsedAutofillRequest)
+        Log.d(TAG, "Returning the build response $resp")
+        callback.onSuccess(resp)
+    }
+
+    override fun onSaveRequest(request: SaveRequest, callback: SaveCallback) {
+        Log.d(TAG, "onSaveRequest is called ")
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        Log.d(TAG, "=== Autofill onCreate is called ")
+    }
+
+    override fun onConnected() {
+        super.onConnected()
+        Log.d(TAG, "=== Autofill onConnected is called ")
+    }
+
+    override fun onDisconnected() {
+        super.onDisconnected()
+        Log.d(TAG, "=== Autofill onDisconnected is called ")
+    }
+
+    override fun onTimeout(startId: Int) {
+        super.onTimeout(startId)
+        Log.d(TAG, "=== Autofill onTimeout is called with id $startId")
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        Log.d(TAG, "=== Autofill onDestroy is called ")
+    }
+
+    companion object {
+        private val TAG = "OkpAF"
+    }
+}
+
+/*
+   // Old simple parse and auth call
+
+    private fun simpleAuthAutoFillResponse(request: FillRequest, cancellationSignal: CancellationSignal, callback: FillCallback) {
         // Get the structure from the request
         val context: List<FillContext> = request.fillContexts
         val structure: AssistStructure = context[context.size - 1].structure
@@ -118,39 +194,5 @@ class AuthenticatedAutofillService : AutofillService() {
 //        }
     }
 
-    override fun onSaveRequest(request: SaveRequest, callback: SaveCallback) {
-        Log.d(TAG, "onSaveRequest is called ")
-    }
-
-    override fun onCreate() {
-        super.onCreate()
-        Log.d(TAG, "=== Autofill onCreate is called ")
-    }
-
-    override fun onConnected() {
-        super.onConnected()
-        Log.d(TAG, "=== Autofill onConnected is called ")
-    }
-
-    override fun onDisconnected() {
-        super.onDisconnected()
-        Log.d(TAG, "=== Autofill onDisconnected is called ")
-    }
-
-    override fun onTimeout(startId: Int) {
-        super.onTimeout(startId)
-        Log.d(TAG, "=== Autofill onTimeout is called with id $startId")
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        Log.d(TAG, "=== Autofill onDestroy is called ")
-    }
-
-
-
-    companion object {
-        private val TAG = "OkpAF"
-    }
-}
+ */
 

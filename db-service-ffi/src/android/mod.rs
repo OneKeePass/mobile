@@ -1,3 +1,11 @@
+#[cfg(target_os = "android")]
+pub(crate) mod callback_services;
+#[cfg(target_os = "android")]
+pub(crate) use callback_services::*;
+
+#[cfg(target_os = "android")]
+pub(crate) mod support_services;
+
 use std::fs::OpenOptions;
 use std::io::{Read, Seek, Write};
 use std::path::Path;
