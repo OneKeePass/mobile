@@ -1,4 +1,5 @@
 (ns onekeepass.mobile.android.autofill.entry-form
+  "Only the Android Autofill specific entry form components"
   (:require [clojure.string :as str]
             [onekeepass.mobile.android.autofill.events.entry-form :as android-af-ef-events]
             [onekeepass.mobile.common-components :refer [select-field-view]]
@@ -168,7 +169,6 @@
                                                  :password-score password-score
                                                  :visible @(android-af-ef-events/visible? key))]))))])))
 
-
 (defn all-sections-content []
   (let [{:keys [edit showing]
          {:keys [section-names section-fields]} :data} @(android-af-ef-events/entry-form)] 
@@ -201,9 +201,6 @@
      [:f> all-sections-content]
      [notes edit]
      [tags edit]]))
-
-#_(defn main-content []
-  [rn-view [rnp-text "Entry form will come here"]])
 
 (defn content []
   [rnc/rn-safe-area-view {:style {:flex 1 :background-color @page-background-color}}

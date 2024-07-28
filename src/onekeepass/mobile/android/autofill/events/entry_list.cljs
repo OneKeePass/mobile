@@ -1,4 +1,5 @@
 (ns onekeepass.mobile.android.autofill.events.entry-list
+  "Only the Android Autofill specific entry-list events. All events should be prefixed with :android-af"
   (:require [onekeepass.mobile.android.autofill.events.common :refer [ENTRY_LIST_PAGE_ID]]
             [re-frame.core :refer [dispatch reg-event-fx reg-sub subscribe]]))
 
@@ -19,10 +20,15 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Short and Long press related ;;;;;;;;;;;;;;;;;;;;;;
 
-(defn entry-pressed
+#_(defn entry-pressed
   "Called when user just presses on an entry"
   [entry-uuid]
   #_(dispatch [:entry-form/send-credentials-selected entry-uuid]))
+
+(defn complete-login-autofill 
+  "Complets the autofill activity. For now only used for 'Login' data i.e (username,password)"
+  []
+  (dispatch [:android-af-entry-form/complete-login-autofill]))
 
 (defn long-press-menu-hide []
   (dispatch [:android-af-long-press-menu-hide]))

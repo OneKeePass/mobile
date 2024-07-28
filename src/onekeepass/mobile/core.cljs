@@ -1,6 +1,11 @@
 (ns onekeepass.mobile.core
   (:require
+   ;; When we build iOS production main bundle, we can comment out this ns
+   ;; and this will ensure that all android autofill related code are excluded
+   
    [onekeepass.mobile.android.autofill.core :as android-core]
+   
+   ;;;;;;; ;;;;;;; ;;;;;;; ;;;;;;;
    [onekeepass.mobile.appbar :refer [appbar-main-content
                                      hardware-back-pressed]]
    [onekeepass.mobile.background :as bg]
@@ -37,7 +42,6 @@
       [save-error-modal @(save-events/save-error-modal-data)]
       [message-modal @(cmn-events/message-modal-data)]
       [message-dialog @(cmn-events/message-dialog-data)]]]))
-
 
 ;; System back action handler (Android)
 (def ^:private back-handler (atom nil))
@@ -89,30 +93,44 @@
                (reset! back-handler nil))))
          ;; Empty parameter array to useEffect fn
          (clj->js [])))
-
-      #_(set-translator)
-
+      
       [rnp-provider {:theme (if (= DARK-THEME theme-name) rnc/dark-theme rnc/light-theme)}
        [main-content]])))
 
 (defn app-root
   []
-  ;; Moved to 'main'
-  #_(.setBarStyle rn/StatusBar "light-content" true)  ;; default or dark-content
-
   ;; Need to wrap the entry point with <GestureHandlerRootView> or gestureHandlerRootHOC
   ;; See https://docs.swmansion.com/react-native-gesture-handler/docs/installation
-
   [rnc/gh-gesture-handler-root-view {:style {:flex 1}}
    [:f> main]])
 
+;; Make sure that either iOS or Android '-main' fn is available 
+
+;; Entry root for iOS
+#_(defn ^:export -main
+  [_args]
+  
+  (native-events/register-backend-event-handlers)
+  (cmn-events/sync-initialize)
+  (as-events/init-session-timeout-tick)
+  (t/load-language-translation)
+  (r/as-element [app-root]))
+
+;; Entry root for Android main and Android Autofill
+;; Ensure we load the ns [onekeepass.mobile.android.autofill.core :as android-core] 
+
+;; This '-main' fn will work with iOS app also. Only things the main bundle size will be more 
+;; than required and all android-af events are registered needlessly
 
 (defn ^:export -main
-  [args]
-  (println "Main is called with args.." args)
-
-  (let [{:keys [androidAutofill :as options]} (js->clj args :keywordize-keys true)]
-    (println "options are " options)
+  [args] 
+  (let [{:keys [androidAutofill] :as options} (js->clj args :keywordize-keys true)]
+    (println "The options from main args are " options)
+    
+    ;; TODO: Add check so as to load the following only if there are not yet loaded
+    ;; For now, these calls are made when main app opened and also when android autofill is called 
+    ;; without checking whether the initializations are done or not
+    
     (native-events/register-backend-event-handlers)
     (cmn-events/sync-initialize)
     (as-events/init-session-timeout-tick)

@@ -424,28 +424,6 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
         }
     }
 
-    //////  Autofill specific one for testing?
-
-    // To be removed
-    @ReactMethod
-    fun completeAutofill(promise: Promise) {
-        if (currentActivity == null) {
-            promise.reject("NO_CURRENT_ACTIVITY_FOUND", "No current activity is found")
-        }
-        Log.d(TAG,"completeAutofill is called..activity: $this.currentActivity  and context: $this.reactApplicationContext ")
-        com.onekeepassmobile.autofill.OkpFillResponseBuilder.completeAutofill(
-                activity = this.currentActivity!!,
-                context =  this.reactApplicationContext,
-                username = "User1",
-                password = "pass123")
-
-
-        promise.resolve("{}")
-    }
-
-
-
-
     companion object {
         private const val E_PERMISSION_REQUIRED_TO_READ = "PERMISSION_REQUIRED_TO_READ"
         private const val E_PERMISSION_REQUIRED_TO_WRITE = "PERMISSION_REQUIRED_TO_WRITE"

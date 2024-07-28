@@ -1,6 +1,7 @@
 package com.onekeepassmobile
 
 import android.app.Application
+import android.content.Context
 import android.util.Log
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
@@ -49,9 +50,27 @@ class MainApplication : Application(), ReactApplication {
             load()
         }
         initializeFlipper(this, reactNativeHost.reactInstanceManager)
+
+        setGlobal(this)
     }
 
     companion object {
         private val TAG = "MainApplication"
+
+        private lateinit var mainApplication: MainApplication
+
+        fun setGlobal(app:MainApplication) {
+            mainApplication = app
+            // Custom clipboard manager handling
+            OkpClipboardManager.setClipboardManager(app.applicationContext)
+        }
+
+        fun getInstance(): MainApplication {
+            return mainApplication
+        }
+
+        fun getInstanceContext(): Context {
+            return mainApplication.applicationContext
+        }
     }
 }

@@ -1,5 +1,5 @@
-(ns
- onekeepass.mobile.android.autofill.start-page
+(ns onekeepass.mobile.android.autofill.start-page
+  "Only the Android Autofill specific start page components"
   (:require [onekeepass.mobile.background :refer [is-iOS]]
             [onekeepass.mobile.common-components :as cc
              :refer [message-dialog message-snackbar]]
@@ -9,8 +9,8 @@
             [onekeepass.mobile.android.autofill.events.common :as android-af-cmn-events]
             [onekeepass.mobile.rn-components
              :as rnc
-             :refer [appbar-text-color cust-dialog dots-icon-name
-                     page-title-text-variant primary-color
+             :refer [cust-dialog dots-icon-name
+                     primary-color
                      primary-container-color rn-keyboard rn-safe-area-view
                      rn-section-list rn-view rnp-button rnp-dialog-actions
                      rnp-dialog-content rnp-dialog-title rnp-divider
@@ -18,18 +18,16 @@
                      rnp-list-item rnp-portal rnp-progress-bar rnp-text
                      rnp-text-input rnp-text-input-icon]]
             [onekeepass.mobile.translation :refer [lstr-bl lstr-dlg-text
-                                                   lstr-dlg-title lstr-l
-                                                   lstr-pt]]
+                                                   lstr-dlg-title lstr-l]]
             [onekeepass.mobile.utils :as u]
             [reagent.core :as r]))
-
 
 (defn open-db-dialog  [{:keys [dialog-show
                                database-file-name
                                database-full-file-name
                                password
                                password-visible
-                               key-file-name-part
+                               _key-file-name-part
                                error-fields
                                status]}]
 
@@ -39,12 +37,9 @@
 
     [cust-dialog {:style {}
                   :visible dialog-show
-                  :dismissable false
-                            ;;:onDismiss opndb-events/cancel-on-press
-                  }
+                  :dismissable false}
      [rnp-dialog-title dlg-title]
      [rnp-dialog-content
-
       [rn-view {:style {:flexDirection "column"  :justify-content "center"}}
        [rnp-text-input {:label (lstr-l "databaseFile")
                         :value database-file-name
@@ -73,22 +68,23 @@
 
        [rnp-divider {:style {:margin-top 10 :margin-bottom 10 :backgroundColor "grey"}}]
 
-       (if  key-file-name-part
-         [rnp-text-input {:style {:margin-top 10}
-                          :label (lstr-l 'keyFile)
-                          :defaultValue key-file-name-part
-                          :readOnly (if (is-iOS) true false)
-                          :onPressIn #(android-af-cmn-events/show-key-file-form)
-                          :onChangeText nil
-                          :right (r/as-element [rnp-text-input-icon
-                                                {:icon const/ICON-CLOSE
-                                                 :onPress (fn []
-                                                            (android-af-cmn-events/database-field-update :key-file-name-part nil)
-                                                            (android-af-cmn-events/database-field-update :key-file-name nil))}])}]
-         [rnp-text {:style {:margin-top 15
-                            :textDecorationLine "underline"
-                            :text-align "center"}
-                    :onPress #(android-af-cmn-events/show-key-file-form)} (lstr-l 'keyFile)])]
+       ;; TODO: Include keyFile support. For now not used for autofill due to lack of time
+       #_(if  key-file-name-part
+           [rnp-text-input {:style {:margin-top 10}
+                            :label (lstr-l 'keyFile)
+                            :defaultValue key-file-name-part
+                            :readOnly (if (is-iOS) true false)
+                            :onPressIn #(android-af-cmn-events/show-key-file-form)
+                            :onChangeText nil
+                            :right (r/as-element [rnp-text-input-icon
+                                                  {:icon const/ICON-CLOSE
+                                                   :onPress (fn []
+                                                              (android-af-cmn-events/database-field-update :key-file-name-part nil)
+                                                              (android-af-cmn-events/database-field-update :key-file-name nil))}])}]
+           [rnp-text {:style {:margin-top 15
+                              :textDecorationLine "underline"
+                              :text-align "center"}
+                      :onPress #(android-af-cmn-events/show-key-file-form)} (lstr-l 'keyFile)])]
 
       [rnp-progress-bar {:style {:margin-top 10} :visible in-progress? :indeterminate true}]]
 
@@ -98,15 +94,14 @@
        (lstr-bl "cancel")]
       [rnp-button {:mode "text" :disabled in-progress?
                    :onPress (fn [] ^js/RNKeyboard (.dismiss rn-keyboard)
-                              (println "will call (android-af-cmn-events/open-database-read-db-file)")
+                              #_(println "will call (android-af-cmn-events/open-database-read-db-file)")
                               (android-af-cmn-events/open-database-read-db-file)
                               #_(if locked?
                                   (opndb-events/authenticate-with-credential)
                                   (android-af-cmn-events/open-database-read-db-file)))}
        (lstr-bl "continue")]]]))
 
-
-(defn databases-list-header [title]
+(defn- databases-list-header [title]
   [rn-view  {:style {:flexDirection "row"
                      :width "100%"
                      :backgroundColor @primary-container-color
@@ -118,7 +113,7 @@
                       :text-align "center"
                       :padding-left 0} :variant "titleLarge"} title]])
 
-(defn message-repick-database-file-dialog [{:keys [dialog-show file-name reason-code]}]
+#_(defn message-repick-database-file-dialog [{:keys [dialog-show file-name reason-code]}]
   (let [[title text] (if (= reason-code const/PERMISSION_REQUIRED_TO_READ)
                        [(str (lstr-dlg-title 'reopen) " " file-name),
                         (str (lstr-dlg-text 'reopenReadPermissionrequired) ". " (lstr-dlg-text 'reopenAgain {:file-name file-name}))]
@@ -135,7 +130,7 @@
                                     :on-press (fn []
                                                 (opndb-events/repick-confirm-close))}]}]))
 
-(defn authenticate-biometric-confirm-dialog [{:keys [dialog-show]}]
+#_(defn authenticate-biometric-confirm-dialog [{:keys [dialog-show]}]
   [cc/confirm-dialog  {:dialog-show dialog-show
                        :title (lstr-dlg-title  'biometricConfirm)
                        :confirm-text (if (is-iOS)
@@ -148,7 +143,7 @@
                                   :on-press (fn []
                                               (opndb-events/authenticate-biometric-ok))}]}])
 
-(defn icon-name-color [found locked]
+(defn- icon-name-color [found locked]
   (cond
     locked
     [const/ICON-LOCKED-DATABASE  @primary-color]  ;;"#477956" green tint
@@ -159,7 +154,7 @@
     :else
     [const/ICON-DATABASE-OUTLINE @rnc/secondary-color]))
 
-(defn row-item-on-press [file-name db-file-path found locked] 
+(defn row-item-on-press [file-name db-file-path found _locked]
   (android-af-cmn-events/open-selected-database file-name db-file-path found)
   #_(cond
       locked
@@ -168,7 +163,7 @@
       :else
       (opndb-events/open-selected-database file-name db-file-path found)))
 
-(defn row-item []
+(defn- row-item []
   (fn [{:keys [file-name db-file-path]} opened-databases-files]
     (let [found (u/contains-val? opened-databases-files db-file-path)
           locked? @(cmn-events/locked? db-file-path)
@@ -192,7 +187,7 @@
                                               :onPress  (fn [e] #_(show-db-action-menu
                                                                    e file-name db-file-path found locked?))}]]))}])))
 
-(defn databases-list-content []
+(defn- databases-list-content []
   (fn [recent-uses]
     (let [opened-databases-files @(android-af-cmn-events/opened-database-file-names)
           sections  [{:title (lstr-l "databases")
@@ -212,7 +207,7 @@
                                      {:keys [title]} (-> props :section)]
                                  (r/as-element [databases-list-header title])))}])))
 
-(defn home-page []
+(defn- home-page []
   [rn-view {:style {:flex 1 :width "100%"}}
    [rn-view {:style {:flex 1 :justify-content "center" :align-items "center" :margin-top "10%"}}
     [rn-view {:style {:flex .1 :justify-content "center" :width "90%"}}
@@ -222,57 +217,19 @@
     [rn-view {:style {:margin-top 20}}
      [rnc/rnp-divider]]
 
-    [rn-view {:style {:flex 1 :width "100%"}} 
+    [rn-view {:style {:flex 1 :width "100%"}}
      [databases-list-content @(cmn-events/recently-used)]]]
    #_[rn-view {:style {:flex 1}}
       [databases-list-content @(cmn-events/recently-used)]]])
 
-#_(defn home-page []
-    [rnc/rn-keyboard-avoiding-view {:style {:flex 1}
-                                    :behavior "height"}
-     [rn-view {:style {:flex 1 :width "100%"}}
-      [rn-view {:style {:flex 1 :justify-content "center" :align-items "center" :margin-top "10%"}}
-       [rn-view {:style {:flex .1 :justify-content "center" :width "90%"}}
-        [rnp-button {:mode "contained" :onPress #(opndb-events/open-database-on-press)}
-         (lstr-bl "opendb")]]
-
-       [rn-view {:style {:margin-top 20}}
-        [rnc/rnp-divider]]
-
-       [rn-view {:style {:flex 1 :width "100%"}}
-        [databases-list-content @(cmn-events/recently-used)]]]
-      #_[rn-view {:style {:flex 1}}
-         [databases-list-content @(cmn-events/recently-used)]]]])
-
 (defn open-page-content []
-  [rn-safe-area-view {:style {:flex 1 :background-color @rnc/page-background-color}} 
+  [rn-safe-area-view {:style {:flex 1 :background-color @rnc/page-background-color}}
    (let [{:keys [page]} {} #_@(cmn-events/page-info)]
-     [rn-view {:style {:flex 1 :width "100%"}}
-      #_[top-bar page]
-      #_(when (= cmn-events/ENTRY_LIST_PAGE_ID page)
-          [searchbar])
-
+     [rn-view {:style {:flex 1 :width "100%"}} 
       [rn-view {:style {:justify-content "center"
                         :align-items "center"
                         :flex 1}}
-
-       [home-page]
-
-       #_(condp = page
-           cmn-events/HOME_PAGE_ID
-           [home-page]
-
-           cmn-events/LOGIN_PAGE_ID
-           [login-page]
-
-           cmn-events/ENTRY_LIST_PAGE_ID
-           [show-all-entries]
-
-           cmn-events/ENTRY_FORM_PAGE_ID
-           [show-form]
-
-           :else
-           [home-page])]])
+       [home-page]]])
 
    [rnp-portal
     [message-dialog @(cmn-events/message-dialog-data)]
@@ -281,75 +238,3 @@
     #_[authenticate-biometric-confirm-dialog @(opndb-events/authenticate-biometric-confirm-dialog-data)]
     [message-snackbar]]])
 
-
-#_(defn open-page-content []
-    (let [recent-uses @(cmn-events/recently-used)]
-      [rn-safe-area-view {:style {:flex 1 :background-color  @rnc/page-background-color}}
-       [rn-view {:style {:flex 1 :justify-content "center" :align-items "center" :margin-top "10%"}}
-        [rn-view {:style {:flex .1 :justify-content "center" :width "90%"}}
-         [rnp-button {:mode "contained" :onPress #(opndb-events/open-database-on-press)}
-          (lstr-bl "opendb")]]
-
-        [rn-view {:style {:margin-top 20}}
-         [rnc/rnp-divider]]
-
-        [rn-view {:style {:flex 1 :width "100%"}}
-         [databases-list-content recent-uses]]]
-
-     ;; This absolutely position view works in both android and iOS
-     ;; And then may be used for bottom icons panel
-       #_[rn-view {:style {:width "100%" :height 60 :backgroundColor "red" :position "absolute" :bottom 0}}
-          [rnp-text {:variant "titleMedium"} "Some icons here"]]
-
-       [rnp-portal
-        #_[db-action-menu @db-action-menu-data]
-      ;; Gets the precreated dialog reagent component
-        #_(:dialog remove-confirm-dialog-info)
-        #_[new-db-dialog @(ndb-events/dialog-data)]
-        [open-db-dialog @(opndb-events/dialog-data)]
-        #_[file-info-dialog @(cmn-events/file-info-dialog-data)]
-        [message-repick-database-file-dialog @(opndb-events/repick-confirm-data)]
-        [authenticate-biometric-confirm-dialog @(opndb-events/authenticate-biometric-confirm-dialog-data)]
-        [message-dialog @(cmn-events/message-dialog-data)]]]))
-
-
-#_(defn top-bar-left-action [page]
-    {:action #()
-     :label (lstr-bl 'cancel)
-     :title (lstr-pt 'autoFillPassword)}
-    #_(if (= page cmn-events/ENTRY_FORM_PAGE_ID)
-        {:action form-events/cancel-entry-form
-         :label (lstr-bl 'back)
-         :title (lstr-pt 'entry)}
-        {:action cmn-events/cancel-extension
-         :label (lstr-bl 'cancel)
-         :title (lstr-pt 'autoFillPassword)}))
-
-#_(defn top-bar [page]
-    (let [{:keys [action label title]} (top-bar-left-action page)]
-      [rn-view {:style {:flex .1
-                        :justify-content "center"
-                        :align-items "center"
-                        :background-color @primary-color}}
-
-       [rn-view {:style {:flexDirection "row"
-                         :alignItems "center"
-                         :width "100%"
-                         :justify-content "space-between"}}
-        [rnp-button {:style {}
-                     :textColor @appbar-text-color
-                     :mode "text"
-                     :onPress action} label]
-
-        [rnp-text {:style {:color @appbar-text-color
-                           :max-width 200
-                             ;; :margin-right 20 
-                             ;; :margin-left 20
-                           }
-                   :ellipsizeMode "tail"
-                   :numberOfLines 1
-                   :variant page-title-text-variant} title]
-        [rnp-button {:style {}
-                     :textColor @appbar-text-color
-                     :mode "text"
-                     :onPress #()} ""]]]))

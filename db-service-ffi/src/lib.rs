@@ -5,6 +5,8 @@ mod commands;
 mod event_dispatcher;
 mod ios;
 mod key_secure;
+mod udl_uniffi_exports;
+
 mod udl_functions;
 mod udl_types;
 mod util;
@@ -41,10 +43,8 @@ pub type OkpError = db_service::Error;
 
 // Needs to be added here to expose in the generated rs code
 use android::AndroidSupportService;
-#[allow(dead_code)]
 use ios::IosSupportService;
 
-#[allow(dead_code)]
 fn invoke_command(command_name: String, args: String) -> String {
     Commands::invoke(command_name, args)
 }
@@ -413,27 +413,30 @@ fn extract_file_provider(full_file_name_uri: String) -> String {
     android::extract_file_provider(&full_file_name_uri)
 }
 
-// Need to include db_service.uniffi.rs (generated from db_service.udl by uniffi_build)
-// only for ios or android build
-// This is required if we want to run the units tests on Mac OS
-// But we may get all functions that are used in 'db_service.uniffi.rs' marked as
+///////////////  Including uniffi generated rust source code - uniffi::include_scaffolding   ///////////////
+
+// We may get all functions that are used in 'db_service.uniffi.rs' (generated file) marked as
 // never used by lint. We may need to use #[allow(dead_code)] to suppress that
 // See the use of #![allow(dead_code, unused_imports)] in the top of this crate
 
-// #[cfg(any(target_os = "ios", target_os = "android"))]
-// #[uniffi::export]
-// fn my_init() {
-//     debug!("my_init is called");
-// }
+// Note: 
+// when we want to run unit tests (in masos) in this crate, 
+// need to use '#[cfg(any(target_os = "ios", target_os = "android"))]'. This worked as long as we used only udl file
+// But using '#[uniffi::export]' may create some issues if they do not have same targets
 
+// If we use conditional - #[cfg(any(target_os = "ios", target_os = "android"))] -
+// way of using 'uniffi::include_scaffolding', then when we use
+// use uniffi::export and other proc macros, we need to mark them all with
+// cfg targets - #[cfg(any(target_os = "ios", target_os = "android"))]
 
-// Note: As we are using conditional way of using 'uniffi::include_scaffolding', when we use 
-// use uniffi::export and other proc macros, we need to include cfg targets
+// Need to explore to use something like
+// cargo test --target aarch64-linux-android  --package db-service-ffi --lib -- util::tests --show-output
+// Or use https://github.com/sonos/dinghy etc
+// See https://stackoverflow.com/questions/44947640/how-can-i-run-cargo-tests-on-another-machine-without-the-rust-compiler
 
-#[cfg(any(target_os = "ios", target_os = "android"))]
+// #[cfg(any(target_os = "ios", target_os = "android"))] - see the above comments
+
 uniffi::include_scaffolding!("db_service");
 
-// As per uniffi doc, this should only be used when we use only macros based udl definitions and not udl file
+// As per uniffi doc, this should only be used when we use only the macros based udl definitions and not udl file
 //uniffi::setup_scaffolding!("db_service");
-
-

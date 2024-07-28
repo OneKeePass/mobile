@@ -678,6 +678,9 @@ internal interface UniffiCallbackInterfaceAndroidApiServiceMethod1 : com.sun.jna
 internal interface UniffiCallbackInterfaceAndroidApiServiceMethod2 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`autoFillData`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
 }
+internal interface UniffiCallbackInterfaceCommonDeviceServiceExMethod0 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`clipData`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
+}
 @Structure.FieldOrder("appHomeDir", "appGroupHomeDir", "cacheDir", "tempDir", "loadLanguageTranslation", "uriToFileName", "uriToFileInfo", "uniffiFree")
 internal open class UniffiVTableCallbackInterfaceCommonDeviceService(
     @JvmField internal var `appHomeDir`: UniffiCallbackInterfaceCommonDeviceServiceMethod0? = null,
@@ -775,6 +778,29 @@ internal open class UniffiVTableCallbackInterfaceAndroidApiService(
     }
 
 }
+@Structure.FieldOrder("clipboardCopyString", "uniffiFree")
+internal open class UniffiVTableCallbackInterfaceCommonDeviceServiceEx(
+    @JvmField internal var `clipboardCopyString`: UniffiCallbackInterfaceCommonDeviceServiceExMethod0? = null,
+    @JvmField internal var `uniffiFree`: UniffiCallbackInterfaceFree? = null,
+) : Structure() {
+    class UniffiByValue(
+        `clipboardCopyString`: UniffiCallbackInterfaceCommonDeviceServiceExMethod0? = null,
+        `uniffiFree`: UniffiCallbackInterfaceFree? = null,
+    ): UniffiVTableCallbackInterfaceCommonDeviceServiceEx(`clipboardCopyString`,`uniffiFree`,), Structure.ByValue
+
+   internal fun uniffiSetValue(other: UniffiVTableCallbackInterfaceCommonDeviceServiceEx) {
+        `clipboardCopyString` = other.`clipboardCopyString`
+        `uniffiFree` = other.`uniffiFree`
+    }
+
+}
+
+
+
+
+
+
+
 
 
 
@@ -938,6 +964,7 @@ internal interface UniffiLib : Library {
                 uniffiCheckContractApiVersion(lib)
                 uniffiCheckApiChecksums(lib)
                 uniffiCallbackInterfaceAndroidApiService.register(lib)
+                uniffiCallbackInterfaceCommonDeviceServiceEx.register(lib)
                 uniffiCallbackInterfaceEventDispatch.register(lib)
                 uniffiCallbackInterfaceCommonDeviceService.register(lib)
                 uniffiCallbackInterfaceSecureKeyOperation.register(lib)
@@ -1022,6 +1049,14 @@ internal interface UniffiLib : Library {
     ): Pointer
     fun uniffi_db_service_ffi_fn_method_androidsupportserviceextra_invoke(`ptr`: Pointer,`commandName`: RustBuffer.ByValue,`jsonArgs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
+    fun uniffi_db_service_ffi_fn_clone_commondeviceserviceex(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Pointer
+    fun uniffi_db_service_ffi_fn_free_commondeviceserviceex(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_db_service_ffi_fn_init_callback_vtable_commondeviceserviceex(`vtable`: UniffiVTableCallbackInterfaceCommonDeviceServiceEx,
+    ): Unit
+    fun uniffi_db_service_ffi_fn_method_commondeviceserviceex_clipboard_copy_string(`ptr`: Pointer,`clipData`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
     fun uniffi_db_service_ffi_fn_init_callback_vtable_commondeviceservice(`vtable`: UniffiVTableCallbackInterfaceCommonDeviceService,
     ): Unit
     fun uniffi_db_service_ffi_fn_init_callback_vtable_securekeyoperation(`vtable`: UniffiVTableCallbackInterfaceSecureKeyOperation,
@@ -1049,6 +1084,8 @@ internal interface UniffiLib : Library {
     fun uniffi_db_service_ffi_fn_func_write_to_backup_on_error(`fullFileNameUri`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_db_service_ffi_fn_func_android_callback_service_initialize(`androidApiService`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    ): Unit
+    fun uniffi_db_service_ffi_fn_func_common_device_service_ex_initialize(`commonDeviceServiceEx`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
     fun ffi_db_service_ffi_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1186,6 +1223,8 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_db_service_ffi_checksum_func_android_callback_service_initialize(
     ): Short
+    fun uniffi_db_service_ffi_checksum_func_common_device_service_ex_initialize(
+    ): Short
     fun uniffi_db_service_ffi_checksum_method_androidsupportservice_complete_save_as_on_error(
     ): Short
     fun uniffi_db_service_ffi_checksum_method_androidsupportservice_create_kdbx(
@@ -1221,6 +1260,8 @@ internal interface UniffiLib : Library {
     fun uniffi_db_service_ffi_checksum_method_androidapiservice_complete_autofill(
     ): Short
     fun uniffi_db_service_ffi_checksum_method_androidsupportserviceextra_invoke(
+    ): Short
+    fun uniffi_db_service_ffi_checksum_method_commondeviceserviceex_clipboard_copy_string(
     ): Short
     fun uniffi_db_service_ffi_checksum_constructor_androidsupportservice_new(
     ): Short
@@ -1303,6 +1344,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_db_service_ffi_checksum_func_android_callback_service_initialize() != 3941.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_db_service_ffi_checksum_func_common_device_service_ex_initialize() != 49458.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_db_service_ffi_checksum_method_androidsupportservice_complete_save_as_on_error() != 25150.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1345,7 +1389,7 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_db_service_ffi_checksum_method_jsonservice_ok_json_string() != 54475.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_db_service_ffi_checksum_method_androidapiservice_clipboard_copy_string() != 16874.toShort()) {
+    if (lib.uniffi_db_service_ffi_checksum_method_androidapiservice_clipboard_copy_string() != 49453.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_ffi_checksum_method_androidapiservice_autofill_client_app_url_info() != 15642.toShort()) {
@@ -1355,6 +1399,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_ffi_checksum_method_androidsupportserviceextra_invoke() != 39395.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_ffi_checksum_method_commondeviceserviceex_clipboard_copy_string() != 45908.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_ffi_checksum_constructor_androidsupportservice_new() != 29467.toShort()) {
@@ -1753,7 +1800,7 @@ private class JavaLangRefCleanable(
 }
 public interface AndroidApiService {
     
-    fun `clipboardCopyString`(`clipData`: ClipDataArg)
+    fun `clipboardCopyString`(`clipData`: AppClipboardCopyData)
     
     fun `autofillClientAppUrlInfo`(): Map<kotlin.String, kotlin.String>
     
@@ -1843,12 +1890,12 @@ open class AndroidApiServiceImpl: Disposable, AutoCloseable, AndroidApiService {
     }
 
     
-    @Throws(ApiCallbackException::class)override fun `clipboardCopyString`(`clipData`: ClipDataArg)
+    @Throws(ApiCallbackException::class)override fun `clipboardCopyString`(`clipData`: AppClipboardCopyData)
         = 
     callWithPointer {
     uniffiRustCallWithError(ApiCallbackException) { _status ->
     UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_method_androidapiservice_clipboard_copy_string(
-        it, FfiConverterTypeClipDataArg.lower(`clipData`),_status)
+        it, FfiConverterTypeAppClipboardCopyData.lower(`clipData`),_status)
 }
     }
     
@@ -1923,7 +1970,7 @@ internal object uniffiCallbackInterfaceAndroidApiService {
             val uniffiObj = FfiConverterTypeAndroidApiService.handleMap.get(uniffiHandle)
             val makeCall = { ->
                 uniffiObj.`clipboardCopyString`(
-                    FfiConverterTypeClipDataArg.lift(`clipData`),
+                    FfiConverterTypeAppClipboardCopyData.lift(`clipData`),
                 )
             }
             val writeReturn = { _: Unit -> Unit }
@@ -2513,6 +2560,277 @@ public object FfiConverterTypeAndroidSupportServiceExtra: FfiConverter<AndroidSu
     override fun allocationSize(value: AndroidSupportServiceExtra) = 8UL
 
     override fun write(value: AndroidSupportServiceExtra, buf: ByteBuffer) {
+        // The Rust code always expects pointers written as 8 bytes,
+        // and will fail to compile if they don't fit.
+        buf.putLong(Pointer.nativeValue(lower(value)))
+    }
+}
+
+
+// This template implements a class for working with a Rust struct via a Pointer/Arc<T>
+// to the live Rust struct on the other side of the FFI.
+//
+// Each instance implements core operations for working with the Rust `Arc<T>` and the
+// Kotlin Pointer to work with the live Rust struct on the other side of the FFI.
+//
+// There's some subtlety here, because we have to be careful not to operate on a Rust
+// struct after it has been dropped, and because we must expose a public API for freeing
+// theq Kotlin wrapper object in lieu of reliable finalizers. The core requirements are:
+//
+//   * Each instance holds an opaque pointer to the underlying Rust struct.
+//     Method calls need to read this pointer from the object's state and pass it in to
+//     the Rust FFI.
+//
+//   * When an instance is no longer needed, its pointer should be passed to a
+//     special destructor function provided by the Rust FFI, which will drop the
+//     underlying Rust struct.
+//
+//   * Given an instance, calling code is expected to call the special
+//     `destroy` method in order to free it after use, either by calling it explicitly
+//     or by using a higher-level helper like the `use` method. Failing to do so risks
+//     leaking the underlying Rust struct.
+//
+//   * We can't assume that calling code will do the right thing, and must be prepared
+//     to handle Kotlin method calls executing concurrently with or even after a call to
+//     `destroy`, and to handle multiple (possibly concurrent!) calls to `destroy`.
+//
+//   * We must never allow Rust code to operate on the underlying Rust struct after
+//     the destructor has been called, and must never call the destructor more than once.
+//     Doing so may trigger memory unsafety.
+//
+//   * To mitigate many of the risks of leaking memory and use-after-free unsafety, a `Cleaner`
+//     is implemented to call the destructor when the Kotlin object becomes unreachable.
+//     This is done in a background thread. This is not a panacea, and client code should be aware that
+//      1. the thread may starve if some there are objects that have poorly performing
+//     `drop` methods or do significant work in their `drop` methods.
+//      2. the thread is shared across the whole library. This can be tuned by using `android_cleaner = true`,
+//         or `android = true` in the [`kotlin` section of the `uniffi.toml` file](https://mozilla.github.io/uniffi-rs/kotlin/configuration.html).
+//
+// If we try to implement this with mutual exclusion on access to the pointer, there is the
+// possibility of a race between a method call and a concurrent call to `destroy`:
+//
+//    * Thread A starts a method call, reads the value of the pointer, but is interrupted
+//      before it can pass the pointer over the FFI to Rust.
+//    * Thread B calls `destroy` and frees the underlying Rust struct.
+//    * Thread A resumes, passing the already-read pointer value to Rust and triggering
+//      a use-after-free.
+//
+// One possible solution would be to use a `ReadWriteLock`, with each method call taking
+// a read lock (and thus allowed to run concurrently) and the special `destroy` method
+// taking a write lock (and thus blocking on live method calls). However, we aim not to
+// generate methods with any hidden blocking semantics, and a `destroy` method that might
+// block if called incorrectly seems to meet that bar.
+//
+// So, we achieve our goals by giving each instance an associated `AtomicLong` counter to track
+// the number of in-flight method calls, and an `AtomicBoolean` flag to indicate whether `destroy`
+// has been called. These are updated according to the following rules:
+//
+//    * The initial value of the counter is 1, indicating a live object with no in-flight calls.
+//      The initial value for the flag is false.
+//
+//    * At the start of each method call, we atomically check the counter.
+//      If it is 0 then the underlying Rust struct has already been destroyed and the call is aborted.
+//      If it is nonzero them we atomically increment it by 1 and proceed with the method call.
+//
+//    * At the end of each method call, we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+//    * When `destroy` is called, we atomically flip the flag from false to true.
+//      If the flag was already true we silently fail.
+//      Otherwise we atomically decrement and check the counter.
+//      If it has reached zero then we destroy the underlying Rust struct.
+//
+// Astute readers may observe that this all sounds very similar to the way that Rust's `Arc<T>` works,
+// and indeed it is, with the addition of a flag to guard against multiple calls to `destroy`.
+//
+// The overall effect is that the underlying Rust struct is destroyed only when `destroy` has been
+// called *and* all in-flight method calls have completed, avoiding violating any of the expectations
+// of the underlying Rust code.
+//
+// This makes a cleaner a better alternative to _not_ calling `destroy()` as
+// and when the object is finished with, but the abstraction is not perfect: if the Rust object's `drop`
+// method is slow, and/or there are many objects to cleanup, and it's on a low end Android device, then the cleaner
+// thread may be starved, and the app will leak memory.
+//
+// In this case, `destroy`ing manually may be a better solution.
+//
+// The cleaner can live side by side with the manual calling of `destroy`. In the order of responsiveness, uniffi objects
+// with Rust peers are reclaimed:
+//
+// 1. By calling the `destroy` method of the object, which calls `rustObject.free()`. If that doesn't happen:
+// 2. When the object becomes unreachable, AND the Cleaner thread gets to call `rustObject.free()`. If the thread is starved then:
+// 3. The memory is reclaimed when the process terminates.
+//
+// [1] https://stackoverflow.com/questions/24376768/can-java-finalize-an-object-when-it-is-still-in-scope/24380219
+//
+
+
+public interface CommonDeviceServiceEx {
+    
+    fun `clipboardCopyString`(`clipData`: AppClipboardCopyData)
+    
+    companion object
+}
+open class CommonDeviceServiceExImpl: Disposable, AutoCloseable, CommonDeviceServiceEx {
+
+    constructor(pointer: Pointer) {
+        this.pointer = pointer
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+
+    /**
+     * This constructor can be used to instantiate a fake object. Only used for tests. Any
+     * attempt to actually use an object constructed this way will fail as there is no
+     * connected Rust object.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    constructor(noPointer: NoPointer) {
+        this.pointer = null
+        this.cleanable = UniffiLib.CLEANER.register(this, UniffiCleanAction(pointer))
+    }
+
+    protected val pointer: Pointer?
+    protected val cleanable: UniffiCleaner.Cleanable
+
+    private val wasDestroyed = AtomicBoolean(false)
+    private val callCounter = AtomicLong(1)
+
+    override fun destroy() {
+        // Only allow a single call to this method.
+        // TODO: maybe we should log a warning if called more than once?
+        if (this.wasDestroyed.compareAndSet(false, true)) {
+            // This decrement always matches the initial count of 1 given at creation time.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    @Synchronized
+    override fun close() {
+        this.destroy()
+    }
+
+    internal inline fun <R> callWithPointer(block: (ptr: Pointer) -> R): R {
+        // Check and increment the call counter, to keep the object alive.
+        // This needs a compare-and-set retry loop in case of concurrent updates.
+        do {
+            val c = this.callCounter.get()
+            if (c == 0L) {
+                throw IllegalStateException("${this.javaClass.simpleName} object has already been destroyed")
+            }
+            if (c == Long.MAX_VALUE) {
+                throw IllegalStateException("${this.javaClass.simpleName} call counter would overflow")
+            }
+        } while (! this.callCounter.compareAndSet(c, c + 1L))
+        // Now we can safely do the method call without the pointer being freed concurrently.
+        try {
+            return block(this.uniffiClonePointer())
+        } finally {
+            // This decrement always matches the increment we performed above.
+            if (this.callCounter.decrementAndGet() == 0L) {
+                cleanable.clean()
+            }
+        }
+    }
+
+    // Use a static inner class instead of a closure so as not to accidentally
+    // capture `this` as part of the cleanable's action.
+    private class UniffiCleanAction(private val pointer: Pointer?) : Runnable {
+        override fun run() {
+            pointer?.let { ptr ->
+                uniffiRustCall { status ->
+                    UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_free_commondeviceserviceex(ptr, status)
+                }
+            }
+        }
+    }
+
+    fun uniffiClonePointer(): Pointer {
+        return uniffiRustCall() { status ->
+            UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_clone_commondeviceserviceex(pointer!!, status)
+        }
+    }
+
+    
+    @Throws(ApiCallbackException::class)override fun `clipboardCopyString`(`clipData`: AppClipboardCopyData)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(ApiCallbackException) { _status ->
+    UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_method_commondeviceserviceex_clipboard_copy_string(
+        it, FfiConverterTypeAppClipboardCopyData.lower(`clipData`),_status)
+}
+    }
+    
+    
+
+    
+
+    
+    
+    companion object
+    
+}
+
+
+// Put the implementation in an object so we don't pollute the top-level namespace
+internal object uniffiCallbackInterfaceCommonDeviceServiceEx {
+    internal object `clipboardCopyString`: UniffiCallbackInterfaceCommonDeviceServiceExMethod0 {
+        override fun callback(`uniffiHandle`: Long,`clipData`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeCommonDeviceServiceEx.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`clipboardCopyString`(
+                    FfiConverterTypeAppClipboardCopyData.lift(`clipData`),
+                )
+            }
+            val writeReturn = { _: Unit -> Unit }
+            uniffiTraitInterfaceCallWithError(
+                uniffiCallStatus,
+                makeCall,
+                writeReturn,
+                { e: ApiCallbackException -> FfiConverterTypeApiCallbackError.lower(e) }
+            )
+        }
+    }
+
+    internal object uniffiFree: UniffiCallbackInterfaceFree {
+        override fun callback(handle: Long) {
+            FfiConverterTypeCommonDeviceServiceEx.handleMap.remove(handle)
+        }
+    }
+
+    internal var vtable = UniffiVTableCallbackInterfaceCommonDeviceServiceEx.UniffiByValue(
+        `clipboardCopyString`,
+        uniffiFree,
+    )
+
+    // Registers the foreign callback with the Rust side.
+    // This method is generated for each callback interface.
+    internal fun register(lib: UniffiLib) {
+        lib.uniffi_db_service_ffi_fn_init_callback_vtable_commondeviceserviceex(vtable)
+    }
+}
+
+public object FfiConverterTypeCommonDeviceServiceEx: FfiConverter<CommonDeviceServiceEx, Pointer> {
+    internal val handleMap = UniffiHandleMap<CommonDeviceServiceEx>()
+
+    override fun lower(value: CommonDeviceServiceEx): Pointer {
+        return Pointer(handleMap.insert(value))
+    }
+
+    override fun lift(value: Pointer): CommonDeviceServiceEx {
+        return CommonDeviceServiceExImpl(value)
+    }
+
+    override fun read(buf: ByteBuffer): CommonDeviceServiceEx {
+        // The Rust code always writes pointers as 8 bytes, and will
+        // fail to compile if they don't fit.
+        return lift(Pointer(buf.getLong()))
+    }
+
+    override fun allocationSize(value: CommonDeviceServiceEx) = 8UL
+
+    override fun write(value: CommonDeviceServiceEx, buf: ByteBuffer) {
         // The Rust code always expects pointers written as 8 bytes,
         // and will fail to compile if they don't fit.
         buf.putLong(Pointer.nativeValue(lower(value)))
@@ -3397,7 +3715,7 @@ public object FfiConverterTypeJsonService: FfiConverter<JsonService, Pointer> {
 
 
 
-data class ClipDataArg (
+data class AppClipboardCopyData (
     var `fieldName`: kotlin.String, 
     var `fieldValue`: kotlin.String, 
     var `protected`: kotlin.Boolean, 
@@ -3407,9 +3725,9 @@ data class ClipDataArg (
     companion object
 }
 
-public object FfiConverterTypeClipDataArg: FfiConverterRustBuffer<ClipDataArg> {
-    override fun read(buf: ByteBuffer): ClipDataArg {
-        return ClipDataArg(
+public object FfiConverterTypeAppClipboardCopyData: FfiConverterRustBuffer<AppClipboardCopyData> {
+    override fun read(buf: ByteBuffer): AppClipboardCopyData {
+        return AppClipboardCopyData(
             FfiConverterString.read(buf),
             FfiConverterString.read(buf),
             FfiConverterBoolean.read(buf),
@@ -3417,14 +3735,14 @@ public object FfiConverterTypeClipDataArg: FfiConverterRustBuffer<ClipDataArg> {
         )
     }
 
-    override fun allocationSize(value: ClipDataArg) = (
+    override fun allocationSize(value: AppClipboardCopyData) = (
             FfiConverterString.allocationSize(value.`fieldName`) +
             FfiConverterString.allocationSize(value.`fieldValue`) +
             FfiConverterBoolean.allocationSize(value.`protected`) +
             FfiConverterUInt.allocationSize(value.`cleanupAfter`)
     )
 
-    override fun write(value: ClipDataArg, buf: ByteBuffer) {
+    override fun write(value: AppClipboardCopyData, buf: ByteBuffer) {
             FfiConverterString.write(value.`fieldName`, buf)
             FfiConverterString.write(value.`fieldValue`, buf)
             FfiConverterBoolean.write(value.`protected`, buf)
@@ -4347,6 +4665,14 @@ public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.Str
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_func_android_callback_service_initialize(
         FfiConverterTypeAndroidApiService.lower(`androidApiService`),_status)
+}
+    
+    
+ fun `commonDeviceServiceExInitialize`(`commonDeviceServiceEx`: CommonDeviceServiceEx)
+        = 
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_func_common_device_service_ex_initialize(
+        FfiConverterTypeCommonDeviceServiceEx.lower(`commonDeviceServiceEx`),_status)
 }
     
     

@@ -22,6 +22,7 @@ object DbServiceAPI {
     // Provides apis that are called from Kotlin to rust implementations
     private var jsonService = onekeepass.mobile.ffi.JsonService();
     private var androidSupportService = onekeepass.mobile.ffi.AndroidSupportService();
+
     // AndroidSupportService is declared in UDL file whereas AndroidSupportServiceExtra uses
     // uniffi annotations (macro attributes)
     private var androidSupportServiceExtra = onekeepass.mobile.ffi.AndroidSupportServiceExtra()
@@ -48,8 +49,15 @@ object DbServiceAPI {
                     BackendEventDispatcher(reactContext)
             )
 
-            val apiCallBackService = ApiCallbackServiceImpl(reactContext)
+            // For now separate initializations are done for these callback implementations and may
+            // be moved to the dbServiceInitialize itself
+
+            val apiCallBackService = ApiCallbackServiceImpl()
+            // Need to call the rust side initialization fn so as to store this implementation
+            // in rust store and api can be called by rust code
+            // ApiCallbackServiceImpl implements both interfaces for now
             androidCallbackServiceInitialize(apiCallBackService)
+            commonDeviceServiceExInitialize(apiCallBackService)
 
             initialized = true;
         } else {

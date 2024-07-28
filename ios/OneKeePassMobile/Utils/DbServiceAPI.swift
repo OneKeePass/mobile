@@ -29,9 +29,10 @@ class DbServiceAPI {
       let eventDispatcher = BackendEventDispatcher()
       dbServiceInitialize(cmnService, secKeyOps, eventDispatcher)
       
+      // ApiCallBackService implements the protocols IosApiService,CommonDeviceServiceEx 
       let apiCallBackService = ApiCallBackService()
-      
       iosCallbackServiceInitialize(apiCallBackService)
+      commonDeviceServiceExInitialize(apiCallBackService)
       
       initialized = true
       Swift.debugPrint("API initialize is done")

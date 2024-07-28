@@ -1,4 +1,5 @@
 (ns onekeepass.mobile.android.autofill.events.common
+  "Only the Android Autofill specific common events. All events should be prefixed with :android-af"
   (:require [onekeepass.mobile.background :as bg]
             [onekeepass.mobile.constants :refer [CATEGORY_ALL_ENTRIES]]
             [onekeepass.mobile.events.common :refer [on-ok]]
@@ -15,7 +16,7 @@
 
 ;; Based on the fn 'db-opened' from the main common 
 ;; We use the main ':opened-db-list' to maintain the list of the recent db list
-;; which is shared here in autofill events and the main app' side 
+;; which is shared here in autofill events and in the main app' side 
 
 (defn android-af-db-opened
   "Updates the db list and current active db key when a new kdbx database is loaded
@@ -45,7 +46,7 @@
 
 (defn android-af-active-db-key
   "Returns the current database key 'db-key'"
-  ;; To be called only in react components as it used 'subscribe' (i.e in React context)
+  ;; To be called only in react components (i.e in React context) as it uses 'subscribe' 
   ([]
    (subscribe [:android-af-active-db-key]))
   ;; Used in reg-event-db , reg-event-fx by passing the main re-frame global 'app-db' 
@@ -111,7 +112,6 @@
         :title home-page-title}
        info))))
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Open db related ;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn open-selected-database
@@ -125,7 +125,7 @@
 (defn cancel-on-press []
   (dispatch [:android-af/open-database-dialog-hide]))
 
-(defn show-key-file-form []
+#_(defn show-key-file-form []
   ;; kw :open-database-key-file-selected is used in events in ns onekeepass.mobile.events.key-file-form
   ;; to send back the selected key file 
   #_(dispatch [:key-file-form/show :open-database-key-file-selected]))
@@ -165,7 +165,7 @@
    (assoc-in  db [:android-af :open-database :dialog-show] false)))
 
 ;; An event to be called (from key file related page) after user selects a key file 
-(reg-event-fx
+#_(reg-event-fx
  :android-af/open-database-key-file-selected
  (fn [{:keys [db]} [_event-id {:keys [file-name full-file-name] :as m}]]
    {:db (-> db (assoc-in [:android-af :open-database :key-file-name-part] file-name)
@@ -203,63 +203,27 @@
      {:db db
       :fx [[:android-af/bg-entry-summary-data [full-file-name-uri CATEGORY_ALL_ENTRIES]]]})))
 
-#_(reg-event-fx
-   :common/set-active-db-key
-   (fn [{:keys [db]} [_event-id full-file-name-uri]]
-     (let [db (assoc db :current-db-file-name full-file-name-uri)
-           database-name (current-database-name db)]
-     ;; TODO: Need to ensure that db-key 'full-file-name-uri' is in the opened-db-list
-       {:db (assoc db :current-db-file-name full-file-name-uri)
-      ;; For now, the category page of the chosen db is shown irrespective of the previous active page
-        :fx [[:dispatch [:entry-category/load-categories-to-show]]
-             [:dispatch [:common/next-page :entry-category database-name]]]})))
-
-
 (reg-event-fx
  :android-af/pick-database-file
- (fn [{:keys [_db]} [_event-id]]
-   #_(println "android-af/pick-database-file is called ")
+ (fn [{:keys [_db]} [_event-id]] 
    {:fx [[:android-af/bg-pick-database-file]]}))
 
 (reg-fx
  :android-af/bg-pick-database-file
- (fn []
-   #_(println "android-af/bg-pick-database-file is called")
+ (fn [] 
    (bg/pick-database-to-read-write
-    (fn [api-response]
-      #_(println " pick-database-to-read-write response " api-response)
+    (fn [api-response] 
       (when-let [picked-response (on-ok
                                   api-response
                                   ;; main app's :database-file-pick-error reused 
-                                  (fn [error]
-                                    #_(println "Error is " error)
+                                  (fn [error] 
                                     (dispatch [:database-file-pick-error error])))]
         (dispatch [:android-af/database-file-picked picked-response]))))))
-
-;; This will make dialog open status true
-#_(reg-event-fx
-   :android-af/database-file-picked
-   (fn [{:keys [db]} [_event-id {:keys [file-name full-file-name-uri]}]]
-     {:db (-> db init-open-database-data
-            ;; database-file-name is just the 'file name' part derived from full uri 'database-full-file-name'
-            ;; to show in the dialog
-              (assoc-in [:android-af  :open-database :database-file-name] file-name)
-              (assoc-in [:android-af :open-database :database-full-file-name] full-file-name-uri)
-              (assoc-in [:android-af :open-database :dialog-show] true))}))
-
-#_(reg-event-fx
-   :database-file-pick-error
-   (fn [{:keys [_db]} [_event-id error]]
-   ;; If the user cancels any file selection, 
-   ;; the RN response is a error due to the use of promise rejecton in Native Module. And we can ignore that error 
-     {:fx [(when-not (= "DOCUMENT_PICKER_CANCELED" (:code error))
-             [:dispatch [:common/error-box-show "File Pick Error" error]])]}))
 
 (reg-sub
  :android-af/open-database-dialog-data
  (fn [db _query-vec]
    (get-in db [:android-af :open-database])))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;; Load kdbx ;;;;;;;;;;;;;;;
 
@@ -306,19 +270,6 @@
    {:db  (-> db (assoc-in [:android-af :open-database :error-fields] {})
              (assoc-in [:android-af :open-database :status] :completed))
     :fx [[:dispatch [:common/error-box-show "Database Open Error" error]]]}))
-
-
-#_(reg-event-fx
-   :common/kdbx-database-opened
-   (fn [{:keys [db]} [_event-id {:keys [database-name] :as kdbx-loaded}]]
-     {:db (db-opened db kdbx-loaded) ;; current-db-file-name is set in db-opened
-      :fx [[:dispatch [:entry-category/load-categories-to-show]]
-           [:dispatch [:common/next-page :entry-category database-name]]
-           [:dispatch [:load-all-tags]]
-           [:dispatch [:groups/load]]
-           [:dispatch [:common/load-entry-type-headers]]
-         ;; Loads the updated recent dbs info
-           [:bg-app-preference]]}))
 
 ;; Based on :common/kdbx-database-opened but dispatches autofill specific events
 (reg-event-fx
@@ -371,8 +322,7 @@
 ;; For now, the main app event ':close-kdbx-completed' triggers this event 
 (reg-event-fx
  :android-af/main-app-event-happened
- (fn [{:keys [db]} [_event_id args]]
-   #_(println ":android-af/main-app-event-happened is called with args" args)
+ (fn [{:keys [_db]} [_event_id _args]] 
    {:fx [[:dispatch [:android-af-common/next-page HOME_PAGE_ID "Home"]]]}))
 
 (reg-sub
@@ -380,12 +330,7 @@
  (fn [db _query-vec]
    (get-in db [:android-af :current-db-file-name])))
 
-
 ;;;;;;;;;;;;;;;;;;;; Search  ;;;;;;;;;;;;;;
-
-
-#_(defn show-selected-entry [entry-id]
-    (dispatch [:entry-form/find-entry-by-id entry-id]))
 
 (defn search-term-update [term]
   (dispatch [:android-af-search-term-update term]))
@@ -419,7 +364,7 @@
               (assoc-in  [:android-af :search :not-matched] not-matched))})))
 
 
-(reg-event-db
+#_(reg-event-db
  :android-af-search-term-clear
  (fn [db [_event-id]]
    (-> db (assoc-in [:android-af :search :term] nil)
@@ -456,7 +401,7 @@
        []
        r))))
 
-(reg-sub
+#_(reg-sub
  :android-af-search-selected-entry-id
  (fn [db _query-vec]
    (get-in db [:android-af :search :selected-entry-id])))
@@ -474,66 +419,3 @@
   (def db-key (-> @re-frame.db/app-db :current-db-file-name))
 
   (def db-key-af (-> @re-frame.db/app-db :android-af :current-db-file-name)))
-
-
-
-
-#_(reg-event-fx
-   :android-af/entry-list-load-complete
-   (fn [{:keys [db]} [_event-id entry-summaries]]
-     (println "In android-af/entry-list-load-complete...")
-     {:db (-> db
-              (assoc-in-key-db  [:android-af :entry-list :selected-entry-items] entry-summaries))
-      :fx [#_[:dispatch [:android-af/next-page ENTRY_LIST_PAGE_ID "Entries"]]]}))
-
-#_(reg-fx
-   :load-bg-entry-summary-data
- ;; reg-fx accepts only single argument. So the calleer needs to use map or vector to pass multiple values
-   (fn [[db-key category-detail category reloaded?]]
-     (bg/entry-summary-data db-key category
-                            (fn [api-response]
-                            ;;(println "ENTRYLIST: In entry-summary-data callback with api-response " api-response)
-                              (when-let [result (on-ok api-response)]
-                                (dispatch [:entry-list-load-complete result category-detail reloaded?]))))))
-
-;; When a list of all entry summary data is loaded successfully, this is called 
-#_(reg-event-fx
-   :entry-list-load-complete
-   (fn [{:keys [db]} [_event-id result {:keys [title display-title] :as _category-detail} reloaded?]]
-     (let [page-title (if (nil? display-title) title display-title)]
-       {:db db
-        :fx [[:dispatch [:update-selected-entry-items result]]
-             (when-not reloaded?
-               [:dispatch [:common/next-page :entry-list page-title]])]})))
-
-#_(reg-event-fx
-   :android-af/open-database-read-db-file
-   (fn [{:keys [db]} [_event-id]]
-     {:db (-> db (assoc-in [:android-af :open-database :status] :in-progress))
-      :fx [[:android-af/bg-all-entries-on-db-open [(get-in db [:android-af :open-database :database-full-file-name])
-                                                   (get-in db [:android-af :open-database :password])
-                                                   (get-in db [:android-af :open-database :key-file-name])]]]}))
-
-#_(reg-fx
-   :android-af/bg-all-entries-on-db-open
-   (fn [[db-key password key-file-name]]
-     #_(bg/all-entries-on-db-open db-key password key-file-name
-                                  (fn [api-response]
-                                    (when-let [entry-summaries (on-ok api-response #(dispatch [:open-database-read-kdbx-error %]))]
-                                      #_(dispatch [:entry-list/update-selected-entry-items db-key entry-summaries])
-                                      (dispatch [:all-entries-loaded db-key entry-summaries]))))))
-
-;; On successful loading of entries, we also set current-db-file-name to db-key so that
-;; we can use 'active-db-key' though only one db is opened at a time
-#_(reg-event-fx
-   :entry-list/update-selected-entry-items
-   (fn [{:keys [db]} [_event-id db-key entry-summaries]]
-     {:db (-> db
-              (assoc-in [:current-db-file-name] db-key)
-              (assoc-in  [:entry-list :selected-entry-items] entry-summaries))
-      :fx [[:dispatch [:common/next-page ENTRY_LIST_PAGE_ID "Entries"]]]}))
-
-#_(reg-sub
-   :selected-entry-items
-   (fn [db _query-vec]
-     (get-in db [:entry-list :selected-entry-items])))

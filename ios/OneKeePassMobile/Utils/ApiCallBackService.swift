@@ -7,9 +7,10 @@
 
 import Foundation
 
-// This is intialized and set to global singleton holder in rust
+// This is intialized and set in a global singleton holder in rust
 
-class ApiCallBackService: IosApiService {
+class ApiCallBackService: IosApiService,CommonDeviceServiceEx {
+  
   func ascCredentialServiceIdentifiers() throws -> [String: String] {
     #if OKP_APP_EXTENSION
       return CredentialProviderViewController.serviceIdentifiersReceived()
@@ -27,5 +28,11 @@ class ApiCallBackService: IosApiService {
     
     // cmnLogger.debug("Called clipboardCopyString text \(text) and timeout \(timeout)")
     ClipboardHelper.impl.copyString(text: text, timeout: Double(timeout))
+  }
+  
+  // An implementation of a fn in CommonDeviceServiceEx
+  func clipboardCopyString(_ clipData: AppClipboardCopyData) throws {
+    cmnLogger.debug("Common service clipboardCopyString is called with clipData as \(clipData)")
+    try clipboardCopyString(clipData.fieldValue, clipData.cleanupAfter )
   }
 }

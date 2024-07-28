@@ -17,14 +17,16 @@
 			"aarch64-apple-ios"
 		],
 
-		//"rust-analyzer.cargo.target": "aarch64-apple-ios-sim",
+		
+		"rust-analyzer.cargo.target": "aarch64-apple-ios-sim",
 
-		// Uncomment the following for rust-analyzer to work with  #[cfg(target_os = "android")]  
+		// Comment or Uncomment the following for rust-analyzer to work with  #[cfg(target_os = "android")] 
+		// At a time only one target is active and the last 'rust-analyzer.cargo.target' used
 		"rust-analyzer.cargo.target": "aarch64-linux-android",
 		
 		// Need these for argon2_sys build  
 		"rust-analyzer.server.extraEnv": {
-        	"CARGO_TARGET_DIR": "target/aarch64-linux-android",
+        	"CARGO_TARGET_DIR": "target",
         	"CC_aarch64-linux-android":"/Users/jeyasankar/Library/Android/sdk/ndk/25.1.8937393/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang",
         	"AR_aarch64_linux_android":"/Users/jeyasankar/Library/Android/sdk/ndk/25.1.8937393/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ar"
     	},

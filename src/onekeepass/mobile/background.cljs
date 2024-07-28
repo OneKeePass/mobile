@@ -185,7 +185,6 @@
                                  (ex-cause err))})
           (js/console.log (ex-cause err)))))))
 
-
 ;;TODO: Combine android-invoke-api,ios-autofill-invoke-api and invoke-api
 (defn invoke-api
   "Called to invoke commands from ffi
@@ -430,14 +429,13 @@
                                                          :args-keys-excluded args-keys-excluded)))
                   dispatch-fn :convert-response convert-response :convert-response-fn convert-response-fn))
 
-
 (defn android-pick-on-save-error-save-as [kdbx-file-name dispatch-fn]
   (pick-document-to-create kdbx-file-name dispatch-fn))
 
 (defn android-complete-save-as-on-error [db-key new-db-key dispatch-fn]
   (call-api-async (fn [] (.completeSaveAsOnError okp-db-service db-key new-db-key)) dispatch-fn :error-transform true))
 
-(defn android-copy-to-clipboard
+#_(defn android-copy-to-clipboard
   "Called to copy a selected field value to clipboard
    The arg field-info is a map that statifies the enum member 
    ClipboardCopyArg {field_name,field_value,protected,cleanup_after}
@@ -445,10 +443,14 @@
   [field-info dispatch-fn]
   (android-invoke-api "clipboard_copy" field-info dispatch-fn))
 
-(defn android-autofill-filtered-entries [db-key dispatch-fn]
+(defn android-autofill-filtered-entries 
+  "Gets one or more entries based on the search term derived from autofill requesting app domain"
+  [db-key dispatch-fn]
   (android-invoke-api "autofill_filtered_entries" {:db-key db-key} dispatch-fn))
 
-(defn android-complete-login-autofill [username password dispatch-fn]
+(defn android-complete-login-autofill 
+  "This will send the login credentials to the calling app when user presses Autofill action"
+  [username password dispatch-fn]
   (android-invoke-api "complete_autofill" {:type "Login" :username username :password password} dispatch-fn))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -505,6 +507,17 @@
 ;; Deprecate
 #_(defn categories-to-show [db-key dispatch-fn]
   (invoke-api "categories_to_show" {:db-key db-key} dispatch-fn))
+
+;; Works for both iOS and Android
+(defn copy-to-clipboard
+  "Called to copy a selected field value to clipboard
+   The arg field-info is a map that statifies the enum member 
+   ClipboardCopyArg {field_name,field_value,protected,cleanup_after}
+
+   IMPORTANT:The field 'cleanup_after' has clipboard timeout in seconds and 0 sec menas no timeout
+   "
+  [field-info dispatch-fn]
+  (invoke-api "clipboard_copy_string" field-info dispatch-fn))
 
 (defn combined-category-details
   [db-key grouping-kind dispatch-fn]

@@ -1,4 +1,5 @@
 use crate::app_state::{AppState, PreferenceData, RecentlyUsed};
+use crate::udl_uniffi_exports::ApiCallbacksStore;
 use crate::{android, as_api_response, ios, KeyFileInfo};
 use crate::{open_backup_file, util, OkpError, OkpResult};
 use onekeepass_core::async_service::{self, OtpTokenTtlInfoByField, TimerID};
@@ -166,10 +167,11 @@ pub enum CommandArg {
     },
 
     ClipboardCopyArg {
-        field_name:String,
-        field_value:String,
-        protected:bool,
-        cleanup_after:u32,
+        field_name: String,
+        field_value: String,
+        protected: bool,
+        //The field 'cleanup_after' has clipboard timeout in seconds and 0 sec menas no timeout
+        cleanup_after: u32,
     },
 
     // Should come after StartTimerArg
@@ -493,6 +495,8 @@ impl Commands {
             // "delete_key_file" => Self::delete_key_file(&args),
             "clean_export_data_dir" => result_json_str(util::clean_export_data_dir()),
 
+            "clipboard_copy_string" => Self::clipboard_copy_string(&args),
+
             // "test_call" => Self::test_call(),
             x => error_json_str(&format!("Invalid command name {} is passed", x)),
         };
@@ -791,6 +795,34 @@ impl Commands {
         })
     }
 
+    fn clipboard_copy_string(json_args: &str) -> ResponseJson {
+        let inner_fn = || -> OkpResult<()> {
+            let (field_name, field_value, protected, cleanup_after) = parse_command_args_or_err!(
+                json_args,
+                ClipboardCopyArg {
+                    field_name,
+                    field_value,
+                    protected,
+                    cleanup_after
+                }
+            );
+            let cd = crate::udl_uniffi_exports::AppClipboardCopyData {
+                field_name,
+                field_value,
+                protected,
+                cleanup_after,
+            };
+            ApiCallbacksStore::global()
+                .common_device_service_ex()
+                .clipboard_copy_string(cd)?;
+
+            debug!("clipboard_copy_string is called ");
+
+            Ok(())
+        };
+        result_json_str(inner_fn())
+    }
+
     // fn test_call() -> ResponseJson {
     //     onekeepass_core::async_service::start();
     //     ok_json_str("Done".to_string())
@@ -829,6 +861,8 @@ pub fn error_json_str(val: &str) -> ResponseJson {
     InvokeResult::<()>::with_error(val).json_str()
 }
 
+// Converts the passed Result to ok or error response and makes a json string
+// from that
 pub fn result_json_str<T: serde::Serialize>(val: db_service::Result<T>) -> ResponseJson {
     match val {
         Ok(t) => InvokeResult::with_ok(t).json_str(),
@@ -838,6 +872,8 @@ pub fn result_json_str<T: serde::Serialize>(val: db_service::Result<T>) -> Respo
     }
 }
 
+// Convertable to a json string as
+// "{ok: 'a string value serialized from T', error: null }" or  "{ok: null, error: 'error string'}"
 #[derive(Serialize, Deserialize)]
 pub struct InvokeResult<T> {
     ok: Option<T>,
@@ -845,6 +881,7 @@ pub struct InvokeResult<T> {
 }
 
 impl<T: Serialize> InvokeResult<T> {
+    // Creates a ok part which can be converted to a ok response json string
     pub fn with_ok(val: T) -> Self {
         InvokeResult {
             ok: Some(val),
@@ -852,6 +889,7 @@ impl<T: Serialize> InvokeResult<T> {
         }
     }
 
+    // Creates a error part which can be converted to an error response json string
     pub fn with_error(val: &str) -> Self {
         InvokeResult {
             ok: None,
@@ -859,10 +897,12 @@ impl<T: Serialize> InvokeResult<T> {
         }
     }
 
+    // Converts OK to json string with "ok" key
     fn ok_json_str(val: T) -> String {
         Self::with_ok(val).json_str()
     }
 
+    // Converts Err to json string with "error" key
     pub fn json_str(&self) -> String {
         let json_str = match serde_json::to_string_pretty(self) {
             Ok(s) => s,

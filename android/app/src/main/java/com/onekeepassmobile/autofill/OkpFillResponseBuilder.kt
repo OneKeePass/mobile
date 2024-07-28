@@ -48,9 +48,10 @@ object OkpFillResponseBuilder {
     }
 
     // Called to complete the autofill with Login partition values when user picks an entry
-
-    fun completeAutofillNew(username: String?, password: String?) {
-        AutofillAuthenticationActivity2.getActivityToComplteFill()?.let {activity ->
+    fun completeLoginAutofill(username: String?, password: String?) {
+        // There should be a valid 'AutofillAuthenticationActivity' instance 
+        AutofillAuthenticationActivity.getActivityToComplteFill()?.let { activity ->
+            // Builds the response with the filled dataset and completes autofill call 
             val dataset = buildLoginDatasetToFinalAutofill(activity.applicationContext, username, password)
             if (dataset == null) {
                 Log.d(TAG, "Filled dataset is null and activity is cancelled")
@@ -62,22 +63,6 @@ object OkpFillResponseBuilder {
                 activity.setResult(Activity.RESULT_OK, resultIntent)
                 activity.finish()
             }
-        }
-
-    }
-
-
-    fun completeAutofill(activity: Activity, context: Context, username: String?, password: String?) {
-        val dataset = buildLoginDatasetToFinalAutofill(context, username, password)
-        if (dataset == null) {
-            Log.d(TAG, "Filled dataset is null and activity is cancelled")
-            activity.setResult(Activity.RESULT_CANCELED)
-            activity.finish()
-        } else {
-            val resultIntent = createAutofillSelectionResultIntent(dataset!!)
-            Log.d(TAG, "Filled dataset is valid and activity is OKed")
-            activity.setResult(Activity.RESULT_OK, resultIntent)
-            activity.finish()
         }
     }
 

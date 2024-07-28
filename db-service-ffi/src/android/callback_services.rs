@@ -3,8 +3,7 @@ use once_cell::sync::OnceCell;
 use serde::Deserialize;
 use std::{collections::HashMap, sync::Arc};
 
-use crate::{udl_types::ApiCallbackResult, OkpResult};
-
+use crate::{udl_types::ApiCallbackResult, udl_uniffi_exports::AppClipboardCopyData, OkpResult};
 
 // A signleton that holds Android specific api callbacks services implemented in Kotlin
 pub struct AndroidApiCallbackImpl {
@@ -26,22 +25,22 @@ impl AndroidApiCallbackImpl {
     // }
 }
 
-
 ///////////
 
 static ANDROID_API_SERVICE_STATE: OnceCell<AndroidApiCallbackImpl> = OnceCell::new();
 
-//IMPORTANT: 
-// This fn should be called once in Kotlin during intialization of Native modules  
-// Then only we can use the api callback functions 
+//IMPORTANT:
+// This fn should be called once in Kotlin during intialization of Native modules
+// Then only we can use the api callback functions
 // Otherwise we get panic 'Caught a panic calling rust code: "called `Option::unwrap()` on a `None` value"'
 
 // top level functions generated to be called from Kotlin something similar to 'db_service_initialize'
 
-
 #[uniffi::export]
 pub fn android_callback_service_initialize(android_api_service: Arc<dyn AndroidApiService>) {
-    let service = AndroidApiCallbackImpl { android_api_service };
+    let service = AndroidApiCallbackImpl {
+        android_api_service,
+    };
 
     if ANDROID_API_SERVICE_STATE.get().is_none() {
         if ANDROID_API_SERVICE_STATE.set(service).is_err() {
@@ -54,23 +53,14 @@ pub fn android_callback_service_initialize(android_api_service: Arc<dyn AndroidA
     debug!("android_callback_service_initialize is finished");
 }
 
-// Something similar to 'dictionary' in UDL file? 
-#[derive(uniffi::Record)]
-pub struct ClipDataArg {
-    pub field_name:String,
-    pub field_value:String,
-    pub protected:bool,
-    pub cleanup_after:u32, 
-}
-
-#[derive(uniffi::Enum,Deserialize)]
+#[derive(uniffi::Enum, Deserialize)]
 #[serde(tag = "type")]
 pub enum AutoFillDbData {
     Login {
-        username:Option<String>,
-        password:Option<String>,
+        username: Option<String>,
+        password: Option<String>,
     },
-    CreditCard {}
+    CreditCard {},
 }
 
 // Corresponding UDL:
@@ -78,8 +68,8 @@ pub enum AutoFillDbData {
 // interface AndroidApiService {};
 #[uniffi::export(with_foreign)]
 pub trait AndroidApiService: Send + Sync {
-    fn clipboard_copy_string(&self, clip_data:ClipDataArg) -> ApiCallbackResult<()>;
+    fn clipboard_copy_string(&self, clip_data: AppClipboardCopyData) -> ApiCallbackResult<()>;
     // Autofill specific
-    fn autofill_client_app_url_info(&self,) -> ApiCallbackResult<HashMap<String,String>>;
-    fn complete_autofill(&self,auto_fill_data:AutoFillDbData) -> ApiCallbackResult<()>;
+    fn autofill_client_app_url_info(&self) -> ApiCallbackResult<HashMap<String, String>>;
+    fn complete_autofill(&self, auto_fill_data: AutoFillDbData) -> ApiCallbackResult<()>;
 }

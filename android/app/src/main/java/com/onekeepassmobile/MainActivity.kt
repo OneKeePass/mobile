@@ -17,6 +17,8 @@ class MainActivity : ReactActivity() {
      * rendering of the component.
      */
     override fun getMainComponentName(): String? {
+        // This component name declared in /mobile/app.json and used 
+        // by AppRegistry.registerComponent call in index.js
         return "OneKeePassMobile"
     }
 
@@ -26,8 +28,6 @@ class MainActivity : ReactActivity() {
      */
     override fun createReactActivityDelegate(): ReactActivityDelegate {
         //Log.d(TAG, "Creating and returning DefaultReactActivityDelegate")
-
-        //return OkpReactActivityDelegate(this,mainComponentName!!,fabricEnabled)
 
         return DefaultReactActivityDelegate(
                 this,

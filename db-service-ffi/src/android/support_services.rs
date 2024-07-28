@@ -4,10 +4,12 @@ use url::Url;
 
 use crate::{
     commands::{error_json_str, result_json_str, CommandArg, ResponseJson},
-    parse_command_args_or_err, OkpError, OkpResult,
+    parse_command_args_or_err,
+    udl_uniffi_exports::AppClipboardCopyData,
+    OkpError, OkpResult,
 };
 
-use super::{AndroidApiCallbackImpl, AutoFillDbData, ClipDataArg};
+use super::{AndroidApiCallbackImpl, AutoFillDbData};
 
 // NOTE: We have another service 'AndroidSupportService' in udl file
 // Later need to move those services here
@@ -62,7 +64,7 @@ impl AndroidSupportServiceExtra {
                     cleanup_after
                 }
             );
-            let clip_data = ClipDataArg {
+            let clip_data = AppClipboardCopyData {
                 field_name,
                 field_value,
                 protected,
@@ -107,7 +109,9 @@ impl AndroidSupportServiceExtra {
         result_json_str(inner_fn())
     }
 
-    // The arg json_args should be parseable as AutoFillDbData intead of usual CommandArgs
+    // Called to complete the pending autofill request
+    // The arg json_args should be parseable as AutoFillDbData 
+    // instead of the usual CommandArgs
     fn complete_autofill(&self, json_args: &str) -> ResponseJson {
         let inner_fn = || -> OkpResult<()> {
             let auto_fill_data = serde_json::from_str::<AutoFillDbData>(json_args)?;

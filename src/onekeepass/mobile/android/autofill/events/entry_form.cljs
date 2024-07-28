@@ -1,7 +1,9 @@
 (ns onekeepass.mobile.android.autofill.events.entry-form
+  "Only the Android Autofill specific entry form events. All events should be prefixed with :android-af"
   (:require [onekeepass.mobile.android.autofill.events.common :refer [android-af-active-db-key]]
             [onekeepass.mobile.background :as bg]
-            [onekeepass.mobile.events.common :refer [on-ok]]
+            [onekeepass.mobile.constants :refer [PASSWORD USERNAME]]
+            [onekeepass.mobile.events.common :refer [on-error on-ok]]
             [onekeepass.mobile.events.entry-form-common :refer [entry-form-key
                                                                 extract-form-otp-fields]]
             [onekeepass.mobile.events.native-events :as native-events]
@@ -9,7 +11,7 @@
             [re-frame.core :refer [dispatch reg-event-db reg-event-fx reg-fx
                                    reg-sub subscribe]]))
 
-(defn entry-form-field-visibility-toggle
+#_(defn entry-form-field-visibility-toggle
   "Called with the field name as key that is toggled between show/hide"
   [key]
   (dispatch [:android-af-entry-form-field-visibility-toggle key]))
@@ -25,7 +27,7 @@
   [fields]
   (subscribe [:android-af-entry-form-data-fields fields]))
 
-(defn entry-form-uuid []
+#_(defn entry-form-uuid []
   (subscribe [:android-af-entry-form-data-fields :uuid]))
 
 (defn entry-form
@@ -60,7 +62,6 @@
  (fn [[db-key entry-uuid dispatch-fn]]
    (bg/find-entry-by-id db-key entry-uuid dispatch-fn)))
 
-
 ;; IMPORTANT: Valid values for :showing are [:selected :new :history-form]
 (defn- set-on-entry-load [app-db entry-form-data]
   (let [otp-fields (extract-form-otp-fields entry-form-data)]
@@ -85,7 +86,6 @@
      (if (contains-val? vl key)
        (assoc-in db [:android-af entry-form-key :visibility-list] (filterv #(not= % key) vl))
        (assoc-in db [:android-af entry-form-key :visibility-list] (conj vl key))))))
-
 
 ;; Checks whether a form field is visible or not
 (reg-sub
@@ -129,7 +129,34 @@
 ;;    (get-in db [entry-form-key :edit])))
 
 
-;;;;;;;;;;;;;;;;;;;;; OTP ;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;; Complete Autofill activity ;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; This is copied from iOS extension cljs. Move to a common place ?
+(defn- find-field
+  "Finds the KV data map (KeyValueData struct) for a given field name from an entries data map
+   The arg 'form-data' is a map based on struct EntryFormData
+   The field name is a string 
+   "
+  [form-data field-name]
+  (let [kvds (flatten (vals (:section-fields form-data)))]
+    (first (filter (fn [m] (= field-name (:key m))) kvds))))
+
+;; Called when user selectes the "Autofill" menu option
+;; By this time, the entry form should have been loaded as entry-list single press or long press
+;; would have loaded the entry form before the menu selection 
+(reg-event-fx
+ :android-af-entry-form/complete-login-autofill
+ (fn [{:keys [db]} [_event-id]]
+   (let [form-data (get-in db [:android-af entry-form-key :data])
+         username (-> (find-field form-data USERNAME) :value)
+         password (-> (find-field form-data PASSWORD) :value)]
+     ;; Just calls the backend call directly
+     (bg/android-complete-login-autofill username password (fn [api-response]
+                                                             (when-not (on-error api-response)
+                                                               #())))
+     {})))
+
+;;;;;;;;;;;;;;;;;;;;; OTP ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn entry-form-otp-start-polling
   "Called to start polling from use effect"
@@ -198,13 +225,16 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Native event listener ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn register-entry-otp-update-handler 
- "The register-event-listener is called to register android autofill specific listener " 
+(defn register-entry-otp-update-handler
+  "The register-event-listener is called to register android 
+  autofill specific listener to handle OTP filed update. This event is registered 
+  in addition to the main app's event handler. Note the use of ':android-af' as first arg to 
+  'register-event-listener'
+  "
   []
-  #_(println "register-entry-otp-update-handler is called")
   (bg/register-event-listener :android-af  native-events/EVENT_ENTRY_OTP_UPDATE
                               (fn [event-message]
-                                (let [converted (bg/transform-api-response event-message 
+                                (let [converted (bg/transform-api-response event-message
                                                                            {:convert-response-fn native-events/token-response-converter})]
                                   (when-let [{:keys [entry-uuid reply-field-tokens]} (on-ok converted)]
                                     (dispatch [:android-af/entry-form-update-otp-tokens entry-uuid reply-field-tokens]))))))

@@ -1,4 +1,5 @@
 (ns onekeepass.mobile.android.autofill.entry-list
+  "Only the Android Autofill specific entry list components"
   (:require [clojure.string :as str]
             [onekeepass.mobile.android.autofill.events.common :as android-af-cmn-events]
             [onekeepass.mobile.android.autofill.events.entry-list :as el-events]
@@ -22,31 +23,23 @@
             [onekeepass.mobile.translation :refer [lstr-cv lstr-ml lstr-mt]]
             [reagent.core :as r]))
 
+;; NOTE: We are showing menu dialog for both single press and long press action
 (def entry-long-press-menu-action (menu-action-factory el-events/long-press-menu-hide))
 
 (defn show-entry-long-press-menu [^js/PEvent event uuid]
   (el-events/long-press-start (-> event .-nativeEvent .-pageX) (-> event .-nativeEvent .-pageY) uuid))
 
 (defn entry-long-press-menu []
-  (let [{:keys [show x y]} @(el-events/entry-list-long-press-data)]
-    ;;(println "entry-long-press-menu is called with show " show)
+  (let [{:keys [show x y]} @(el-events/entry-list-long-press-data)] 
     [rnp-menu {:visible show :onDismiss el-events/long-press-menu-hide :anchor (clj->js {:x x :y y})}
-     #_[rnp-menu-item {:title (lstr-ml 'copyUserName)
-                       :onPress #() #_(entry-long-press-menu-action
-                                       form-events/copy-field-to-clipboard USERNAME)}]
-     #_[rnp-menu-item {:title  (lstr-ml 'copyPassword)
-                       :onPress #() #_(entry-long-press-menu-action
-                                       form-events/copy-field-to-clipboard PASSWORD)}]
-     ;; Disable this menuitem if the both USERNAME and PASSWORD are nil
+     ;; TODO: Disable this menuitem if the both USERNAME and PASSWORD are nil
      [rnp-menu-item {:title "Autofill"
-                     :onPress #() #_(entry-long-press-menu-action
-                                     form-events/copy-field-to-clipboard USERNAME)}]
+                     :onPress (entry-long-press-menu-action el-events/complete-login-autofill)}]
 
      [rnp-divider]
 
      [rnp-menu-item {:title (lstr-ml 'entryDetails)
                      :onPress (entry-long-press-menu-action android-af-cmn-events/to-entry-form-page)}]]))
-
 
 (defn row-item []
   (fn [{:keys [title secondary-title icon-id uuid] :as _entry-summary}]

@@ -947,10 +947,21 @@
       (<! (timeout @clipboard-session-timeout))
       (when @field-in-clip (bg/write-string-to-clipboard nil)))))
 
-(defn write-string-to-clipboard [{:keys [field-name value protected]}]
+(defn write-string-to-clipboard 
+  "Calls the backend api to copy the passsed field value to the ios or android clipboard"
+  [{:keys [field-name value protected]}]
   ;;(println "write-string-to-clipboard called field-name value... " field-name value)
-  (bg/write-string-to-clipboard value)
-  (clear-clipboard protected)
+  #_(bg/write-string-to-clipboard value)
+  #_(clear-clipboard protected)
+  ;;clipboard-session-timeout is in milliseconds
+  (let [cb-timeout_secs (if-not (= @clipboard-session-timeout -1) (/ @clipboard-session-timeout 1000) 0)] 
+    (bg/copy-to-clipboard {:field-name field-name
+                           :field-value value
+                           :protected protected
+                           :cleanup-after cb-timeout_secs}
+                          #())
+    )
+  
   (when field-name
     (dispatch [:common/message-snackbar-open (str field-name " " "copied")])))
 

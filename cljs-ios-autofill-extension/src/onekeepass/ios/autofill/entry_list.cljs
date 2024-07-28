@@ -32,7 +32,6 @@
 (defn hide-entry-long-press-menu []
   (swap! entry-long-press-menu-data assoc :show false))
 
-
 (def entry-long-press-menu-action (menu-action-factory el-events/long-press-menu-hide))
 
 (defn show-entry-long-press-menu [^js/PEvent event uuid]
