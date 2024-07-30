@@ -1,5 +1,13 @@
 import Foundation
 
+// TODO: 
+// For now DbServiceAPI is duplicated between main app and extension (named as AutoFillDbServiceAPI)
+// This was done mainly because of accessin global level functions under the name 'OneKeePassMobile' vs 'OneKeePassAutoFill'
+// Need to move all common functions to a common class and share between two
+
+// Use #if OKP_APP_EXTENSION checking to use either 'OneKeePassMobile' or 'OneKeePassAutoFill'
+
+
 // Only one logger with variable 'cmnLogger' be declared
 let cmnLogger = OkpLogger(tag: "common ios ffi")
 

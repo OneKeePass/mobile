@@ -35,6 +35,7 @@
 (defn hardware-back-pressed [] 
   (back-action @current-page-info))
 
+;; TODO: Need to use lstr-pt as done in main app
 (defn positioned-title [& {:keys [title _page style titleStyle]}]
   [rnp-appbar-content 
    {:style (merge 

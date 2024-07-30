@@ -55,7 +55,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;  All page navigation related ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def home-page-title "home")
+(def home-page-title "Home")
 
 (def HOME_PAGE_ID :home)
 (def LOGIN_PAGE_ID :login)
@@ -109,7 +109,7 @@
    (let [info (first (get-in db [:android-af :pages-stack]))]
      (if (empty? info)
        {:page HOME_PAGE_ID
-        :title home-page-title}
+        :title home-page-title }
        info))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Open db related ;;;;;;;;;;;;;;;;;;;;;;;;

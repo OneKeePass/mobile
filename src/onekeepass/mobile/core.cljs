@@ -125,7 +125,7 @@
 (defn ^:export -main
   [args] 
   (let [{:keys [androidAutofill] :as options} (js->clj args :keywordize-keys true)]
-    (println "The options from main args are " options)
+    (println "The options from main args are ." options)
     
     ;; TODO: Add check so as to load the following only if there are not yet loaded
     ;; For now, these calls are made when main app opened and also when android autofill is called 

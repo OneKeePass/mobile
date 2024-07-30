@@ -3,11 +3,14 @@ import Foundation
 // Need to copy this from OneKeePassMobile as we need to use
 // Target name prefix to rust global functions
 
+// Use #if OKP_APP_EXTENSION checking to use either 'OneKeePassMobile' or 'OneKeePassAutoFill'
+// See also comments in 'DbServiceAPI.swift' 
+
 // Only one logger with variable 'cmnLogger' be declared
 let cmnLogger = OkpLogger(tag: "common ios ffi")
 
 class AutoFillDbServiceAPI {
-  static let logger = OkpLogger(tag: "DbServiceAPI")
+  static let logger = OkpLogger(tag: "AutoFillDbServiceAPI")
   
   private static var _iosSupportService = IosSupportService()
   private static var _iosAppGroupSupportService = IosAppGroupSupportService()
@@ -34,6 +37,7 @@ class AutoFillDbServiceAPI {
       
       let apiCallBackService = ApiCallBackService()
       iosCallbackServiceInitialize(apiCallBackService)
+      commonDeviceServiceExInitialize(apiCallBackService)
       
       initialized = true
       Swift.debugPrint("API initialize is done")

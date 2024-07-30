@@ -139,6 +139,7 @@ object OkpFillResponseBuilder {
         //https://developer.android.com/identity/autofill/ime-autofill#configure-provider
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             val inlinePresentationSpec = parsedAutofillRequest.inlinePresentationSpecs?.last()
+            //TODO: Need to use a translated text for Login
             inlinePresentationSpec?.let {
                 val inlinePresentation = createInlinePresentationOrNull(
                         it,
