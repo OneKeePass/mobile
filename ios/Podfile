@@ -70,13 +70,12 @@ end
 
 
 target 'OneKeePassAutoFill' do
+  # Requires patching /node_modules/@react-native-community/cli-platform-ios/native_modules.rb
+  # to use 'packages_to_skip'
   config = use_native_modules!(packages_to_skip:['RNBootSplash', 'RNCClipboard','RNReanimated','RNFileViewer', 'VisionCamera',
       'RNVectorIcons','RNDateTimePicker'
       # 'RNSVG',
       #'RNGestureHandler'
-                               
-
-    
     ])
     
     ## pod 'RNDeviceInfo', :configurations => ['Debug']

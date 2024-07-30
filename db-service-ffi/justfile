@@ -15,6 +15,7 @@ udl_src := "./src/db_service.udl"
 swift-src-dir := "./target/swift"
 kotlin-src-dir := "./target/kotlin"
 
+
 ## cargo install uniffi_bindgen 
 ## installed already and version 0.20.0 should match that is used in Cargo.toml)
 
@@ -22,6 +23,8 @@ kotlin-src-dir := "./target/kotlin"
 ## cd ../uniffi-bindgen
 ## cargo build --release  
 ## Now on we can use the appropriate version of uniffi-bindgen
+
+uniffi-generate := "../uniffi-bindgen/target/release/uniffi-bindgen generate"
 
 ## Will this work as we now use annotated exported functions?
 generate-rs:
@@ -39,13 +42,8 @@ ios-sim-debug-lib-output := "target/aarch64-apple-ios-sim/debug/libdb_service_ff
 ios-device-debug-lib-output := "target/aarch64-apple-ios/debug/libdb_service_ffi.dylib"
 ios-device-release-lib-output := "target/aarch64-apple-ios/release/libdb_service_ffi.dylib"
 
-
-
 ios_sim_sdk_root := `xcrun --sdk iphonesimulator  --show-sdk-path`
-
 ios_sdk_root := `xcrun --sdk iphoneos --show-sdk-path`
-
-uniffi-generate := "../uniffi-bindgen/target/release/uniffi-bindgen generate"
 
 # This uses only the udl file
 # generate-swift:

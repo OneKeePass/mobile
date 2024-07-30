@@ -54,7 +54,7 @@ object DbServiceAPI {
 
             val apiCallBackService = ApiCallbackServiceImpl()
             // Need to call the rust side initialization fn so as to store this implementation
-            // in rust store and api can be called by rust code
+            // in rust store and api then can be called by rust code
             // ApiCallbackServiceImpl implements both interfaces for now
             androidCallbackServiceInitialize(apiCallBackService)
             commonDeviceServiceExInitialize(apiCallBackService)
@@ -153,9 +153,8 @@ class CommonDeviceServiceImpl(val reactContext: ReactApplicationContext) : Commo
     }
 
     override fun appGroupHomeDir(): String? {
-        // This iis not implemented as it is iOS specific
-        //TODO("Not yet implemented")
-
+        // This is not implemented as it is iOS specific
+        // Need to move to move iOS specific api callback?
         return null
     }
 

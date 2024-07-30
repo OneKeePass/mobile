@@ -22,15 +22,14 @@ class MainApplication : Application(), ReactApplication {
             Log.d(TAG, "Returning OKP Native module package implementation in getPackages call")
             return PackageList(this).packages.apply {
                 // Packages that cannot be autolinked yet can be added manually here
-                //TODO (Custom - Jey)
-                // OneKeePassAppPackage should be added as here to ensure, the app's NativeModules
+                // TODO (Custom - Jey)
+                // OneKeePassAppPackage should be added as here to ensure loading of the app's NativeModules
                 Log.d(TAG, "Added OneKeePassAppPackage")
                 add(OneKeePassAppPackage())
             }
         }
 
         override fun getJSMainModuleName(): String {
-            //Log.wtf("MainApplication", "JSMainModuleName index is returned")
             Log.d(TAG, "JSMainModuleName returns 'index' name")
             return "index"
         }

@@ -207,27 +207,4 @@ object OkpFillResponseBuilder {
                 false,
         )
     }
-
-//    private fun contentColor(context:Context,systemColorMode:String): Int {
-//            val colorRes = if (systemColorMode == "dark") {
-//                androidx.core.R.color.dark_on_surface
-//            } else {
-//                R.color.on_surface
-//            }
-//
-//            return context.getColor(colorRes)
-//        }
-
-//    fun createDatasetBuilder(packageContext: Context,inlinePresentationSpec: InlinePresentationSpec) {
-//        if (Build.VERSION.SDK_INT >=  Build.VERSION_CODES.TIRAMISU) {
-//            val presentationBuilder = android.service.autofill.Presentations.Builder()
-//
-//        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-//
-//        } else {
-//
-//        }
-//
-//    }
-
 }

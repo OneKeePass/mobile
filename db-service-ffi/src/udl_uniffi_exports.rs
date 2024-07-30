@@ -60,13 +60,14 @@ impl ApiCallbacksStore {
 static API_CALLBACK_STORE: OnceCell<ApiCallbacksStore> = OnceCell::new();
 
 //IMPORTANT: 
-// This fn should be called once in Kotlin during intialization of Native modules  
-// Then only we can use the api callback functions 
+// This fn should be called once in Kotlin/Swift during intialization of Native modules  
+// Then only we can use the api callback functions in rust
 // Otherwise we get panic 'Caught a panic calling rust code: "called `Option::unwrap()` on a `None` value"'
 
-// top level functions generated to be called from Kotlin something similar to 'db_service_initialize'
+// Top level functions generated to be called from Kotlin/Swift something similar to 'db_service_initialize'
 
-// TODO: Instead of Keeping separate store and separate intit call, plan to use 'db_service_initialize' itself
+// TODO: 
+// Instead of Keeping separate store and separate intit call, plan to use 'db_service_initialize' itself
 // after moving fns from CommonDeviceService to CommonDeviceServiceEx
 
 #[uniffi::export]
