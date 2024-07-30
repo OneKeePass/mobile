@@ -65,7 +65,8 @@
                                 GestureHandlerRootView
                                 rnp-dialog]}
 
-  :unresolved-var {:exclude [onekeepass.mobile.rn-components onekeepass.mobile.events.dialogs]}
+  :unresolved-var {:exclude [onekeepass.mobile.rn-components onekeepass.ios.autofill.rn-components 
+                             onekeepass.mobile.events.dialogs]}
   ;;:unresolved-var {:exclude [onekeepass.mobile.rn-components dlg-events/confirm-delete-otp-field-dialog-data]}
   
   ;;:config-in-ns {onekeepass.mobile.background {:linters {:unresolved-symbol {:level :off}}}}

@@ -138,7 +138,10 @@
 ;; Could not make the Dialog work with KeyboardAvoidingView as generally used for other cases
 ;; It seems no support is vailable for this in react native paper 
 ;; Finally the solution is based on https://github.com/callstack/react-native-paper/issues/2172
-;; In Android, the overlapping of Keyboard over Dialog does not happen. So we can continue using the Dialog
+
+;; In Android, the overlapping of Keyboard over Dialog does not happen. We need to do 
+;; add android:windowSoftInputMode="adjustResize" in ' AndroidManifest.xml' for this
+
 (def cust-dialog
   (if (is-iOS)
     (r/adapt-react-class (.-default ^js/CustD (js/require "../js/components/KeyboardAvoidingDialog.js")))
@@ -234,9 +237,7 @@
 
     (reset! custom-color0 (.-custom0 colors))))
 
-
 ;;;;;;;;;;
-
 
 (def dots-icon-name (if (is-iOS) "dots-horizontal" "dots-vertical"))
 (def page-title-text-variant "titleLarge") ;;"titleLarge" "titleMedium"

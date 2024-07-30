@@ -4,42 +4,72 @@ alias bca := build-android-lib-cp-src
 ## Android release
 alias bca-r := build-android-lib-cp-src-release 
 
-alias gs := generate-swift
+#alias gs := generate-swift
 alias bcis := cp-ios-ffi-sim-debug-lib-src
 alias bcid := cp-ios-ffi-device-debug-lib-src
 ## iOS release
 alias bcid-r := cp-ios-ffi-device-release-lib-src
 
+
 udl_src := "./src/db_service.udl"
 swift-src-dir := "./target/swift"
 kotlin-src-dir := "./target/kotlin"
-
-ios-db-service-ffi-dir  := "../ios/OneKeePassMobile/DbServiceFFI"
-ios-db-service-ffi-lib-dir  := "../ios/OneKeePassMobile/DbServiceFFILib"
-ios-lib-output := "target/libdb_service_ffi.a"
 
 
 ## cargo install uniffi_bindgen 
 ## installed already and version 0.20.0 should match that is used in Cargo.toml)
 
 ## Need to do this one time
-## cd ./uniffi-bindgen
+## cd ../uniffi-bindgen
 ## cargo build --release  
 ## Now on we can use the appropriate version of uniffi-bindgen
 
+uniffi-generate := "../uniffi-bindgen/target/release/uniffi-bindgen generate"
+
+## Will this work as we now use annotated exported functions?
 generate-rs:
     ../uniffi-bindgen/target/release/uniffi-bindgen scaffolding {{udl_src}} -o ./target/  --no-format
 
 ######################### iOS specific ######################
 
-ios_sim_sdk_root := `xcrun --sdk iphonesimulator  --show-sdk-path`
+ios-db-service-ffi-dir  := "../ios/OneKeePassMobile/DbServiceFFI"
+ios-db-service-ffi-lib-dir  := "../ios/OneKeePassMobile/DbServiceFFILib"
 
+
+## We need to include lib output so that uniffi use it to read all exported funtions and types
+## using macro based annotations
+ios-sim-debug-lib-output := "target/aarch64-apple-ios-sim/debug/libdb_service_ffi.dylib"
+ios-device-debug-lib-output := "target/aarch64-apple-ios/debug/libdb_service_ffi.dylib"
+ios-device-release-lib-output := "target/aarch64-apple-ios/release/libdb_service_ffi.dylib"
+
+ios_sim_sdk_root := `xcrun --sdk iphonesimulator  --show-sdk-path`
 ios_sdk_root := `xcrun --sdk iphoneos --show-sdk-path`
 
+# This uses only the udl file
+# generate-swift:
+#     mkdir  -p {{swift-src-dir}}
+#     ../uniffi-bindgen/target/release/uniffi-bindgen generate -l swift {{udl_src}} --out-dir {{swift-src-dir}}
 
-generate-swift:
+
+generate-swift-sim-debug:
     mkdir  -p {{swift-src-dir}}
-    ../uniffi-bindgen/target/release/uniffi-bindgen generate -l swift {{udl_src}} --out-dir {{swift-src-dir}}
+    {{ uniffi-generate }} -l swift --lib-file {{ios-sim-debug-lib-output}} --out-dir {{swift-src-dir}} {{udl_src}}
+
+generate-swift-device-debug:
+    mkdir  -p {{swift-src-dir}}
+    {{ uniffi-generate }} -l swift --lib-file {{ios-device-debug-lib-output}} --out-dir {{swift-src-dir}} {{udl_src}}
+
+generate-swift-device-release:
+    mkdir  -p {{swift-src-dir}}
+    {{ uniffi-generate }} -l swift --lib-file {{ios-device-release-lib-output}} --out-dir {{swift-src-dir}} {{udl_src}}
+
+# generate-swift-use-lib type="":
+#     mkdir  -p {{swift-src-dir}}
+#     ../uniffi-bindgen/target/release/uniffi-bindgen generate -l swift --lib-file {{ if type == "sim-debug" {ios-sim-debug-lib-output} else {ios-device-release-lib-output} }} --out-dir {{swift-src-dir}} {{udl_src}}
+
+# generate-swift-test:
+#     mkdir  -p {{swift-src-dir}}
+#     ../uniffi-bindgen/target/release/uniffi-bindgen generate -l swift --lib-file target/aarch64-apple-ios-sim/debug/libdb_service_ffi.dylib --out-dir {{swift-src-dir}} {{udl_src}}
 
 
 # build-ios-device-lib-release:
@@ -79,7 +109,7 @@ build-ios-device-lib release="":
     cargo build --target aarch64-apple-ios {{ if release == "true" {"--release" } else {""}  }}
 
 ## Call 'just bcis'
-cp-ios-ffi-sim-debug-lib-src: build-ios-sim-lib-debug generate-swift
+cp-ios-ffi-sim-debug-lib-src: build-ios-sim-lib-debug generate-swift-sim-debug
     cp -R {{swift-src-dir}}/ {{ios-db-service-ffi-dir}}
     cp target/aarch64-apple-ios-sim/debug/libdb_service_ffi.a {{ios-db-service-ffi-lib-dir}} 
       
@@ -87,29 +117,24 @@ cp-ios-ffi-sim-debug-lib-src: build-ios-sim-lib-debug generate-swift
 ## Builds the debug ios static lib for device and copies that lib file and the swift bindings generated 
 ## Used during dev time device testing
 ## Call 'just bcid'
-cp-ios-ffi-device-debug-lib-src: build-ios-device-lib-debug generate-swift
+cp-ios-ffi-device-debug-lib-src: build-ios-device-lib-debug generate-swift-device-debug
     cp -R {{swift-src-dir}}/ {{ios-db-service-ffi-dir}}
     cp target/aarch64-apple-ios/debug/libdb_service_ffi.a {{ios-db-service-ffi-lib-dir}} 
     
 
 ## Builds the release ios static lib for device and copies that lib file and the swift bindings generated
 ## Call 'just bcid-r'
-cp-ios-ffi-device-release-lib-src:build-ios-device-lib-release generate-swift
+cp-ios-ffi-device-release-lib-src:build-ios-device-lib-release generate-swift-device-release
     cp -R {{swift-src-dir}}/ {{ios-db-service-ffi-dir}}
     cp target/aarch64-apple-ios/release/libdb_service_ffi.a {{ios-db-service-ffi-lib-dir}} 
 
 ###############################   Android related ############################### 
 
-## cargo build --target aarch64-linux-android did not work and cargo-ndk works nice
-## Needs to do one time 'cargo install cargo-ndk' and use that instead of cargo build directly for this target
-## See https://github.com/bbqsrc/cargo-ndk
-## 'cargo ndk --version' prints 'cargo-ndk 2.12.6'
-## ANDROID_NDK_HOME environment variable should be set to the same version of NDK version used in 
-## ".... android/build.gradle" 
 
-generate-kotlin:
-    mkdir  -p {{kotlin-src-dir}}
-    ../uniffi-bindgen/target/release/uniffi-bindgen generate -l kotlin {{udl_src}} --out-dir {{kotlin-src-dir}}
+## For uniffi use and this points to a lib built and uniffi reads and determines the api to generate in kotlin
+## Here we assume the lib is first built for aarch64-linux-android/debug and used for all other targets
+## However, in iOS we use each build's lib. So we may need to do the same for android if required
+android-aarch64-debug-lib-output := "target/aarch64-linux-android/debug/libdb_service_ffi.so"
 
 android-db-service-src-dir  := "../android/app/src/main/java"
 android-db-service-lib-dir  := "../android/app/src/main"
@@ -118,6 +143,34 @@ android-lib-output-dir := "target/jniLibs"
 ndk_botan_build_home := env_var('ANDROID_NDK_HOME') + "/../26.1.10909125"
 ndk_ar := ndk_botan_build_home + "/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ar"
 ndk_cxx := ndk_botan_build_home + "/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android31-clang++"
+
+## cargo build --target aarch64-linux-android did not work and cargo-ndk works nice
+## Needs to do one time 'cargo install cargo-ndk' or 'cargo binstall cargo-ndk' 
+## and use that instead of cargo build directly for this target
+## See https://github.com/bbqsrc/cargo-ndk
+## 'cargo ndk --version' prints 'cargo-ndk 3.5.6'
+## ANDROID_NDK_HOME environment variable should be set to the same version of NDK version used in 
+## ".... android/build.gradle" 
+
+
+# This uses only the udl file
+# generate-kotlin:
+#     mkdir  -p {{kotlin-src-dir}}
+#     ../uniffi-bindgen/target/release/uniffi-bindgen generate -l kotlin {{udl_src}} --out-dir {{kotlin-src-dir}}
+
+generate-kotlin:
+    mkdir  -p {{kotlin-src-dir}}
+    {{ uniffi-generate }} -l kotlin --lib-file {{android-aarch64-debug-lib-output}} --out-dir {{kotlin-src-dir}} {{udl_src}}
+
+
+## From cargo-ndk v3.2.2 onwards, we need to add 
+## export AR_aarch64_linux_android='xxx' and export CXX_aarch64_linux_android='xxx'
+## This is required as cargo-ndk started using 'Read C env vars like the cc crate'
+## https://github.com/bbqsrc/cargo-ndk/compare/v3.2.1...v3.2.2
+## https://docs.rs/cc/latest/cc/#external-configuration-via-environment-variables
+
+# Using ndk option -p 31  - means use NDK API 31
+# Using RUST_LOG=debug specifies the log levels to be used by env_logger (of cargo-ndk)
 
 ## Need to ensure to use 'crate-type = ["lib", "staticlib","cdylib"]' in Cargo.toml
 build-android-lib-aarch64 release="":
@@ -130,12 +183,14 @@ build-android-lib-aarch64 release="":
     export BOTAN_CONFIGURE_DISABLE_MODULES='tls,pkcs11,sodium,filters'
     export AR={{ndk_ar}}
     export CXX={{ndk_cxx}}
+    export AR_aarch64_linux_android={{ndk_ar}}
+    export CXX_aarch64_linux_android={{ndk_cxx}}
 
-    cargo ndk -t aarch64-linux-android  -o ./target/jniLibs build {{ if release == "true" {"--release" } else {""}  }}
+    RUST_LOG=debug cargo ndk -t aarch64-linux-android -o ./target/jniLibs build {{ if release == "true" {"--release" } else {""} }} 
 
 build-android-lib-all release="":
     just build-android-lib-aarch64 {{release}}
-    cargo ndk -t armv7-linux-androideabi  -o ./target/jniLibs build {{ if release == "true" {"--release" } else {""}  }}
+    cargo ndk -t armv7-linux-androideabi -o ./target/jniLibs build {{ if release == "true" {"--release" } else {""}  }} 
 
 ## Dev time used 
 ## Call 'just bca' 
@@ -157,3 +212,46 @@ test-env:
     export BOTAN_CONFIGURE_CPU='arm64'
 
     echo "BOTAN_CONFIGURE_CPU is: '${BOTAN_CONFIGURE_CPU}'"
+    echo "BOTAN_CONFIGURE_OS is: '${BOTAN_CONFIGURE_OS}'"
+
+
+## Botan notes
+
+# Reference: 
+# https://botan.randombit.net/handbook/building.html#for-ios-using-xcode
+# https://botan.randombit.net/handbook/building.html#for-android
+
+# All botan build related arguments are passed through environment variales like
+# BOTAN_CONFIGURE_XXXX = 'XXX' etc for both iOS and Android build 
+
+# In case of Android, additionally we need to pass 'AR' and 'CXX' environment variales
+
+# Based on these values, arguments for 'configure.py' are generated and botan build files are created and used. 
+# See the sample files generated like these  
+
+# mobile/db-service-ffi/target/aarch64-linux-android/release/build/botan-sys-8602c22497417f85/out/botan/build/build.h 
+# mobile/db-service-ffi/target/aarch64-linux-android/release/build/botan-sys-8602c22497417f85/out/output
+
+## We should see something similar in build.h of android build 
+# * @file  build.h
+# * @brief Build configuration for Botan 3.1.1
+# *
+# * Automatically generated from
+# * 'configure.py --with-build-dir=/Users/jeyasankar/Development/repositories/github/OneKeePass-Organization/mobile/db-service-ffi/target/aarch64-linux-android/release/build/botan-sys-8602c22497417f85/out/botan --build-targets=static --without-documentation --no-install-python-module --distribution-info=https://crates.io/crates/botan-src --os=android --cpu=arm64 --cc=clang '--cc-abi-flags=-arch arm64' --disable-modules=tls,pkcs11,sodium,filters'
+# *
+# * Target
+# *  - Compiler: /Users/jeyasankar/Library/Android/sdk/ndk/25.1.8937393/../26.1.10909125/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android31-clang++ -fstack-protector -pthread -arch arm64 -std=c++20 -D_REENTRANT -O3
+# *  - Arch: arm64
+# *  - OS: android
+
+
+## We should see somthing similar in build.h of ios build 
+# * Automatically generated from
+# * 'configure.py --with-build-dir=/Users/jeyasankar/Development/repositories/github/OneKeePass-Organization/mobile/db-service-ffi/target/aarch64-apple-ios/release/build/botan-sys-694d75f6f41dacae/out/botan --build-targets=static --without-documentation --no-install-python-module --distribution-info=https://crates.io/crates/botan-src --os=ios --cpu=armv8-a --cc=clang '--cc-abi-flags=-arch arm64''
+# *
+# * Target
+# *  - Compiler: clang++ -fstack-protector -pthread -stdlib=libc++ -arch arm64 -std=c++20 -D_REENTRANT -O3
+# *  - Arch: arm64
+# *  - OS: ios
+
+

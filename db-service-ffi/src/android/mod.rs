@@ -1,3 +1,11 @@
+#[cfg(target_os = "android")]
+pub(crate) mod callback_services;
+#[cfg(target_os = "android")]
+pub(crate) use callback_services::*;
+
+#[cfg(target_os = "android")]
+pub(crate) mod support_services;
+
 use std::fs::OpenOptions;
 use std::io::{Read, Seek, Write};
 use std::path::Path;
@@ -61,7 +69,9 @@ impl AndroidSupportService {
                 AppState::global().remove_last_backup_name_on_error(&old_full_file_name_uri);
                 Ok(kdbx_loaded)
             } else {
-                Err(OkpError::UnexpectedError(format!("Last backup is not found")))
+                Err(OkpError::UnexpectedError(format!(
+                    "Last backup is not found"
+                )))
             }
         };
 
@@ -191,9 +201,9 @@ impl AndroidSupportService {
         };
         commands::result_json_str(inner())
     }
-   
+
     /*
-     
+
     pub fn save_attachment(&self, file_descriptor: u64, json_args: String) -> ResponseJson {
         let inner = || -> OkpResult<()> {
             let mut file = unsafe { util::get_file_from_fd(file_descriptor) };
@@ -220,7 +230,6 @@ impl AndroidSupportService {
         commands::result_json_str(inner())
     }
     */
-
 }
 
 #[cfg(target_os = "ios")]

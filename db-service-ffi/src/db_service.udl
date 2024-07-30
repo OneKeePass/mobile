@@ -37,9 +37,11 @@ interface EventDispatch {
     void send_tick_update(string json_string);
 };
 
+// Also see the callback CommonDeviceServiceEx definition using macros in "udl_callbacks.rs"
 // From Rust to Swift or Kotlin
 callback interface CommonDeviceService {
     string app_home_dir();
+    string? app_group_home_dir(); // iOS specific
     string cache_dir();
     string temp_dir();
     string? load_language_translation(string language_id);
@@ -88,8 +90,11 @@ dictionary KdbxCreated {
     string api_response;
 };
 
+// TODO: Move the ios platform specific services to ios/support_servicess (to be added)
+
 // iOS specific APIs. Called from Swift to Rust
 // All methods need to receive &self as first argument in Rust side implementaion
+// See similar service 'IosAppGroupSupportService' in app_group module using uniffi Procedural Macros 
 interface IosSupportService {
     constructor();
     boolean save_book_mark_data(string url,sequence<u8> data);
@@ -97,7 +102,10 @@ interface IosSupportService {
     void delete_book_mark_data([ByRef] string full_file_name_uri);
     string? copy_last_backup_to_temp_file(string kdbx_file_name,string full_file_name_uri);
     string complete_save_as_on_error([ByRef] string json_args);
+
 };
+
+// TODO: Move the android platform specific services to AndroidSupportServiceExtra in android/support_servicess 
 
 // Android specific APIs. Called from Kotlin side to Rust
 // All methods need to receive &self in Rust side implementaion side except constructor 

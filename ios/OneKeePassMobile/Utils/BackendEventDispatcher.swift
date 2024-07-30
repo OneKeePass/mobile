@@ -11,6 +11,7 @@ import Foundation
 // We can not use name 'EventDispatchImpl' as this is used in the generated code in db_service.swift
 
 // Rust side calls the funtions implemented here
+// A instance of this class is created and passed to rust during intialization - see "DbServiceAPI.initialize()"
 
 class BackendEventDispatcher: EventDispatch {
   func sendTickUpdate(_ jsonString: String) throws {

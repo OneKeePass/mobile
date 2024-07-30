@@ -2,8 +2,8 @@ fn main() {
     uniffi::generate_scaffolding("./src/db_service.udl").unwrap();
 
     // Using println! to see output in build.rs will not work
-    
-    /* 
+
+    /*
     // uniffi_build::generate_scaffolding("./src/db_service.udl").unwrap();
     // This results in error something like
     // error[internal]: left behind trailing whitespace

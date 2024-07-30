@@ -1,6 +1,8 @@
 package com.onekeepassmobile
 
 import android.app.Application
+import android.content.Context
+import android.util.Log
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactNativeHost
@@ -16,25 +18,30 @@ class MainApplication : Application(), ReactApplication {
             return BuildConfig.DEBUG
         }
 
-        override fun getPackages(): List<ReactPackage> =
-                PackageList(this).packages.apply {
-                    // Packages that cannot be autolinked yet can be added manually here
-                    //TODO (Custom - Jey)
-                    // OneKeePassAppPackage should be added as here to ensure, the app's NativeModules
-                    add(OneKeePassAppPackage())
-                }
+        override fun getPackages(): List<ReactPackage>  {
+            Log.d(TAG, "Returning OKP Native module package implementation in getPackages call")
+            return PackageList(this).packages.apply {
+                // Packages that cannot be autolinked yet can be added manually here
+                // TODO (Custom - Jey)
+                // OneKeePassAppPackage should be added as here to ensure loading of the app's NativeModules
+                Log.d(TAG, "Added OneKeePassAppPackage")
+                add(OneKeePassAppPackage())
+            }
+        }
 
         override fun getJSMainModuleName(): String {
+            Log.d(TAG, "JSMainModuleName returns 'index' name")
             return "index"
         }
 
         override val isNewArchEnabled: Boolean
-            protected get() = BuildConfig.IS_NEW_ARCHITECTURE_ENABLED
+            get() = BuildConfig.IS_NEW_ARCHITECTURE_ENABLED
         override val isHermesEnabled: Boolean
-            protected get() = BuildConfig.IS_HERMES_ENABLED
+            get() = BuildConfig.IS_HERMES_ENABLED
     }
 
     override fun onCreate() {
+        Log.d(TAG, "MainApplication.onCreate is called")
         super.onCreate()
         SoLoader.init(this,  /* native exopackage */false)
         if (BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {
@@ -42,5 +49,27 @@ class MainApplication : Application(), ReactApplication {
             load()
         }
         initializeFlipper(this, reactNativeHost.reactInstanceManager)
+
+        setGlobal(this)
+    }
+
+    companion object {
+        private val TAG = "MainApplication"
+
+        private lateinit var mainApplication: MainApplication
+
+        fun setGlobal(app:MainApplication) {
+            mainApplication = app
+            // Custom clipboard manager handling
+            OkpClipboardManager.setClipboardManager(app.applicationContext)
+        }
+
+        fun getInstance(): MainApplication {
+            return mainApplication
+        }
+
+        fun getInstanceContext(): Context {
+            return mainApplication.applicationContext
+        }
     }
 }

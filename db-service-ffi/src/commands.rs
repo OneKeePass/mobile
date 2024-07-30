@@ -1,4 +1,5 @@
 use crate::app_state::{AppState, PreferenceData, RecentlyUsed};
+use crate::udl_uniffi_exports::ApiCallbacksStore;
 use crate::{android, as_api_response, ios, KeyFileInfo};
 use crate::{open_backup_file, util, OkpError, OkpResult};
 use onekeepass_core::async_service::{self, OtpTokenTtlInfoByField, TimerID};
@@ -165,6 +166,14 @@ pub enum CommandArg {
         timer_id: Option<TimerID>,
     },
 
+    ClipboardCopyArg {
+        field_name: String,
+        field_value: String,
+        protected: bool,
+        //The field 'cleanup_after' has clipboard timeout in seconds and 0 sec menas no timeout
+        cleanup_after: u32,
+    },
+
     // Should come after StartTimerArg
     StopTimerArg {
         timer_id: TimerID,
@@ -247,6 +256,42 @@ macro_rules! wrap_no_arg_ok_call {
         let r = $path::$fn_name();
         result_json_str(Ok(r))
     }};
+}
+
+#[macro_export]
+macro_rules! parse_command_args_or_json_error {
+    ($json_args:expr,$enum_name:tt {$($enum_vals:tt)*}) => {
+        {
+            let Ok(CommandArg::$enum_name{$($enum_vals)*}) = serde_json::from_str::<CommandArg>($json_args) else {
+                let ename = stringify!($enum_name);
+                let error_msg = format!("Invalid command args received {} for the api call. Expected a valid CommandArg::{}",
+                                        &$json_args.clone(), &ename);
+                return error_json_str(&error_msg)
+            };
+            ($($enum_vals)*,)
+        }
+    };
+}
+
+// Parses the passed json string to a matched CommandArg enum
+// Returns the field values of the matched enum member as tuple or Err
+#[macro_export]
+macro_rules! parse_command_args_or_err {
+    ($json_args:expr,$enum_name:tt {$($enum_vals:tt)*}) => {
+        {
+            let Ok(CommandArg::$enum_name{$($enum_vals)*}) = serde_json::from_str::<CommandArg>($json_args) else {
+                let ename = stringify!($enum_name);
+                let error_msg = format!("Invalid command args received {} for the api call. Expected a valid CommandArg::{}",
+                                        &$json_args.clone(), &ename);
+                return Err(OkpError::UnexpectedError(error_msg));
+                // return Err(OkpError::UnexpectedError(format!(
+                //     "Unexpected argument {:?} for copy_file_to_app_group api call",
+                //     $json_args
+                // )));
+            };
+            ($($enum_vals)*,)
+        }
+    };
 }
 
 pub struct Commands {}
@@ -410,7 +455,7 @@ impl Commands {
 
             //// Async related
             "start_polling_entry_otp_fields" => {
-                service_ok_call! (args, StartEntryOtpArg {db_key,entry_uuid,otp_fields} => 
+                service_ok_call! (args, StartEntryOtpArg {db_key,entry_uuid,otp_fields} =>
                     async_service start_polling_entry_otp_fields(&db_key,&entry_uuid,otp_fields))
             }
 
@@ -449,6 +494,8 @@ impl Commands {
 
             // "delete_key_file" => Self::delete_key_file(&args),
             "clean_export_data_dir" => result_json_str(util::clean_export_data_dir()),
+
+            "clipboard_copy_string" => Self::clipboard_copy_string(&args),
 
             // "test_call" => Self::test_call(),
             x => error_json_str(&format!("Invalid command name {} is passed", x)),
@@ -587,7 +634,7 @@ impl Commands {
         Ok(())
     }
 
-    fn update_preference(preference_data:PreferenceData) -> OkpResult<()>   {
+    fn update_preference(preference_data: PreferenceData) -> OkpResult<()> {
         Ok(AppState::global().update_preference(preference_data))
     }
 
@@ -674,20 +721,11 @@ impl Commands {
         }
     }
 
-    fn remove_from_recently_used(args: &str) -> String {
-        if let Ok(CommandArg::DbKey { db_key }) = serde_json::from_str(args) {
-            remove_app_files(&db_key);
-            log::debug!(
-                "Calling close_kdbx for {} after deleting recent infos, backfiles etc",
-                &db_key
-            );
-            InvokeResult::from(db_service::close_kdbx(&db_key)).json_str()
-        } else {
-            error_json_str(&format!(
-                "Unexpected args passed to remove db from list {:?}",
-                args
-            ))
-        }
+    fn remove_from_recently_used(args: &str) -> ResponseJson {
+        let (db_key,) = parse_command_args_or_json_error!(args, DbKey { db_key });
+        remove_app_files(&db_key);
+
+        InvokeResult::from(db_service::close_kdbx(&db_key)).json_str()
     }
 
     // Gets the recent files list
@@ -704,10 +742,10 @@ impl Commands {
     fn load_language_translations(language_ids: Vec<String>) -> OkpResult<TranslationResource> {
         let current_locale_language = util::current_locale_language();
         debug!("current_locale is {}", &current_locale_language);
-        
-        let prefered_language = AppState::global().language(); //current_locale_language.clone(); 
+
+        let prefered_language = AppState::global().language(); //current_locale_language.clone();
         debug!("prefered_language is {}", &prefered_language);
-        
+
         let language_ids_to_load = if !language_ids.is_empty() {
             language_ids
         } else {
@@ -757,6 +795,34 @@ impl Commands {
         })
     }
 
+    fn clipboard_copy_string(json_args: &str) -> ResponseJson {
+        let inner_fn = || -> OkpResult<()> {
+            let (field_name, field_value, protected, cleanup_after) = parse_command_args_or_err!(
+                json_args,
+                ClipboardCopyArg {
+                    field_name,
+                    field_value,
+                    protected,
+                    cleanup_after
+                }
+            );
+            let cd = crate::udl_uniffi_exports::AppClipboardCopyData {
+                field_name,
+                field_value,
+                protected,
+                cleanup_after,
+            };
+            ApiCallbacksStore::global()
+                .common_device_service_ex()
+                .clipboard_copy_string(cd)?;
+
+            debug!("clipboard_copy_string is called ");
+
+            Ok(())
+        };
+        result_json_str(inner_fn())
+    }
+
     // fn test_call() -> ResponseJson {
     //     onekeepass_core::async_service::start();
     //     ok_json_str("Done".to_string())
@@ -779,6 +845,12 @@ pub fn remove_app_files(db_key: &str) {
 
     #[cfg(target_os = "ios")]
     ios::delete_book_mark_data(&db_key);
+
+    #[cfg(target_os = "ios")]
+    {
+        let r = crate::ios::app_group::delete_copied_autofill_details(&db_key);
+        log::debug!("Delete of copied db data done with result {:?}", r);
+    }
 }
 
 pub fn ok_json_str<T: serde::Serialize>(val: T) -> ResponseJson {
@@ -789,6 +861,8 @@ pub fn error_json_str(val: &str) -> ResponseJson {
     InvokeResult::<()>::with_error(val).json_str()
 }
 
+// Converts the passed Result to ok or error response and makes a json string
+// from that
 pub fn result_json_str<T: serde::Serialize>(val: db_service::Result<T>) -> ResponseJson {
     match val {
         Ok(t) => InvokeResult::with_ok(t).json_str(),
@@ -798,6 +872,8 @@ pub fn result_json_str<T: serde::Serialize>(val: db_service::Result<T>) -> Respo
     }
 }
 
+// Convertable to a json string as
+// "{ok: 'a string value serialized from T', error: null }" or  "{ok: null, error: 'error string'}"
 #[derive(Serialize, Deserialize)]
 pub struct InvokeResult<T> {
     ok: Option<T>,
@@ -805,6 +881,7 @@ pub struct InvokeResult<T> {
 }
 
 impl<T: Serialize> InvokeResult<T> {
+    // Creates a ok part which can be converted to a ok response json string
     pub fn with_ok(val: T) -> Self {
         InvokeResult {
             ok: Some(val),
@@ -812,6 +889,7 @@ impl<T: Serialize> InvokeResult<T> {
         }
     }
 
+    // Creates a error part which can be converted to an error response json string
     pub fn with_error(val: &str) -> Self {
         InvokeResult {
             ok: None,
@@ -819,10 +897,12 @@ impl<T: Serialize> InvokeResult<T> {
         }
     }
 
+    // Converts OK to json string with "ok" key
     fn ok_json_str(val: T) -> String {
         Self::with_ok(val).json_str()
     }
 
+    // Converts Err to json string with "error" key
     pub fn json_str(&self) -> String {
         let json_str = match serde_json::to_string_pretty(self) {
             Ok(s) => s,

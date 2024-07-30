@@ -1,10 +1,25 @@
+#[cfg(target_os = "ios")]
+pub(crate) mod app_group;
+#[cfg(target_os = "ios")]
+pub use app_group::*;
+
+#[cfg(target_os = "ios")]
+pub(crate) mod callback_services;
+#[cfg(target_os = "ios")]
+pub(crate) use callback_services::*;
+
+
 use crate::app_state::AppState;
-use crate::commands::{remove_app_files, CommandArg, InvokeResult};
+use crate::commands::{
+    error_json_str, remove_app_files, result_json_str, CommandArg, InvokeResult, ResponseJson,
+};
 use crate::{open_backup_file, util, OkpError, OkpResult};
+
 use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
+use log::debug;
 use onekeepass_core::db_content::AttachmentHashValue;
 use onekeepass_core::db_service::{self, string_to_simple_hash};
 use regex::{Regex, RegexSet};
@@ -152,6 +167,115 @@ impl IosSupportService {
         };
         InvokeResult::from(inner_fn()).json_str()
     }
+
+    //
+    // pub fn copy_file_to_app_group(&self, json_args: &str) -> ResponseJson {
+    //     debug!(
+    //         "copy_file_to_app_group received as json_args {}",
+    //         &json_args
+    //     );
+
+    //     let Ok(CommandArg::DbKey { db_key }) = serde_json::from_str::<CommandArg>(json_args) else {
+    //         return error_json_str(&format!(
+    //             "Unexpected argument {:?} for copy_file_to_app_group api call",
+    //             json_args
+    //         ));
+    //     };
+
+    //     /////
+    //     let Some(app_group_home_dir) = &AppState::global().app_group_home_dir else {
+    //         return error_json_str("No app group home dir is found");
+    //     };
+
+    //     debug!("App group home dir is {:?} ", &app_group_home_dir);
+
+    //     let db_file_root = Path::new(&app_group_home_dir).join("db_files");
+    //     // Ensure that the parent dir exists
+    //     if !db_file_root.exists() {
+    //         if let Err(e) = std::fs::create_dir_all(&db_file_root) {
+    //             log::error!("Directory creation under app group home dir failed {:?}", e);
+    //             return error_json_str(&format!(
+    //                 "Directory creation under app group home dir failed {:?}",
+    //                 e
+    //             ));
+    //         }
+    //         log::debug!("Created dir {:?}", &db_file_root);
+    //     }
+
+    //     let file_name = AppState::global().uri_to_file_name(&db_key);
+    //     debug!("File name from db_file_name  is {} ", &file_name);
+
+    //     let group_db_file_name = Path::new(&db_file_root).join(&file_name);
+    //     ////
+
+    //     let Some(backup_file_name) = util::generate_backup_file_name(&db_key, &file_name) else {
+    //         return error_json_str("Getting backup file name failed");
+    //     };
+
+    //     if std::fs::copy(&backup_file_name, &group_db_file_name).is_err() {
+    //         log::error!("Copying the backup to group data file failed");
+    //         return error_json_str("Copying the backup to group data file failed");
+    //     }
+
+    //     debug!(
+    //         "Database file {:?} copied to the group dir",
+    //         &group_db_file_name
+    //     );
+
+    //     crate::commands::result_json_str(Ok(()))
+    // }
+
+    // pub fn list_app_group_db_files(&self) -> ResponseJson {
+    //     InvokeResult::with_ok(list_app_group_db_files()).json_str()
+    // }
+
+    // pub fn read_kdbx_from_app_group(&self, json_args: &str) -> ResponseJson {
+    //     result_json_str(self.internal_read_kdbx_from_app_group(&json_args))
+    // }
+
+    // fn internal_read_kdbx_from_app_group(
+    //     &self,
+    //     json_args: &str,
+    // ) -> OkpResult<db_service::KdbxLoaded> {
+    //     let CommandArg::OpenDbArg {
+    //         db_file_name,
+    //         password,
+    //         key_file_name,
+    //     } = serde_json::from_str(&json_args)?
+    //     else {
+    //         return Err(OkpError::UnexpectedError(format!(
+    //             "Argument 'json_args' {:?} parsing failed for readkdbx api call",
+    //             json_args
+    //         )));
+    //     };
+    //     let mut file = File::open(&util::url_to_unix_file_name(&db_file_name))?;
+    //     let file_name = AppState::global().uri_to_file_name(&db_file_name);
+
+    //     let kdbx_loaded = db_service::read_kdbx(
+    //         &mut file,
+    //         &db_file_name,
+    //         password.as_deref(),
+    //         key_file_name.as_deref(),
+    //         Some(&file_name),
+    //     )?;
+
+    //     Ok(kdbx_loaded)
+    // }
+
+    // pub fn all_entries_on_db_open(&self, json_args: &str) -> ResponseJson {
+    //     let Ok(kdbx_loaded) = self.internal_read_kdbx_from_app_group(json_args) else {
+    //         return error_json_str(&format!(
+    //             "Opening databse failed from the app group location"
+    //         ));
+    //     };
+    //     let r = db_service::entry_summary_data(
+    //         &kdbx_loaded.db_key,
+    //         db_service::EntryCategory::AllEntries,
+    //     );
+    //     result_json_str(r)
+    // }
+
+
 }
 
 // Dummy implemenation
@@ -206,6 +330,35 @@ pub fn delete_book_mark_data(full_file_name_uri: &str) {
         full_file_name_uri,
         r
     );
+}
+
+#[cfg(target_os = "ios")]
+pub fn get_app_group_root() -> Option<String> {
+    let Some(app_group_home_dir) = &AppState::global().app_group_home_dir else {
+        log::error!("No app group home dir is found");
+        return None;
+    };
+
+    debug!("App group home dir is {:?} ", &app_group_home_dir);
+
+    let db_file_root = Path::new(&app_group_home_dir).join("db_files");
+    // Ensure that the parent dir exists
+    if !db_file_root.exists() {
+        if let Err(e) = std::fs::create_dir_all(&db_file_root) {
+            log::error!("Directory creation under app group home dir failed {:?}", e);
+            return None;
+        }
+        log::debug!("Created dir {:?}", &db_file_root);
+    }
+    db_file_root.to_str().map(|s| s.to_string())
+}
+
+#[cfg(target_os = "ios")]
+pub fn list_app_group_db_files() -> Vec<String> {
+    let Some(app_root_path) = get_app_group_root() else {
+        return vec![];
+    };
+    util::list_dir_files(&Path::new(&app_root_path))
 }
 
 pub fn list_bookmark_files() -> Vec<String> {

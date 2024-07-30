@@ -10,8 +10,8 @@ use onekeepass_core::{
     db_service::{KeyStoreOperation, KeyStoreService},
 };
 
-use crate::udl_types::SecureKeyOperationError;
 use crate::app_state::AppState;
+use crate::udl_types::SecureKeyOperationError;
 
 // Should be called on app startup (see db_service_initialize fn and called from middle layer)
 // so that services are availble for the db_service layer.
@@ -75,7 +75,9 @@ impl KeyStoreService for KeyStoreServiceImpl {
 
         if !stored {
             self.store.insert(acct_key.clone(), SecVec::new(data));
-            info!("All attempts to store in key chain/key store failed and using the local storage");
+            info!(
+                "All attempts to store in key chain/key store failed and using the local storage"
+            );
         }
 
         Ok(())
@@ -119,7 +121,6 @@ impl KeyStoreService for KeyStoreServiceImpl {
     }
 
     fn copy_key(&mut self, source_db_key: &str, target_db_key: &str) -> kp_service::Result<()> {
-        
         if let Some(source_key) = self.get_key(source_db_key) {
             let _r = self.store_key(target_db_key, source_key);
             debug!("Keys are copied...");

@@ -1,4 +1,4 @@
-use log::{debug,info};
+use log::{debug, info};
 use onekeepass_core::async_service;
 
 use crate::{

@@ -7,7 +7,7 @@
                      modal-selector-colors on-background-color rn-scroll-view
                      rn-view rnms-modal-selector rnp-button rnp-chip
                      rnp-dialog rnp-dialog-actions rnp-dialog-content
-                     rnp-dialog-icon rnp-dialog-title rnp-divider rnp-modal
+                     rnp-dialog-icon rnp-dialog-title rnp-divider rnp-modal rn-pressable
                      rnp-snackbar rnp-text rnp-text-input rnp-text-input-icon
                      tertiary-color]]
             [onekeepass.mobile.translation :refer [lstr-bl lstr-dlg-text
@@ -108,6 +108,28 @@
                         :selectedItemTextStyle {:color @(:selected-text-color modal-selector-colors) :fontWeight "bold"}
                         :onChange on-change}
    [rnp-text-input {:style {:width "100%"} :editable false :label text-label :value value}]])
+
+;; Note:
+;; As we wrap the rnms-modal-selector in Pressable component, all press events are handled by rn-pressable
+;; and no event is passed to rnms-modal-selector
+(defn select-field-view [{:keys [text-label options value on-change disabled pressable-on-press] :or [disabled false]}]
+  [rn-pressable {:on-press (if-not (nil? pressable-on-press) pressable-on-press #()) #_#(println "Pressed value.. " value)}
+     [rnms-modal-selector {;; data can also include additional custom keys which are passed to the onChange callback
+                           ;; in addition to required ones - key, label
+                           ;; For example uuid can also be passed
+                           ;;:optionStyle {:background-color "red"}
+                           :optionContainerStyle {:background-color @(:background-color modal-selector-colors)}
+                           :data options
+                           :initValue value
+                           ;;:selectedKey (get options value)
+                           :disabled disabled
+                           ;;:supportedOrientations (clj->js ["portrait" ])
+                           :selectedItemTextStyle {:color @(:selected-text-color modal-selector-colors) :fontWeight "bold"}
+                           :onChange on-change}
+      [rnp-text-input {:style {:width "100%"} :editable false :label text-label :value value}]]])
+
+
+
 
 (defn confirm-dialog 
   "A Generic confirm dialog. It is expected all texts should have been translated by caller"

@@ -194,6 +194,7 @@ class DocumentPickerServiceModule(reactContext: ReactApplicationContext) : React
     @ReactMethod
     fun pickKdbxFileToOpen(promise: Promise) {
         val currentActivity = currentActivity
+        //Log.d(TAG, "pickKdbxFileToOpen is called for activity $currentActivity")
         if (currentActivity == null) {
             promise.reject(E_ACTIVITY_DOES_NOT_EXIST, "Current activity does not exist")
             return

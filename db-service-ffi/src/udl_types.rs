@@ -1,9 +1,12 @@
 use std::collections::HashMap;
 
 use onekeepass_core::db_service as kp_service;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-use crate::{app_state::AppState, commands::{InvokeResult, self}};
+use crate::{
+    app_state::AppState,
+    commands::{self, InvokeResult},
+};
 
 // Most of types decalred in db_service.udl follows here
 // except few like  'IosSupportService' and 'AndroidSupportService' and functions from 'namespace db_service'.
@@ -31,35 +34,36 @@ pub enum ApiResponse {
 
 //////////////////////////////////////////////////////////////
 
-// TODO: 
+// TODO:
 // Combine ApiCallbackError and SecureKeyOperationError as one general callback error
 pub type ApiCallbackResult<T> = std::result::Result<T, ApiCallbackError>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ApiCallbackError {
     #[error("InternalCallbackError")]
-    InternalCallbackError {reason:String},
+    InternalCallbackError { reason: String },
 }
 
 impl From<uniffi::UnexpectedUniFFICallbackError> for ApiCallbackError {
     fn from(callback_error: uniffi::UnexpectedUniFFICallbackError) -> Self {
         log::error!("UnexpectedUniFFICallbackError is {}", callback_error);
-        Self::InternalCallbackError{reason:format!("UnexpectedUniFFICallbackError is {}", callback_error)}
+        Self::InternalCallbackError {
+            reason: format!("UnexpectedUniFFICallbackError is {}", callback_error),
+        }
     }
 }
 
 impl From<ApiCallbackError> for kp_service::error::Error {
     fn from(err: ApiCallbackError) -> Self {
-        Self::UnexpectedError(format!("{}",err))
+        Self::UnexpectedError(format!("{}", err))
     }
 }
 /////////////////////////////////////////////////////////////////
 
-pub trait  EventDispatch: Send + Sync {
-    fn send_otp_update(&self,json_string:String) -> ApiCallbackResult<()>;
-    fn send_tick_update(&self,json_string:String) -> ApiCallbackResult<()>;
+pub trait EventDispatch: Send + Sync {
+    fn send_otp_update(&self, json_string: String) -> ApiCallbackResult<()>;
+    fn send_tick_update(&self, json_string: String) -> ApiCallbackResult<()>;
 }
-
 
 // This trait represents a callback declared in 'db_service.udl'
 // We need to implement this interface in Swift and Kotlin for the rust side use
@@ -67,7 +71,8 @@ pub trait CommonDeviceService: Send + Sync {
     fn app_home_dir(&self) -> String;
     fn cache_dir(&self) -> String;
     fn temp_dir(&self) -> String;
-    fn load_language_translation(&self, language_id:String) -> Option<String>;
+    fn app_group_home_dir(&self) -> Option<String>;
+    fn load_language_translation(&self, language_id: String) -> Option<String>;
     fn uri_to_file_name(&self, full_file_name_uri: String) -> Option<String>;
     fn uri_to_file_info(&self, full_file_name_uri: String) -> Option<FileInfo>;
 }
@@ -96,7 +101,7 @@ impl From<uniffi::UnexpectedUniFFICallbackError> for SecureKeyOperationError {
 
 impl From<SecureKeyOperationError> for kp_service::error::Error {
     fn from(err: SecureKeyOperationError) -> Self {
-        Self::SecureKeyOperationError(format!("{}",err))
+        Self::SecureKeyOperationError(format!("{}", err))
     }
 }
 
@@ -109,7 +114,6 @@ pub trait SecureKeyOperation: Send + Sync {
     fn get_key(&self, db_key: String) -> SecureKeyOpsResult<Option<String>>;
     fn delete_key(&self, db_key: String) -> SecureKeyOpsResult<()>;
 }
-
 
 #[derive(Debug)]
 pub enum FileArgs {
@@ -177,7 +181,6 @@ impl JsonService {
     }
 }
 
-
 /*
 // This trait represents a callback declared in 'db_service.udl'
 // We need to implement this interface in Swift and Kotlin for the rust side use
@@ -199,6 +202,3 @@ impl From<ApiCallbackError> for kp_service::error::Error {
 }
 
  */
-
-
-

@@ -19,8 +19,13 @@ private const val TAG = "DbServiceAPI";
 
 object DbServiceAPI {
 
+    // Provides apis that are called from Kotlin to rust implementations
     private var jsonService = onekeepass.mobile.ffi.JsonService();
     private var androidSupportService = onekeepass.mobile.ffi.AndroidSupportService();
+
+    // AndroidSupportService is declared in UDL file whereas AndroidSupportServiceExtra uses
+    // uniffi annotations (macro attributes)
+    private var androidSupportServiceExtra = onekeepass.mobile.ffi.AndroidSupportServiceExtra()
 
     // This flag 'initialized' is used so that we call rust lib initialization only one time
     // And this is mostly relevant during dev time when we do refreshing
@@ -43,14 +48,33 @@ object DbServiceAPI {
                     SecureKeyOperationImpl(reactContext),
                     BackendEventDispatcher(reactContext)
             )
+
+            // For now separate initializations are done for these callback implementations and may
+            // be moved to the dbServiceInitialize itself
+
+            val apiCallBackService = ApiCallbackServiceImpl()
+            // Need to call the rust side initialization fn so as to store this implementation
+            // in rust store and api then can be called by rust code
+            // ApiCallbackServiceImpl implements both interfaces for now
+            androidCallbackServiceInitialize(apiCallBackService)
+            commonDeviceServiceExInitialize(apiCallBackService)
+
             initialized = true;
         } else {
-            Log.d(TAG, "API initialize is alredy done")
+            Log.d(TAG, "API initialize is already done")
         }
     }
 
     fun invokeCommand(commandName: String, args: String): String {
         return dbServiceFFIInvokeCommand(commandName, args)
+    }
+
+    fun androidInvokeCommand(commandName: String, args: String): String {
+        return androidSupportServiceExtra.invoke(commandName, args)
+    }
+
+    fun androidSupportServiceExtra(): AndroidSupportServiceExtra {
+        return androidSupportServiceExtra
     }
 
     fun cleanExportDataDir(): String {
@@ -126,6 +150,12 @@ object DbServiceAPI {
 class CommonDeviceServiceImpl(val reactContext: ReactApplicationContext) : CommonDeviceService {
     override fun appHomeDir(): String {
         return reactContext.filesDir.absolutePath
+    }
+
+    override fun appGroupHomeDir(): String? {
+        // This is not implemented as it is iOS specific
+        // Need to move to move iOS specific api callback?
+        return null
     }
 
     override fun cacheDir(): String {

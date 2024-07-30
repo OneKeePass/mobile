@@ -9,6 +9,9 @@
 		{
 			"path": "../mobile"
 		},
+		{
+			"path": "cljs-ios-autofill-extension"
+		}
 	],
 	"settings": {
 		"editor.foldingStrategy": "indentation",

@@ -1,5 +1,12 @@
 import Foundation
 
+// TODO: 
+// For now DbServiceAPI is duplicated between main app and extension (named as AutoFillDbServiceAPI)
+// This was done mainly because of accessin global level functions under the name 'OneKeePassMobile' vs 'OneKeePassAutoFill'
+// Need to move all common functions to a common class and share between two
+
+// Use #if OKP_APP_EXTENSION checking to use either 'OneKeePassMobile' or 'OneKeePassAutoFill'
+
 
 // Only one logger with variable 'cmnLogger' be declared
 let cmnLogger = OkpLogger(tag: "common ios ffi")
@@ -8,6 +15,7 @@ class DbServiceAPI {
   static let logger = OkpLogger(tag: "DbServiceAPI")
   
   private static var _iosSupportService = IosSupportService()
+  private static var _iosAppGroupSupportService = IosAppGroupSupportService()
   private static var _jsonService = JsonService()
 
   static var initialized = false
@@ -27,7 +35,13 @@ class DbServiceAPI {
       let cmnService = CommonDeviceServiceImpl()
       let secKeyOps = SecureKeyOperationImpl()
       let eventDispatcher = BackendEventDispatcher()
-      dbServiceInitialize(cmnService,secKeyOps,eventDispatcher)
+      dbServiceInitialize(cmnService, secKeyOps, eventDispatcher)
+      
+      // ApiCallBackService implements the protocols IosApiService,CommonDeviceServiceEx 
+      let apiCallBackService = ApiCallBackService()
+      iosCallbackServiceInitialize(apiCallBackService)
+      commonDeviceServiceExInitialize(apiCallBackService)
+      
       initialized = true
       Swift.debugPrint("API initialize is done")
     } else {
@@ -37,6 +51,13 @@ class DbServiceAPI {
 
   static func iosSupportService() -> IosSupportService {
     _iosSupportService
+  }
+
+  //IMPORTANT:
+  //'IosSupportService()' is swift class contruction  whereas 'iosSupportService()' is func defined here
+  // Note the diff between 'Ios' (First letter is uppercase) vs 'ios' (all are lowercase) 
+  static func iosAppGroupSupportService() -> IosAppGroupSupportService {
+    _iosAppGroupSupportService
   }
   
   static func jsonService() -> JsonService {
@@ -59,7 +80,7 @@ class DbServiceAPI {
 
   static func saveKdbx(_ fullFileName: String, _ overwrite: Bool) -> ApiResponse {
     let fileArgs = FileArgs.fullFileName(fullFileName: fullFileName)
-    return OneKeePassMobile.saveKdbx(fileArgs,overwrite)
+    return OneKeePassMobile.saveKdbx(fileArgs, overwrite)
   }
   
   static func copyPickedKeyFile(_ fullFileName: String) -> String {
@@ -67,7 +88,7 @@ class DbServiceAPI {
     return OneKeePassMobile.copyPickedKeyFile(fileArgs)
   }
   
-  static func uploadAttachment(_ fullFileName: String,_ jsonArgs: String) -> String {
+  static func uploadAttachment(_ fullFileName: String, _ jsonArgs: String) -> String {
     let fileArgs = FileArgs.fullFileName(fullFileName: fullFileName)
     return OneKeePassMobile.uploadAttachment(fileArgs, jsonArgs)
   }
@@ -79,29 +100,33 @@ class DbServiceAPI {
   static func writeToBackupOnError(_ fullFileName: String) -> ApiResponse {
     return OneKeePassMobile.writeToBackupOnError(fullFileName)
   }
-  
 }
 
 enum CallbackErrors: Error {
-    case apiIsNotSupported
+  case apiIsNotSupported
 }
 
 class CommonDeviceServiceImpl: CommonDeviceService {
-  
-  
   func appHomeDir() -> String {
-    
 //    let  burl = Bundle.main.bundleURL
 //    cmnLogger.debug("$$$$$ bundleURL is \(burl)")
-//    
+//
 //    let resUrl = Bundle.main.resourceURL
-//    
+//
 //    cmnLogger.debug("$$$$$ resourceURL is \(burl)")
-//    
+//
 //    var p = Bundle.main.path(forResource: "en", ofType: "json", inDirectory: "Translations")
-//    
+//
 //    cmnLogger.debug("$$$$$ orResource is \(String(describing: p))")
-//    
+//
+    
+    
+    
+    // TODO:
+    // Need to use "Libary" or "Library/Application Support"  instead of using 'Documents' as app_home dir
+    // Existing prefernce.json, bookmarked,backup and keyfiles are need to be copied to the new app_home accordingly
+    // See
+    //https://developer.apple.com/library/archive/documentation/FileManagement/Conceptual/FileSystemProgrammingGuide/FileSystemOverview/FileSystemOverview.html#//apple_ref/doc/uid/TP40010672-CH2-SW13
     
     return NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).first!
   }
@@ -115,22 +140,29 @@ class CommonDeviceServiceImpl: CommonDeviceService {
     return tempDirectoryPath.absoluteString
   }
   
+  func appGroupHomeDir() -> String? {
+    guard let appGroupContainerUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.com.onekeepass.afshared") else {
+      return nil
+    }
+    cmnLogger.debug("appGroupContainerUrl is \(appGroupContainerUrl)")
+    return appGroupContainerUrl.absoluteString
+  }
+  
   func loadLanguageTranslation(_ languageId: String) -> String? {
-    
-    var p = Bundle.main.path(forResource: languageId, ofType: "json", inDirectory: "Translations")
+    //var p = Bundle.main.path(forResource: languageId, ofType: "json", inDirectory: "Translations")
     
     // Or use if let jsonFileURL = Bundle.main.path(forResource: languageId, ofType: "json", inDirectory: "Translations") {}
     // Or use if let jsonFileURL = Bundle.main.url(forResource: languageId, ofType: "json", subdirectory: "Translations") {}
     
     let jsonFileURL = Bundle.main.url(forResource: languageId, withExtension: "json", subdirectory: "Translations")
-    guard jsonFileURL != nil  else {
+    guard jsonFileURL != nil else {
       return nil
     }
     
     cmnLogger.debug("Translation jsonFileURL for language \(languageId) is \(String(describing: jsonFileURL))")
     
     if let fileContents = try? String(contentsOf: jsonFileURL!) {
-        return fileContents
+      return fileContents
     }
     
     return nil

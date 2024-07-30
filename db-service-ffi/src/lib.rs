@@ -5,6 +5,8 @@ mod commands;
 mod event_dispatcher;
 mod ios;
 mod key_secure;
+mod udl_uniffi_exports;
+
 mod udl_functions;
 mod udl_types;
 mod util;
@@ -18,11 +20,11 @@ use onekeepass_core::{
     error::Error,
 };
 use udl_types::{
-    ApiCallbackError, ApiResponse, CommonDeviceService, FileArgs, FileInfo, JsonService,
-    KdbxCreated, SecureKeyOperation, SecureKeyOperationError,EventDispatch,
+    ApiCallbackError, ApiResponse, CommonDeviceService, EventDispatch, FileArgs, FileInfo,
+    JsonService, KdbxCreated, SecureKeyOperation, SecureKeyOperationError,
 };
 
-use udl_functions::{db_service_enable_logging, db_service_initialize, read_kdbx,save_kdbx};
+use udl_functions::{db_service_enable_logging, db_service_initialize, read_kdbx, save_kdbx};
 
 use log::{debug, logger};
 use serde::{Deserialize, Serialize};
@@ -41,10 +43,8 @@ pub type OkpError = db_service::Error;
 
 // Needs to be added here to expose in the generated rs code
 use android::AndroidSupportService;
-#[allow(dead_code)]
 use ios::IosSupportService;
 
-#[allow(dead_code)]
 fn invoke_command(command_name: String, args: String) -> String {
     Commands::invoke(command_name, args)
 }
@@ -413,64 +413,30 @@ fn extract_file_provider(full_file_name_uri: String) -> String {
     android::extract_file_provider(&full_file_name_uri)
 }
 
-// Need to include db_service.uniffi.rs (generated from db_service.udl by uniffi_build)
-// only for ios or android build
-// This is required if we want to run the units tests on Mac OS
-// But we may get all functions that are used in 'db_service.uniffi.rs' marked as
+///////////////  Including uniffi generated rust source code - uniffi::include_scaffolding   ///////////////
+
+// We may get all functions that are used in 'db_service.uniffi.rs' (generated file) marked as
 // never used by lint. We may need to use #[allow(dead_code)] to suppress that
 // See the use of #![allow(dead_code, unused_imports)] in the top of this crate
 
-#[cfg(any(target_os = "ios", target_os = "android"))]
+// Note: 
+// when we want to run unit tests (in masos) in this crate, 
+// need to use '#[cfg(any(target_os = "ios", target_os = "android"))]'. This worked as long as we used only udl file
+// But using '#[uniffi::export]' may create some issues if they do not have same targets
+
+// If we use conditional - #[cfg(any(target_os = "ios", target_os = "android"))] -
+// way of using 'uniffi::include_scaffolding', then when we use
+// use uniffi::export and other proc macros, we need to mark them all with
+// cfg targets - #[cfg(any(target_os = "ios", target_os = "android"))]
+
+// Need to explore to use something like
+// cargo test --target aarch64-linux-android  --package db-service-ffi --lib -- util::tests --show-output
+// Or use https://github.com/sonos/dinghy etc
+// See https://stackoverflow.com/questions/44947640/how-can-i-run-cargo-tests-on-another-machine-without-the-rust-compiler
+
+// #[cfg(any(target_os = "ios", target_os = "android"))] - see the above comments
+
 uniffi::include_scaffolding!("db_service");
-//include!(concat!(env!("OUT_DIR"), "/db_service.uniffi.rs"));
 
-//////////////////// To be removed //////////////////
-/*
-fn _read_kdbx_old(file_args: FileArgs, json_args: String) -> ApiResponse {
-    log::debug!("file_args received is {:?}", file_args);
-    let mut file = match file_args {
-        FileArgs::FileDecriptor { fd } => unsafe { util::get_file_from_fd(fd) },
-        FileArgs::FullFileName { full_file_name } => {
-            // Opening file in read mode alone is sufficient and works fine
-            // full_path_file_to_read_write may be used if we need to open file with read and write permissions
-            // match full_path_file_to_read_write(&full_file_name)
-            match File::open(util::url_to_unix_file_name(&full_file_name)) {
-                Ok(f) => f,
-                Err(e) => return_api_response_failure!(e),
-            }
-        }
-        _ => return_api_response_failure!("Unsupported file args passed"),
-    };
-
-    let r = match serde_json::from_str(&json_args) {
-        Ok(CommandArg::OpenDbArg {
-            db_file_name,
-            password,
-            key_file_name,
-        }) => {
-            let r = db_service::read_kdbx(
-                &mut file,
-                &db_file_name, // This is db_key which is the full database file uri
-                &password,
-                key_file_name.as_deref(),
-                None,
-            );
-
-            if r.is_ok() {
-                AppState::global().add_recent_db_use_info(&db_file_name);
-            }
-            r
-        }
-        Ok(x) => Err(OkpError::UnexpectedError(format!(
-            "Unexpected argument {:?} for readkdbx api call",
-            x
-        ))),
-        Err(e) => Err(OkpError::UnexpectedError(format!("{:?}", e))),
-    };
-
-    ApiResponse::Success {
-        result: InvokeResult::from(r).json_str(),
-    }
-}
-
- */
+// As per uniffi doc, this should only be used when we use only the macros based udl definitions and not udl file
+//uniffi::setup_scaffolding!("db_service");

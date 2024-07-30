@@ -27,6 +27,7 @@
    [onekeepass.mobile.events.password-generator :as pg-events]
    [onekeepass.mobile.events.common :as cmn-events]
    [onekeepass.mobile.events.app-settings :as as-events]
+   [onekeepass.mobile.events.autofill :as af-events]
    [onekeepass.mobile.constants :as const :refer [ICON-EYE ICON-EYE-OFF]]))
 
 (def ^:private mp-confirm-dialog-data (r/atom false))
@@ -152,9 +153,9 @@
         [rn-view {:style {:margin-top 20 :margin-bottom 20 :align-items "center"}}
          [rnp-button {:style {:width "50%"}
                       :mode "contained"
-                      :on-press stgs-events/db-settings-password-added} 
+                      :on-press stgs-events/db-settings-password-added}
           (lstr-bl 'addPassword)]
-         
+
          (when password-use-removed
            [rnp-text {:style {:margin-top 10 :color @rnc/tertiary-color}}
             (lstr-mt 'dbSettings 'currrentPasswordRemoved)])])]]))
@@ -190,7 +191,7 @@
 
    (when-let [error-text (:in-sufficient-credentials @(stgs-events/db-settings-validation-errors))]
      [rn-view {:style {:margin-top 20}}
-      [rnp-helper-text {:style {:fontWeight "bold"}  :type "error" :visible true} 
+      [rnp-helper-text {:style {:fontWeight "bold"}  :type "error" :visible true}
        ;; Translatted error text
        error-text]])
    [rnp-portal
@@ -264,31 +265,50 @@
                       :text-align "center"
                       :padding-left 5} :variant "titleSmall"} (lstr-l title)]])
 
+(def ^:private ^:const SECTION-KEY-DB-SETTINGS "DbSettings")
+(def ^:private ^:const SECTION-KEY-APP-SETTINGS "AppSettings")
+(def ^:private ^:const SECTION-KEY-AUTOFILL "AutofillSettings")
+
 (defn row-item [_m]
-  (fn [{:keys [title page-id]} section-key] 
+  (fn [{:keys [title page-id]} section-key]
     ;; page-id is string and need to be convereted to a keyword to get the settings panel id
     ;; title is a key to i18n map
     [rnp-list-item {:style {}
+                    :contentStyle {}
                     :onPress (fn []
-                               (if-not (= "AppSettings" section-key)
-                                 ;; Database settings pages
+                               (cond
+                                 (= section-key SECTION-KEY-DB-SETTINGS)
                                  (stgs-events/select-db-settings-panel (keyword page-id))
-                                 ;; App level settings page
+
+                                 (and (= section-key SECTION-KEY-AUTOFILL) (is-iOS))
+                                 (af-events/to-autofill-settings-page)
+
+                                 (= section-key SECTION-KEY-APP-SETTINGS)
                                  (as-events/to-app-settings-page)))
                     :title (r/as-element
                             [rnp-text {:style {}
                                        :variant "titleMedium"} (lstr-l title)])
                     :right (fn [_props] (r/as-element [rnp-list-icon {:icon const/ICON-CHEVRON-RIGHT}]))}]))
 
-(defn db-settings-list-content []
-  (let [sections [{:title "dbSettings"
-                   :key "DbSettings"
-                   :data [{:title "general" :page-id :settings-general}
-                          {:title "credentials" :page-id :settings-credentials}
-                          {:title "security" :page-id :settings-security}]}
-                  {:title "appSettings"
-                   :key "AppSettings"
-                   :data [{:title "allAppSettings"}]}]]
+
+(defn sections-data []
+  [{:title "dbSettings"
+    :key SECTION-KEY-DB-SETTINGS
+    :data [{:title "general" :page-id :settings-general}
+           {:title "credentials" :page-id :settings-credentials}
+           {:title "security" :page-id :settings-security}]}
+   ;; For android this is nil and need to be filtered out
+   (when (is-iOS)
+     {:title "autofillSettings"
+      :key SECTION-KEY-AUTOFILL
+      :data [{:title "autofillSettings"}]})
+
+   {:title "appSettings"
+    :key SECTION-KEY-APP-SETTINGS
+    :data [{:title "allAppSettings"}]}])
+
+(defn settings-list-content []
+  (let [sections (filterv (complement nil?) (sections-data)) ]
     [rn-section-list  {:style {}
                        :sections (clj->js sections)
                        :renderItem  (fn [props]
@@ -308,8 +328,8 @@
   [rn-view {:style {:flex 1}}
 
    [rn-view {:style {:flex .8}}
-    [db-settings-list-content]] 
-   
+    [settings-list-content]]
+
    [rn-view {:style {:flex .2}}
     [rnp-text {:style {:textDecorationLine "underline"
                        :text-align "center"}
