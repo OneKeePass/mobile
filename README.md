@@ -34,10 +34,8 @@ OneKeePass is also available for **Windows, macOS and Linux desktops** can be do
 - Time based One-Time Passwords (TOTP) can added and used
 - Supports Light or Dark Theme
 - Multi-language support
+- AutoFill supported
 
-## Todo
-- [ ] AutoFill support 
-- [ ] Merge changed entries
 
 
 ## FAQ

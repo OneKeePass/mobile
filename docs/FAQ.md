@@ -46,6 +46,14 @@ If you want to update or to change an OTP field, the existing field needs to be 
 </h1>
 </details>
 
+## How to fill username and passwords automatically ?
+
+OneKeePass now supports the **Autofill** feature in both iOS and Android. 
+
+You can now seamlessly log in to websites and apps while maintaining strong and secure passwords in OneKeePass when you use the autofill service provided by OneKeePass
+
+To use Autofill with OneKeePass, you need to enable OneKeePass in the device system settings first
+
 ## How are entries organized ?
 Entries are organized so that you can view them as Entry types or Categories or Group tree or Tagged entries. 
 
