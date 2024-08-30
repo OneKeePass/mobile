@@ -16,7 +16,7 @@ alias ex-cljb := ios-ext-clj-build
 # host := "localhost" 
 # For android, need to use instead of localhost or 127.0.0.1
 # host := "10.0.2.2"
-host := "192.168.1.5"
+host := "192.168.1.6"
 
 # The clojurescript compiled output found './target/main.js' is used in index.js
 
