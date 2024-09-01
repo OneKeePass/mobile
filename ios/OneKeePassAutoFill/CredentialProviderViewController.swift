@@ -94,18 +94,19 @@ class CredentialProviderViewController: ASCredentialProviderViewController, RCTB
     logger.debug("didReceiveMemoryWarning is called")
   }
   
+  
   func getBundleURL() -> URL! {
     #if DEBUG
       // index.ios.autofill.extension.js is the extension specific entry file
-      return RCTBundleURLProvider.sharedSettings()?.jsBundleURL(forBundleRoot: "index.ios.autofill.extension")
+    return RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: "index.ios.autofill.extension")
     #else
       // Same as return [[NSBundle mainBundle] URLForResource:@"main" withExtension:@"jsbundle"];
       return Bundle.main.url(forResource: "main", withExtension: "jsbundle")
     #endif
   }
 
-  // This fn implementation is to conform to protocol 'RCTBridgeDelegate'
-  func sourceURL(for bridge: RCTBridge!) -> URL! {
+  // This fn implementation is to conform to the protocol 'RCTBridgeDelegate'
+  func sourceURL(for bridge: RCTBridge) -> URL? {
     getBundleURL()
   }
 
