@@ -18,7 +18,7 @@ crate-type = ["lib", "staticlib","cdylib"]
 # Android target requires "cdylib" for to create dynamic lib .so file  
  
 [dependencies]
-uniffi = "0.28.0"
+uniffi = "0.28.1"
 
 once_cell = "1.18.0"
 thiserror = "1.0"
@@ -55,7 +55,7 @@ oslog = { version = "0.2.0", default-features = false, features = ["logger"] }
 ## ./uniffi-bindgen is used to generate Swift and Kotin bindings. See he 'just file' how they are used
 
 [build-dependencies]
-uniffi = { version = "0.28.0", features = [ "build" ] }
+uniffi = { version = "0.28.1", features = [ "build" ] }
 
 [dev-dependencies]
 url = "2.3.1"

@@ -1244,9 +1244,11 @@ PODS:
     - React-Core
   - SocketRocket (0.7.0)
   - SwiftyMessenger (0.4.0)
-  - VisionCamera (3.9.2):
-    - React
-    - React-callinvoker
+  - VisionCamera (4.5.2):
+    - VisionCamera/Core (= 4.5.2)
+    - VisionCamera/React (= 4.5.2)
+  - VisionCamera/Core (4.5.2)
+  - VisionCamera/React (4.5.2):
     - React-Core
   - Yoga (0.0.0)
 
@@ -1517,7 +1519,7 @@ SPEC CHECKSUMS:
   RNSVG: 5da7a24f31968ec74f0b091e3440080f347e279b
   SocketRocket: abac6f5de4d4d62d24e11868d7a2f427e0ef940d
   SwiftyMessenger: 0b1af5397679f400785c666b0c22862bf50d04b0
-  VisionCamera: 36c460338692788a0d377dce7d32f8ba049fb4f2
+  VisionCamera: b69c637dc7388008c717b9566a006e5f9266fafe
   Yoga: 950bbfd7e6f04790fdb51149ed51df41f329fcc8
 
 PODFILE CHECKSUM: 3041c7e6d19dcb2e1dd2cc7e5718c6ec96c95a83
