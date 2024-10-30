@@ -15,7 +15,8 @@ use crate::udl_types::SecureKeyOperationError;
 
 // Should be called on app startup (see db_service_initialize fn and called from middle layer)
 // so that services are availble for the db_service layer.
-// Without this setup opening or creating any database file will panic! which we will be able to detect during dev time itself
+// Without this setup opening or creating any database file will result in 'panic!'
+// which we will be able to detect during dev time itself
 pub fn init_key_main_store() {
     let kss = Arc::new(Mutex::new(KeyStoreServiceImpl::default()));
     // In case, we need to hold any reference at this module, then we need to Arc::clone and use it

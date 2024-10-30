@@ -5,7 +5,7 @@
    [onekeepass.mobile.events.common :refer [on-ok]]
    [onekeepass.mobile.background :as bg]))
 
-
+;; These exact event names are defined in Swift and Kotlin side also 
 (def EVENT_ON_APPLICATION_URL "onApplicationOpenURL")
 
 (def EVENT_ON_TIME_TICK "onTimerTick")

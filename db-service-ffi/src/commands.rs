@@ -9,6 +9,10 @@ use onekeepass_core::db_service::{
     NewDatabase, OtpSettings, PasswordGenerationOptions,
 };
 
+
+use onekeepass_core::db_service::storage::{sftp,webdav};
+
+
 use std::fmt::format;
 use std::{
     collections::HashMap,
@@ -50,7 +54,7 @@ pub struct TranslationResource {
 // most specific variants first and so on
 
 // The deserializer does the following:
-// 1. pick a variant in the order decalred here
+// 1. pick a variant in the order declared here
 // 2. Checks whether all its fields are available (order of fields does not matter) in the deserialized data
 // 3. If the previous check is success, returns the variant. Otherwise continue to the next variant
 
@@ -183,6 +187,24 @@ pub enum CommandArg {
         language_ids: Vec<String>,
     },
 
+    SftpServerConnectionArg {
+        sftp_connection_config:sftp::SftpConnectionConfig,
+    },
+
+    SftpServerDirListingArg {
+        sftp_server_name:String,
+        sftp_server_parent_dir:String,
+    },
+
+    WebdavConnectionArg {
+        webdav_connection_config:webdav::WebdavConnectionConfig,
+    },
+
+    WebdavDirListingArg {
+        webdav_server_name:String,
+        webdav_server_parent_dir:String,
+    },
+
     // This variant needs to come last so that other variants starting with db_key is matched before this
     // and this will be matched only if db_key is passed. A kind of descending order with the same field names
     // in diffrent variant. If this variant put before any other variant with db_key field,
@@ -258,6 +280,9 @@ macro_rules! wrap_no_arg_ok_call {
     }};
 }
 
+// Parses the passed json string to a matched CommandArg enum
+// Returns the field values of the matched enum member as tuple or error json string
+// TODO: Need to merge this with the macro 'parse_command_args_or_err' as a single macro
 #[macro_export]
 macro_rules! parse_command_args_or_json_error {
     ($json_args:expr,$enum_name:tt {$($enum_vals:tt)*}) => {
@@ -451,6 +476,22 @@ impl Commands {
 
             "load_language_translations" => {
                 service_call!(args, TranslationsArg {language_ids} => Self load_language_translations(language_ids))
+            }
+
+            "sftp_connect_and_retrieve_root_dir" => {
+                service_call!(args, SftpServerConnectionArg {sftp_connection_config} => sftp connect_to_server(sftp_connection_config))
+            }
+
+            "sftp_list_dir" => { 
+                service_call!(args, SftpServerDirListingArg {sftp_server_name,sftp_server_parent_dir} => sftp list_dir(&sftp_server_name,&sftp_server_parent_dir))
+            }
+
+            "webdav_connect_and_retrieve_root_dir" => {
+                service_call!(args, WebdavConnectionArg {webdav_connection_config} => webdav connect_to_server(webdav_connection_config))
+            }
+
+            "webdav_list_dir" => { 
+                service_call!(args, WebdavDirListingArg {webdav_server_name,webdav_server_parent_dir} => webdav list_dir(&webdav_server_name,&webdav_server_parent_dir))
             }
 
             //// Async related
