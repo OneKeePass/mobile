@@ -38,6 +38,7 @@ pub enum ApiResponse {
 // Combine ApiCallbackError and SecureKeyOperationError as one general callback error
 pub type ApiCallbackResult<T> = std::result::Result<T, ApiCallbackError>;
 
+// This is an udl enum 'ApiCallbackError' declared in 'db_service.udl' file
 #[derive(Debug, thiserror::Error)]
 pub enum ApiCallbackError {
     #[error("InternalCallbackError")]
@@ -77,6 +78,7 @@ pub trait CommonDeviceService: Send + Sync {
     fn uri_to_file_info(&self, full_file_name_uri: String) -> Option<FileInfo>;
 }
 
+// This is an udl enum 'SecureKeyOperationError' declared in 'db_service.udl' file
 // TODO: Combine ApiCallbackError and SecureKeyOperationError as one general callback error
 #[derive(Debug, thiserror::Error)]
 pub enum SecureKeyOperationError {

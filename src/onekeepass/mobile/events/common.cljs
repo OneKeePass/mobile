@@ -2,6 +2,7 @@
   "All common events that are used across many pages"
   (:require [cljs.core.async :refer [<! go timeout]]
             [clojure.string :as str]
+            [onekeepass.mobile.background-remote-server :as bg-rs]
             [onekeepass.mobile.background :as bg :refer [is-Android]]
             [onekeepass.mobile.utils :as u :refer [str->int tags->vec]]
             [re-frame.core :refer [dispatch dispatch-sync reg-event-db

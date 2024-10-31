@@ -14,6 +14,7 @@ let cmnLogger = OkpLogger(tag: "common ios ffi")
 class DbServiceAPI {
   static let logger = OkpLogger(tag: "DbServiceAPI")
   
+  // These are implemented in Rust
   private static var _iosSupportService = IosSupportService()
   private static var _iosAppGroupSupportService = IosAppGroupSupportService()
   private static var _jsonService = JsonService()

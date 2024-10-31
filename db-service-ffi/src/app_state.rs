@@ -19,14 +19,23 @@ use crate::{
 // Any mutable field needs to be behind Mutex
 pub struct AppState {
     pub app_home_dir: String,
+    // iOS specific
     pub app_group_home_dir: Option<String>,
+    // Android specific use (in save_attachment_as_temp_file) ? 
     pub cache_dir: String,
+    // Not used ?
     pub temp_dir: String,
+    // Dir where all db files backups are created 
     pub backup_dir_path: PathBuf,
+    // Dir path where db file for export is created and used in export calls
     pub export_data_dir_path: PathBuf,
+    // Dir where all key files are copied for latter use 
     pub key_files_dir_path: PathBuf,
+    // Callback service implemented in Swift/Kotlin and called from rust side
     pub common_device_service: Box<dyn CommonDeviceService>,
+    // Callback service implemented in Swift/Kotlin and called from rust side
     pub secure_key_operation: Box<dyn SecureKeyOperation>,
+    // Callback service implemented in Swift/Kotlin and called from rust side
     pub event_dispatcher: Arc<dyn EventDispatch>,
     last_backup_on_error: Mutex<HashMap<String, String>>,
     pub preference: Mutex<Preference>,

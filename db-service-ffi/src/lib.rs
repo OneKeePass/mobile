@@ -24,7 +24,10 @@ use udl_types::{
     JsonService, KdbxCreated, SecureKeyOperation, SecureKeyOperationError,
 };
 
-use udl_functions::{db_service_enable_logging, db_service_initialize, read_kdbx, save_kdbx};
+use udl_functions::{
+    copy_picked_key_file, db_service_enable_logging, db_service_initialize, invoke_command,
+    read_kdbx, save_kdbx, upload_attachment, verify_db_file_checksum, write_to_backup_on_error,
+};
 
 use log::{debug, logger};
 use serde::{Deserialize, Serialize};
@@ -42,12 +45,9 @@ pub type OkpResult<T> = db_service::Result<T>;
 pub type OkpError = db_service::Error;
 
 // Needs to be added here to expose in the generated rs code
+// These are interfaces declared in udl file and implemented in Rust
 use android::AndroidSupportService;
 use ios::IosSupportService;
-
-fn invoke_command(command_name: String, args: String) -> String {
-    Commands::invoke(command_name, args)
-}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct KeyFileInfo {
@@ -81,142 +81,6 @@ pub fn open_backup_file(backup_file_path: Option<String>) -> Option<File> {
             .ok(),
         None => None,
     }
-}
-
-// Called to create the backup file whenever some save error happens during the save kdbx api call
-// See middle layer (Swift or Kotlin) the method 'saveKdbx'
-fn write_to_backup_on_error(full_file_name_uri: String) -> ApiResponse {
-    // closure returns -> OkpResult<db_service::KdbxSaved>
-    // and that is converted to ApiResponse. Helps to use ?. May be used in fuctions also
-    // to avoid using too many match calls
-    let f = || {
-        // We will get the file name from the recently used list
-        // instead of using AppState uri_to_file_name method as that call may fail in case of Android
-        let file_name = AppState::global()
-            .file_name_in_recently_used(&full_file_name_uri)
-            .ok_or(OkpError::UnexpectedError(format!(
-                "There is no file name found for the uri {} in the recently used list",
-                &full_file_name_uri
-            )))?;
-        let backup_file_name = util::generate_backup_file_name(&full_file_name_uri, &file_name);
-        debug!(
-            "Writing to the backup file {:?} for the uri {}",
-            &backup_file_name, &file_name
-        );
-        let mut backup_file = open_backup_file(backup_file_name.clone())
-            .ok_or(OkpError::DataError("Backup file could not be created"))?;
-
-        let r = db_service::save_kdbx_to_writer(&mut backup_file, &full_file_name_uri);
-        debug!("Writing backup for the uri {} is done", &file_name);
-
-        // Need to store
-        if let Some(bkp_file_name) = backup_file_name.as_deref() {
-            AppState::global().add_last_backup_name_on_error(&full_file_name_uri, bkp_file_name);
-            debug!("Added the backup file key on save error")
-        }
-
-        r
-    };
-    as_api_response(f())
-}
-
-// ApiResponse::Failure is returned when there is any db change detected
-// No change means no error and hence ApiResponse::Success is returned
-fn verify_db_file_checksum(file_args: FileArgs) -> ApiResponse {
-    log::debug!(
-        "verify_db_file_checksum: file_args received is {:?}",
-        file_args
-    );
-    let (mut reader, db_key) = match file_args {
-        FileArgs::FileDecriptorWithFullFileName {
-            fd,
-            full_file_name,
-            file_name: _,
-        } => (unsafe { util::get_file_from_fd(fd) }, full_file_name),
-
-        FileArgs::FullFileName { full_file_name } => {
-            let full_file_path = util::url_to_unix_file_name(&full_file_name);
-
-            match File::open(&full_file_path) {
-                Ok(f) => (f, full_file_name),
-                Err(e) => return_api_response_failure!(e),
-            }
-        }
-        _ => return_api_response_failure!("Unsupported file args passed"),
-    };
-
-    let response = match db_service::verify_db_file_checksum(&db_key, &mut reader) {
-        Ok(r) => r,
-        Err(e) => return_api_response_failure!(e),
-    };
-
-    let api_response = match serde_json::to_string_pretty(&InvokeResult::with_ok(response)) {
-        Ok(s) => s,
-        Err(e) => return_api_response_failure!(e),
-    };
-
-    // This means no db change detectecd
-    ApiResponse::Success {
-        result: api_response,
-    }
-}
-
-// Copies the picked key file to app dir and returns key file info json  or error
-fn copy_picked_key_file(file_args: FileArgs) -> String {
-    debug!(
-        "copy_picked_key_file: file_args received is {:?}",
-        file_args
-    );
-
-    let inner = || -> OkpResult<KeyFileInfo> {
-        // let (mut file, file_name) = match file_args {
-        //     // For Android
-        //     FileArgs::FileDecriptorWithFullFileName { fd, file_name, .. } => {
-        //         (unsafe { util::get_file_from_fd(fd) }, file_name)
-        //     }
-        //     // For iOS
-        //     FileArgs::FullFileName { full_file_name } => {
-        //         let name = AppState::global().uri_to_file_name(&full_file_name);
-        //         let ux_file_path = util::url_to_unix_file_name(&full_file_name);
-        //         debug!("copy_picked_key_file:ux_file_path is {}", &ux_file_path);
-        //         let r = File::open(ux_file_path);
-        //         debug!("copy_picked_key_file:File::open return is {:?}", &r);
-        //         (r?, name)
-        //     }
-        //     _ => return Err(OkpError::UnexpectedError("Unsupported file args passed".into())),
-        // };
-
-        let OpenedFile {
-            mut file,
-            file_name,
-            ..
-        } = OpenedFile::open_to_read(file_args)?;
-
-        let key_file_full_path = AppState::global().key_files_dir_path.join(&file_name);
-        debug!(
-            "copy_picked_key_file:key_file_full_path is {:?}",
-            key_file_full_path
-        );
-
-        if key_file_full_path.exists() {
-            return Err(OkpError::DuplicateKeyFileName(format!(
-                "Key file with the same name exists"
-            )));
-        }
-
-        let mut target_file = File::create(&key_file_full_path)?;
-        std::io::copy(&mut file, &mut target_file).and(target_file.sync_all())?;
-        debug!("Copied the key file {} locally", &file_name);
-
-        let full_file_name = key_file_full_path.as_os_str().to_string_lossy().to_string();
-        Ok(KeyFileInfo {
-            full_file_name,
-            file_name,
-            file_size: None,
-        })
-    };
-
-    commands::result_json_str(inner())
 }
 
 struct OpenedFile {
@@ -276,29 +140,6 @@ impl OpenedFile {
     }
 }
 
-fn upload_attachment(file_args: FileArgs, json_args: &str) -> ResponseJson {
-    let inner = || -> OkpResult<AttachmentUploadInfo> {
-        let OpenedFile {
-            mut file,
-            file_name,
-            ..
-        } = OpenedFile::open_to_read(file_args)?;
-
-        let CommandArg::DbKey { db_key } = serde_json::from_str(json_args)? else {
-            return Err(OkpError::UnexpectedError(format!(
-                "Unexpected argument {:?} for upload_attachment api call",
-                json_args
-            )));
-        };
-
-        let info = db_service::read_entry_attachment(&db_key, &file_name, &mut file)?;
-
-        Ok(info)
-    };
-
-    commands::result_json_str(inner())
-}
-
 // Does not work if we use From<OkpResult<T:Serialize>> as discussed in  https://github.com/rust-lang/rust/issues/52662
 // impl<T> From<OkpResult<T:Serialize>> for ApiResponse {
 //     fn from<T: serde::Serialize>(val: OkpResult<T>) -> ApiResponse {
@@ -329,8 +170,11 @@ fn as_api_response<T: serde::Serialize>(val: OkpResult<T>) -> ApiResponse {
 // Currently this is used for iOS only as we need to create a new temp data before using
 // calling to store by picking a location in subsequent call
 // See 'pickAndSaveNewKdbxFile' in the Swift class 'OkpDocumentPickerService'
+// TODO: Move these to the iOS specific service trait
 #[cfg(target_os = "ios")]
 fn create_temp_kdbx(file_args: FileArgs, json_args: String) -> ApiResponse {
+    use crate::commands::error_json_str;
+
     #[allow(unused_mut)]
     let mut full_file_name_uri;
 
@@ -405,6 +249,8 @@ fn create_temp_kdbx(_file_args: FileArgs, _json_args: String) -> ApiResponse {
 
 #[cfg(target_os = "ios")]
 fn extract_file_provider(full_file_name_uri: String) -> String {
+    use crate::ios;
+
     ios::extract_file_provider(&full_file_name_uri)
 }
 
@@ -419,8 +265,8 @@ fn extract_file_provider(full_file_name_uri: String) -> String {
 // never used by lint. We may need to use #[allow(dead_code)] to suppress that
 // See the use of #![allow(dead_code, unused_imports)] in the top of this crate
 
-// Note: 
-// when we want to run unit tests (in masos) in this crate, 
+// Note:
+// when we want to run unit tests (in masos) in this crate,
 // need to use '#[cfg(any(target_os = "ios", target_os = "android"))]'. This worked as long as we used only udl file
 // But using '#[uniffi::export]' may create some issues if they do not have same targets
 

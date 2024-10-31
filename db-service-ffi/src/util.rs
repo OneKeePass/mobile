@@ -53,7 +53,8 @@ pub fn file_name_from_full_path(file_full_path: &str) -> String {
 }
 
 // kdbx_file_name is just file name and is not absolute one
-// For now only hash str formed full_file_uri_str is appended to the kdbx_file_name before prefix .kdbx
+// For now only hash str formed using 'full_file_uri_str' is appended to the 
+// kdbx_file_name before prefix .kdbx. See the example 
 pub fn generate_backup_file_name(full_file_uri_str: &str, kdbx_file_name: &str) -> Option<String> {
     if kdbx_file_name.trim().is_empty() {
         return None;
@@ -68,7 +69,7 @@ pub fn generate_backup_file_name(full_file_uri_str: &str, kdbx_file_name: &str) 
     let backup_file_name = vec![fname_no_extension, "_", &n, ".kdbx"].join("");
 
     debug!("backup_file_name generated is {}", backup_file_name);
-    // Note: We should not use any explicit /  like .join("/") while joing components
+    // Note: We should not use any explicit /  like .join("/") while joining components
     AppState::global()
         .backup_dir_path
         .join(backup_file_name)
@@ -76,6 +77,7 @@ pub fn generate_backup_file_name(full_file_uri_str: &str, kdbx_file_name: &str) 
         .map(|s| s.to_string())
 }
 
+// Returns the absolute path for the db export call
 pub fn form_export_file_name(kdbx_file_name: &str) -> Option<String> {
     if kdbx_file_name.trim().is_empty() {
         return None;

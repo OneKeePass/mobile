@@ -107,6 +107,8 @@ impl IosSupportService {
         delete_book_mark_data(&full_file_name_uri);
     }
 
+    // Called to copy the backup file when user wants to do "Save as" operation 
+    // instead of overwriting or discarding the current db
     pub fn copy_last_backup_to_temp_file(
         &self,
         kdbx_file_name: String,
