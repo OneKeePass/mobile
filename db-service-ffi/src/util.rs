@@ -34,6 +34,7 @@ pub fn full_path_str(dir_path: &str, file_name: &str) -> String {
     url_to_unix_file_name(&full_name)
 }
 
+// Not used. Instead iOS fn is used through callback service
 // Extracts the file name from a full file path url
 // In case of any error in extracting, the full path itself returned for now
 pub fn file_name_from_full_path(file_full_path: &str) -> String {
@@ -53,8 +54,8 @@ pub fn file_name_from_full_path(file_full_path: &str) -> String {
 }
 
 // kdbx_file_name is just file name and is not absolute one
-// For now only hash str formed using 'full_file_uri_str' is appended to the 
-// kdbx_file_name before prefix .kdbx. See the example 
+// For now only hash str formed using 'full_file_uri_str' is appended to the
+// kdbx_file_name before prefix .kdbx. See the example
 pub fn generate_backup_file_name(full_file_uri_str: &str, kdbx_file_name: &str) -> Option<String> {
     if kdbx_file_name.trim().is_empty() {
         return None;
@@ -144,6 +145,33 @@ pub fn create_sub_dir(root_dir: &str, sub: &str) -> PathBuf {
     let root = url_to_unix_file_name(root_dir);
     let mut final_full_path_dir = Path::new(&root).to_path_buf();
     let full_path_dir = Path::new(&root).join(sub);
+    if !full_path_dir.exists() {
+        if let Err(e) = std::fs::create_dir_all(&full_path_dir) {
+            // This should not happen!
+            log::error!(
+                "Directory at {} creation failed {:?}",
+                &full_path_dir.display(),
+                e
+            );
+        } else {
+            // As fallback cache_dir_path will be at root itself as we cannot create export_dir
+            final_full_path_dir = full_path_dir;
+        }
+    } else {
+        final_full_path_dir = full_path_dir;
+    }
+    final_full_path_dir
+}
+
+pub fn create_sub_dirs(root_dir: &str, sub_dirs: Vec<&str>) -> PathBuf {
+    let root = url_to_unix_file_name(root_dir);
+    // Initializes the final path with root_dir
+    let mut final_full_path_dir = Path::new(&root).to_path_buf();
+    
+    let sub_path: PathBuf = sub_dirs.iter().collect();
+
+    let full_path_dir = final_full_path_dir.join(sub_path);
+
     if !full_path_dir.exists() {
         if let Err(e) = std::fs::create_dir_all(&full_path_dir) {
             // This should not happen!

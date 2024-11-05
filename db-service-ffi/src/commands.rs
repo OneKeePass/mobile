@@ -194,6 +194,7 @@ pub enum CommandArg {
     SftpServerDirListingArg {
         sftp_server_name:String,
         sftp_server_parent_dir:String,
+        sftp_server_sub_dir:String,
     },
 
     WebdavConnectionArg {
@@ -203,6 +204,7 @@ pub enum CommandArg {
     WebdavDirListingArg {
         webdav_server_name:String,
         webdav_server_parent_dir:String,
+        webdav_server_sub_dir:String,
     },
 
     // This variant needs to come last so that other variants starting with db_key is matched before this
@@ -483,7 +485,8 @@ impl Commands {
             }
 
             "sftp_list_dir" => { 
-                service_call!(args, SftpServerDirListingArg {sftp_server_name,sftp_server_parent_dir} => sftp list_dir(&sftp_server_name,&sftp_server_parent_dir))
+                service_call!(args, SftpServerDirListingArg {sftp_server_name,sftp_server_parent_dir,sftp_server_sub_dir} => 
+                    sftp list_sub_dir(&sftp_server_name,&sftp_server_parent_dir, &sftp_server_sub_dir))
             }
 
             "webdav_connect_and_retrieve_root_dir" => {
@@ -491,7 +494,8 @@ impl Commands {
             }
 
             "webdav_list_dir" => { 
-                service_call!(args, WebdavDirListingArg {webdav_server_name,webdav_server_parent_dir} => webdav list_dir(&webdav_server_name,&webdav_server_parent_dir))
+                service_call!(args, WebdavDirListingArg {webdav_server_name,webdav_server_parent_dir,webdav_server_sub_dir} => 
+                    webdav list_sub_dir(&webdav_server_name,&webdav_server_parent_dir,&webdav_server_sub_dir))
             }
 
             //// Async related

@@ -37,7 +37,10 @@ pub struct AppState {
     pub secure_key_operation: Box<dyn SecureKeyOperation>,
     // Callback service implemented in Swift/Kotlin and called from rust side
     pub event_dispatcher: Arc<dyn EventDispatch>,
+    // Used to keep the last backup file ref which is used for 'Save as' 
+    // when db save fails (as the orginal db content changed) 
     last_backup_on_error: Mutex<HashMap<String, String>>,
+
     pub preference: Mutex<Preference>,
 }
 
