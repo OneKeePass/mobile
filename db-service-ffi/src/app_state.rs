@@ -27,6 +27,13 @@ pub struct AppState {
     pub temp_dir: String,
     // Dir where all db files backups are created 
     pub backup_dir_path: PathBuf,
+
+    // We keep last 'n' number of backups for a db that was edited 
+    pub backup_history_dir_path: PathBuf,
+    
+    // The dir where an edited db file is stored if the remote connection is not avilable
+    // pub local_db_dir_path: PathBuf,
+
     // Dir path where db file for export is created and used in export calls
     pub export_data_dir_path: PathBuf,
     // Dir where all key files are copied for latter use 
@@ -45,6 +52,21 @@ pub struct AppState {
 }
 
 static APP_STATE: OnceCell<AppState> = OnceCell::new();
+
+// iOS specific idea to move all internal dirs and files from the current app_home dir to app_group home dir
+// Also see comments in Swift impl 'CommonDeviceServiceImpl appHoemDir' 
+fn _temp_move_documents_to_okp_app_dir(app_dir:&str,app_group_dir:&Option<String>) {
+    // Check if there is the sub dir 'okp_app'  under app_group_dir
+    // If the dir is available then, app_group_dir/okp_app is already created 
+    // Return app_dir,app_group_dir where app_dir = app_group_dir
+
+    // If not, create app_group_dir/okp_app, then move app_dir/[bookmarks,backups,key_files,preference.json] to
+    // app_group_dir/okp_app[bookmarks,backups,key_files,preference.json]
+
+    // Remove app_dir/[bookmarks,backups,key_files,preference.json]
+
+    // Return app_dir,app_group_dir where app_dir = app_group_dir
+}
 
 impl AppState {
     pub fn global() -> &'static AppState {
@@ -69,8 +91,8 @@ impl AppState {
         };
 
         debug!(
-            "app_dir {}, cache_dir {}, temp_dir {}",
-            &app_dir, &cache_dir, &temp_dir
+            "app_dir {}, cache_dir {}, temp_dir {}, app_group_home_dir {:?}",
+            &app_dir, &cache_dir, &temp_dir,&app_group_home_dir
         );
 
         let pref = Preference::read(&app_dir);
@@ -78,8 +100,16 @@ impl AppState {
         let export_data_dir_path = util::create_sub_dir(&app_dir, "export_data");
         log::debug!("export_data_dir_path is {:?}", &export_data_dir_path);
 
+        // To be removed after the complete use of 'backup_history_dir_path'
         let backup_dir_path = util::create_sub_dir(&app_dir, "backups");
         log::debug!("backup_dir_path is {:?}", backup_dir_path);
+
+        let backup_history_dir_path = util::create_sub_dirs(&app_dir, vec!["backups", "history"]);
+        log::debug!("backup_dir_path is {:?}", backup_dir_path);
+
+        // Meant for SFTP,WebDAV files save when offline ?
+        // let local_db_dir_path = util::create_sub_dir(&app_dir, "local_dbs");
+        // log::debug!("local_db_dir_path is {:?}", backup_dir_path);
 
         let key_files_dir_path = util::create_sub_dir(&app_dir, "key_files");
         log::debug!("key_files_dir_path is {:?}", key_files_dir_path);
@@ -90,6 +120,8 @@ impl AppState {
             cache_dir,
             temp_dir,
             backup_dir_path,
+            backup_history_dir_path,
+            // local_db_dir_path,
             export_data_dir_path,
             key_files_dir_path,
             common_device_service,
@@ -181,7 +213,12 @@ impl AppState {
         store_pref.update(preference_data);
     }
 
+    // Called to get the file name from the platform specific full file uri passed as arg 'full_file_name_uri' 
+    // The uri may start with file: or content:
     pub fn uri_to_file_name(&self, full_file_name_uri: &str) -> String {
+        // We use platform specific callback fn to get the file name
+        // e.g uri file:///Users/jeyasankar/Library/Developer/CoreSimulator/Devices/A45B3252-1AA4-4D50-9E6E-89AB1E873B1F/data/Containers/Shared/AppGroup/6CFFA9FC-169B-482E-A817-9C0D2A6F5241/File%20Provider%20Storage/TJ-fixit.kdbx
+        // Note the encoding in the uri
         self.common_device_service
             .uri_to_file_name(full_file_name_uri.into())
             .map_or_else(|| "".into(), |s| s)

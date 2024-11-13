@@ -59,9 +59,13 @@
 
 (defmacro def-generic-dialog-events
   "Generates all wrapper functions for a specific dialog events 
+   
    dlg-name is a specific dialog name
+   
    suffixes-with-args is a vector of vectors. 
      eg [[show nil] [close nil] [show-with-state args]]
+
+   subscribe-event? determines whether it is a dipatch event or sunscribe event
    "
   [dlg-name suffixes-with-args subscribe-event?]
   `(do

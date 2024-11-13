@@ -37,7 +37,9 @@ class AutoFillDbServiceAPI {
       
       let apiCallBackService = ApiCallBackService()
       iosCallbackServiceInitialize(apiCallBackService)
-      commonDeviceServiceExInitialize(apiCallBackService)
+      //commonDeviceServiceExInitialize(apiCallBackService)
+      
+      initializeCallbackServices(apiCallBackService, SecureEnclaveServiceSupport())
       
       initialized = true
       Swift.debugPrint("API initialize is done")

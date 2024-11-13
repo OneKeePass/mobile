@@ -34,14 +34,17 @@ class DbServiceAPI {
       dbServiceEnableLogging()
       Swift.debugPrint("dbServiceEnableLogging call is done")
       let cmnService = CommonDeviceServiceImpl()
-      let secKeyOps = SecureKeyOperationImpl()
+      let secKeyOps =  SecureKeyOperationImpl.shared //SecureKeyOperationImpl()
       let eventDispatcher = BackendEventDispatcher()
       dbServiceInitialize(cmnService, secKeyOps, eventDispatcher)
       
       // ApiCallBackService implements the protocols IosApiService,CommonDeviceServiceEx 
       let apiCallBackService = ApiCallBackService()
       iosCallbackServiceInitialize(apiCallBackService)
-      commonDeviceServiceExInitialize(apiCallBackService)
+      //commonDeviceServiceExInitialize(apiCallBackService)
+      
+      let securEnclaveService = SecureEnclaveServiceSupport()
+      initializeCallbackServices(apiCallBackService, securEnclaveService)
       
       initialized = true
       Swift.debugPrint("API initialize is done")

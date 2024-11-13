@@ -4,12 +4,15 @@
             [onekeepass.mobile.app-settings :as app-settings]
             [onekeepass.mobile.autofill :as af-settings]
             [onekeepass.mobile.common-components :as cc :refer [menu-action-factory]]
-            [onekeepass.mobile.constants :refer [AUTOFILL_SETTINGS_PAGE_ID
-                                                 CAMERA_SCANNER_PAGE_ID]]
+            [onekeepass.mobile.constants  :refer [AUTOFILL_SETTINGS_PAGE_ID
+                                                  CAMERA_SCANNER_PAGE_ID
+                                                  REMOTE_CONNECTION_CONFIG_PAGE_ID
+                                                  REMOTE_CONNECTIONS_LIST_PAGE_ID]]
             [onekeepass.mobile.entry-category :refer [entry-category-content]]
             [onekeepass.mobile.entry-form :as entry-form]
             [onekeepass.mobile.entry-history-list :as entry-history-list]
             [onekeepass.mobile.entry-list :as entry-list :refer [entry-list-content]]
+            [onekeepass.mobile.remote-storage :as remote-storage]
             [onekeepass.mobile.events.app-settings :as as-events]
             [onekeepass.mobile.events.common :as cmn-events]
             [onekeepass.mobile.events.entry-form :as ef-events]
@@ -76,7 +79,8 @@
      (= page :key-file-form)
      (= page CAMERA_SCANNER_PAGE_ID)
      (= page :about)
-     (= page :privacy-policy))
+     (= page :privacy-policy)
+     (= page REMOTE_CONNECTIONS_LIST_PAGE_ID))
     (do
       (cmn-events/to-previous-page)
       true)
@@ -210,6 +214,9 @@
                                  (is-settings-page page)
                                  (r/as-element [settings/appbar-title page])
 
+                                 (= page REMOTE_CONNECTIONS_LIST_PAGE_ID)
+                                 (r/as-element [remote-storage/appbar-title])
+
                                  ;;TODO 
                                  ;; Need to add translation of titles for Entry types and General cat types
                                  ;; Something similar one used in entry category page
@@ -230,6 +237,7 @@
                                  "No Title")}]])
 
 (defn- appbar-title [{:keys [page title]}]
+  ;; title is required
   (cond
     (or (= page :home)
         (= page :about)
@@ -250,19 +258,18 @@
     (= page :entry-category)
     [positioned-title :page page :title @(cmn-events/current-database-name) :titleStyle {:max-width "50%"}]
 
-    (is-settings-page page)
-    [positioned-title :page page]
-    
     (= page :group-form)
-    [positioned-title :page page :title title] 
+    [positioned-title :page page :title title]
 
-    (= page :entry-form)
-    [positioned-title :page page]
-
-    (= page :password-generator)
+    ;; page id is required
+    (or
+     (= page :entry-form)
+     (is-settings-page page)
+     (= page :password-generator)
+     (= page REMOTE_CONNECTIONS_LIST_PAGE_ID))
     [positioned-title :page page]))
 
-(defn appbar-header-content [page-info] 
+(defn appbar-header-content [page-info]
   (let [{:keys [page]} page-info]
 
     (reset! current-page-info page-info)
@@ -320,9 +327,9 @@
 
 (defn appbar-body-content
   "The page body content based on the page info set"
-  [{:keys [page]}] 
-  (cond 
-    
+  [{:keys [page]}]
+  (cond
+
     (= page :home)
     [open-page-content]
 
@@ -355,7 +362,7 @@
 
     (= page :app-settings)
     [app-settings/content]
-    
+
     (= page AUTOFILL_SETTINGS_PAGE_ID)
     [af-settings/content]
 
@@ -374,12 +381,18 @@
 
     (= page CAMERA_SCANNER_PAGE_ID)
     (scan-otp-qr/content)
-    
+
+    (= page REMOTE_CONNECTIONS_LIST_PAGE_ID)
+    [remote-storage/remote-connections-list-page-content]
+
+    (= page REMOTE_CONNECTION_CONFIG_PAGE_ID)
+    [remote-storage/remote-connections-list-page-content]
+
     ;; For now, this page is shown after loading the newly selected language translation
     ;; Other attempts to refresh the app settings page itself did not work
     (= page :blank)
     (app-settings/language-update-feedback)
-    
+
 
     ;; (= page :qr-scanner)
     ;; [totp/content]

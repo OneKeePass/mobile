@@ -129,8 +129,6 @@
       [rnp-text-input {:style {:width "100%"} :editable false :label text-label :value value}]]])
 
 
-
-
 (defn confirm-dialog 
   "A Generic confirm dialog. It is expected all texts should have been translated by caller"
   [{:keys [dialog-show title confirm-text actions]}]
@@ -147,6 +145,7 @@
   [rn-view {:style {}}
    (for [{:keys [label disabled on-press]} actions]
      ^{:key label} [rnp-button {:mode "text"
+                                ;;:labelStyle {:fontWeight 700}
                                 :disabled (if (nil? disabled) false disabled)
                                 :on-press on-press} (lstr-bl label)])])
 

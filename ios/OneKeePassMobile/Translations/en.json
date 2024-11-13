@@ -125,6 +125,7 @@
             "changeAttachmentName": "Change name",
             "historyDelete": "Delete history entry",
             "historyDeleteAll": "Delete all history entries",
+            "dbStorage": "Storage Location",
             "deleteEntry": "Delete Entry",
             "deleteGroup": "Delete Group/Category",
             "deleteAllEntriesPermanet": "Delete entries permanent",
@@ -154,6 +155,7 @@
             "biometricConfirmTxt2": "Use Biometric authentication to unlock the database",
             "historyDelete": "Are you sure you want to delete this history entry permanently?",
             "historyDeleteAll": "Are you sure you want to delete all history entries permanently?",
+            "dbStorage": "Select Storage Location",
             "deleteEntry": "The entry will be deleted and put in the trash",
             "deleteGroup": "The group or category and its content will be deleted and put in the trash",
             "deleteAllEntriesPermanet": "Are you sure you want to delete all entries permanently?",
@@ -268,6 +270,7 @@
         "enterManually": "Enter Manually",
         "generate": "Generate",
         "keyFile": "Key File",
+        "localDevice":"Local Device",
         "newdb": "New Database",
         "no": "No",
         "ok": "Ok",
@@ -275,10 +278,12 @@
         "refresh":"Refresh",
         "removePassword": "Remove password",
         "select": "Select",
+        "sftp": "SFTP",
         "save": "Save",
         "scanQRcode": "Scan QR Code",
         "setUpOneTimePassword": "Set up One-Time Password",
-        "yes": "Yes"
+        "yes": "Yes",
+        "webdav": "WebDAV"
     },
     "menuLabels": {
         "about": "About",

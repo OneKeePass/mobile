@@ -2,7 +2,7 @@
  onekeepass.mobile.start-page
   (:require [onekeepass.mobile.background :refer [is-iOS]]
             [onekeepass.mobile.common-components :as cc  :refer [menu-action-factory
-                                                                 message-dialog]]
+                                                                 message-dialog confirm-dialog-with-lstr]]
             [onekeepass.mobile.constants :as const]
             [onekeepass.mobile.date-utils :refer [utc-to-local-datetime-str]]
             [onekeepass.mobile.events.common :as cmn-events]
@@ -10,6 +10,7 @@
             [onekeepass.mobile.events.new-database :as ndb-events]
             [onekeepass.mobile.events.open-database :as opndb-events]
             [onekeepass.mobile.events.settings :as stgs-events]
+            [onekeepass.mobile.events.dialogs :as dlg-events]
             [onekeepass.mobile.rn-components
              :as rnc
              :refer [cust-dialog cust-rnp-divider divider-color-1
@@ -26,6 +27,35 @@
             [reagent.core :as r]))
 
 ;;(set! *warn-on-infer* true)
+
+;; For now we will use a simple dialog using generic confirm type dialog
+;; Called to create a dialog and the dialog is shown if the 'show' is true in 
+;; the dialog data
+(defn start-page-storage-selection-dialog[]
+  [confirm-dialog-with-lstr @(dlg-events/start-page-storage-selection-dialog-data)])
+
+;; Called to show the dialog
+(defn start-page-storage-selection-dialog-show []
+  ;; We pass translation keys for title, confirm-text and for button labels
+  (dlg-events/start-page-storage-selection-dialog-show-with-state
+   {:title "dbStorage"
+    :confirm-text "dbStorage" 
+    :show-action-as-vertical true
+    :actions [
+              {:label "localDevice"
+               :on-press (fn [] 
+                           (opndb-events/open-database-on-press)
+                           (dlg-events/start-page-storage-selection-dialog-close))}
+              {:label "sftp"
+               :on-press (fn []
+                           (dlg-events/start-page-storage-selection-dialog-close))}
+              {:label "webdav"
+               :on-press (fn []
+                           (dlg-events/start-page-storage-selection-dialog-close))}
+              {:label "cancel"
+               :on-press dlg-events/start-page-storage-selection-dialog-close}]}))
+
+;;;;;;;;;;;;;;
 
 (defn new-db-dialog [{:keys [dialog-show
                              database-name
@@ -410,7 +440,7 @@
        [rnp-button {:mode "contained" :onPress ndb-events/new-database-dialog-show}
         (lstr-bl "newdb")]] ;;
       [rn-view {:style {:flex .1 :justify-content "center" :width "90%"}}
-       [rnp-button {:mode "contained" :onPress #(opndb-events/open-database-on-press)}
+       [rnp-button {:mode "contained" :onPress  (fn [] (start-page-storage-selection-dialog-show))  #_#(opndb-events/open-database-on-press)}
         (lstr-bl "opendb")]]
 
       [rn-view {:style {:margin-top 20}}
@@ -430,6 +460,7 @@
       (:dialog remove-confirm-dialog-info)
       [new-db-dialog @(ndb-events/dialog-data)]
       [open-db-dialog @(opndb-events/dialog-data)]
+      [start-page-storage-selection-dialog]
       #_[open-db-dialog]
       [file-info-dialog @(cmn-events/file-info-dialog-data)]
       [message-repick-database-file-dialog @(opndb-events/repick-confirm-data)]

@@ -5,7 +5,7 @@ use std::{
 
 use log::debug;
 use onekeepass_core::db_service::{
-    self, copy_and_write_autofill_ready_db, string_to_simple_hash, EntrySummary,
+    self, copy_and_write_autofill_ready_db, service_util::string_to_simple_hash, EntrySummary,
 };
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -117,6 +117,7 @@ fn app_group_root_sub_dir(sub_dir_name: &str) -> OkpResult<PathBuf> {
     Ok(p)
 }
 
+// Gets the full path of the autofill specific meta data json file 
 fn autofill_meta_json_file() -> Option<PathBuf> {
     // let Some(app_group_home_dir) = &AppState::global().app_group_home_dir else {
     //     return None;
@@ -189,6 +190,7 @@ impl CopiedDbFileInfo {
     }
 }
 
+// Used for the auto fill meta data persistence
 #[derive(Clone, Serialize, Deserialize)]
 pub struct AutoFillMeta {
     pub version: String,

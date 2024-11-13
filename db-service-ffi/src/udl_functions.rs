@@ -65,6 +65,14 @@ pub(crate) fn db_service_enable_logging() {
 
         let logger = oslog::OsLogger::new("com.onekeepass")
             .level_filter(level)
+            .category_level_filter("russh-sftp::client", log::LevelFilter::Info)
+            .category_level_filter("russh::*", log::LevelFilter::Info)
+            .category_level_filter("russh::client", log::LevelFilter::Info)
+            .category_level_filter("russh::client::kex", log::LevelFilter::Info)
+            .category_level_filter("russh::client::encrypted", log::LevelFilter::Info)
+            .category_level_filter("russh::client::session", log::LevelFilter::Info)
+            .category_level_filter("russh::cipher", log::LevelFilter::Info)
+            
             // Filter UniFFI log messages
             .category_level_filter("db_service::ffi", log::LevelFilter::Info);
 
@@ -445,7 +453,7 @@ pub(crate) fn upload_attachment(file_args: FileArgs, json_args: &str) -> Respons
 
 ///////////
 
-fn file_to_create(dir_path: &str, file_name: &str) -> OkpResult<File> {
+fn _file_to_create(dir_path: &str, file_name: &str) -> OkpResult<File> {
     let name = util::full_path_str(dir_path, file_name);
     let full_file_path = Path::new(&name);
     if let Some(ref p) = full_file_path.parent() {

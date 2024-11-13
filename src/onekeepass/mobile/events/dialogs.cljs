@@ -16,13 +16,15 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   confirm-delete-otp-field-dialog  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
+;; Creates wrapper functions confirm-delete-otp-field-dialog-show, confirm-delete-otp-field-dialog-close
+;; confirm-delete-otp-field-dialog-on-ok, confirm-delete-otp-field-dialog-show,confirm-delete-otp-field-dialog-show-with-state
 (def-generic-dialog-events confirm-delete-otp-field-dialog  [[show nil]
                                                              [close nil]
                                                              [on-ok nil]
                                                              [show-with-state state-m]] false)
 
-
+;; Creates the subscribe event wrapper fn 'confirm-delete-otp-field-dialog-data'
+;; Last argument 'true' means this macro is called to generate a subscribe event wrapper
 (def-generic-dialog-events confirm-delete-otp-field-dialog [[data nil]] true)
 
 
@@ -41,6 +43,12 @@
 
 (defn otp-settings-dialog-complete-ok [] 
   (dispatch [:otp-settings-dialog-complete-ok]))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  start-page-storage-selection-dialog   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def-generic-dialog-events start-page-storage-selection-dialog  [[show nil] [close nil] [show-with-state state-m]] false)
+
+(def-generic-dialog-events start-page-storage-selection-dialog [[data nil]] true)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
 

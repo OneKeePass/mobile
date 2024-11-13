@@ -4,6 +4,7 @@
                                 confirm-delete-otp-field-dialog
                                 setup-otp-action-dialog
                                 otp-settings-dialog
+                                start-page-storage-selection-dialog
                                 show-with-state
                                 show
                                 close 

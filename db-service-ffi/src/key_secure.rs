@@ -37,7 +37,7 @@ impl KeyStoreService for KeyStoreServiceImpl {
     fn store_key(&mut self, db_key: &str, data: Vec<u8>) -> kp_service::Result<()> {
         debug!("store_key is called and data size {}", data.len());
 
-        let acct_key = kp_service::formatted_key(&db_key);
+        let acct_key = kp_service::service_util::formatted_key(&db_key);
         let enc_key = hex::encode(&data);
 
         let ops = &AppState::global().secure_key_operation;
@@ -90,7 +90,7 @@ impl KeyStoreService for KeyStoreServiceImpl {
             return Some(Vec::from(v.unsecure()));
         }
 
-        let acct_key = kp_service::formatted_key(db_key);
+        let acct_key = kp_service::service_util::formatted_key(db_key);
 
         let key_str_opt = match AppState::global().secure_key_operation.get_key(acct_key) {
             Ok(v) => v,
@@ -114,7 +114,7 @@ impl KeyStoreService for KeyStoreServiceImpl {
     }
 
     fn delete_key(&mut self, db_key: &str) -> kp_service::Result<()> {
-        let acct_key = kp_service::formatted_key(db_key);
+        let acct_key = kp_service::service_util::formatted_key(db_key);
         //self.store.remove(db_key);
         let _r = AppState::global().secure_key_operation.delete_key(acct_key);
         debug!("Keys are deleted..");

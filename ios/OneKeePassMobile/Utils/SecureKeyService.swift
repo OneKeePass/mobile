@@ -8,6 +8,9 @@
 import Foundation
 
 class SecureKeyOperationImpl: SecureKeyOperation {
+  
+  static var shared:SecureKeyOperationImpl = SecureKeyOperationImpl();
+  
   func storeKey(_ dbKey: String, _ encKeyData: String) throws {
     let kv = encKeyData.data(using: String.Encoding.utf8)!
     let query: [String: AnyObject] = [

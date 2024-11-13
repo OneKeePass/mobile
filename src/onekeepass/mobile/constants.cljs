@@ -3,6 +3,8 @@
 ;; This is the default Entry type to use 
 (def UUID_OF_ENTRY_TYPE_LOGIN "ffef5f51-7efc-4373-9eb5-382d5b501768")
 
+(def UUID-DEFAULT "00000000-0000-0000-0000-000000000000")
+
 ;; Standard Entry Type Names
 ;; These should match names used in 'standard_entry_types.rs'
 
@@ -71,6 +73,9 @@
 ;;; Page ids
 (def CAMERA_SCANNER_PAGE_ID :scan-otp-qr)
 (def AUTOFILL_SETTINGS_PAGE_ID :autofill-settings)
+
+(def REMOTE_CONNECTIONS_LIST_PAGE_ID :remote-connections)
+(def REMOTE_CONNECTION_CONFIG_PAGE_ID :remote-connection-config)
 
 (def TR-KEY-AUTOFILL 'autoFill)
 

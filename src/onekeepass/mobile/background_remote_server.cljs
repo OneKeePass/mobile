@@ -1,7 +1,7 @@
 (ns onekeepass.mobile.background-remote-server
   (:require
    [react-native :as rn]
-   [onekeepass.mobile.background :refer [invoke-api]]))
+   [onekeepass.mobile.background-common :refer [invoke-api]]))
 
 (set! *warn-on-infer* true)
 
@@ -22,10 +22,11 @@
   (require '[cljs.pprint]) ;;https://cljs.github.io/api/cljs.pprint/
   (cljs.pprint/pprint someobject)
     ;; daf114d0-a518-4e13-b75b-fbe893e69a9d 8bd81fe1-f786-46c3-b0e4-d215f8247a10
-  
+  ;; onekeepass.mobile.constants
+  (def UUID-DEFAULT "00000000-0000-0000-0000-000000000000")
   (in-ns 'onekeepass.mobile.background-remote-server) 
   
-  (def ios-c {:name "SftpTest1" :host "192.168.1.4" :port 2022 :private-key "/Users/jeyasankar/mytemp/sftp_keys/sftp_id_rsa" :user-name "sf-user1" :password "Matrix.2" :start-dir "/"})
+  (def ios-c {:connection-id UUID-DEFAULT :name "SftpTest1" :host "192.168.1.4" :port 2022 :private-key "/Users/jeyasankar/mytemp/sftp_keys/sftp_id_rsa" :user-name "sf-user1" :password "Matrix.2" :start-dir "/"})
   
   (def adroid-c {:name "SftpTest1" :host "192.168.1.4" :port 2022 :private-key "/data/data/com.onekeepassmobile/files/sftp_id_rsa" :user-name "sf-user1" :password "Matrix.2" :start-dir "/"})
   

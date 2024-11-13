@@ -9,9 +9,7 @@ use onekeepass_core::db_service::{
     NewDatabase, OtpSettings, PasswordGenerationOptions,
 };
 
-
-use onekeepass_core::db_service::storage::{sftp,webdav};
-
+use onekeepass_core::db_service::storage::{sftp,webdav,RemoteConnectionConfigs};
 
 use std::fmt::format;
 use std::{
@@ -191,16 +189,24 @@ pub enum CommandArg {
         sftp_connection_config:sftp::SftpConnectionConfig,
     },
 
+    WebdavConnectionArg {
+        webdav_connection_config:webdav::WebdavConnectionConfig,
+    },
+
+    RemoteServerDirListingArg {
+        connection_id:String,
+        parent_dir:String,
+        sub_dir:String,
+    },
+
+    // Remove
     SftpServerDirListingArg {
         sftp_server_name:String,
         sftp_server_parent_dir:String,
         sftp_server_sub_dir:String,
     },
 
-    WebdavConnectionArg {
-        webdav_connection_config:webdav::WebdavConnectionConfig,
-    },
-
+    // Remove
     WebdavDirListingArg {
         webdav_server_name:String,
         webdav_server_parent_dir:String,
@@ -480,22 +486,26 @@ impl Commands {
                 service_call!(args, TranslationsArg {language_ids} => Self load_language_translations(language_ids))
             }
 
+            "sftp_config_listing" => ok_json_str(RemoteConnectionConfigs::sftp_configs()),
+
             "sftp_connect_and_retrieve_root_dir" => {
-                service_call!(args, SftpServerConnectionArg {sftp_connection_config} => sftp connect_to_server(sftp_connection_config))
+                service_call!(args, SftpServerConnectionArg {sftp_connection_config} => sftp connect_and_retrieve_root_dir(sftp_connection_config))
             }
 
             "sftp_list_dir" => { 
-                service_call!(args, SftpServerDirListingArg {sftp_server_name,sftp_server_parent_dir,sftp_server_sub_dir} => 
-                    sftp list_sub_dir(&sftp_server_name,&sftp_server_parent_dir, &sftp_server_sub_dir))
+                service_call!(args, RemoteServerDirListingArg {connection_id,parent_dir,sub_dir} => 
+                    sftp list_sub_dir(&connection_id,&parent_dir, &sub_dir))
             }
+
+            "webdav_config_listing" => ok_json_str(RemoteConnectionConfigs::webdav_configs()),
 
             "webdav_connect_and_retrieve_root_dir" => {
                 service_call!(args, WebdavConnectionArg {webdav_connection_config} => webdav connect_to_server(webdav_connection_config))
             }
 
             "webdav_list_dir" => { 
-                service_call!(args, WebdavDirListingArg {webdav_server_name,webdav_server_parent_dir,webdav_server_sub_dir} => 
-                    webdav list_sub_dir(&webdav_server_name,&webdav_server_parent_dir,&webdav_server_sub_dir))
+                service_call!(args, RemoteServerDirListingArg {connection_id,parent_dir,sub_dir} => 
+                    webdav list_sub_dir(&connection_id,&parent_dir, &sub_dir))
             }
 
             //// Async related
@@ -542,7 +552,7 @@ impl Commands {
 
             "clipboard_copy_string" => Self::clipboard_copy_string(&args),
 
-            // "test_call" => Self::test_call(),
+            "test_call" => Self::test_call(&args),
             x => error_json_str(&format!("Invalid command name {} is passed", x)),
         };
         r
@@ -653,7 +663,7 @@ impl Commands {
         name: &str,
         data_hash_str: &str,
     ) -> OkpResult<String> {
-        let data_hash = db_service::parse_attachment_hash(data_hash_str)?;
+        let data_hash = db_service::service_util::parse_attachment_hash(data_hash_str)?;
 
         if cfg!(target_os = "android") {
             android::save_attachment_as_temp_file(db_key, name, &data_hash)
@@ -857,9 +867,7 @@ impl Commands {
                 protected,
                 cleanup_after,
             };
-            ApiCallbacksStore::global()
-                .common_device_service_ex()
-                .clipboard_copy_string(cd)?;
+            ApiCallbacksStore::common_device_service_ex().clipboard_copy_string(cd)?;
 
             debug!("clipboard_copy_string is called ");
 
@@ -868,10 +876,32 @@ impl Commands {
         result_json_str(inner_fn())
     }
 
-    // fn test_call() -> ResponseJson {
-    //     onekeepass_core::async_service::start();
-    //     ok_json_str("Done".to_string())
-    // }
+}
+
+impl Commands {
+    fn test_call(json_args: &str) -> ResponseJson {
+        //let r = ApiCallbacksStore::common_device_service_ex().test_secure_store();
+        //debug!("Fn test_secure_store called and r is {:?}",&r);
+
+        let inner_fn = || -> OkpResult<()> {
+            let (key_vals,) = parse_command_args_or_err!(json_args,GenericArg {key_vals});
+            let (Some(id),Some(test_data), ) = (key_vals.get("identifier"),key_vals.get("test_data")) else {
+                return Err(OkpError::DataError(
+                    "Valid key is not found in args",
+                ));
+            };
+
+            let encrypted_data = ApiCallbacksStore::secure_enclave_cb_service().encrypt_bytes(id.clone(), test_data.as_bytes().to_vec())?;
+            let dd = ApiCallbacksStore::secure_enclave_cb_service().decrypt_bytes(id.clone(), encrypted_data)?;
+
+            debug!("Decrypted text is {}", String::from_utf8_lossy(&dd));
+
+            Ok(())
+        };
+
+        result_json_str(inner_fn())
+        //ok_json_str("Done".to_string())
+    }
 }
 
 pub fn remove_app_files(db_key: &str) {

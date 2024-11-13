@@ -21,7 +21,7 @@ use std::path::{Path, PathBuf};
 
 use log::debug;
 use onekeepass_core::db_content::AttachmentHashValue;
-use onekeepass_core::db_service::{self, string_to_simple_hash};
+use onekeepass_core::db_service::{self, service_util::string_to_simple_hash};
 use regex::{Regex, RegexSet};
 
 // This is for any iOS specific services
