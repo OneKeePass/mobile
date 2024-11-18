@@ -153,7 +153,7 @@ impl JsonService {
 
     // Forms and returns a parseable (by cljs) json string with "ok"
     pub fn form_with_file_name(&self, full_file_name_uri: String) -> String {
-        let file_name = AppState::global()
+        let file_name = AppState::shared()
             .common_device_service
             .uri_to_file_name(full_file_name_uri.clone())
             .map_or_else(|| "".into(), |s| s);

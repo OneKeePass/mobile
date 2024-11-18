@@ -41,7 +41,7 @@ impl IosSupportService {
     pub fn save_book_mark_data(&self, url: String, data: Vec<u8>) -> bool {
         let file_name = string_to_simple_hash(&url).to_string();
 
-        let book_mark_file_root = Path::new(&AppState::global().app_home_dir).join("bookmarks");
+        let book_mark_file_root = Path::new(&AppState::shared().app_home_dir).join("bookmarks");
         // Ensure that the parent dir exists
         if !book_mark_file_root.exists() {
             if let Err(e) = std::fs::create_dir_all(&book_mark_file_root) {
@@ -81,7 +81,7 @@ impl IosSupportService {
             &url,
             &file_name
         );
-        let book_mark_file_path = Path::new(&AppState::global().app_home_dir)
+        let book_mark_file_path = Path::new(&AppState::shared().app_home_dir)
             .join("bookmarks")
             .join(file_name);
         log::info!("Book mark path to load data is {:?}", book_mark_file_path);
@@ -115,7 +115,7 @@ impl IosSupportService {
         full_file_name_uri: String,
     ) -> Option<String> {
         if let Some(bkp_file_name) =
-            AppState::global().get_last_backup_on_error(&full_file_name_uri)
+            AppState::shared().get_last_backup_on_error(&full_file_name_uri)
         {
             let mut temp_file = std::env::temp_dir();
             // kdbx_file_name is the suggested file name to use in the Docuemnt picker
@@ -146,7 +146,7 @@ impl IosSupportService {
                 let kdbx_loaded = db_service::rename_db_key(&db_key, &new_db_key)?;
                 // Need to ensure that the checksum is reset to the newly saved file
                 // Otherwise, Save error modal dialog will popup !
-                let bkp_file_opt = AppState::global().get_last_backup_on_error(&db_key);
+                let bkp_file_opt = AppState::shared().get_last_backup_on_error(&db_key);
                 if let Some(mut bkp_file) = open_backup_file(bkp_file_opt) {
                     db_service::calculate_db_file_checksum(&new_db_key, &mut bkp_file)?;
                 } else {
@@ -156,8 +156,8 @@ impl IosSupportService {
 
                 // AppState::global().remove_recent_db_use_info(&db_key);
                 remove_app_files(&db_key);
-                AppState::global().add_recent_db_use_info(&new_db_key);
-                AppState::global().remove_last_backup_name_on_error(&db_key);
+                AppState::shared().add_recent_db_use_info(&new_db_key);
+                AppState::shared().remove_last_backup_name_on_error(&db_key);
 
                 Ok(kdbx_loaded)
             } else {
@@ -315,7 +315,7 @@ impl IosSupportService {
 #[cfg(target_os = "ios")]
 fn form_bookmark_file_path(full_file_name_uri: &str) -> PathBuf {
     let file_name = string_to_simple_hash(&full_file_name_uri).to_string();
-    let book_mark_file_path = Path::new(&AppState::global().app_home_dir)
+    let book_mark_file_path = Path::new(&AppState::shared().app_home_dir)
         .join("bookmarks")
         .join(file_name);
 
@@ -336,7 +336,7 @@ pub fn delete_book_mark_data(full_file_name_uri: &str) {
 
 #[cfg(target_os = "ios")]
 pub fn get_app_group_root() -> Option<String> {
-    let Some(app_group_home_dir) = &AppState::global().app_group_home_dir else {
+    let Some(app_group_home_dir) = &AppState::shared().app_group_home_dir else {
         log::error!("No app group home dir is found");
         return None;
     };
@@ -365,7 +365,7 @@ pub fn list_app_group_db_files() -> Vec<String> {
 
 pub fn list_bookmark_files() -> Vec<String> {
     if cfg!(target_os = "ios") {
-        util::list_dir_files(&Path::new(&AppState::global().app_home_dir).join("bookmarks"))
+        util::list_dir_files(&Path::new(&AppState::shared().app_home_dir).join("bookmarks"))
     } else {
         vec![]
     }

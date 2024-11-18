@@ -76,7 +76,7 @@ pub(crate) fn copy_files_to_app_group_on_save_or_read(db_key: &str) {
 /////////////////////////////////////////////
 
 fn temp_delete_old_af_files() {
-    let Some(app_group_home_dir) = &AppState::global().app_group_home_dir else {
+    let Some(app_group_home_dir) = &AppState::shared().app_group_home_dir else {
         return;
     };
     let pref_file_name = Path::new(app_group_home_dir).join(META_JSON_FILE_NAME);
@@ -99,7 +99,7 @@ fn temp_delete_old_af_files() {
 }
 
 fn app_extension_root() -> OkpResult<PathBuf> {
-    let Some(app_group_home_dir) = &AppState::global().app_group_home_dir else {
+    let Some(app_group_home_dir) = &AppState::shared().app_group_home_dir else {
         return Err(OkpError::UnexpectedError(
             "No app group home dir is found".into(),
         ));
@@ -134,7 +134,7 @@ fn autofill_meta_json_file() -> Option<PathBuf> {
 }
 
 fn copy_files_to_app_group(db_key: &str) -> OkpResult<CopiedDbFileInfo> {
-    let file_name = AppState::global().uri_to_file_name(&db_key);
+    let file_name = AppState::shared().uri_to_file_name(&db_key);
     debug!("File name from db_file_name  is {} ", &file_name);
 
     let db_file_root = app_group_root_sub_dir(AG_DATA_FILES)?;
@@ -158,7 +158,7 @@ fn copy_files_to_app_group(db_key: &str) -> OkpResult<CopiedDbFileInfo> {
 
     // Copies all the key files available
     util::copy_files(
-        &AppState::global().key_files_dir_path,
+        &AppState::shared().key_files_dir_path,
         &app_group_key_file_dir,
     );
 
@@ -358,7 +358,7 @@ impl IosAppGroupSupportService {
             );
 
             let mut file = File::open(&util::url_to_unix_file_name(&db_file_name))?;
-            let file_name = AppState::global().uri_to_file_name(&db_file_name);
+            let file_name = AppState::shared().uri_to_file_name(&db_file_name);
 
             let kdbx_loaded = db_service::read_kdbx(
                 &mut file,

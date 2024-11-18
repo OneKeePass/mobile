@@ -10,7 +10,7 @@ use once_cell::sync::OnceCell;
 use serde::Deserialize;
 use std::{collections::HashMap, sync::Arc};
 
-use crate::{udl_types::ApiCallbackResult, OkpResult};
+use crate::{secure_store, udl_types::ApiCallbackResult, OkpResult};
 
 /////////// All common uniffi exported types  ///////////
 
@@ -122,6 +122,10 @@ pub fn initialize_callback_services(
             );
         }
     }
+
+    // This service uses 'secure_enclave_cb_service' 
+    secure_store::init_rs_connection_configs_store();
+    log::info!("secure_store::init_rs_connection_configs_store call done after callback setup in initialize_callback_services");
 
     debug!("initialize_callback_services call is finished");
 }

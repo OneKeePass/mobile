@@ -10,6 +10,7 @@ mod udl_uniffi_exports;
 mod udl_functions;
 mod udl_types;
 mod util;
+mod secure_store;
 
 use app_state::{AppState, RecentlyUsed};
 use commands::{
@@ -113,7 +114,7 @@ impl OpenedFile {
             ),
             // For iOS
             FileArgs::FullFileName { full_file_name } => {
-                let name = AppState::global().uri_to_file_name(&full_file_name);
+                let name = AppState::shared().uri_to_file_name(&full_file_name);
                 let ux_file_path = util::url_to_unix_file_name(&full_file_name);
 
                 let file = if create {

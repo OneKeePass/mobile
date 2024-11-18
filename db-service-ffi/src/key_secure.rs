@@ -5,10 +5,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use onekeepass_core::{
-    db_service as kp_service,
-    db_service::{KeyStoreOperation, KeyStoreService},
-};
+use onekeepass_core::db_service as kp_service;
 
 use crate::app_state::AppState;
 use crate::udl_types::SecureKeyOperationError;
@@ -20,7 +17,7 @@ use crate::udl_types::SecureKeyOperationError;
 pub fn init_key_main_store() {
     let kss = Arc::new(Mutex::new(KeyStoreServiceImpl::default()));
     // In case, we need to hold any reference at this module, then we need to Arc::clone and use it
-    KeyStoreOperation::init(kss);
+    kp_service::KeyStoreOperation::init(kss);
     debug!("key_secure - key_main_store is initialized in init_key_main_store ");
 }
 
@@ -30,7 +27,7 @@ pub struct KeyStoreServiceImpl {
     store: HashMap<String, SecVec<u8>>,
 }
 
-impl KeyStoreService for KeyStoreServiceImpl {
+impl kp_service::KeyStoreService for KeyStoreServiceImpl {
     // On successful loading of database, the keys are encrypted with Aes GCM cipher
     // and the encryption key for keys is stored in the KeyChain for iOS and in key store in Android.
 
@@ -40,7 +37,7 @@ impl KeyStoreService for KeyStoreServiceImpl {
         let acct_key = kp_service::service_util::formatted_key(&db_key);
         let enc_key = hex::encode(&data);
 
-        let ops = &AppState::global().secure_key_operation;
+        let ops = &AppState::shared().secure_key_operation;
 
         debug!(
             "Storing in key chain / key store for the acct_key {}",
@@ -92,7 +89,7 @@ impl KeyStoreService for KeyStoreServiceImpl {
 
         let acct_key = kp_service::service_util::formatted_key(db_key);
 
-        let key_str_opt = match AppState::global().secure_key_operation.get_key(acct_key) {
+        let key_str_opt = match AppState::shared().secure_key_operation.get_key(acct_key) {
             Ok(v) => v,
             Err(e) => {
                 error!("Query call to key chain failed {:?}", e);
@@ -116,7 +113,7 @@ impl KeyStoreService for KeyStoreServiceImpl {
     fn delete_key(&mut self, db_key: &str) -> kp_service::Result<()> {
         let acct_key = kp_service::service_util::formatted_key(db_key);
         //self.store.remove(db_key);
-        let _r = AppState::global().secure_key_operation.delete_key(acct_key);
+        let _r = AppState::shared().secure_key_operation.delete_key(acct_key);
         debug!("Keys are deleted..");
         Ok(())
     }

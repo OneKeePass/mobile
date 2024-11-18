@@ -22,14 +22,14 @@ pub(crate) fn init_async_listeners() {
                 match ov {
                     async_service::AsyncResponse::EntryOtpToken(t) => {
                         let json_string = ok_json_str(t);
-                        let _r = AppState::global()
+                        let _r = AppState::shared()
                             .event_dispatcher
                             .send_otp_update(json_string);
                         //debug!("send_otp_update r is {:?}", &r);
                     }
                     async_service::AsyncResponse::Tick(t) => {
                         let json_string = ok_json_str(t);
-                        let _r = AppState::global()
+                        let _r = AppState::shared()
                             .event_dispatcher
                             .send_tick_update(json_string);
                         //debug!("send_tick_update r is {:?}", &r);

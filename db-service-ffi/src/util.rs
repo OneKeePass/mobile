@@ -1,5 +1,5 @@
 use log::debug;
-use onekeepass_core::db_service::service_util::{self,string_to_simple_hash};
+use onekeepass_core::db_service::service_util::{self, string_to_simple_hash};
 use onekeepass_core::error::Result;
 use std::fs::{self, File};
 use std::os::unix::io::FromRawFd;
@@ -12,7 +12,7 @@ pub unsafe fn get_file_from_fd(fd: u64) -> File {
     File::from_raw_fd(fd as i32)
 }
 
-// Gets the unix file path from the platform specif file uri which may be url encoded 
+// Gets the unix file path from the platform specif file uri which may be url encoded
 pub fn url_to_unix_file_name(url_str: &str) -> String {
     // e.g uri file:///Users/jeyasankar/Library/Developer/CoreSimulator/Devices/A45B3252-1AA4-4D50-9E6E-89AB1E873B1F/data/Containers/Shared/AppGroup/6CFFA9FC-169B-482E-A817-9C0D2A6F5241/File%20Provider%20Storage/TJ-fixit.kdbx
     // Note the encoding in the uri
@@ -75,14 +75,17 @@ pub fn generate_backup_file_name(full_file_uri_str: &str, kdbx_file_name: &str) 
 
     debug!("backup_file_name generated is {}", backup_file_name);
     // Note: We should not use any explicit /  like .join("/") while joining components
-    AppState::global()
+    AppState::shared()
         .backup_dir_path
         .join(backup_file_name)
         .to_str()
         .map(|s| s.to_string())
 }
 
-pub fn generate_backup_history_file_name(full_file_uri_str: &str, kdbx_file_name: &str) -> Option<String> {
+pub fn generate_backup_history_file_name(
+    full_file_uri_str: &str,
+    kdbx_file_name: &str,
+) -> Option<String> {
     if kdbx_file_name.trim().is_empty() {
         return None;
     }
@@ -91,13 +94,16 @@ pub fn generate_backup_history_file_name(full_file_uri_str: &str, kdbx_file_name
 
     // Creates a sub dir with the full file uri hash if required
     // e.g /.../Documents/backups/10084644638414928086 where 10084644638414928086 is the hash 'full_file_name_hash'
-    let file_hist_root = create_sub_dir_path(&AppState::global().backup_history_dir_path, &full_file_name_hash);
+    let file_hist_root = create_sub_dir_path(
+        &AppState::backup_history_dir_path(),
+        &full_file_name_hash,
+    );
 
     let fname_no_extension = kdbx_file_name
         .strip_suffix(".kdbx")
         .map_or(kdbx_file_name, |s| s);
 
-    let secs = format!("{}",service_util::now_utc_seconds());
+    let secs = format!("{}", service_util::now_utc_seconds());
 
     // The backup_file_name will be of form "MyPassword_10084644638414928086.kdbx" for
     // the original file name "MyPassword.kdbx" where 10084644638414928086 is the seconds from  'now' call
@@ -116,7 +122,7 @@ pub fn form_export_file_name(kdbx_file_name: &str) -> Option<String> {
     if kdbx_file_name.trim().is_empty() {
         return None;
     }
-    AppState::global()
+    AppState::shared()
         .export_data_dir_path
         .join(kdbx_file_name)
         .to_str()
@@ -124,7 +130,7 @@ pub fn form_export_file_name(kdbx_file_name: &str) -> Option<String> {
 }
 
 // Gets only the files (full path) found in a dir are returned
-pub fn list_dir_files<P:AsRef<Path>>(path: P) -> Vec<String> {
+pub fn list_dir_files<P: AsRef<Path>>(path: P) -> Vec<String> {
     let mut bfiles: Vec<String> = vec![];
     if let Ok(entries) = fs::read_dir(path) {
         for entry in entries {
@@ -141,7 +147,7 @@ pub fn list_dir_files<P:AsRef<Path>>(path: P) -> Vec<String> {
     bfiles
 }
 
-// Gets all files and dirs found in a dir are returned 
+// Gets all files and dirs found in a dir are returned
 pub fn list_dir_entries(path: &Path) -> Vec<String> {
     let mut bfiles: Vec<String> = vec![];
     if let Ok(entries) = fs::read_dir(path) {
@@ -157,7 +163,7 @@ pub fn list_dir_entries(path: &Path) -> Vec<String> {
 }
 
 pub fn list_backup_files() -> Vec<String> {
-    list_dir_files(&AppState::global().backup_dir_path)
+    list_dir_files(&AppState::shared().backup_dir_path)
 }
 
 pub fn delete_backup_file(full_file_uri_str: &str, kdbx_file_name: &str) {
@@ -189,14 +195,13 @@ pub fn remove_dir_contents<P: AsRef<Path>>(path: P) -> Result<()> {
 }
 
 pub fn clean_export_data_dir() -> Result<()> {
-    remove_dir_contents(&AppState::global().export_data_dir_path)
+    remove_dir_contents(&AppState::shared().export_data_dir_path)
 }
 
 // TODO: Merge create_sub_dir,create_sub_dirs,create_sub_dir_path
 // Called to create sub dir only if the root is present
 // We are using &str instead of &Path due to the use of 'url_to_unix_file_name'
 pub fn create_sub_dir(root_dir: &str, sub: &str) -> PathBuf {
-    
     // TODO: calling url_to_unix_file_name appears to be redundant and need to be removed after review
     let root = url_to_unix_file_name(root_dir);
 
@@ -221,7 +226,7 @@ pub fn create_sub_dir(root_dir: &str, sub: &str) -> PathBuf {
     final_full_path_dir
 }
 
-pub fn create_sub_dir_path<P:AsRef<Path>>(root_dir: P, sub: &str) -> PathBuf  {
+pub fn create_sub_dir_path<P: AsRef<Path>>(root_dir: P, sub: &str) -> PathBuf {
     // Initialize with the root_dir itself
     let mut final_full_path_dir = Path::new(root_dir.as_ref()).to_path_buf();
 
@@ -245,13 +250,13 @@ pub fn create_sub_dir_path<P:AsRef<Path>>(root_dir: P, sub: &str) -> PathBuf  {
     final_full_path_dir
 }
 
-pub fn create_sub_dirs<P:AsRef<Path>>(root_dir: P, sub_dirs: Vec<&str>) -> PathBuf {
+pub fn create_sub_dirs<P: AsRef<Path>>(root_dir: P, sub_dirs: Vec<&str>) -> PathBuf {
     // TODO: calling url_to_unix_file_name appears to be redundant and need to be removed after review
     let root = url_to_unix_file_name(&root_dir.as_ref().to_string_lossy());
 
     // Initializes the final path with root_dir
     let mut final_full_path_dir = Path::new(&root).to_path_buf();
-    
+
     let sub_path: PathBuf = sub_dirs.iter().collect();
 
     let full_path_dir = final_full_path_dir.join(sub_path);
@@ -275,7 +280,7 @@ pub fn create_sub_dirs<P:AsRef<Path>>(root_dir: P, sub_dirs: Vec<&str>) -> PathB
 }
 
 pub fn list_key_files() -> Vec<KeyFileInfo> {
-    let path = &AppState::global().key_files_dir_path;
+    let path = &AppState::shared().key_files_dir_path;
     let mut bfiles: Vec<KeyFileInfo> = vec![];
     if let Ok(entries) = fs::read_dir(path) {
         for entry in entries {
@@ -300,7 +305,7 @@ pub fn list_key_files() -> Vec<KeyFileInfo> {
 
 // key_file_name_component is just the file name and not the full uri
 pub fn delete_key_file(key_file_name_component: &str) {
-    let path = &AppState::global()
+    let path = &AppState::shared()
         .key_files_dir_path
         .join(key_file_name_component);
     let r = fs::remove_file(&path);

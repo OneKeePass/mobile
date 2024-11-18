@@ -2,10 +2,7 @@ use log::debug;
 use onekeepass_core::db_service::{self, AttachmentUploadInfo};
 
 use crate::{
-    commands::{self, full_path_file_to_create, CommandArg, Commands, ResponseJson},
-    event_dispatcher, open_backup_file,
-    udl_types::EventDispatch,
-    InvokeResult, KeyFileInfo, OpenedFile,
+    commands::{self, full_path_file_to_create, CommandArg, Commands, ResponseJson}, event_dispatcher, open_backup_file, secure_store, udl_types::EventDispatch, InvokeResult, KeyFileInfo, OpenedFile
 };
 use std::{
     fs::{File, OpenOptions},
@@ -88,6 +85,10 @@ pub(crate) fn db_service_enable_logging() {
 
 // Called from Swift/Kotlin side to initialize callbacks,
 // backend tokio runtime etc when Native Modules are loaded - See db_service.udl
+// Also see 'udl_uniffi_exports' module for other callbacks initialization
+
+// TODO: Need to merge these two separate calls to one callbacks intialization
+
 pub(crate) fn db_service_initialize(
     common_device_service: Box<dyn CommonDeviceService>,
     secure_key_operation: Box<dyn SecureKeyOperation>,
@@ -145,7 +146,7 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
         )));
     };
 
-    let file_name = AppState::global().uri_to_file_name(&db_file_name);
+    let file_name = AppState::shared().uri_to_file_name(&db_file_name);
 
     debug!(
         "File name from db_file_name {} is {} ",
@@ -175,7 +176,7 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
 
     debug!("internal_read_kdbx kdbx_loaded  is {:?}", &kdbx_loaded);
 
-    AppState::global().add_recent_db_use_info(&db_file_name);
+    AppState::shared().add_recent_db_use_info(&db_file_name);
 
     #[cfg(target_os = "ios")]
     {
@@ -209,7 +210,7 @@ pub(crate) fn save_kdbx(file_args: FileArgs, overwrite: bool) -> ApiResponse {
                 Ok(f) => {
                     // mainly for ios
                     //let file_name = util::file_name_from_full_path(&full_file_name);
-                    let file_name = AppState::global().uri_to_file_name(&full_file_name);
+                    let file_name = AppState::shared().uri_to_file_name(&full_file_name);
                     let backup_file_name =
                         util::generate_backup_file_name(&full_file_name, &file_name);
                     (f, full_file_name, backup_file_name)
@@ -238,7 +239,7 @@ pub(crate) fn save_kdbx(file_args: FileArgs, overwrite: bool) -> ApiResponse {
                             log::error!("Database checksum check failed");
                             // backup_file_name should have a valid back file name
                             if let Some(bkp_file_name) = backup_file_name.as_deref() {
-                                AppState::global()
+                                AppState::shared()
                                     .add_last_backup_name_on_error(&db_key, bkp_file_name);
                             }
                             return_api_response_failure!(e)
@@ -301,7 +302,7 @@ pub(crate) fn write_to_backup_on_error(full_file_name_uri: String) -> ApiRespons
     let f = || {
         // We will get the file name from the recently used list
         // instead of using AppState uri_to_file_name method as that call may fail in case of Android
-        let file_name = AppState::global()
+        let file_name = AppState::shared()
             .file_name_in_recently_used(&full_file_name_uri)
             .ok_or(OkpError::UnexpectedError(format!(
                 "There is no file name found for the uri {} in the recently used list",
@@ -320,7 +321,7 @@ pub(crate) fn write_to_backup_on_error(full_file_name_uri: String) -> ApiRespons
 
         // Need to store
         if let Some(bkp_file_name) = backup_file_name.as_deref() {
-            AppState::global().add_last_backup_name_on_error(&full_file_name_uri, bkp_file_name);
+            AppState::shared().add_last_backup_name_on_error(&full_file_name_uri, bkp_file_name);
             debug!("Added the backup file key on save error")
         }
 
@@ -401,7 +402,7 @@ pub(crate) fn copy_picked_key_file(file_args: FileArgs) -> String {
             ..
         } = OpenedFile::open_to_read(file_args)?;
 
-        let key_file_full_path = AppState::global().key_files_dir_path.join(&file_name);
+        let key_file_full_path = AppState::shared().key_files_dir_path.join(&file_name);
         debug!(
             "copy_picked_key_file:key_file_full_path is {:?}",
             key_file_full_path

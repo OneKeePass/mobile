@@ -9,7 +9,7 @@ use onekeepass_core::db_service::{
     NewDatabase, OtpSettings, PasswordGenerationOptions,
 };
 
-use onekeepass_core::db_service::storage::{sftp,webdav,RemoteConnectionConfigs};
+use onekeepass_core::db_service::storage::{read_configs, RemoteStorageOperation, RemoteStorageOperationType};
 
 use std::fmt::format;
 use std::{
@@ -185,32 +185,8 @@ pub enum CommandArg {
         language_ids: Vec<String>,
     },
 
-    SftpServerConnectionArg {
-        sftp_connection_config:sftp::SftpConnectionConfig,
-    },
-
-    WebdavConnectionArg {
-        webdav_connection_config:webdav::WebdavConnectionConfig,
-    },
-
-    RemoteServerDirListingArg {
-        connection_id:String,
-        parent_dir:String,
-        sub_dir:String,
-    },
-
-    // Remove
-    SftpServerDirListingArg {
-        sftp_server_name:String,
-        sftp_server_parent_dir:String,
-        sftp_server_sub_dir:String,
-    },
-
-    // Remove
-    WebdavDirListingArg {
-        webdav_server_name:String,
-        webdav_server_parent_dir:String,
-        webdav_server_sub_dir:String,
+    RemoteServerOperationArg {
+        rs_operation_type:RemoteStorageOperationType
     },
 
     // This variant needs to come last so that other variants starting with db_key is matched before this
@@ -269,6 +245,20 @@ macro_rules! service_ok_call  {
             let ename = stringify!($enum_name);
             let error_msg = format!("Invalid command args received {} for the api call {}. Expected a valid CommandArg::{}",
                                     &$args.clone(),&fname, &ename);
+            return InvokeResult::<()>::with_error(&error_msg.clone()).json_str();
+        }
+    };
+}
+
+macro_rules! service_call_closure {
+    ($args:expr,$enum_name:tt {$($enum_vals:tt)*} =>  $closure_fn:expr ) => {
+        if let Ok(CommandArg::$enum_name{$($enum_vals)*}) = serde_json::from_str(&$args) {
+            let r = $closure_fn();
+            return  r;
+        } else  {
+            let ename = stringify!($enum_name);
+            let error_msg = format!("Invalid command args received {} for the api call. Expected a valid CommandArg::{}",
+                                    &$args.clone(), &ename);
             return InvokeResult::<()>::with_error(&error_msg.clone()).json_str();
         }
     };
@@ -486,28 +476,6 @@ impl Commands {
                 service_call!(args, TranslationsArg {language_ids} => Self load_language_translations(language_ids))
             }
 
-            "sftp_config_listing" => ok_json_str(RemoteConnectionConfigs::sftp_configs()),
-
-            "sftp_connect_and_retrieve_root_dir" => {
-                service_call!(args, SftpServerConnectionArg {sftp_connection_config} => sftp connect_and_retrieve_root_dir(sftp_connection_config))
-            }
-
-            "sftp_list_dir" => { 
-                service_call!(args, RemoteServerDirListingArg {connection_id,parent_dir,sub_dir} => 
-                    sftp list_sub_dir(&connection_id,&parent_dir, &sub_dir))
-            }
-
-            "webdav_config_listing" => ok_json_str(RemoteConnectionConfigs::webdav_configs()),
-
-            "webdav_connect_and_retrieve_root_dir" => {
-                service_call!(args, WebdavConnectionArg {webdav_connection_config} => webdav connect_to_server(webdav_connection_config))
-            }
-
-            "webdav_list_dir" => { 
-                service_call!(args, RemoteServerDirListingArg {connection_id,parent_dir,sub_dir} => 
-                    webdav list_sub_dir(&connection_id,&parent_dir, &sub_dir))
-            }
-
             //// Async related
             "start_polling_entry_otp_fields" => {
                 service_ok_call! (args, StartEntryOtpArg {db_key,entry_uuid,otp_fields} =>
@@ -552,6 +520,23 @@ impl Commands {
 
             "clipboard_copy_string" => Self::clipboard_copy_string(&args),
 
+            //// All remote storage related 
+            "rs_connect_and_retrieve_root_dir" => {
+                service_call_closure!(args,RemoteServerOperationArg {rs_operation_type} => move || {
+                    result_json_str(rs_operation_type.connect_and_retrieve_root_dir())
+                })
+            }
+
+            "rs_list_sub_dir" => {
+                service_call_closure!(args,RemoteServerOperationArg {rs_operation_type} => move || {
+                    result_json_str(rs_operation_type.list_sub_dir())
+                })
+            }
+
+            "rs_read_configs" => result_json_str(read_configs()),
+
+            //// 
+
             "test_call" => Self::test_call(&args),
             x => error_json_str(&format!("Invalid command name {} is passed", x)),
         };
@@ -577,7 +562,7 @@ impl Commands {
 
     fn get_file_info(args: &str) -> ResponseJson {
         if let Ok(CommandArg::DbKey { db_key }) = serde_json::from_str(args) {
-            let info = AppState::global().uri_to_file_info(&db_key);
+            let info = AppState::shared().uri_to_file_info(&db_key);
             log::debug!("FileInfo is {:?}", info);
             ok_json_str(info)
         } else {
@@ -596,7 +581,7 @@ impl Commands {
         let mut kdbx_loaded = db_service::unlock_kdbx(db_key, password, key_file_name)?;
         // For now, we are replacing any file_name formed in db_service::unlock_kdbx as that is desktop file system specific
         // In case of mobile, the file uri is just some handle and need to get the file name using mobile api
-        kdbx_loaded.file_name = AppState::global()
+        kdbx_loaded.file_name = AppState::shared()
             .common_device_service
             .uri_to_file_name(db_key.into());
 
@@ -605,7 +590,7 @@ impl Commands {
 
     fn unlock_kdbx_on_biometric_authentication(db_key: &str) -> OkpResult<KdbxLoaded> {
         let mut kdbx_loaded = db_service::unlock_kdbx_on_biometric_authentication(db_key)?;
-        kdbx_loaded.file_name = AppState::global()
+        kdbx_loaded.file_name = AppState::shared()
             .common_device_service
             .uri_to_file_name(db_key.into());
         Ok(kdbx_loaded)
@@ -618,7 +603,7 @@ impl Commands {
             ));
         };
 
-        let path = &AppState::global()
+        let path = &AppState::shared()
             .key_files_dir_path
             .join(key_file_name_component.trim());
 
@@ -677,7 +662,7 @@ impl Commands {
         clipboard_timeout: Option<i64>,
     ) -> OkpResult<()> {
         // TODO: Move this to a fn in AppState
-        let mut pref = AppState::global().preference.lock().unwrap();
+        let mut pref = AppState::preference().lock().unwrap();
         if let Some(t) = db_session_timeout {
             pref.db_session_timeout = t;
         }
@@ -690,14 +675,14 @@ impl Commands {
     }
 
     fn update_preference(preference_data: PreferenceData) -> OkpResult<()> {
-        Ok(AppState::global().update_preference(preference_data))
+        Ok(AppState::shared().update_preference(preference_data))
     }
 
     fn prepare_export_kdbx_data(args: &str) -> String {
         if let Ok(CommandArg::DbKey { db_key }) = serde_json::from_str(args) {
             // Check whether the db is opened now
             let found = db_service::all_kdbx_cache_keys().map_or(false, |v| v.contains(&db_key));
-            let recent_opt = AppState::global().get_recently_used(&db_key);
+            let recent_opt = AppState::shared().get_recently_used(&db_key);
             // Form the export data file first by finding the kdbx file name from recent list
             let export_file_path_opt = &recent_opt
                 .as_ref()
@@ -785,12 +770,12 @@ impl Commands {
 
     // Gets the recent files list
     fn recently_used_dbs_info() -> ResponseJson {
-        let pref = AppState::global().preference.lock().unwrap();
+        let pref = AppState::preference().lock().unwrap();
         ok_json_str(pref.recent_dbs_info.clone())
     }
 
     fn app_preference() -> ResponseJson {
-        let pref = AppState::global().preference.lock().unwrap();
+        let pref = AppState::preference().lock().unwrap();
         ok_json_str(pref.clone())
     }
 
@@ -798,7 +783,7 @@ impl Commands {
         let current_locale_language = util::current_locale_language();
         debug!("current_locale is {}", &current_locale_language);
 
-        let prefered_language = AppState::global().language(); //current_locale_language.clone();
+        let prefered_language = AppState::shared().language(); //current_locale_language.clone();
         debug!("prefered_language is {}", &prefered_language);
 
         let language_ids_to_load = if !language_ids.is_empty() {
@@ -825,7 +810,7 @@ impl Commands {
         // }
 
         for lng in language_ids_to_load {
-            if let Some(data) = AppState::global()
+            if let Some(data) = AppState::shared()
                 .common_device_service
                 .load_language_translation(lng.clone())
             {
@@ -878,6 +863,7 @@ impl Commands {
 
 }
 
+// Just for some testing. Comment out when testing is done
 impl Commands {
     fn test_call(json_args: &str) -> ResponseJson {
         //let r = ApiCallbacksStore::common_device_service_ex().test_secure_store();
@@ -910,12 +896,12 @@ pub fn remove_app_files(db_key: &str) {
     // let file_name = AppState::global().uri_to_file_name(&db_key);
     // util::delete_backup_file(&db_key, &file_name);
 
-    if let Some(ru) = AppState::global().get_recently_used(&db_key) {
+    if let Some(ru) = AppState::shared().get_recently_used(&db_key) {
         util::delete_backup_file(&db_key, &ru.file_name);
         debug!("Backup file {} is deleted", &ru.file_name)
     }
 
-    AppState::global().remove_recent_db_use_info(&db_key);
+    AppState::shared().remove_recent_db_use_info(&db_key);
     log::debug!("Removed db file info from recent list");
 
     #[cfg(target_os = "ios")]

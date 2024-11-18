@@ -24,12 +24,14 @@ pub struct AppState {
     // Android specific use (in save_attachment_as_temp_file) ? 
     pub cache_dir: String,
     // Not used ?
-    pub temp_dir: String,
+    temp_dir: String,
     // Dir where all db files backups are created 
     pub backup_dir_path: PathBuf,
 
     // We keep last 'n' number of backups for a db that was edited 
-    pub backup_history_dir_path: PathBuf,
+    backup_history_dir_path: PathBuf,
+
+    remote_storage_path:PathBuf,
     
     // The dir where an edited db file is stored if the remote connection is not avilable
     // pub local_db_dir_path: PathBuf,
@@ -48,7 +50,7 @@ pub struct AppState {
     // when db save fails (as the orginal db content changed) 
     last_backup_on_error: Mutex<HashMap<String, String>>,
 
-    pub preference: Mutex<Preference>,
+    preference: Mutex<Preference>,
 }
 
 static APP_STATE: OnceCell<AppState> = OnceCell::new();
@@ -69,7 +71,7 @@ fn _temp_move_documents_to_okp_app_dir(app_dir:&str,app_group_dir:&Option<String
 }
 
 impl AppState {
-    pub fn global() -> &'static AppState {
+    pub fn shared() -> &'static AppState {
         // Panics if no global state object was set. ??
         APP_STATE.get().unwrap()
     }
@@ -114,6 +116,9 @@ impl AppState {
         let key_files_dir_path = util::create_sub_dir(&app_dir, "key_files");
         log::debug!("key_files_dir_path is {:?}", key_files_dir_path);
 
+        //
+        let remote_storage_path = util::create_sub_dir(&app_dir, "remote_storage");
+
         let app_state = AppState {
             app_home_dir: app_dir.into(),
             app_group_home_dir,
@@ -122,6 +127,7 @@ impl AppState {
             backup_dir_path,
             backup_history_dir_path,
             // local_db_dir_path,
+            remote_storage_path,
             export_data_dir_path,
             key_files_dir_path,
             common_device_service,
@@ -229,6 +235,19 @@ impl AppState {
             .common_device_service
             .uri_to_file_info(full_file_name_uri.into());
         info
+    }
+
+
+    pub fn backup_history_dir_path() -> &'static PathBuf {
+        &Self::shared().backup_history_dir_path
+    }
+
+    pub fn remote_storage_path() -> &'static PathBuf {
+        &Self::shared().remote_storage_path
+    }
+
+    pub fn preference() -> &'static Mutex<Preference> {
+        &Self::shared().preference
     }
 
     // pub fn read_preference(&self) {
@@ -342,7 +361,7 @@ impl Preference {
     }
 
     pub fn write_to_app_dir(&self) {
-        self.write(&AppState::global().app_home_dir);
+        self.write(&AppState::shared().app_home_dir);
     }
 
     // Update the preference with any non null values
@@ -398,7 +417,7 @@ impl Preference {
             .retain(|s| s.db_file_path != full_file_name_uri);
 
         // Write the preference to the file system immediately
-        self.write(&AppState::global().app_home_dir);
+        self.write(&AppState::shared().app_home_dir);
     }
 
     fn _remove_old_db_use_info(&mut self) { //-> &mut Self
