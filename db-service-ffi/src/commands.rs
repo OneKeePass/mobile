@@ -1,7 +1,7 @@
 use crate::app_state::{AppState, PreferenceData, RecentlyUsed};
-use crate::udl_uniffi_exports::ApiCallbacksStore;
-use crate::{android, as_api_response, ios, KeyFileInfo};
-use crate::{open_backup_file, util, OkpError, OkpResult};
+use crate::file_util::PickedFileHandler;
+use crate::{android, ios, file_util::KeyFileInfo};
+use crate::{backup, util, OkpError, OkpResult};
 use onekeepass_core::async_service::{self, OtpTokenTtlInfoByField, TimerID};
 use onekeepass_core::db_content::AttachmentHashValue;
 use onekeepass_core::db_service::{
@@ -187,6 +187,10 @@ pub enum CommandArg {
 
     RemoteServerOperationArg {
         rs_operation_type:RemoteStorageOperationType
+    },
+
+    PickedFileHandlerArg {
+        picked_file_handler:PickedFileHandler
     },
 
     // This variant needs to come last so that other variants starting with db_key is matched before this
@@ -509,7 +513,7 @@ impl Commands {
 
             "all_kdbx_cache_keys" => result_json_str(db_service::all_kdbx_cache_keys()),
 
-            "list_backup_files" => ok_json_str(util::list_backup_files()),
+            // "list_backup_files" => ok_json_str(util::list_backup_files()),
 
             "list_bookmark_files" => ok_json_str(ios::list_bookmark_files()),
 
@@ -524,6 +528,12 @@ impl Commands {
             "rs_connect_and_retrieve_root_dir" => {
                 service_call_closure!(args,RemoteServerOperationArg {rs_operation_type} => move || {
                     result_json_str(rs_operation_type.connect_and_retrieve_root_dir())
+                })
+            }
+
+            "rs_remote_storage_configs" => {
+                service_call_closure!(args,RemoteServerOperationArg {rs_operation_type} => move || {
+                    result_json_str(rs_operation_type.remote_storage_configs())
                 })
             }
 
@@ -719,7 +729,7 @@ impl Commands {
             } else {
                 // The db is not yet opened and we will form the export data from the backup
                 let backup_file_name_opt = &recent_opt
-                    .and_then(|r| util::generate_backup_file_name(&r.db_file_path, &r.file_name));
+                    .and_then(|r| backup::latest_or_generate_backup_history_file_name(&r.db_file_path, &r.file_name));
 
                 debug!(
                     "creating export_file from backup_file_name {:?}",
@@ -852,7 +862,7 @@ impl Commands {
                 protected,
                 cleanup_after,
             };
-            ApiCallbacksStore::common_device_service_ex().clipboard_copy_string(cd)?;
+            AppState::common_device_service_ex().clipboard_copy_string(cd)?;
 
             debug!("clipboard_copy_string is called ");
 
@@ -877,8 +887,8 @@ impl Commands {
                 ));
             };
 
-            let encrypted_data = ApiCallbacksStore::secure_enclave_cb_service().encrypt_bytes(id.clone(), test_data.as_bytes().to_vec())?;
-            let dd = ApiCallbacksStore::secure_enclave_cb_service().decrypt_bytes(id.clone(), encrypted_data)?;
+            let encrypted_data = AppState::secure_enclave_cb_service().encrypt_bytes(id.clone(), test_data.as_bytes().to_vec())?;
+            let dd = AppState::secure_enclave_cb_service().decrypt_bytes(id.clone(), encrypted_data)?;
 
             debug!("Decrypted text is {}", String::from_utf8_lossy(&dd));
 
@@ -897,7 +907,7 @@ pub fn remove_app_files(db_key: &str) {
     // util::delete_backup_file(&db_key, &file_name);
 
     if let Some(ru) = AppState::shared().get_recently_used(&db_key) {
-        util::delete_backup_file(&db_key, &ru.file_name);
+        backup::delete_backup_history_dir(&db_key);
         debug!("Backup file {} is deleted", &ru.file_name)
     }
 
@@ -967,7 +977,10 @@ impl<T: Serialize> InvokeResult<T> {
     pub fn json_str(&self) -> String {
         let json_str = match serde_json::to_string_pretty(self) {
             Ok(s) => s,
-            Err(_e) => r#"{"error" : "InvokeResult conversion failed"}"#.into(), // format!("Error {:?}", e)
+            Err(e) =>  {
+                log::error!("InvokeResult conversion failed with error {}", &e);
+                r#"{"error" : "InvokeResult conversion failed"}"#.into() // format!("Error {:?}", e)
+            } 
         };
         json_str
     }

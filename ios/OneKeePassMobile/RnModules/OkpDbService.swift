@@ -244,6 +244,20 @@ class OkpDbService: NSObject {
     }
   }
   
+  // A generic handler after user picks a file in an earlier step by using an api call to
+  // lauch document picker using 'OkpDocumentPickerService'
+  // TODO: Need to move 'copyKeyFile' and 'uploadAttachment' calls to use this api 
+  @objc
+  func handlePickedFile(_ fullFileNameUri: String, jsonArgs: String,
+                        resolve: @escaping RCTPromiseResolveBlock,
+                        reject: @escaping RCTPromiseRejectBlock)
+  {
+    bookmarkedFileHandler(fullFileNameUri, reject) { url in
+      resolve(DbServiceAPI.handlePickedFile(url.absoluteString, jsonArgs))
+    }
+  }
+  
+  
   // TODO: Verify the use of  bookmarkedFileHandler in 'copyKeyFile' and 'uploadAttachment' works for both on sim and devices
   func bookmarkedFileHandler(_ fullFileNameUri: String, _ reject: @escaping RCTPromiseRejectBlock, _ handler: (URL) -> Void) {
     let keyFileUrl = URL(string: fullFileNameUri)

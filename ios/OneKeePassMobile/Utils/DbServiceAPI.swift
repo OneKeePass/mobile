@@ -36,6 +36,19 @@ class DbServiceAPI {
       let cmnService = CommonDeviceServiceImpl()
       let secKeyOps =  SecureKeyOperationImpl.shared //SecureKeyOperationImpl()
       let eventDispatcher = BackendEventDispatcher()
+      
+      
+      
+      // ApiCallBackService implements the protocols IosApiService,CommonDeviceServiceEx
+      let apiCallBackService = ApiCallBackService()
+      iosCallbackServiceInitialize(apiCallBackService)
+      
+      let securEnclaveService = SecureEnclaveServiceSupport()
+      
+      dbServiceInitialize(cmnService, secKeyOps, eventDispatcher,apiCallBackService,securEnclaveService)
+      
+      /*
+      
       dbServiceInitialize(cmnService, secKeyOps, eventDispatcher)
       
       // ApiCallBackService implements the protocols IosApiService,CommonDeviceServiceEx 
@@ -45,6 +58,10 @@ class DbServiceAPI {
       
       let securEnclaveService = SecureEnclaveServiceSupport()
       initializeCallbackServices(apiCallBackService, securEnclaveService)
+       
+       */
+      
+      
       
       initialized = true
       Swift.debugPrint("API initialize is done")
@@ -95,6 +112,11 @@ class DbServiceAPI {
   static func uploadAttachment(_ fullFileName: String, _ jsonArgs: String) -> String {
     let fileArgs = FileArgs.fullFileName(fullFileName: fullFileName)
     return OneKeePassMobile.uploadAttachment(fileArgs, jsonArgs)
+  }
+  
+  static func handlePickedFile(_ fullFileName: String, _ jsonArgs: String) -> String {
+    let fileArgs = FileArgs.fullFileName(fullFileName: fullFileName)
+    return OneKeePassMobile.handlePickedFile(fileArgs, jsonArgs)
   }
   
   static func completeSaveAsOnError(_ jsonArgs: String) -> String {
@@ -194,6 +216,7 @@ class CommonDeviceServiceImpl: CommonDeviceService {
       // Multiplying the interval by 1000 gives the whole interval in milliseconds sice 00:00:00 UTC on 1 January 1970
       let fileInfo = FileInfo(fileName: db_file_url?.lastPathComponent,
                               fileSize: Int64(attributes.fileSize ?? -1),
+                              // Timestamp when a document was last modified, in milliseconds since January 1, 1970 00:00:00.0 UTC
                               lastModified: Int64((attributes.contentModificationDate?.timeIntervalSince1970 ?? -1) * 1000),
                               location: location)
       return fileInfo

@@ -105,7 +105,7 @@ class OkpDocumentPickerService: NSObject {
       // self.keyFilePickDelegate = KeyFilePickDelegate(resolve, reject)
       // documentPicker.delegate = self.keyFilePickDelegate
       
-      // We can use DummyDocumentPickDelegate instead of KeyFilePickDelegate as we need not bookmark the url
+      // We can use DummyDocumentPickDelegate instead of KeyFilePickDelegate as we need not to bookmark the url
       self.dummyDocumentPickDelegate = DummyDocumentPickDelegate(resolve, reject)
       documentPicker.delegate = self.dummyDocumentPickDelegate
     
@@ -367,9 +367,9 @@ class KeyFilePickDelegate: NSObject, UIDocumentPickerDelegate {
     let intent = NSFileAccessIntent.readingIntent(with: pickedFileUrl, options: [.withoutChanges, .resolvesSymbolicLink])
     
     // IMPORTANT:
-    // Any file picked by the user is outside the app's sandbox and to openning and reading any
+    // Any file picked by the user is outside the app's sandbox. The opening and reading of any
     // such file can only be done after a successful 'startAccessingSecurityScopedResource'
-    // Instead of openning and reading the file here, we keep a bookmark and that
+    // Instead of opening and reading the file here, we keep a bookmark and that
     // bookmark is read in 'copyKeyFile' fun from OkpDbService. Without the bookmark, we cannot read the file
       
     fc.coordinate(with: [intent], queue: .main) { [unowned self] err in

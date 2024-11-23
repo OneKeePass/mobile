@@ -1,4 +1,5 @@
-(ns onekeepass.mobile.remote-storage
+(ns onekeepass.mobile.rs-configs
+  "Remote storage configs page showing list of all for sftp or webdav conenctions"
   (:require [onekeepass.mobile.constants :as const]
             [onekeepass.mobile.events.common :as cmn-events]
             [onekeepass.mobile.events.remote-storage :as rs-events]
@@ -20,6 +21,7 @@
 
 
 (defn appbar-title [] 
+  (println "RS appbar-title called")
   [rn-view {:flexDirection "row"
             :style {:alignItems "center"
                     :justify-content "space-between"}}
@@ -96,7 +98,8 @@
 
 
 (defn remote-connections-list-page-content []
-  (let [connections @(rs-events/remote-storage-connections "sftp")]
+  (println "In remote-connections-list-page-content")
+  (let [connections @(rs-events/remote-storage-connection-configs "sftp")]
     [rn-safe-area-view {:style {:flex 1 :background-color @rnc/page-background-color}}
      [rn-view {:style {:flex 1 :justify-content "center" :align-items "center" :margin-top "10%"}}
 

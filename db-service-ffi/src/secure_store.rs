@@ -6,7 +6,7 @@ use onekeepass_core::db_service::{
     storage::{self,ConnectionConfigReaderWriter},
 };
 
-use crate::{app_state::AppState, udl_uniffi_exports::ApiCallbacksStore};
+use crate::app_state::AppState;
 
 // Should be called on app startup (see db_service_initialize fn and called from middle layer)
 // so that services are availble for the db_service layer.
@@ -33,7 +33,7 @@ impl ConnectionConfigReaderWriter for ConnectionConfigReaderWriterImpl {
             let encrypted_data = fs::read(full_file_path)?;
             debug!("Read encrypted_data and size is {}", &encrypted_data.len());
 
-            let decrypted_data = ApiCallbacksStore::secure_enclave_cb_service()
+            let decrypted_data = AppState::secure_enclave_cb_service()
                 .decrypt_bytes(SECURE_TAG.to_string(), encrypted_data)?;
 
             debug!("Uncrypted and size is {}", &decrypted_data.len());
@@ -55,7 +55,7 @@ impl ConnectionConfigReaderWriter for ConnectionConfigReaderWriterImpl {
     fn write_string(&self, data: &str) -> kp_service::Result<()> {
         let full_file_path = Path::new(&AppState::remote_storage_path()).join(RS_CONFIG_FILE);
         let plain_data = data.as_bytes().to_vec();
-        let encrypted_data = ApiCallbacksStore::secure_enclave_cb_service()
+        let encrypted_data = AppState::secure_enclave_cb_service()
             .encrypt_bytes(SECURE_TAG.to_string(), plain_data)?;
 
         debug!(

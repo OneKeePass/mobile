@@ -3,10 +3,9 @@
   (:require
    [onekeepass.mobile.background-common :as bg-cmn :refer [api-args->json
                                                            call-api-async
-                                                           invoke-api 
+                                                           invoke-api
                                                            ios-autofill-invoke-api
-                                                           android-invoke-api
-                                                           ]]
+                                                           android-invoke-api]]
    [react-native :as rn]
    ["@react-native-clipboard/clipboard" :as rnc-clipboard]
    ["react-native-file-viewer" :as native-file-viewer]
@@ -20,6 +19,8 @@
 (set! *warn-on-infer* true)
 
 ;;;; Re exports
+
+(def transform-api-response bg-cmn/transform-api-response)
 
 (def transform-response-excluding-keys bg-cmn/transform-response-excluding-keys)
 
@@ -74,7 +75,7 @@
 
 (defn open-mobile-settings [dispatch-fn]
   (call-api-async
-   (fn [] (.openSettings rn-native-linking )) dispatch-fn :no-response-conversion true))
+   (fn [] (.openSettings rn-native-linking)) dispatch-fn :no-response-conversion true))
 
 (defn view-file
   "Called to view any file using the native file viewer"
@@ -167,7 +168,7 @@
 
 ;; This works for both iOS and Android
 (defn pick-key-file-to-copy
-  "Called to pick a kdbx file using platform specific File Manager. The 'dispatch-fn' called with a full uri
+  "Called to pick any file using platform specific File Manager. The 'dispatch-fn' called with a full uri
    of a file picked and the file is read and loaded in the subsequent call
    "
   [dispatch-fn]
@@ -211,6 +212,20 @@
                           okp-document-pick-service full-file-name attachment-name))
                   dispatch-fn :error-transform true))
 
+;; This works for both iOS and Android
+;; TODO: Need to rename '.pickKeyFileToCopy' to '.pickFileToCopy' 
+(defn pick-file
+  "Called to pick any file using platform specific File Manager. The 'dispatch-fn' called with a full uri
+   of a file picked and that file path is used to read and/or copy in the subsequent call
+   "
+  [dispatch-fn]
+  (call-api-async (fn []
+                    ;; Typically this call needs to be followed by a read and/or copy call 
+                    (.pickKeyFileToCopy okp-document-pick-service))
+                  dispatch-fn
+                  :error-transform true))
+
+
 ;;;;;;;;
 
 (defn ios-pick-on-save-error-save-as
@@ -230,13 +245,13 @@
 
 ;;;;;;   For autofill and ios app group related calls
 
-(defn ios-copy-files-to-group [db-key dispatch-fn] 
+(defn ios-copy-files-to-group [db-key dispatch-fn]
   (ios-autofill-invoke-api "copy_files_to_app_group" {:db-key db-key} dispatch-fn))
 
 (defn ios-delete-copied-autofill-details [db-key dispatch-fn]
   (ios-autofill-invoke-api "delete_copied_autofill_details" {:db-key db-key} dispatch-fn))
 
-(defn ios-query-autofill-db-info [db-key dispatch-fn] 
+(defn ios-query-autofill-db-info [db-key dispatch-fn]
   (ios-autofill-invoke-api "query_autofill_db_info" {:db-key db-key} dispatch-fn))
 
 (defn ios-copy-to-clipboard
@@ -256,19 +271,19 @@
   (call-api-async (fn [] (.completeSaveAsOnError okp-db-service db-key new-db-key)) dispatch-fn :error-transform true))
 
 #_(defn android-copy-to-clipboard
-  "Called to copy a selected field value to clipboard
+    "Called to copy a selected field value to clipboard
    The arg field-info is a map that statifies the enum member 
    ClipboardCopyArg {field_name,field_value,protected,cleanup_after}
    "
-  [field-info dispatch-fn]
-  (android-invoke-api "clipboard_copy" field-info dispatch-fn))
+    [field-info dispatch-fn]
+    (android-invoke-api "clipboard_copy" field-info dispatch-fn))
 
-(defn android-autofill-filtered-entries 
+(defn android-autofill-filtered-entries
   "Gets one or more entries based on the search term derived from autofill requesting app domain"
   [db-key dispatch-fn]
   (android-invoke-api "autofill_filtered_entries" {:db-key db-key} dispatch-fn))
 
-(defn android-complete-login-autofill 
+(defn android-complete-login-autofill
   "This will send the login credentials to the calling app when user presses Autofill action"
   [username password dispatch-fn]
   (android-invoke-api "complete_autofill" {:type "Login" :username username :password password} dispatch-fn))
@@ -283,9 +298,29 @@
 (defn upload-attachment
   "After user picks up a file to use as Key File, this api is called to copy to a dir inside the app"
   [db-key full-file-name dispatch-fn]
-  (call-api-async (fn [] (.uploadAttachment okp-db-service full-file-name
-                                            (api-args->json {:db_key db-key} :convert-request false)))
+  (call-api-async (fn [] (.uploadAttachment
+                          okp-db-service full-file-name
+                          (api-args->json {:db_key db-key}
+                                          ;; Note the use of :db_key instead of :db-key
+                                          ;; and we are using convert-request false 
+                                          :convert-request false)))
                   dispatch-fn :error-transform true))
+
+
+(defn handle-picked-file
+  "After user picks up a file, this api is called to read and/or copy to a dir inside the app
+  picked-file-handler is map that corresponds to the enum 'PickedFileHandler' (ffi layer)
+  e.g {:handler \"SftpPrivateKeyFile\"}
+  "
+  [full-file-name picked-file-handler dispatch-fn]
+  (println "handle-picked-file is called")
+  (call-api-async (fn [] (.handlePickedFile okp-db-service full-file-name
+                                            (api-args->json
+                                             {:picked-file-handler picked-file-handler}
+                                             ;; Recursively converts all keys to 'snake_case'
+                                             :convert-request true)))
+                  dispatch-fn :error-transform true))
+
 
 (defn create-kdbx
   "Called with full file name uri that was picked by the user through the document picker 
@@ -316,7 +351,7 @@
   (call-api-async (fn []
                     (.readKdbx okp-db-service
                                db-file-name
-                               (api-args->json {:db-file-name db-file-name :password password :key_file_name key-file-name} 
+                               (api-args->json {:db-file-name db-file-name :password password :key_file_name key-file-name}
                                                :convert-request true)))
                   dispatch-fn :error-transform true))
 
@@ -326,7 +361,7 @@
 
 ;; Deprecate
 #_(defn categories-to-show [db-key dispatch-fn]
-  (invoke-api "categories_to_show" {:db-key db-key} dispatch-fn))
+    (invoke-api "categories_to_show" {:db-key db-key} dispatch-fn))
 
 ;; Works for both iOS and Android
 (defn copy-to-clipboard
@@ -606,7 +641,7 @@
 (defn update-preference [preference-data dispatch-fn]
   (invoke-api "update_preference" {:preference-data preference-data} dispatch-fn))
 
-(defn load-language-translations [language-ids dispatch-fn] 
+(defn load-language-translations [language-ids dispatch-fn]
   (invoke-api "load_language_translations" {:language-ids language-ids} dispatch-fn))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;; OTP, Timer etc ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -630,10 +665,10 @@
   #_(invoke-api "stop_polling_all_entries_otp_fields" {:db-key db-key} dispatch-fn)
   (invoke-api "stop_polling_all_entries_otp_fields" {} dispatch-fn))
 
-(defn form-otp-url 
+(defn form-otp-url
   "The arg 'otp-settings' is map with secret-or-url,  eg {:secret-or-url \"base32secret3232\"}"
-  [otp-settings dispatch-fn] 
-  (invoke-api "form_otp_url" {:otp-settings otp-settings} dispatch-fn :convert-request true ))
+  [otp-settings dispatch-fn]
+  (invoke-api "form_otp_url" {:otp-settings otp-settings} dispatch-fn :convert-request true))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  Camera static methods calls ;;;;;;;;;;;
 
@@ -643,7 +678,7 @@
 ;; defined in 'Camera'
 (def camera-obj (.-Camera ^js/RNVisionCamera rn-vision-camera))
 
-(defn camera-permission-status 
+(defn camera-permission-status
   "
   Returns one of 'granted' | 'not-determined' | 'denied' | 'restricted'
 
@@ -661,7 +696,7 @@
 
 ;; See https://react-native-vision-camera.com/docs/api/classes/Camera#requestcamerapermission
 ;; https://react-native-vision-camera.com/docs/guides#requesting-permissions
-(defn request-camera-permission 
+(defn request-camera-permission
   "The static method .requestCameraPermission returns a promise and it is resolved in call-api-async
   
   By using :no-response-conversion, the resolved value is returned as {:ok resolved-value}
@@ -676,10 +711,10 @@
   restricted: The app cannot use the Camera or Microphone because that functionality has been restricted, 
   possibly due to active restrictions such as parental controls being in place
   "
-  [dispatch-fn] 
+  [dispatch-fn]
   (call-api-async (fn [] (.requestCameraPermission camera-obj)) dispatch-fn :no-response-conversion true))
 
-(defn available-cameras 
+(defn available-cameras
   "Returns a list of all available camera devices on the current phone"
   []
   (-> (.getAvailableCameraDevices camera-obj) js->clj))
@@ -690,7 +725,7 @@
 ;; iOS https://github.com/mrousavy/react-native-vision-camera/blob/147aff8683b6500ede825c4c06d27110af7a0654/package/ios/CameraViewManager.m#L14
 (def camera-view-nm (.-CameraView ^js/RnCameraView rn/NativeModules))
 
-(defn is-rn-native-camera-vison-disabled 
+(defn is-rn-native-camera-vison-disabled
   "Checks whether the camera vision's native modules are present or not
   As native-camera-vison package uses some property components (see below), we need to exclude 
   the use and inclusion of this package (see react-native.config.js) for APK release meant to be fully FOSS 
@@ -792,8 +827,8 @@
   (require '[cljs.pprint]) ;;https://cljs.github.io/api/cljs.pprint/
   (cljs.pprint/pprint someobject)
   ;; daf114d0-a518-4e13-b75b-fbe893e69a9d 8bd81fe1-f786-46c3-b0e4-d215f8247a10
-  
-  (in-ns 'onekeepass.mobile.background) 
+
+  (in-ns 'onekeepass.mobile.background)
 
   (re-frame.core/dispatch [:common/update-page-info {:page :home :title "Welcome"}])
 
@@ -802,9 +837,9 @@
                     :no-response-conversion true :error-transform false))
 
   (def db-key (-> @re-frame.db/app-db :current-db-file-name))
-  
+
   (load-language-translations ["en"] #(println %))
-  
+
   ;; Use this in repl before doing the refresh in metro dev server, particularly when async services
   ;; are sending events to the front end via rust middle layer -see 'init_async_listeners'
   ;; This ensures no active messages are from backend async loops
@@ -820,5 +855,4 @@
 
   (invoke-api  "list_backup_files" {} #(println %))
 
-  (invoke-api  "list_bookmark_files" {} #(println %))
-  )
+  (invoke-api  "list_bookmark_files" {} #(println %)))

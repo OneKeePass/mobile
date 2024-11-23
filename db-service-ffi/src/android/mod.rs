@@ -62,7 +62,7 @@ impl AndroidSupportService {
                 // Need to set the checksum for the newly saved file and checksum is calculated using the backup file itself
                 // as using the newly written 'file' from 'file_descriptor' fails
                 reader.rewind()?;
-                db_service::calculate_db_file_checksum(&new_full_file_name_uri, &mut reader)?;
+                db_service::calculate_and_set_db_file_checksum(&new_full_file_name_uri, &mut reader)?;
 
                 remove_app_files(&old_full_file_name_uri);
                 AppState::global().add_recent_db_use_info(&new_full_file_name_uri);

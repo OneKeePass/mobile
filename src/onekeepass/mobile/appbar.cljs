@@ -6,13 +6,14 @@
             [onekeepass.mobile.common-components :as cc :refer [menu-action-factory]]
             [onekeepass.mobile.constants  :refer [AUTOFILL_SETTINGS_PAGE_ID
                                                   CAMERA_SCANNER_PAGE_ID
-                                                  REMOTE_CONNECTION_CONFIG_PAGE_ID
-                                                  REMOTE_CONNECTIONS_LIST_PAGE_ID]]
+                                                  RS_CONNECTION_CONFIG_PAGE_ID
+                                                  RS_CONNECTIONS_LIST_PAGE_ID]]
             [onekeepass.mobile.entry-category :refer [entry-category-content]]
             [onekeepass.mobile.entry-form :as entry-form]
             [onekeepass.mobile.entry-history-list :as entry-history-list]
             [onekeepass.mobile.entry-list :as entry-list :refer [entry-list-content]]
-            [onekeepass.mobile.remote-storage :as remote-storage]
+            [onekeepass.mobile.rs-configs :as remote-storage]
+            [onekeepass.mobile.rs-config-form :as rs-form]
             [onekeepass.mobile.events.app-settings :as as-events]
             [onekeepass.mobile.events.common :as cmn-events]
             [onekeepass.mobile.events.entry-form :as ef-events]
@@ -79,8 +80,9 @@
      (= page :key-file-form)
      (= page CAMERA_SCANNER_PAGE_ID)
      (= page :about)
-     (= page :privacy-policy)
-     (= page REMOTE_CONNECTIONS_LIST_PAGE_ID))
+     (= page :privacy-policy) 
+     (= page RS_CONNECTION_CONFIG_PAGE_ID)
+     (= page RS_CONNECTIONS_LIST_PAGE_ID))
     (do
       (cmn-events/to-previous-page)
       true)
@@ -214,7 +216,7 @@
                                  (is-settings-page page)
                                  (r/as-element [settings/appbar-title page])
 
-                                 (= page REMOTE_CONNECTIONS_LIST_PAGE_ID)
+                                 (= page RS_CONNECTIONS_LIST_PAGE_ID)
                                  (r/as-element [remote-storage/appbar-title])
 
                                  ;;TODO 
@@ -249,7 +251,9 @@
         (= page :app-settings)
         (= page AUTOFILL_SETTINGS_PAGE_ID)
         (= page :key-file-form)
-        (= page CAMERA_SCANNER_PAGE_ID))
+        (= page CAMERA_SCANNER_PAGE_ID)
+        (= page RS_CONNECTION_CONFIG_PAGE_ID)
+        )
     [positioned-title :title title]
 
     (= page :entry-list)
@@ -266,10 +270,10 @@
      (= page :entry-form)
      (is-settings-page page)
      (= page :password-generator)
-     (= page REMOTE_CONNECTIONS_LIST_PAGE_ID))
+     (= page RS_CONNECTIONS_LIST_PAGE_ID))
     [positioned-title :page page]))
 
-(defn appbar-header-content [page-info]
+(defn appbar-header-content [page-info] 
   (let [{:keys [page]} page-info]
 
     (reset! current-page-info page-info)
@@ -295,13 +299,14 @@
         (= page :app-settings)
         (= page AUTOFILL_SETTINGS_PAGE_ID)
         (= page CAMERA_SCANNER_PAGE_ID)
+        (= page RS_CONNECTION_CONFIG_PAGE_ID)
         (= page :key-file-form))
        [rnp-appbar-back-action {:color @background-color
                                 :onPress cmn-events/to-previous-page}])
 
    ;; Title component 
      (appbar-title page-info) ;; [appbar-titlet page-info] did not work. Why?
-
+     
    ;; The right side action icons component (dots icon, search icon .. ) and are shown for certain pages only
      (when (or
             (= page :home)
@@ -327,7 +332,7 @@
 
 (defn appbar-body-content
   "The page body content based on the page info set"
-  [{:keys [page]}]
+  [{:keys [page]}] 
   (cond
 
     (= page :home)
@@ -382,11 +387,11 @@
     (= page CAMERA_SCANNER_PAGE_ID)
     (scan-otp-qr/content)
 
-    (= page REMOTE_CONNECTIONS_LIST_PAGE_ID)
+    (= page RS_CONNECTIONS_LIST_PAGE_ID)
     [remote-storage/remote-connections-list-page-content]
-
-    (= page REMOTE_CONNECTION_CONFIG_PAGE_ID)
-    [remote-storage/remote-connections-list-page-content]
+    
+    (= page RS_CONNECTION_CONFIG_PAGE_ID)
+    [rs-form/connection-config-form]
 
     ;; For now, this page is shown after loading the newly selected language translation
     ;; Other attempts to refresh the app settings page itself did not work

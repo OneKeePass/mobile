@@ -1,16 +1,18 @@
 #![allow(dead_code, unused_imports)]
 mod android;
 mod app_state;
+mod backup;
 mod commands;
 mod event_dispatcher;
+mod file_util;
 mod ios;
 mod key_secure;
-mod udl_uniffi_exports;
+mod secure_store;
+mod util;
 
 mod udl_functions;
 mod udl_types;
-mod util;
-mod secure_store;
+mod udl_uniffi_exports;
 
 use app_state::{AppState, RecentlyUsed};
 use commands::{
@@ -26,8 +28,8 @@ use udl_types::{
 };
 
 use udl_functions::{
-    copy_picked_key_file, db_service_enable_logging, db_service_initialize, invoke_command,
-    read_kdbx, save_kdbx, upload_attachment, verify_db_file_checksum, write_to_backup_on_error,
+    copy_picked_key_file, db_service_enable_logging, invoke_command, read_kdbx, save_kdbx,
+    upload_attachment, verify_db_file_checksum, write_to_backup_on_error,
 };
 
 use log::{debug, logger};
@@ -49,13 +51,6 @@ pub type OkpError = db_service::Error;
 // These are interfaces declared in udl file and implemented in Rust
 use android::AndroidSupportService;
 use ios::IosSupportService;
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct KeyFileInfo {
-    pub full_file_name: String,
-    pub file_name: String,
-    pub file_size: Option<i64>,
-}
 
 #[macro_export]
 macro_rules! return_api_response_failure {
@@ -84,62 +79,62 @@ pub fn open_backup_file(backup_file_path: Option<String>) -> Option<File> {
     }
 }
 
-struct OpenedFile {
-    file: File,
-    file_name: String,
-    full_file_name: String,
-}
+// struct OpenedFile {
+//     file: File,
+//     file_name: String,
+//     full_file_name: String,
+// }
 
-impl OpenedFile {
-    fn open_to_read(file_args: FileArgs) -> OkpResult<OpenedFile> {
-        Self::open(file_args, false)
-    }
+// impl OpenedFile {
+//     fn open_to_read(file_args: &FileArgs) -> OkpResult<OpenedFile> {
+//         Self::open(file_args, false)
+//     }
 
-    fn open_to_create(file_args: FileArgs) -> OkpResult<OpenedFile> {
-        Self::open(file_args, true)
-    }
+//     fn open_to_create(file_args: &FileArgs) -> OkpResult<OpenedFile> {
+//         Self::open(file_args, true)
+//     }
 
-    // Only for iOS, create flag is relevant as file read,write or create is set in Kotlin layer for android
-    fn open(file_args: FileArgs, create: bool) -> OkpResult<OpenedFile> {
-        let (file, file_name, full_file_name) = match file_args {
-            // For Android
-            FileArgs::FileDecriptorWithFullFileName {
-                fd,
-                file_name,
-                full_file_name,
-            } => (
-                unsafe { util::get_file_from_fd(fd) },
-                file_name,
-                full_file_name,
-            ),
-            // For iOS
-            FileArgs::FullFileName { full_file_name } => {
-                let name = AppState::shared().uri_to_file_name(&full_file_name);
-                let ux_file_path = util::url_to_unix_file_name(&full_file_name);
+//     // Only for iOS, create flag is relevant as file read,write or create is set in Kotlin layer for android
+//     fn open(file_args: &FileArgs, create: bool) -> OkpResult<OpenedFile> {
+//         let (file, file_name, full_file_name) = match file_args {
+//             // For Android
+//             FileArgs::FileDecriptorWithFullFileName {
+//                 fd,
+//                 file_name,
+//                 full_file_name,
+//             } => (
+//                 unsafe { util::get_file_from_fd(*fd) },
+//                 file_name.clone(),
+//                 full_file_name.clone(),
+//             ),
+//             // For iOS
+//             FileArgs::FullFileName { full_file_name } => {
+//                 let name = AppState::shared().uri_to_file_name(&full_file_name);
+//                 let ux_file_path = util::url_to_unix_file_name(&full_file_name);
 
-                let file = if create {
-                    full_path_file_to_create(&full_file_name)?
-                } else {
-                    File::open(ux_file_path)?
-                };
+//                 let file = if create {
+//                     full_path_file_to_create(&full_file_name)?
+//                 } else {
+//                     File::open(ux_file_path)?
+//                 };
 
-                (file, name, full_file_name)
-            }
-            _ => {
-                return Err(OkpError::UnexpectedError(
-                    "Unsupported file args passed".into(),
-                ))
-            }
-        };
-        let r = OpenedFile {
-            file,
-            file_name,
-            full_file_name,
-        };
+//                 (file, name.clone(), full_file_name.clone())
+//             }
+//             _ => {
+//                 return Err(OkpError::UnexpectedError(
+//                     "Unsupported file args passed".into(),
+//                 ))
+//             }
+//         };
+//         let r = OpenedFile {
+//             file,
+//             file_name,
+//             full_file_name,
+//         };
 
-        Ok(r)
-    }
-}
+//         Ok(r)
+//     }
+// }
 
 // Does not work if we use From<OkpResult<T:Serialize>> as discussed in  https://github.com/rust-lang/rust/issues/52662
 // impl<T> From<OkpResult<T:Serialize>> for ApiResponse {

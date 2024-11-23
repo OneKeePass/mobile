@@ -209,6 +209,7 @@ class CommonDeviceServiceImpl(val reactContext: ReactApplicationContext) : Commo
 
             info.fileName = fs?.filename
             info.fileSize = fs?.size
+            // Timestamp when a document was last modified, in milliseconds since January 1, 1970 00:00:00.0 UTC
             info.lastModified = fs?.lastModifiedTime
             info.location = location
             return info

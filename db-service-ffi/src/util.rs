@@ -6,7 +6,7 @@ use std::os::unix::io::FromRawFd;
 use std::path::{Path, PathBuf};
 
 use crate::app_state::AppState;
-use crate::KeyFileInfo;
+use crate::file_util::KeyFileInfo;
 
 pub unsafe fn get_file_from_fd(fd: u64) -> File {
     File::from_raw_fd(fd as i32)
@@ -60,6 +60,7 @@ pub fn file_name_from_full_path(file_full_path: &str) -> String {
 // kdbx_file_name is just file name and is not absolute one
 // For now only hash str formed using 'full_file_uri_str' is appended to the
 // kdbx_file_name before prefix .kdbx. See the example
+/*
 pub fn generate_backup_file_name(full_file_uri_str: &str, kdbx_file_name: &str) -> Option<String> {
     if kdbx_file_name.trim().is_empty() {
         return None;
@@ -75,47 +76,12 @@ pub fn generate_backup_file_name(full_file_uri_str: &str, kdbx_file_name: &str) 
 
     debug!("backup_file_name generated is {}", backup_file_name);
     // Note: We should not use any explicit /  like .join("/") while joining components
-    AppState::shared()
-        .backup_dir_path
+    AppState::backup_dir_path()
         .join(backup_file_name)
         .to_str()
         .map(|s| s.to_string())
 }
-
-pub fn generate_backup_history_file_name(
-    full_file_uri_str: &str,
-    kdbx_file_name: &str,
-) -> Option<String> {
-    if kdbx_file_name.trim().is_empty() {
-        return None;
-    }
-
-    let full_file_name_hash = string_to_simple_hash(full_file_uri_str).to_string();
-
-    // Creates a sub dir with the full file uri hash if required
-    // e.g /.../Documents/backups/10084644638414928086 where 10084644638414928086 is the hash 'full_file_name_hash'
-    let file_hist_root = create_sub_dir_path(
-        &AppState::backup_history_dir_path(),
-        &full_file_name_hash,
-    );
-
-    let fname_no_extension = kdbx_file_name
-        .strip_suffix(".kdbx")
-        .map_or(kdbx_file_name, |s| s);
-
-    let secs = format!("{}", service_util::now_utc_seconds());
-
-    // The backup_file_name will be of form "MyPassword_10084644638414928086.kdbx" for
-    // the original file name "MyPassword.kdbx" where 10084644638414928086 is the seconds from  'now' call
-    let backup_file_name = vec![fname_no_extension, "_", &secs, ".kdbx"].join("");
-
-    debug!("backup_file_name generated is {}", backup_file_name);
-    // Note: We should not use any explicit /  like .join("/") while joining components
-    file_hist_root
-        .join(backup_file_name)
-        .to_str()
-        .map(|s| s.to_string())
-}
+*/
 
 // Returns the absolute path for the db export call
 pub fn form_export_file_name(kdbx_file_name: &str) -> Option<String> {
@@ -162,21 +128,21 @@ pub fn list_dir_entries(path: &Path) -> Vec<String> {
     bfiles
 }
 
-pub fn list_backup_files() -> Vec<String> {
-    list_dir_files(&AppState::shared().backup_dir_path)
-}
+// pub fn list_backup_files() -> Vec<String> {
+//     list_dir_files(&AppState::backup_dir_path())
+// }
 
-pub fn delete_backup_file(full_file_uri_str: &str, kdbx_file_name: &str) {
-    if let Some(bf) = generate_backup_file_name(full_file_uri_str, kdbx_file_name) {
-        log::debug!(
-            "Removing backup file {} for the uri {}",
-            bf,
-            full_file_uri_str
-        );
-        let r = fs::remove_file(&bf);
-        log::debug!("Delete backup file {} result {:?}", bf, r);
-    }
-}
+// pub fn delete_backup_file(full_file_uri_str: &str, kdbx_file_name: &str) {
+//     if let Some(bf) = generate_backup_history_file_name(full_file_uri_str, kdbx_file_name) {
+//         log::debug!(
+//             "Removing backup file {} for the uri {}",
+//             bf,
+//             full_file_uri_str
+//         );
+//         let r = fs::remove_file(&bf);
+//         log::debug!("Delete backup file {} result {:?}", bf, r);
+//     }
+// }
 
 // Recursively removes only the content of a dir including sub dir
 pub fn remove_dir_contents<P: AsRef<Path>>(path: P) -> Result<()> {
@@ -226,6 +192,7 @@ pub fn create_sub_dir(root_dir: &str, sub: &str) -> PathBuf {
     final_full_path_dir
 }
 
+// Creates the sub dir under the given root and returns the full path
 pub fn create_sub_dir_path<P: AsRef<Path>>(root_dir: P, sub: &str) -> PathBuf {
     // Initialize with the root_dir itself
     let mut final_full_path_dir = Path::new(root_dir.as_ref()).to_path_buf();
@@ -390,6 +357,68 @@ pub fn is_dir_empty<P: AsRef<Path>>(parent_dir: P) -> bool {
     }
     cnt == 0
 }
+
+
+
+/*
+// Returns the full path of the backup file name
+pub fn generate_backup_history_file_name(
+    full_file_uri_str: &str,
+    kdbx_file_name: &str,
+) -> Option<String> {
+    if kdbx_file_name.trim().is_empty() {
+        return None;
+    }
+
+    let full_file_name_hash = string_to_simple_hash(full_file_uri_str).to_string();
+
+    // Creates a sub dir with the full file uri hash if required
+    // e.g /.../Documents/backups/10084644638414928086 where 10084644638414928086 is the hash 'full_file_name_hash'
+    let file_hist_root =
+        create_sub_dir_path(&AppState::backup_history_dir_path(), &full_file_name_hash);
+
+    let fname_no_extension = kdbx_file_name
+        .strip_suffix(".kdbx")
+        .map_or(kdbx_file_name, |s| s);
+
+    let secs = format!("{}", service_util::now_utc_seconds());
+
+    // The backup_file_name will be of form "MyPassword_10084644638414928086.kdbx" for
+    // the original file name "MyPassword.kdbx" where 10084644638414928086 is the seconds from  'now' call
+    let backup_file_name = vec![fname_no_extension, "_", &secs, ".kdbx"].join("");
+
+    debug!("backup_file_name generated is {}", backup_file_name);
+    // Note: We should not use any explicit /  like .join("/") while joining components
+    file_hist_root
+        .join(backup_file_name)
+        .to_str()
+        .map(|s| s.to_string())
+}
+
+pub fn remove_backup_history_file(full_file_uri_str: &str, full_backup_file_name: &str) {
+    let full_file_name_hash = string_to_simple_hash(full_file_uri_str).to_string();
+    let file_hist_root =
+        create_sub_dir_path(&AppState::backup_history_dir_path(), &full_file_name_hash);
+
+    debug!("Removing backup file {}",&full_backup_file_name);
+    
+    // Remove this backup file and remove the backup dir for this 'full_file_uri_str' if the dir is empty
+    let r = fs::remove_file(full_backup_file_name)
+        .and_then(|_| fs::read_dir(&file_hist_root))
+        .and_then(|d| Ok(d.count()));
+    if let Ok(c) = r {
+        if c == 0 {
+            let _r = fs::remove_dir(&file_hist_root);
+        }
+    }
+
+    debug!("Backup dir for this full uri {}  exists {}", &full_file_uri_str,&file_hist_root.exists());
+
+}
+
+
+*/
+
 
 #[cfg(test)]
 mod tests {

@@ -1,11 +1,20 @@
 use log::debug;
-use onekeepass_core::db_service::{self, AttachmentUploadInfo};
+use onekeepass_core::{
+    db_service::{self, db_checksum_hash, AttachmentUploadInfo},
+    error,
+};
 
 use crate::{
-    commands::{self, full_path_file_to_create, CommandArg, Commands, ResponseJson}, event_dispatcher, open_backup_file, secure_store, udl_types::EventDispatch, InvokeResult, KeyFileInfo, OpenedFile
+    backup::{self, matching_backup_exists},
+    commands::{self, full_path_file_to_create, CommandArg, Commands, ResponseJson},
+    event_dispatcher,
+    file_util::{KeyFileInfo, OpenedFile},
+    open_backup_file, secure_store,
+    udl_types::EventDispatch,
+    InvokeResult,
 };
 use std::{
-    fs::{File, OpenOptions},
+    fs::{self, File, OpenOptions},
     io::Seek,
     os::fd::IntoRawFd,
     path::Path,
@@ -69,7 +78,6 @@ pub(crate) fn db_service_enable_logging() {
             .category_level_filter("russh::client::encrypted", log::LevelFilter::Info)
             .category_level_filter("russh::client::session", log::LevelFilter::Info)
             .category_level_filter("russh::cipher", log::LevelFilter::Info)
-            
             // Filter UniFFI log messages
             .category_level_filter("db_service::ffi", log::LevelFilter::Info);
 
@@ -89,6 +97,7 @@ pub(crate) fn db_service_enable_logging() {
 
 // TODO: Need to merge these two separate calls to one callbacks intialization
 
+/*
 pub(crate) fn db_service_initialize(
     common_device_service: Box<dyn CommonDeviceService>,
     secure_key_operation: Box<dyn SecureKeyOperation>,
@@ -112,6 +121,7 @@ pub(crate) fn db_service_initialize(
     event_dispatcher::init_async_listeners();
     log::info!("event_dispatcher::init_async_listeners call completed");
 }
+*/
 
 pub(crate) fn read_kdbx(file_args: FileArgs, json_args: String) -> ApiResponse {
     log::debug!("file_args received is {:?}", file_args);
@@ -153,21 +163,16 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
         &db_file_name, &file_name
     );
 
-    let backup_file_name = util::generate_backup_file_name(&db_file_name, &file_name);
+    // TODO Set the backup file's modified time to the same as the file in 'db_file_name'
+    // We are printing this so that we can check these in devices before using this concept instead
+    // of checksum in matching_db_reader_backup_exists
+    let info = AppState::shared().uri_to_file_info(&db_file_name);
+    debug!("File info of db-key {}, is {:?}", &db_file_name, info);
 
-    let mut backup_file = open_backup_file(backup_file_name.clone())
-        .ok_or(OkpError::DataError("Opening backup file failed"))?;
 
-    // Copy from db file to backup file first
-    std::io::copy(file, &mut backup_file)
-        .and(backup_file.sync_all())
-        .and(backup_file.rewind())?;
-
-    debug!("internal_read_kdbx copied to backup file and synced");
-
-    // We load and parse the database content from the backup file
+    // First we read the db file 
     let kdbx_loaded = db_service::read_kdbx(
-        &mut backup_file,
+        file,
         &db_file_name,
         password.as_deref(),
         key_file_name.as_deref(),
@@ -175,6 +180,49 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
     )?;
 
     debug!("internal_read_kdbx kdbx_loaded  is {:?}", &kdbx_loaded);
+
+    let read_db_checksum = db_service::db_checksum_hash(&db_file_name)?;
+
+    // Note:  The db file 'file' object is read two times 
+    // 1. in 'read_kdbx' call 
+    // 2. std::io::copy call
+
+    // Create backup only if there is no backup for this db with the matching checksum
+    if matching_backup_exists(&db_file_name, read_db_checksum)
+        .ok()
+        .flatten()
+        .is_none()
+    {
+        let backup_file_name = backup::generate_backup_history_file_name(&db_file_name, &file_name);
+        let mut backup_file = open_backup_file(backup_file_name.clone())
+            .ok_or(OkpError::DataError("Opening backup file failed"))?;
+
+        // Ensure that we are at the begining of the db file stream
+        let _rr = file.rewind();
+
+        // Copy from db file to backup file
+        std::io::copy(file, &mut backup_file)
+            .and(backup_file.sync_all())
+            .and(backup_file.rewind())?;
+
+        if let Some(mtime) = info.map(|f| f.last_modified).flatten() {
+            let mtime = mtime/1000; // milli to seconds
+            // backup_file_name unwrap will not fail as we have used this path in the previous call
+            // in open_backup_file
+            let bp = backup_file_name.unwrap();
+
+            debug!("Before setting mtime {:?}", Path::new(&bp).metadata());
+            
+            let r = filetime::set_file_mtime(&bp, filetime::FileTime::from_unix_time(mtime, 0));
+
+            debug!("Setting modified time of backup file status is {:?}",r);
+            debug!("After setting mtime {:?}", Path::new(&bp).metadata());
+        }
+
+        debug!("internal_read_kdbx copied to backup file and synced");
+    } else {
+        debug!("Backup file already exists for this db");
+    }
 
     AppState::shared().add_recent_db_use_info(&db_file_name);
 
@@ -198,7 +246,8 @@ pub(crate) fn save_kdbx(file_args: FileArgs, overwrite: bool) -> ApiResponse {
             file_name,
         } => {
             fd_used = true;
-            let backup_file_name = util::generate_backup_file_name(&full_file_name, &file_name);
+            let backup_file_name =
+                backup::generate_backup_history_file_name(&full_file_name, &file_name);
             (
                 unsafe { util::get_file_from_fd(fd) },
                 full_file_name,
@@ -212,7 +261,7 @@ pub(crate) fn save_kdbx(file_args: FileArgs, overwrite: bool) -> ApiResponse {
                     //let file_name = util::file_name_from_full_path(&full_file_name);
                     let file_name = AppState::shared().uri_to_file_name(&full_file_name);
                     let backup_file_name =
-                        util::generate_backup_file_name(&full_file_name, &file_name);
+                        backup::generate_backup_history_file_name(&full_file_name, &file_name);
                     (f, full_file_name, backup_file_name)
                 }
                 Err(e) => return_api_response_failure!(e),
@@ -245,9 +294,14 @@ pub(crate) fn save_kdbx(file_args: FileArgs, overwrite: bool) -> ApiResponse {
                             return_api_response_failure!(e)
                         }
                     }
-                    let _n = std::io::copy(&mut bf_writer, &mut writer);
 
-                    if let Err(e) = db_service::calculate_db_file_checksum(&db_key, &mut bf_writer)
+                    //let _n = std::io::copy(&mut bf_writer, &mut writer);
+                    if let Err(e) = std::io::copy(&mut bf_writer, &mut writer) {
+                        return_api_response_failure!(e)
+                    }
+
+                    if let Err(e) =
+                        db_service::calculate_and_set_db_file_checksum(&db_key, &mut bf_writer)
                     {
                         return_api_response_failure!(e)
                     }
@@ -308,7 +362,8 @@ pub(crate) fn write_to_backup_on_error(full_file_name_uri: String) -> ApiRespons
                 "There is no file name found for the uri {} in the recently used list",
                 &full_file_name_uri
             )))?;
-        let backup_file_name = util::generate_backup_file_name(&full_file_name_uri, &file_name);
+        let backup_file_name =
+            backup::generate_backup_history_file_name(&full_file_name_uri, &file_name);
         debug!(
             "Writing to the backup file {:?} for the uri {}",
             &backup_file_name, &file_name
@@ -400,7 +455,7 @@ pub(crate) fn copy_picked_key_file(file_args: FileArgs) -> String {
             mut file,
             file_name,
             ..
-        } = OpenedFile::open_to_read(file_args)?;
+        } = OpenedFile::open_to_read(&file_args)?;
 
         let key_file_full_path = AppState::shared().key_files_dir_path.join(&file_name);
         debug!(
@@ -435,7 +490,7 @@ pub(crate) fn upload_attachment(file_args: FileArgs, json_args: &str) -> Respons
             mut file,
             file_name,
             ..
-        } = OpenedFile::open_to_read(file_args)?;
+        } = OpenedFile::open_to_read(&file_args)?;
 
         let CommandArg::DbKey { db_key } = serde_json::from_str(json_args)? else {
             return Err(OkpError::UnexpectedError(format!(
@@ -477,3 +532,180 @@ fn _file_to_create(dir_path: &str, file_name: &str) -> OkpResult<File> {
         .open(full_file_path)?;
     Ok(file)
 }
+
+/*
+
+// version 2
+
+fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service::KdbxLoaded> {
+    let CommandArg::OpenDbArg {
+        db_file_name,
+        password,
+        key_file_name,
+    } = serde_json::from_str(json_args)?
+    else {
+        return Err(OkpError::UnexpectedError(format!(
+            "Argument 'json_args' {:?} parsing failed for readkdbx api call",
+            json_args
+        )));
+    };
+
+    let file_name = AppState::shared().uri_to_file_name(&db_file_name);
+
+    debug!(
+        "File name from db_file_name {} is {} ",
+        &db_file_name, &file_name
+    );
+
+    // TODO Set the backup file's modified time to the same as the file in 'db_file_name'
+    // We are printing this so that we can check these in devices before using this concept instead
+    // of checksum in matching_db_reader_backup_exists
+    let info = AppState::shared().uri_to_file_info(&db_file_name);
+    debug!("File info of db-key {}, is {:?}", &db_file_name, info);
+
+
+    // First we read the db file 
+    let kdbx_loaded = db_service::read_kdbx(
+        file,
+        &db_file_name,
+        password.as_deref(),
+        key_file_name.as_deref(),
+        Some(&file_name),
+    )?;
+
+    debug!("internal_read_kdbx kdbx_loaded  is {:?}", &kdbx_loaded);
+
+    // Note:  The db file 'file' object is read two or three times 
+    // 1. in 'read_kdbx' call 
+    // 2. matching_db_reader_backup_exists call
+    // 3. std::io::copy call
+
+    // Create backup only if there is no backup for this db with the matching checksum
+    if matching_db_reader_backup_exists(&db_file_name, file)
+        .ok()
+        .flatten()
+        .is_none()
+    {
+        let backup_file_name = backup::generate_backup_history_file_name(&db_file_name, &file_name);
+        let mut backup_file = open_backup_file(backup_file_name.clone())
+            .ok_or(OkpError::DataError("Opening backup file failed"))?;
+
+        // Ensure that we are at the begining of the db file stream
+        let _rr = file.rewind();
+
+        // Copy from db file to backup file
+        std::io::copy(file, &mut backup_file)
+            .and(backup_file.sync_all())
+            .and(backup_file.rewind())?;
+
+        if let Some(mtime) = info.map(|f| f.last_modified).flatten() {
+            let mtime = mtime/1000; // milli to seconds
+            // backup_file_name unwrap will not fail as we have used this path in the previous call
+            // in open_backup_file
+            let bp = backup_file_name.unwrap();
+
+            debug!("Before setting mtime {:?}", Path::new(&bp).metadata());
+            
+            let r = filetime::set_file_mtime(&bp, filetime::FileTime::from_unix_time(mtime, 0));
+
+            debug!("Setting modified time of backup file status is {:?}",r);
+            debug!("After setting mtime {:?}", Path::new(&bp).metadata());
+        }
+
+        debug!("internal_read_kdbx copied to backup file and synced");
+    } else {
+        debug!("Backup file already exists for this db");
+    }
+
+    AppState::shared().add_recent_db_use_info(&db_file_name);
+
+    #[cfg(target_os = "ios")]
+    {
+        // iOS specific copying when we read a database if this db is used in Autofill extension
+        crate::ios::app_group::copy_files_to_app_group_on_save_or_read(&db_file_name);
+    }
+
+    Ok(kdbx_loaded)
+}
+
+
+
+// version 1
+fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service::KdbxLoaded> {
+    let CommandArg::OpenDbArg {
+        db_file_name,
+        password,
+        key_file_name,
+    } = serde_json::from_str(json_args)?
+    else {
+        return Err(OkpError::UnexpectedError(format!(
+            "Argument 'json_args' {:?} parsing failed for readkdbx api call",
+            json_args
+        )));
+    };
+
+    let file_name = AppState::shared().uri_to_file_name(&db_file_name);
+
+    debug!(
+        "File name from db_file_name {} is {} ",
+        &db_file_name, &file_name
+    );
+
+    let backup_file_name = backup::generate_backup_history_file_name(&db_file_name, &file_name);
+    // IMPORATNT Assumption: after reading bytes for checksum calc, the 'file' stream positioned to the begining
+    let backup_file_name = matching_db_reader_backup_exists(&db_file_name, file)
+        .ok()
+        .flatten()
+        .map_or_else(|| backup_file_name, |p| Some(p.as_path().to_string_lossy().to_string()));
+
+    let mut backup_file = open_backup_file(backup_file_name.clone())
+        .ok_or(OkpError::DataError("Opening backup file failed"))?;
+
+    // Copy from db file to backup file first
+    std::io::copy(file, &mut backup_file)
+        .and(backup_file.sync_all())
+        .and(backup_file.rewind())?;
+
+    debug!("internal_read_kdbx copied to backup file and synced");
+
+    // We load and parse the database content from the backup file
+    let r = db_service::read_kdbx(
+        &mut backup_file,
+        &db_file_name,
+        password.as_deref(),
+        key_file_name.as_deref(),
+        Some(&file_name),
+    );
+
+    let kdbx_loaded = match r {
+        Ok(k) => k,
+        e => {
+            // Remove any backup file created if there is any error while reading the db file
+            if let Some(bk_file_name) = backup_file_name {
+                //let _r = fs::remove_file(&bk_file_name);
+                backup::remove_backup_history_file(&db_file_name, &bk_file_name);
+            }
+            return e;
+        }
+    };
+
+    debug!("internal_read_kdbx kdbx_loaded  is {:?}", &kdbx_loaded);
+
+    AppState::shared().add_recent_db_use_info(&db_file_name);
+
+    // TODO Set the backup file's modified time to the same as the file in 'db_file_name'
+    let info = AppState::shared().uri_to_file_info(&db_file_name);
+    debug!("File info of db-key {}, is {:?}", &db_file_name, info);
+
+    #[cfg(target_os = "ios")]
+    {
+        // iOS specific copying when we read a database if this db is used in Autofill extension
+        crate::ios::app_group::copy_files_to_app_group_on_save_or_read(&db_file_name);
+    }
+
+    Ok(kdbx_loaded)
+}
+
+
+
+*/

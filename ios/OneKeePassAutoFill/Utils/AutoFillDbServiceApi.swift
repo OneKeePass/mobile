@@ -33,13 +33,22 @@ class AutoFillDbServiceAPI {
       let cmnService = CommonDeviceServiceImpl()
       let secKeyOps = SecureKeyOperationImpl()
       let eventDispatcher = BackendEventDispatcher()
-      dbServiceInitialize(cmnService, secKeyOps, eventDispatcher)
       
+      // ApiCallBackService implements the protocols IosApiService,CommonDeviceServiceEx
       let apiCallBackService = ApiCallBackService()
       iosCallbackServiceInitialize(apiCallBackService)
-      //commonDeviceServiceExInitialize(apiCallBackService)
       
-      initializeCallbackServices(apiCallBackService, SecureEnclaveServiceSupport())
+      let securEnclaveService = SecureEnclaveServiceSupport()
+      
+      dbServiceInitialize(cmnService, secKeyOps, eventDispatcher,apiCallBackService,securEnclaveService)
+      
+//      dbServiceInitialize(cmnService, secKeyOps, eventDispatcher)
+//      
+//      let apiCallBackService = ApiCallBackService()
+//      iosCallbackServiceInitialize(apiCallBackService)
+//      //commonDeviceServiceExInitialize(apiCallBackService)
+//      
+//      initializeCallbackServices(apiCallBackService, SecureEnclaveServiceSupport())
       
       initialized = true
       Swift.debugPrint("API initialize is done")

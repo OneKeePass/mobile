@@ -4,9 +4,8 @@ namespace db_service {
     void db_service_enable_logging();
 
     // Needs to be called from Swift/Kotlin side to initialize callback that can be used from rust side
-    void db_service_initialize(CommonDeviceService common_device_service,
-                               SecureKeyOperation secure_key_operation,
-                               EventDispatch event_dispatcher);
+    // This fn is now in udl_uniffi_exports.rs and uses export attribute
+    // void db_service_initialize(CommonDeviceService common_device_service,SecureKeyOperation secure_key_operation,EventDispatch event_dispatcher);
  
     ApiResponse read_kdbx(FileArgs file_args, string json_args);
     ApiResponse create_temp_kdbx(FileArgs file_args, string json_args);

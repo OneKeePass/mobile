@@ -75,7 +75,7 @@ pub(crate) fn copy_files_to_app_group_on_save_or_read(db_key: &str) {
 
 /////////////////////////////////////////////
 
-fn temp_delete_old_af_files() {
+fn _temp_delete_old_af_files() {
     let Some(app_group_home_dir) = &AppState::shared().app_group_home_dir else {
         return;
     };
@@ -105,7 +105,7 @@ fn app_extension_root() -> OkpResult<PathBuf> {
         ));
     };
 
-    temp_delete_old_af_files(); // Need to be removed
+    //temp_delete_old_af_files(); // Need to be removed
 
     let full_path_dir = Path::new(&app_group_home_dir).join("okp");
     Ok(full_path_dir.to_path_buf())

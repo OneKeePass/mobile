@@ -10,7 +10,9 @@
                      rnp-dialog-icon rnp-dialog-title rnp-divider rnp-modal rn-pressable
                      rnp-snackbar rnp-text rnp-text-input rnp-text-input-icon
                      tertiary-color]]
-            [onekeepass.mobile.translation :refer [lstr-bl lstr-dlg-text
+            [onekeepass.mobile.translation :refer [lstr-bl
+                                                   lstr-cv
+                                                   lstr-dlg-text
                                                    lstr-dlg-title
                                                    lstr-error-dlg-text
                                                    lstr-error-dlg-title lstr-l
@@ -83,7 +85,7 @@
                           :value new-tags-str
                           :onChangeText #(cmn-events/tags-dialog-update-new-tags-str %)
                           :right (r/as-element [rnp-text-input-icon {:icon const/ICON-PLUS :onPress cmn-events/tags-dialog-add-tags}])}]
-        [rnp-text {:style {:color @tertiary-color}} 
+        [rnp-text {:style {:color @tertiary-color}}
          (lstr-dlg-text 'allTagsAddHint)]]]]
      [rnp-dialog-actions
       [rnp-button {:mode "text" :onPress  (fn []
@@ -91,11 +93,32 @@
                                             (selected-tags-receiver-fn selected-tags)
                                             (cmn-events/tags-dialog-done))} (lstr-bl 'close)]]]))
 
+
+(defn select-field-label-extractor
+  "Default label extractor for the modal based selector"
+  [^js/RnModalDataItem d]
+  (.-label d))
+
+(defn select-field-tr-label-extractor
+  "Uses label found data item as translation key and gets the translated value
+   as label for the modal based selector 
+  "
+  [^js/RnModalDataItem d]
+  (lstr-cv (.-label d)))
+
+(defn select-field-tr-key-label-extractor
+  "Uses key found data item as translation key and gets the translated value
+   as label for the modal based selector 
+  "
+  [^js/RnModalDataItem d]
+  (lstr-cv (.-key d)))
+
 ;;; Uses react-native-modal-selector based selector
 ;; Refer https://github.com/peacechen/react-native-modal-selector#props for all supported props
 ;; that can be used with 'rnms-modal-selector'
 
-(defn select-field [{:keys [text-label options value on-change disabled] :or [disabled false]}]
+(defn select-field [{:keys [text-label options value on-change disabled label-extractor-fn]
+                     :or {label-extractor-fn select-field-label-extractor  disabled false}}]
   [rnms-modal-selector {;; data can also include additional custom keys which are passed to the onChange callback
                         ;; in addition to required ones - key, label
                         ;; For example uuid can also be passed
@@ -103,6 +126,8 @@
                         :optionContainerStyle {:background-color @(:background-color modal-selector-colors)}
                         :data options
                         :initValue value
+                        ;; Extracts the label to show
+                        :labelExtractor label-extractor-fn
                         ;;:selectedKey (get options value)
                         :disabled disabled
                         :selectedItemTextStyle {:color @(:selected-text-color modal-selector-colors) :fontWeight "bold"}
@@ -114,22 +139,22 @@
 ;; and no event is passed to rnms-modal-selector
 (defn select-field-view [{:keys [text-label options value on-change disabled pressable-on-press] :or [disabled false]}]
   [rn-pressable {:on-press (if-not (nil? pressable-on-press) pressable-on-press #()) #_#(println "Pressed value.. " value)}
-     [rnms-modal-selector {;; data can also include additional custom keys which are passed to the onChange callback
+   [rnms-modal-selector {;; data can also include additional custom keys which are passed to the onChange callback
                            ;; in addition to required ones - key, label
                            ;; For example uuid can also be passed
                            ;;:optionStyle {:background-color "red"}
-                           :optionContainerStyle {:background-color @(:background-color modal-selector-colors)}
-                           :data options
-                           :initValue value
+                         :optionContainerStyle {:background-color @(:background-color modal-selector-colors)}
+                         :data options
+                         :initValue value
                            ;;:selectedKey (get options value)
-                           :disabled disabled
+                         :disabled disabled
                            ;;:supportedOrientations (clj->js ["portrait" ])
-                           :selectedItemTextStyle {:color @(:selected-text-color modal-selector-colors) :fontWeight "bold"}
-                           :onChange on-change}
-      [rnp-text-input {:style {:width "100%"} :editable false :label text-label :value value}]]])
+                         :selectedItemTextStyle {:color @(:selected-text-color modal-selector-colors) :fontWeight "bold"}
+                         :onChange on-change}
+    [rnp-text-input {:style {:width "100%"} :editable false :label text-label :value value}]]])
 
 
-(defn confirm-dialog 
+(defn confirm-dialog
   "A Generic confirm dialog. It is expected all texts should have been translated by caller"
   [{:keys [dialog-show title confirm-text actions]}]
   [cust-dialog {:style {} :dismissable true :visible dialog-show}
@@ -156,7 +181,7 @@
            title
            confirm-text
            show-action-as-vertical
-           actions]}] 
+           actions]}]
   [cust-dialog {:style {} :dismissable true :visible dialog-show}
    [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1} (lstr-dlg-title title)]
    [rnp-dialog-content
@@ -187,10 +212,10 @@
   ([]
    [message-snackbar @(cmn-events/message-snackbar-data)]))
 
-(defn message-modal 
+(defn message-modal
   "Called to show the passed message (mostly translation key as symbol) temporarily while 
    background work is going on without any title"
-  [{:keys [dialog-show message]}] 
+  [{:keys [dialog-show message]}]
   [rnp-modal {:visible dialog-show
               :dismissable false
               ;;:onDismiss #() 

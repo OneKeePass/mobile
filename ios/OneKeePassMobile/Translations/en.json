@@ -36,19 +36,25 @@
         "general": "General",
         "groups": "Groups",
         "groupOrCategory": "Group/Category",
+        "host":"Host",
         "importedKeyFiles": "Imported Key Files",
         "kdf": "Key Derivation Function",
         "keyFile": "Key File",
         "keyFileName": "Key File Name",
         "language": "Language",
         "light": "Light",
+        "logonType": "Logon type",
         "masterPassword": "Master Password",
         "memoryUsage": "Memory Usage",
         "name": "Name",
+        "newConnection": "New Connection",
         "noResult": "No result",
         "notes": "Notes",
         "oneTimePasswordTotp": "One-Time Password(TOTP)",
         "parallelism": "Parallelism",
+        "password": "Password",
+        "port":"Port",
+        "privateKey":"Private Key",
         "privacyPolicy": "Privacy Policy",
         "protected": "Protected",
         "search": "Search",
@@ -63,7 +69,9 @@
         "tags": "Tags",
         "theme": "Theme",
         "title": "Title",
-        "transformRounds": "Transform Rounds"
+        "transformRounds": "Transform Rounds",
+        "user": "User",
+        "userName": "User Name"
     },
     "entryTypeTitles": {
         "bankAccount": "Bank Account",
@@ -254,7 +262,9 @@
         "privacyPolicy": "Privacy Policy",
         "scanQRcode": "Scan QR Code",
         "search": "Search",
-        "settings": "Settings"
+        "settings": "Settings",
+        "sftp":"SFTP",
+        "webdav":"WebDAV"
     },
     "buttonLabels": {
         "additionalSection": "Additional section and custom fields",

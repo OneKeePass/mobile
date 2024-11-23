@@ -148,14 +148,19 @@ impl IosSupportService {
                 // Otherwise, Save error modal dialog will popup !
                 let bkp_file_opt = AppState::shared().get_last_backup_on_error(&db_key);
                 if let Some(mut bkp_file) = open_backup_file(bkp_file_opt) {
-                    db_service::calculate_db_file_checksum(&new_db_key, &mut bkp_file)?;
+                    db_service::calculate_and_set_db_file_checksum(&new_db_key, &mut bkp_file)?;
                 } else {
                     log::error!("Expected backup file is not found. 'Save as' should have this");
                     return Err(OkpError::DataError("Expected backup file is not found"));
                 }
 
                 // AppState::global().remove_recent_db_use_info(&db_key);
+
+                // Why is this call? 
+                // Possibly to remove all old references of the failed saving with 'db_key' as
+                // we have the newly saved db with 'new_db_key'
                 remove_app_files(&db_key);
+                
                 AppState::shared().add_recent_db_use_info(&new_db_key);
                 AppState::shared().remove_last_backup_name_on_error(&db_key);
 

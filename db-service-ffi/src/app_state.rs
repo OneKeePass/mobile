@@ -10,7 +10,7 @@ use std::{
 
 use onekeepass_core::db_service as kp_service;
 
-use crate::{udl_types::SecureKeyOperation, util};
+use crate::{udl_types::SecureKeyOperation, udl_uniffi_exports::{CommonDeviceServiceEx, SecureEnclaveCbService}, util};
 use crate::{
     udl_types::{CommonDeviceService, EventDispatch, FileInfo},
     OkpError, OkpResult,
@@ -26,11 +26,12 @@ pub struct AppState {
     // Not used ?
     temp_dir: String,
     // Dir where all db files backups are created 
-    pub backup_dir_path: PathBuf,
+    backup_dir_path: PathBuf,
 
     // We keep last 'n' number of backups for a db that was edited 
     backup_history_dir_path: PathBuf,
 
+    // Dir path where all remote storage related files are stored
     remote_storage_path:PathBuf,
     
     // The dir where an edited db file is stored if the remote connection is not avilable
@@ -40,17 +41,22 @@ pub struct AppState {
     pub export_data_dir_path: PathBuf,
     // Dir where all key files are copied for latter use 
     pub key_files_dir_path: PathBuf,
+    
+    // Used to keep the last backup file ref which is used for 'Save as' 
+    // when db save fails (as the orginal db content changed) 
+    last_backup_on_error: Mutex<HashMap<String, String>>,
+
+    preference: Mutex<Preference>,
+
     // Callback service implemented in Swift/Kotlin and called from rust side
     pub common_device_service: Box<dyn CommonDeviceService>,
     // Callback service implemented in Swift/Kotlin and called from rust side
     pub secure_key_operation: Box<dyn SecureKeyOperation>,
     // Callback service implemented in Swift/Kotlin and called from rust side
     pub event_dispatcher: Arc<dyn EventDispatch>,
-    // Used to keep the last backup file ref which is used for 'Save as' 
-    // when db save fails (as the orginal db content changed) 
-    last_backup_on_error: Mutex<HashMap<String, String>>,
 
-    preference: Mutex<Preference>,
+    common_device_service_ex: Arc<dyn CommonDeviceServiceEx>,
+    secure_enclave_cb_service: Arc<dyn SecureEnclaveCbService>,
 }
 
 static APP_STATE: OnceCell<AppState> = OnceCell::new();
@@ -80,6 +86,8 @@ impl AppState {
         common_device_service: Box<dyn CommonDeviceService>,
         secure_key_operation: Box<dyn SecureKeyOperation>,
         event_dispatcher: Arc<dyn EventDispatch>,
+        common_device_service_ex: Arc<dyn CommonDeviceServiceEx>,
+        secure_enclave_cb_service: Arc<dyn SecureEnclaveCbService>,
     ) {
         let app_dir = util::url_to_unix_file_name(&common_device_service.app_home_dir());
         let cache_dir = util::url_to_unix_file_name(&common_device_service.cache_dir());
@@ -116,8 +124,10 @@ impl AppState {
         let key_files_dir_path = util::create_sub_dir(&app_dir, "key_files");
         log::debug!("key_files_dir_path is {:?}", key_files_dir_path);
 
-        //
+        // All remote storage related dirs
+        // TODO: Need to use app group home for ios
         let remote_storage_path = util::create_sub_dir(&app_dir, "remote_storage");
+        util::create_sub_dir_path(&remote_storage_path, "sftp");
 
         let app_state = AppState {
             app_home_dir: app_dir.into(),
@@ -130,11 +140,15 @@ impl AppState {
             remote_storage_path,
             export_data_dir_path,
             key_files_dir_path,
+            last_backup_on_error: Mutex::new(HashMap::default()),
+            preference: Mutex::new(pref),
+
             common_device_service,
             secure_key_operation,
             event_dispatcher,
-            last_backup_on_error: Mutex::new(HashMap::default()),
-            preference: Mutex::new(pref),
+            common_device_service_ex,
+            secure_enclave_cb_service,
+
         };
 
         if APP_STATE.get().is_none() {
@@ -237,6 +251,9 @@ impl AppState {
         info
     }
 
+    pub fn backup_dir_path() -> &'static PathBuf {
+        &Self::shared().backup_dir_path
+    }
 
     pub fn backup_history_dir_path() -> &'static PathBuf {
         &Self::shared().backup_history_dir_path
@@ -246,8 +263,23 @@ impl AppState {
         &Self::shared().remote_storage_path
     }
 
+    // Root dir where all the private key files of one or more SFTP connections are stored
+    pub fn sftp_private_keys_path() -> PathBuf {
+        // Sub dir "sftp" should exist
+        let p = Self::shared().remote_storage_path.join("sftp");
+        p
+    }
+
     pub fn preference() -> &'static Mutex<Preference> {
         &Self::shared().preference
+    }
+
+    pub fn common_device_service_ex() -> &'static dyn CommonDeviceServiceEx {
+        Self::shared().common_device_service_ex.as_ref()
+    }
+
+    pub fn secure_enclave_cb_service() -> &'static dyn SecureEnclaveCbService {
+        Self::shared().secure_enclave_cb_service.as_ref()
     }
 
     // pub fn read_preference(&self) {

@@ -7,10 +7,17 @@
 
 use log::debug;
 use once_cell::sync::OnceCell;
+use onekeepass_core::error;
 use serde::Deserialize;
 use std::{collections::HashMap, sync::Arc};
 
-use crate::{secure_store, udl_types::ApiCallbackResult, OkpResult};
+use crate::{
+    app_state::AppState, commands::{self, CommandArg, ResponseJson}, event_dispatcher, file_util::KeyFileInfo, key_secure, parse_command_args_or_err, secure_store, udl_types::{
+        ApiCallbackResult, CommonDeviceService, EventDispatch, FileArgs, SecureKeyOperation,
+    }, OkpError, OkpResult
+};
+
+use crate::file_util::HandlePickedFile;
 
 /////////// All common uniffi exported types  ///////////
 
@@ -32,7 +39,11 @@ pub struct AppClipboardCopyData {
 #[uniffi::export(with_foreign)]
 pub trait SecureEnclaveCbService: Send + Sync {
     fn encrypt_bytes(&self, identifier: String, plain_data: Vec<u8>) -> ApiCallbackResult<Vec<u8>>;
-    fn decrypt_bytes(&self, identifier: String, encrypted_data: Vec<u8>) -> ApiCallbackResult<Vec<u8>>;
+    fn decrypt_bytes(
+        &self,
+        identifier: String,
+        encrypted_data: Vec<u8>,
+    ) -> ApiCallbackResult<Vec<u8>>;
     fn remove_key(&self, identifier: String) -> ApiCallbackResult<bool>;
 }
 
@@ -51,6 +62,7 @@ pub trait CommonDeviceServiceEx: Send + Sync {
 }
 
 // A singleton that holds Android or ios specific api callbacks services implemented in Kotlin/Swift
+/*
 pub struct ApiCallbacksStore {
     common_device_service_ex: Arc<dyn CommonDeviceServiceEx>,
     secure_enclave_cb_service: Arc<dyn SecureEnclaveCbService>,
@@ -74,6 +86,8 @@ impl ApiCallbacksStore {
 ///////////
 
 static API_CALLBACK_STORE: OnceCell<ApiCallbacksStore> = OnceCell::new();
+
+*/
 
 //IMPORTANT:
 // This fn should be called once in Kotlin/Swift during intialization of Native modules
@@ -105,27 +119,70 @@ static API_CALLBACK_STORE: OnceCell<ApiCallbacksStore> = OnceCell::new();
 //     debug!("common_device_service_ex_initialize is finished");
 // }
 
+// #[uniffi::export]
+// pub fn initialize_callback_services(
+//     common_device_service_ex: Arc<dyn CommonDeviceServiceEx>,
+//     secure_enclave_cb_service: Arc<dyn SecureEnclaveCbService>,
+// ) {
+//     let service = ApiCallbacksStore {
+//         common_device_service_ex,
+//         secure_enclave_cb_service,
+//     };
+
+//     if API_CALLBACK_STORE.get().is_none() {
+//         if API_CALLBACK_STORE.set(service).is_err() {
+//             log::error!(
+//                 "Global API_CALLBACK_STORE object is initialized already. This probably happened concurrently."
+//             );
+//         }
+//     }
+
+//     // This service uses 'secure_enclave_cb_service'
+//     secure_store::init_rs_connection_configs_store();
+//     log::info!("secure_store::init_rs_connection_configs_store call done after callback setup in initialize_callback_services");
+
+//     debug!("initialize_callback_services call is finished");
+// }
+
 #[uniffi::export]
-pub fn initialize_callback_services(
+pub(crate) fn db_service_initialize(
+    common_device_service: Box<dyn CommonDeviceService>,
+    secure_key_operation: Box<dyn SecureKeyOperation>,
+    event_dispatcher: Arc<dyn EventDispatch>,
     common_device_service_ex: Arc<dyn CommonDeviceServiceEx>,
     secure_enclave_cb_service: Arc<dyn SecureEnclaveCbService>,
 ) {
-    let service = ApiCallbacksStore {
+    AppState::setup(
+        common_device_service,
+        secure_key_operation,
+        event_dispatcher,
         common_device_service_ex,
         secure_enclave_cb_service,
-    };
+    );
+    log::info!(
+        "AppState with CommonDeviceService,secure_key_operation,event_dispatcher is initialized"
+    );
 
-    if API_CALLBACK_STORE.get().is_none() {
-        if API_CALLBACK_STORE.set(service).is_err() {
-            log::error!(
-                "Global API_CALLBACK_STORE object is initialized already. This probably happened concurrently."
-            );
-        }
-    }
+    key_secure::init_key_main_store();
+    log::info!("key_secure::init_key_main_store call done after AppState setup");
 
-    // This service uses 'secure_enclave_cb_service' 
+    onekeepass_core::async_service::start_runtime();
+    log::info!("onekeepass_core::async_service::start_runtime completed");
+
+    event_dispatcher::init_async_listeners();
+    log::info!("event_dispatcher::init_async_listeners call completed");
+
+    // This service uses 'secure_enclave_cb_service'
     secure_store::init_rs_connection_configs_store();
     log::info!("secure_store::init_rs_connection_configs_store call done after callback setup in initialize_callback_services");
+}
 
-    debug!("initialize_callback_services call is finished");
+// Called from Swift or Kotlin 
+#[uniffi::export]
+pub(crate) fn handle_picked_file(file_args: FileArgs, json_args: &str) -> ResponseJson {
+    let inner_fn = || -> OkpResult<KeyFileInfo> {
+        let (picked_file_handler,) = parse_command_args_or_err!(json_args,PickedFileHandlerArg {picked_file_handler});
+        picked_file_handler.execute(&file_args)
+    };
+    commands::result_json_str(inner_fn())
 }
