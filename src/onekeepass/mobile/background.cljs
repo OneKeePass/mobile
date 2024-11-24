@@ -312,8 +312,7 @@
   picked-file-handler is map that corresponds to the enum 'PickedFileHandler' (ffi layer)
   e.g {:handler \"SftpPrivateKeyFile\"}
   "
-  [full-file-name picked-file-handler dispatch-fn]
-  (println "handle-picked-file is called")
+  [full-file-name picked-file-handler dispatch-fn] 
   (call-api-async (fn [] (.handlePickedFile okp-db-service full-file-name
                                             (api-args->json
                                              {:picked-file-handler picked-file-handler}
@@ -853,6 +852,6 @@
 
   (invoke-api "clean_export_data_dir" {} #(println %))
 
-  (invoke-api  "list_backup_files" {} #(println %))
+  ;;(invoke-api  "list_backup_files" {} #(println %))
 
   (invoke-api  "list_bookmark_files" {} #(println %)))

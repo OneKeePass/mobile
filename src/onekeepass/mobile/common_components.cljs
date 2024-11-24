@@ -117,12 +117,14 @@
 ;; Refer https://github.com/peacechen/react-native-modal-selector#props for all supported props
 ;; that can be used with 'rnms-modal-selector'
 
-(defn select-field [{:keys [text-label options value on-change disabled label-extractor-fn]
-                     :or {label-extractor-fn select-field-label-extractor  disabled false}}]
+(defn select-field [{:keys [text-label options value on-change disabled label-extractor-fn text-input-style]
+                     :or {label-extractor-fn select-field-label-extractor
+                          disabled false
+                          text-input-style {}}}]
   [rnms-modal-selector {;; data can also include additional custom keys which are passed to the onChange callback
                         ;; in addition to required ones - key, label
                         ;; For example uuid can also be passed
-                        ;;:optionStyle {:background-color "red"}
+                        ;; :optionStyle {:background-color "red"}
                         :optionContainerStyle {:background-color @(:background-color modal-selector-colors)}
                         :data options
                         :initValue value
@@ -132,7 +134,7 @@
                         :disabled disabled
                         :selectedItemTextStyle {:color @(:selected-text-color modal-selector-colors) :fontWeight "bold"}
                         :onChange on-change}
-   [rnp-text-input {:style {:width "100%"} :editable false :label text-label :value value}]])
+   [rnp-text-input {:style (merge {:width "100%"} text-input-style) :editable false :label text-label :value value}]])
 
 ;; Note:
 ;; As we wrap the rnms-modal-selector in Pressable component, all press events are handled by rn-pressable

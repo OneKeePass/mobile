@@ -83,6 +83,24 @@
 
 (def TR-KEY-AUTOFILL 'autoFill)
 
+
+
+;;;;;;;;;;  Variants for the enums used in enum dispatches in rust side ;;;;;;;;;;
+
+;; from enum PickedFileHandler from file_util module in db-service-ffi crate
+(def V-SFTP-PRIVATE-KEY-FILE "SftpPrivateKeyFile")
+
+;; tag used in the enum serialization/deserialization of PickedFileHandler
+(def PICKED-FILE-HANDLER-TAG :handler)
+
+
+;; from enum RemoteStorageOperationType
+(def V-SFTP "Sftp")
+(def V-WEBDAV "Webdav")
+;; tag used in the enum serialization/deserialization of RemoteStorageOperationType
+(def REMOTE-STORAGE-OPERATION-TYPE-TAG :type)
+
+
 ;;;;;;; Icon names ;;;;;
 
 ;; react-native-vector-icons is used to display the icons
