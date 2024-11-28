@@ -7,12 +7,13 @@
             [onekeepass.mobile.constants  :refer [AUTOFILL_SETTINGS_PAGE_ID
                                                   CAMERA_SCANNER_PAGE_ID
                                                   RS_CONNECTION_CONFIG_PAGE_ID
-                                                  RS_CONNECTIONS_LIST_PAGE_ID]]
+                                                  RS_CONNECTIONS_LIST_PAGE_ID
+                                                  RS_FILES_FOLDERS_PAGE_ID]]
             [onekeepass.mobile.entry-category :refer [entry-category-content]]
             [onekeepass.mobile.entry-form :as entry-form]
             [onekeepass.mobile.entry-history-list :as entry-history-list]
             [onekeepass.mobile.entry-list :as entry-list :refer [entry-list-content]]
-            [onekeepass.mobile.rs-configs :as remote-storage]
+            [onekeepass.mobile.rs-configs :as rs-configs]
             [onekeepass.mobile.rs-config-form :as rs-form]
             [onekeepass.mobile.events.app-settings :as as-events]
             [onekeepass.mobile.events.common :as cmn-events]
@@ -80,7 +81,7 @@
      (= page :key-file-form)
      (= page CAMERA_SCANNER_PAGE_ID)
      (= page :about)
-     (= page :privacy-policy) 
+     (= page :privacy-policy)
      (= page RS_CONNECTION_CONFIG_PAGE_ID)
      (= page RS_CONNECTIONS_LIST_PAGE_ID))
     (do
@@ -217,7 +218,7 @@
                                  (r/as-element [settings/appbar-title page])
 
                                  (= page RS_CONNECTIONS_LIST_PAGE_ID)
-                                 (r/as-element [remote-storage/appbar-title])
+                                 (r/as-element [rs-configs/appbar-title])
 
                                  ;;TODO 
                                  ;; Need to add translation of titles for Entry types and General cat types
@@ -252,8 +253,7 @@
         (= page AUTOFILL_SETTINGS_PAGE_ID)
         (= page :key-file-form)
         (= page CAMERA_SCANNER_PAGE_ID)
-        (= page RS_CONNECTION_CONFIG_PAGE_ID)
-        )
+        (= page RS_CONNECTION_CONFIG_PAGE_ID))
     [positioned-title :title title]
 
     (= page :entry-list)
@@ -273,7 +273,7 @@
      (= page RS_CONNECTIONS_LIST_PAGE_ID))
     [positioned-title :page page]))
 
-(defn appbar-header-content [page-info] 
+(defn appbar-header-content [page-info]
   (let [{:keys [page]} page-info]
 
     (reset! current-page-info page-info)
@@ -306,7 +306,7 @@
 
    ;; Title component 
      (appbar-title page-info) ;; [appbar-titlet page-info] did not work. Why?
-     
+
    ;; The right side action icons component (dots icon, search icon .. ) and are shown for certain pages only
      (when (or
             (= page :home)
@@ -332,7 +332,7 @@
 
 (defn appbar-body-content
   "The page body content based on the page info set"
-  [{:keys [page]}] 
+  [{:keys [page]}]
   (cond
 
     (= page :home)
@@ -388,8 +388,8 @@
     (scan-otp-qr/content)
 
     (= page RS_CONNECTIONS_LIST_PAGE_ID)
-    [remote-storage/remote-connections-list-page-content]
-    
+    [rs-configs/remote-connections-list-page-content]
+
     (= page RS_CONNECTION_CONFIG_PAGE_ID)
     [rs-form/connection-config-form]
 

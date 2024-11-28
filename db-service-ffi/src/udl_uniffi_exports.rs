@@ -12,7 +12,7 @@ use serde::Deserialize;
 use std::{collections::HashMap, sync::Arc};
 
 use crate::{
-    app_state::AppState, commands::{self, CommandArg, ResponseJson}, event_dispatcher, file_util::KeyFileInfo, key_secure, parse_command_args_or_err, secure_store, udl_types::{
+    app_state::AppState, callback_service_provider, commands::{self, CommandArg, ResponseJson}, event_dispatcher, file_util::KeyFileInfo, key_secure, parse_command_args_or_err, secure_store, udl_types::{
         ApiCallbackResult, CommonDeviceService, EventDispatch, FileArgs, SecureKeyOperation,
     }, OkpError, OkpResult
 };
@@ -175,6 +175,9 @@ pub(crate) fn db_service_initialize(
     // This service uses 'secure_enclave_cb_service'
     secure_store::init_rs_connection_configs_store();
     log::info!("secure_store::init_rs_connection_configs_store call done after callback setup in initialize_callback_services");
+
+    callback_service_provider::init_callback_service_provider();
+    log::info!("callback_service_provider::init_callback_service_provider call completed");
 }
 
 // Called from Swift or Kotlin 

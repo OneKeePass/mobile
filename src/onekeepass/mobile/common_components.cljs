@@ -3,7 +3,8 @@
             [onekeepass.mobile.events.common :as cmn-events]
             [onekeepass.mobile.rn-components
              :as rnc
-             :refer [cust-dialog message-modal-background-color
+             :refer [primary-container-color
+                     cust-dialog message-modal-background-color
                      modal-selector-colors on-background-color rn-scroll-view
                      rn-view rnms-modal-selector rnp-button rnp-chip
                      rnp-dialog rnp-dialog-actions rnp-dialog-content
@@ -93,6 +94,17 @@
                                             (selected-tags-receiver-fn selected-tags)
                                             (cmn-events/tags-dialog-done))} (lstr-bl 'close)]]]))
 
+(defn list-section-header [title]
+  [rn-view  {:style {:flexDirection "row"
+                     :width "100%"
+                     :backgroundColor @primary-container-color
+                     :justify-content "space-around"
+                     :margin-top 5
+                     :min-height 38}}
+   [rnp-text {:style {:alignSelf "center"
+                      :width "85%"
+                      :text-align "center"
+                      :padding-left 0} :variant "titleLarge"} title]])
 
 (defn select-field-label-extractor
   "Default label extractor for the modal based selector"
@@ -154,7 +166,6 @@
                          :selectedItemTextStyle {:color @(:selected-text-color modal-selector-colors) :fontWeight "bold"}
                          :onChange on-change}
     [rnp-text-input {:style {:width "100%"} :editable false :label text-label :value value}]]])
-
 
 (defn confirm-dialog
   "A Generic confirm dialog. It is expected all texts should have been translated by caller"

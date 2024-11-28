@@ -11,6 +11,7 @@
             [onekeepass.mobile.events.open-database :as opndb-events]
             [onekeepass.mobile.events.settings :as stgs-events]
             [onekeepass.mobile.events.dialogs :as dlg-events]
+            [onekeepass.mobile.events.remote-storage :as rs-events]
             [onekeepass.mobile.rn-components
              :as rnc
              :refer [cust-dialog cust-rnp-divider divider-color-1
@@ -48,9 +49,11 @@
                            (dlg-events/start-page-storage-selection-dialog-close))}
               {:label "sftp"
                :on-press (fn []
+                           (rs-events/remote-storage-type-selected :sftp)
                            (dlg-events/start-page-storage-selection-dialog-close))}
               {:label "webdav"
                :on-press (fn []
+                           (rs-events/remote-storage-type-selected :webdav)
                            (dlg-events/start-page-storage-selection-dialog-close))}
               {:label "cancel"
                :on-press dlg-events/start-page-storage-selection-dialog-close}]}))

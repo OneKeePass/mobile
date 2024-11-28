@@ -6,7 +6,7 @@
 (set! *warn-on-infer* true)
 
 
-(defn read-configs 
+(defn read-configs
   "This needs to be called onetime when the app UI launches. This loads the previously saved 
    remote storage connection configs info 
    "
@@ -18,7 +18,7 @@
 ;; The :type should is required and all other keys are optional
 ;; keys = [:type :connection-info :connection-id :parent-dir :sub-dir :file-name]
 
-(defn remote-storage-configs 
+(defn remote-storage-configs
   "The arg 'connect-request' is a map (type enum RemoteStorageOperationType) and has  
    a key :type with value 'Sftp' or 'Webdav'
    Gets all stored connection config info for Sftp or Webdav "
@@ -33,13 +33,19 @@
   [connect-request dispatch-fn]
   (invoke-api "rs_connect_and_retrieve_root_dir" {:rs-operation-type connect-request} dispatch-fn))
 
-(defn list-sub-dir 
+(defn list-sub-dir
   "The arg 'connect-request' is a map and has  a key :type with value 'Sftp' or 'Webdav'
-   The other keys are [:connection-id :parent-dir :sub-dir :file-name]
+   The other keys are [:connection-id :parent-dir :sub-dir]
   "
   [connect-request dispatch-fn]
+  (println "list-sub-dir connect-request " connect-request)
   (invoke-api "rs_list_sub_dir" {:rs-operation-type connect-request} dispatch-fn))
 
+(defn connect-by-id
+  "Creates a new connection if required using id after getting the config data from stored list
+  "
+  [connect-request dispatch-fn]
+  (invoke-api "rs_connect_by_id" {:rs-operation-type connect-request} dispatch-fn))
 
 
 (comment
@@ -55,13 +61,12 @@
 
   ;; enum RemoteStorageConnect
   (def cr {:type "Sftp" :connection-info ios-c})
-  
-  (def connect-request {:type "Sftp" :connection-info ios-c })
+
+  (def connect-request {:type "Sftp" :connection-info ios-c})
 
   (def adroid-c {:name "SftpTest1" :host "192.168.1.4" :port 2022 :private-key "/data/data/com.onekeepassmobile/files/sftp_id_rsa" :user-name "sf-user1" :password "Matrix.2" :start-dir "/"})
 
 
   (def wc {:connection-id UUID-DEFAULT :name "WebdavTest1", :root-url "https://192.168.1.4:10080/" :user-name "sf-user1" :password "ss" :allow-untrusted-cert true})
 
-  (def dp {:sftp-server-name "SftpTest1" :sftp-server-parent-dir "dav"})
-  )
+  (def dp {:sftp-server-name "SftpTest1" :sftp-server-parent-dir "dav"}))

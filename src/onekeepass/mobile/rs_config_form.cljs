@@ -56,8 +56,6 @@
                     :onChangeText #(rs-events/remote-storage-connection-form-data-update :sftp :password %)}]
    [error-text errors :password]])
 
-
-
 (defn sftp-connection-config-form []
   (let [{:keys [name
                 host

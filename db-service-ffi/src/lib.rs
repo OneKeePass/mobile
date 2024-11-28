@@ -9,6 +9,7 @@ mod ios;
 mod key_secure;
 mod secure_store;
 mod util;
+mod callback_service_provider;
 
 mod udl_functions;
 mod udl_types;

@@ -14,9 +14,11 @@
                      rnp-icon-button rnp-list-icon rnp-list-item rnp-menu
                      rnp-menu-item rnp-portal rnp-progress-bar rnp-text
                      rnp-text-input rnp-text-input-icon]]
+            [onekeepass.mobile.common-components :refer [list-section-header]]
             [onekeepass.mobile.translation :refer [lstr-bl lstr-l lstr-dlg-text
                                                    lstr-dlg-title lstr-ml]]
             [onekeepass.mobile.utils :as u]
+            
             [reagent.core :as r]))
 
 
@@ -41,7 +43,7 @@
                 :mode "text"
                 :onPress #()} "Add"]])
 
-(defn list-section-header [title]
+#_(defn list-section-header [title]
   [rn-view  {:style {:flexDirection "row"
                      :width "100%"
                      :backgroundColor @primary-container-color
@@ -55,13 +57,13 @@
 
 
 (defn row-item []
-  (fn [{:keys [connetion-name]} data]
+  (fn [{:keys [name]} data]
     (let [[icon-name color] [const/ICON-DATABASE-EYE @rnc/tertiary-color]]
       [rnp-list-item {:style {}
                       :onPress #()
                       :title (r/as-element
                               [rnp-text {:style {:color color}
-                                         :variant "titleMedium"} connetion-name])
+                                         :variant "titleMedium"} name])
                       :left (fn [_props]
                               (r/as-element
                                [rnp-list-icon {:style {:height 24}
@@ -97,9 +99,10 @@
 
 
 
-(defn remote-connections-list-page-content []
-  (println "In remote-connections-list-page-content")
-  (let [connections @(rs-events/remote-storage-connection-configs "sftp")]
+(defn remote-connections-list-page-content [] 
+  (let [selected-type-kw @(rs-events/remote-storage-current-rs-type)
+        connections @(rs-events/remote-storage-connection-configs selected-type-kw)]
+    (println "In remote-connections-list-page-content selected-type-kw" selected-type-kw "\n connections " connections )
     [rn-safe-area-view {:style {:flex 1 :background-color @rnc/page-background-color}}
      [rn-view {:style {:flex 1 :justify-content "center" :align-items "center" :margin-top "10%"}}
 

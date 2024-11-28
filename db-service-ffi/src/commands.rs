@@ -531,6 +531,12 @@ impl Commands {
                 })
             }
 
+            "rs_connect_by_id" => {
+                service_call_closure!(args,RemoteServerOperationArg {rs_operation_type} => move || {
+                    result_json_str(rs_operation_type.connect_by_id())
+                })
+            }
+
             "rs_remote_storage_configs" => {
                 service_call_closure!(args,RemoteServerOperationArg {rs_operation_type} => move || {
                     result_json_str(rs_operation_type.remote_storage_configs())
