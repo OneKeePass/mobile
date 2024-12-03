@@ -1,10 +1,15 @@
 (ns onekeepass.mobile.background-remote-server
   (:require
    [react-native :as rn]
+   [onekeepass.mobile.constants :as const]
    [onekeepass.mobile.background-common :refer [invoke-api]]))
 
 (set! *warn-on-infer* true)
 
+(def kw-type-to-enum-tag {:sftp const/V-SFTP :webdav const/V-WEBDAV})
+
+(defn as-rs-type [value]
+  (if (keyword? value) (value kw-type-to-enum-tag) value))
 
 (defn read-configs
   "This needs to be called onetime when the app UI launches. This loads the previously saved 
@@ -26,20 +31,41 @@
   (invoke-api "rs_remote_storage_configs" {:rs-operation-type connect-request}  dispatch-fn))
 
 (defn connect-and-retrieve-root-dir
-  "The arg 'connect-request' is a map (type enum RemoteStorageOperationType) and has  
+  "The backend 'rs-operation-type' is a map (type enum RemoteStorageOperationType) and has  
    a key :type with value 'Sftp' or 'Webdav' and other keys are [:connection-info]
    Connects to a Sftp or Webdav connection. Connection info fields from type 
    'SftpConnectionConfig' or 'WebdavConnectionConfig' are required "
-  [connect-request dispatch-fn]
-  (invoke-api "rs_connect_and_retrieve_root_dir" {:rs-operation-type connect-request} dispatch-fn))
+  [type connection-info dispatch-fn]
+  (invoke-api "rs_connect_and_retrieve_root_dir" {:rs-operation-type 
+                                                  {:type (as-rs-type type)
+                                                   :connection-info connection-info}} dispatch-fn))
+
+(defn connect-by-id-and-retrieve-root-dir
+  "The rs-operation-type is a map (type enum RemoteStorageOperationType) and has  
+   a key :type with value 'Sftp' or 'Webdav' and other key is [:connection-id]"
+  [type connection-id dispatch-fn] 
+  (invoke-api "rs_connect_by_id_and_retrieve_root_dir" {:rs-operation-type 
+                                                        {:type (as-rs-type type)
+                                                         :connection-id connection-id}} dispatch-fn))
 
 (defn list-sub-dir
-  "The arg 'connect-request' is a map and has  a key :type with value 'Sftp' or 'Webdav'
+  "The 'rs-operation-type' is a map and has  a key :type with value 'Sftp' or 'Webdav'
    The other keys are [:connection-id :parent-dir :sub-dir]
   "
+  [type connection-id parent-dir sub-dir dispatch-fn] 
+  (invoke-api "rs_list_sub_dir" {:rs-operation-type {:type (as-rs-type type)
+                                                     :connection-id connection-id
+                                                     :parent-dir parent-dir
+                                                     :sub-dir sub-dir}} dispatch-fn))
+
+;; This is mainly to load the content of root dir using the connection-id
+(defn list-dir
+  "The arg 'connect-request' is a map and has  a key :type with value 'Sftp' or 'Webdav'
+   The other keys are [:connection-id :parent-dir]
+  "
   [connect-request dispatch-fn]
-  (println "list-sub-dir connect-request " connect-request)
-  (invoke-api "rs_list_sub_dir" {:rs-operation-type connect-request} dispatch-fn))
+  (println "list-dir connect-request " connect-request)
+  (invoke-api "rs_list_dir" {:rs-operation-type connect-request} dispatch-fn))
 
 (defn connect-by-id
   "Creates a new connection if required using id after getting the config data from stored list

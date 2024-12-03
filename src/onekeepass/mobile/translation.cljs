@@ -148,7 +148,7 @@
 (defn lstr-pt
   "Adds 'pageTitles' prefix to the key and gets the translated text."
   [txt-key]
-  (lstr (str "pageTitles." txt-key)))
+  (lstr (str "pageTitles." (convert txt-key))))
 
 (defn lstr-entry-type-title
   "Adds 'entryTypeTitles' prefix to the key and gets the translated text."

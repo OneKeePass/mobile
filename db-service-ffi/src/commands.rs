@@ -531,6 +531,12 @@ impl Commands {
                 })
             }
 
+            "rs_connect_by_id_and_retrieve_root_dir" => {
+                service_call_closure!(args,RemoteServerOperationArg {rs_operation_type} => move || {
+                    result_json_str(rs_operation_type.connect_by_id_and_retrieve_root_dir())
+                })
+            }
+
             "rs_connect_by_id" => {
                 service_call_closure!(args,RemoteServerOperationArg {rs_operation_type} => move || {
                     result_json_str(rs_operation_type.connect_by_id())
@@ -546,6 +552,12 @@ impl Commands {
             "rs_list_sub_dir" => {
                 service_call_closure!(args,RemoteServerOperationArg {rs_operation_type} => move || {
                     result_json_str(rs_operation_type.list_sub_dir())
+                })
+            }
+
+            "rs_list_dir" => {
+                service_call_closure!(args,RemoteServerOperationArg {rs_operation_type} => move || {
+                    result_json_str(rs_operation_type.list_dir())
                 })
             }
 

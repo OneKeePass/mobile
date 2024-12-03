@@ -15,6 +15,7 @@
             [onekeepass.mobile.entry-list :as entry-list :refer [entry-list-content]]
             [onekeepass.mobile.rs-configs :as rs-configs]
             [onekeepass.mobile.rs-config-form :as rs-form]
+            [onekeepass.mobile.rs-files-folders :as rs-files-folders]
             [onekeepass.mobile.events.app-settings :as as-events]
             [onekeepass.mobile.events.common :as cmn-events]
             [onekeepass.mobile.events.entry-form :as ef-events]
@@ -22,6 +23,7 @@
             [onekeepass.mobile.events.password-generator :as pg-events]
             [onekeepass.mobile.events.search :as search-events]
             [onekeepass.mobile.events.settings :as stgs-events]
+            [onekeepass.mobile.events.remote-storage :as rs-events]
             [onekeepass.mobile.group-form :as group-form]
             [onekeepass.mobile.icons-list :as icons-list]
             [onekeepass.mobile.key-file-form :as kf-form]
@@ -66,6 +68,10 @@
     (do
       (elist-events/entry-list-back-action)
       true)
+
+    (= page RS_FILES_FOLDERS_PAGE_ID)
+    (do (rs-events/remote-storage-listing-previous)
+        true)
 
     (or
      (= page :entry-category)
@@ -253,7 +259,8 @@
         (= page AUTOFILL_SETTINGS_PAGE_ID)
         (= page :key-file-form)
         (= page CAMERA_SCANNER_PAGE_ID)
-        (= page RS_CONNECTION_CONFIG_PAGE_ID))
+        (= page RS_CONNECTION_CONFIG_PAGE_ID)
+        (= page RS_FILES_FOLDERS_PAGE_ID))
     [positioned-title :title title]
 
     (= page :entry-list)
@@ -287,6 +294,10 @@
        [rnp-appbar-back-action {:style {}
                                 :color @background-color
                                 :onPress (fn [] (elist-events/entry-list-back-action))}]
+
+       (= page RS_FILES_FOLDERS_PAGE_ID)
+       [rnp-appbar-back-action {:color @background-color
+                                :onPress rs-events/remote-storage-listing-previous}]
 
        (or
         (= page :about)
@@ -392,6 +403,9 @@
 
     (= page RS_CONNECTION_CONFIG_PAGE_ID)
     [rs-form/connection-config-form]
+    
+    (= page RS_FILES_FOLDERS_PAGE_ID)
+    [rs-files-folders/dir-entries-content]
 
     ;; For now, this page is shown after loading the newly selected language translation
     ;; Other attempts to refresh the app settings page itself did not work

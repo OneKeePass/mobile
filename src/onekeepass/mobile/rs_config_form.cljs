@@ -172,7 +172,7 @@
           [rnp-helper-text {:type "error" :visible true} (:parallelism errors)])]]))
 
 (defn main-content []
-  (let [kw-type @(rs-events/remote-storage-current-form-type)]
+  (let [kw-type @(rs-events/remote-storage-current-rs-type)]
     (if (= :sftp kw-type)
       [sftp-connection-config-form]
       [webdav-connection-config-form])))

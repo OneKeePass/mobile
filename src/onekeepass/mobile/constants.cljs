@@ -118,6 +118,7 @@
 (def ICON-DATABASE-REMOVE "database-remove")
 (def ICON-DATABASE-OFF "database-off")
 (def ICON-DATABASE-OFF-OUTLINE "database-off-outline")
+(def ICON-DATABASE-ARROW-LEFT  "database-arrow-left")
 
 (def ICON-COG "cog")
 (def ICON-COG-OUTLINE "cog-outline")
@@ -134,7 +135,9 @@
 (def ICON-PLUS  "plus")
 
 (def ICON-FILE  "file")
+(def ICON-FILE-OUTLINE "file-outline")
 (def ICON-FOLDER "folder")
+(def ICON-FOLDER-OUTLINE "folder-outline")
 
 (def ICON-PDF "file-pdf-box")
 (def ICON-FILE-PNG  "file-png-box")

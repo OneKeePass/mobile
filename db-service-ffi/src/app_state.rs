@@ -10,7 +10,11 @@ use std::{
 
 use onekeepass_core::db_service as kp_service;
 
-use crate::{udl_types::SecureKeyOperation, udl_uniffi_exports::{CommonDeviceServiceEx, SecureEnclaveCbService}, util};
+use crate::{
+    udl_types::SecureKeyOperation,
+    udl_uniffi_exports::{CommonDeviceServiceEx, SecureEnclaveCbService},
+    util,
+};
 use crate::{
     udl_types::{CommonDeviceService, EventDispatch, FileInfo},
     OkpError, OkpResult,
@@ -21,29 +25,29 @@ pub struct AppState {
     pub app_home_dir: String,
     // iOS specific
     pub app_group_home_dir: Option<String>,
-    // Android specific use (in save_attachment_as_temp_file) ? 
+    // Android specific use (in save_attachment_as_temp_file) ?
     pub cache_dir: String,
     // Not used ?
     temp_dir: String,
-    // Dir where all db files backups are created 
+    // Dir where all db files backups are created
     backup_dir_path: PathBuf,
 
-    // We keep last 'n' number of backups for a db that was edited 
+    // We keep last 'n' number of backups for a db that was edited
     backup_history_dir_path: PathBuf,
 
     // Dir path where all remote storage related files are stored
-    remote_storage_path:PathBuf,
-    
+    remote_storage_path: PathBuf,
+
     // The dir where an edited db file is stored if the remote connection is not avilable
     // pub local_db_dir_path: PathBuf,
 
     // Dir path where db file for export is created and used in export calls
     pub export_data_dir_path: PathBuf,
-    // Dir where all key files are copied for latter use 
+    // Dir where all key files are copied for latter use
     pub key_files_dir_path: PathBuf,
-    
-    // Used to keep the last backup file ref which is used for 'Save as' 
-    // when db save fails (as the orginal db content changed) 
+
+    // Used to keep the last backup file ref which is used for 'Save as'
+    // when db save fails (as the orginal db content changed)
     last_backup_on_error: Mutex<HashMap<String, String>>,
 
     preference: Mutex<Preference>,
@@ -62,10 +66,10 @@ pub struct AppState {
 static APP_STATE: OnceCell<AppState> = OnceCell::new();
 
 // iOS specific idea to move all internal dirs and files from the current app_home dir to app_group home dir
-// Also see comments in Swift impl 'CommonDeviceServiceImpl appHoemDir' 
-fn _temp_move_documents_to_okp_app_dir(app_dir:&str,app_group_dir:&Option<String>) {
+// Also see comments in Swift impl 'CommonDeviceServiceImpl appHoemDir'
+fn _temp_move_documents_to_okp_app_dir(app_dir: &str, app_group_dir: &Option<String>) {
     // Check if there is the sub dir 'okp_app'  under app_group_dir
-    // If the dir is available then, app_group_dir/okp_app is already created 
+    // If the dir is available then, app_group_dir/okp_app is already created
     // Return app_dir,app_group_dir where app_dir = app_group_dir
 
     // If not, create app_group_dir/okp_app, then move app_dir/[bookmarks,backups,key_files,preference.json] to
@@ -102,7 +106,7 @@ impl AppState {
 
         debug!(
             "app_dir {}, cache_dir {}, temp_dir {}, app_group_home_dir {:?}",
-            &app_dir, &cache_dir, &temp_dir,&app_group_home_dir
+            &app_dir, &cache_dir, &temp_dir, &app_group_home_dir
         );
 
         let pref = Preference::read(&app_dir);
@@ -148,7 +152,6 @@ impl AppState {
             event_dispatcher,
             common_device_service_ex,
             secure_enclave_cb_service,
-
         };
 
         if APP_STATE.get().is_none() {
@@ -233,7 +236,7 @@ impl AppState {
         store_pref.update(preference_data);
     }
 
-    // Called to get the file name from the platform specific full file uri passed as arg 'full_file_name_uri' 
+    // Called to get the file name from the platform specific full file uri passed as arg 'full_file_name_uri'
     // The uri may start with file: or content:
     pub fn uri_to_file_name(&self, full_file_name_uri: &str) -> String {
         // We use platform specific callback fn to get the file name
@@ -261,6 +264,10 @@ impl AppState {
 
     pub fn remote_storage_path() -> &'static PathBuf {
         &Self::shared().remote_storage_path
+    }
+
+    pub fn temp_dir_path() -> PathBuf {
+        PathBuf::from(&Self::shared().temp_dir)
     }
 
     // Root dir where all the private key files of one or more SFTP connections are stored

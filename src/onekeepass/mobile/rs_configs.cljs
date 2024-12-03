@@ -23,7 +23,6 @@
 
 
 (defn appbar-title [] 
-  (println "RS appbar-title called")
   [rn-view {:flexDirection "row"
             :style {:alignItems "center"
                     :justify-content "space-between"}}
@@ -32,8 +31,8 @@
                 :mode "text"
                 :onPress cmn-events/to-previous-page} "Cancel"]
    [rnp-text {:style {:color @appbar-text-color
-                      :max-width 100
-                      :margin-right 20 :margin-left 20}
+                      :max-width 200
+                      :margin-right 10 :margin-left 10}
               :ellipsizeMode "tail"
               :numberOfLines 1
               :variant page-title-text-variant} "Select Connection"]
@@ -41,26 +40,15 @@
                 :textColor @appbar-text-color
 
                 :mode "text"
-                :onPress #()} "Add"]])
-
-#_(defn list-section-header [title]
-  [rn-view  {:style {:flexDirection "row"
-                     :width "100%"
-                     :backgroundColor @primary-container-color
-                     :justify-content "space-around"
-                     :margin-top 5
-                     :min-height 38}}
-   [rnp-text {:style {:alignSelf "center"
-                      :width "85%"
-                      :text-align "center"
-                      :padding-left 0} :variant "titleLarge"} title]])
+                :onPress rs-events/remote-storage-rs-type-new-form-page-show} "Add"]])
 
 
 (defn row-item []
-  (fn [{:keys [name]} data]
-    (let [[icon-name color] [const/ICON-DATABASE-EYE @rnc/tertiary-color]]
+  (fn [{:keys [name connection-id]} data]
+    (let [selected-type-kw @(rs-events/remote-storage-current-rs-type)
+          [icon-name color] [const/ICON-DATABASE-ARROW-LEFT @rnc/tertiary-color]]
       [rnp-list-item {:style {}
-                      :onPress #()
+                      :onPress (fn [] (rs-events/connect-by-id-and-retrieve-root-dir selected-type-kw connection-id ) )
                       :title (r/as-element
                               [rnp-text {:style {:color color}
                                          :variant "titleMedium"} name])
@@ -83,7 +71,7 @@
     (let [sections  [{:title (lstr-l "databases")
                       :key "Databases"
                       ;; Connetions info forms the data for this list
-                      :data connections}]]
+                      :data (if (nil? connections) [] connections)}]] 
       [rn-section-list
        {:style {}
         :sections (clj->js sections)
@@ -102,7 +90,7 @@
 (defn remote-connections-list-page-content [] 
   (let [selected-type-kw @(rs-events/remote-storage-current-rs-type)
         connections @(rs-events/remote-storage-connection-configs selected-type-kw)]
-    (println "In remote-connections-list-page-content selected-type-kw" selected-type-kw "\n connections " connections )
+    #_(println "In remote-connections-list-page-content selected-type-kw" selected-type-kw "\n connections " connections )
     [rn-safe-area-view {:style {:flex 1 :background-color @rnc/page-background-color}}
      [rn-view {:style {:flex 1 :justify-content "center" :align-items "center" :margin-top "10%"}}
 
