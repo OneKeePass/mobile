@@ -563,6 +563,12 @@ impl Commands {
 
             "rs_read_configs" => result_json_str(read_configs()),
 
+            "rs_delete_config" => {
+                service_call_closure!(args,RemoteServerOperationArg {rs_operation_type} => move || {
+                    result_json_str(rs_operation_type.delete_config())
+                })
+            }
+
             //// 
 
             "test_call" => Self::test_call(&args),

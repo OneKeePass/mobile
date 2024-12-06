@@ -174,7 +174,8 @@
            [:dispatch [:common/error-box-show "File Pick Error" error]])]}))
 
 ;; TODO: Need to initiate loading progress indication
-;; :open-database should have valid values by this time as user has picked a database and entered credentials to open
+;; :open-database should have valid values by this time as user has picked a database and entered all valid 
+;; credentials to open the db
 (reg-event-fx
  :open-database-read-db-file
  (fn [{:keys [db]} [_event-id]]

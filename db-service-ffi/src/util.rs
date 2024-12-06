@@ -358,8 +358,6 @@ pub fn is_dir_empty<P: AsRef<Path>>(parent_dir: P) -> bool {
     cnt == 0
 }
 
-
-
 /*
 // Returns the full path of the backup file name
 pub fn generate_backup_history_file_name(

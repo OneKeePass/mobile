@@ -568,6 +568,16 @@
          pages-stack (if (= (:page page-data) page) pages-stack  (conj pages-stack page-info))]
      (assoc-in db [:pages-stack] pages-stack))))
 
+;; Replaces the previous page with the next page 
+(reg-event-fx
+ :common/replace-previous-page
+ (fn [{:keys [db]} [_event-id page title]]
+   (let [pages-stack (get-in db [:pages-stack])
+         rest-page-data (rest pages-stack)
+         page-info {:page page :title title}
+         pages-stack (conj rest-page-data page-info)]
+     {:db (assoc-in db [:pages-stack] pages-stack)})))
+
 ;; Called when user navigates to the previous page
 (reg-event-db
  :common/previous-page
@@ -948,21 +958,20 @@
       (<! (timeout @clipboard-session-timeout))
       (when @field-in-clip (bg/write-string-to-clipboard nil)))))
 
-(defn write-string-to-clipboard 
+(defn write-string-to-clipboard
   "Calls the backend api to copy the passsed field value to the ios or android clipboard"
   [{:keys [field-name value protected]}]
   ;;(println "write-string-to-clipboard called field-name value... " field-name value)
   #_(bg/write-string-to-clipboard value)
   #_(clear-clipboard protected)
   ;;clipboard-session-timeout is in milliseconds
-  (let [cb-timeout_secs (if-not (= @clipboard-session-timeout -1) (/ @clipboard-session-timeout 1000) 0)] 
+  (let [cb-timeout_secs (if-not (= @clipboard-session-timeout -1) (/ @clipboard-session-timeout 1000) 0)]
     (bg/copy-to-clipboard {:field-name field-name
                            :field-value value
                            :protected protected
                            :cleanup-after cb-timeout_secs}
-                          #())
-    )
-  
+                          #()))
+
   (when field-name
     (dispatch [:common/message-snackbar-open (str field-name " " "copied")])))
 

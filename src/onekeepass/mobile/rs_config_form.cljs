@@ -36,15 +36,20 @@
                  :margin-left 5 :margin-right 5 :margin-bottom 5
                  :borderWidth .20 :borderRadius 4})
 
-
 (defn error-text [errors kw-key]
   (when-not (nil? (kw-key errors))
     [rnp-helper-text {:type "error" :visible true} (kw-key errors)]))
 
-(defn password-field [password password-visible tr-label errors]
+(defn password-field [password password-visible tr-label errors edit]
   [:<>
    [rnp-text-input {:style {}
                     :label tr-label
+                    :editable edit
+                    ;; Need to use defaultValue (iOS only) in addition to :value 
+                    ;; to show the password value when only in view mode
+                    ;; Not sure only for this happens for this. May be the way reagent component 
+                    ;; 'password-field' is used ?
+                    :defaultValue password
                     :vaue password
                     :secureTextEntry (not password-visible)
                     :right (r/as-element
@@ -57,23 +62,23 @@
    [error-text errors :password]])
 
 (defn sftp-connection-config-form []
-  (let [{:keys [name
+  (let [kw-type :sftp
+        {:keys [name
                 host
                 port
                 user-name
-                logon-type
                 password
-                password-visible
-                _private-key-full-file-name
-                private-key-file-name]} @(rs-events/remote-storage-connection-form-data :sftp)
-        errors @(rs-events/remote-storage-connection-form-errors :sftp)]
-
+                private-key-file-name
+                edit
+                logon-type
+                password-visible]} @(rs-events/remote-storage-connection-form-data kw-type)
+        errors @(rs-events/remote-storage-connection-form-errors kw-type)]
     [rn-view {:flex 1 :backgroundColor @page-background-color}  ;;
-     [form-header (lstr-l 'newConnection)]
+     [form-header (if edit (lstr-l 'newConnection) "View Connection")]
      [rn-view {:style form-style}
       [rnp-text-input {:style {}
                        :label (lstr-l 'name)
-
+                       :editable edit
                        ;; onChangeText should be a fn that accepts the changed text, when we use the prop :value 
                        ;; otherwise the label keeps on showing even if the value has non nil value. Then 
                        ;; we may use defaultValue prop which hides the label once data is entered
@@ -81,95 +86,137 @@
                        ;; Except few places, generally prop defaultValue is used 
                        ;; See the use of defaultValue and comment there
                        :value name
-                       :onChangeText #(rs-events/remote-storage-connection-form-data-update :sftp :name %)}]
+                       :onChangeText #(rs-events/remote-storage-connection-form-data-update kw-type :name %)}]
+      [error-text errors :name]
       [rnp-text-input {:style {}
                        :label (lstr-l 'host)
+                       :editable edit
                        ;; See fn passed in onChangeText which uses 'host' field directly instead of using % in fn
                        :value host
-                       :onChangeText #(rs-events/remote-storage-connection-form-data-update :sftp :host %)}]
+                       :onChangeText #(rs-events/remote-storage-connection-form-data-update kw-type :host %)}]
       [error-text errors :host]
 
       [rnp-text-input {:style {}
                        :label (lstr-l 'port)
                        :keyboardType "numeric"
+                       :disabled (not edit)
                        :value (str port)
-                       :onChangeText #(rs-events/remote-storage-connection-form-data-update :sftp :port (str->int %))}]
+                       :onChangeText #(rs-events/remote-storage-connection-form-data-update kw-type :port (str->int %))}]
       [error-text errors :port]
 
       [rnp-text-input {:style {}
                        :label (lstr-l 'userName)
+                       :editable edit
                        :value user-name
-                       :onChangeText #(rs-events/remote-storage-connection-form-data-update :sftp :user-name %)}]
+                       :onChangeText #(rs-events/remote-storage-connection-form-data-update kw-type :user-name %)}]
 
       [error-text errors :user-name]]
 
      [rn-view {:style form-style}
       [select-field {:text-label "Select Logon Type"
                      :options sftp-logon-types
+                     :disabled (not edit)
                      :value (lstr-cv logon-type)
                      :label-extractor-fn cc/select-field-tr-key-label-extractor
                      :text-input-style {:background-color @(:background-color modal-selector-colors)}
                      :on-change (fn [option]
-                                  (rs-events/remote-storage-connection-form-data-update :sftp :logon-type (.-key option)))}]]
+                                  (rs-events/remote-storage-connection-form-data-update kw-type :logon-type (.-key option)))}]]
 
      (if (= logon-type "password")
        [rn-view {:style form-style}
-        [password-field password password-visible (lstr-l 'password) errors]]
+        [password-field password password-visible (lstr-l 'password) errors edit]]
 
        [rn-view {:style form-style}
         [rnp-text-input {:style {}
                          :editable false
                          :label (lstr-l 'privateKey)
                          :value private-key-file-name
-                         :right (r/as-element [rnp-text-input-icon
-                                               {:icon ICON-FOLDER
-                                                :onPress #(rs-events/pick-private-key-file)}])
-                         :onPressIn #(rs-events/pick-private-key-file)}]
+                         :right (when edit
+                                  (r/as-element [rnp-text-input-icon
+                                                 {:icon ICON-FOLDER
+                                                  :onPress #(rs-events/pick-private-key-file)}]))
+                         :onPressIn (when edit
+                                      #(rs-events/pick-private-key-file))}]
 
         [error-text errors :private-key-file-name]
-        [password-field password password-visible "Private Key Passphrase" errors]])
+        [password-field password password-visible "Private Key Passphrase" errors edit]])
 
-     [rn-view {:style {:margin-top 20 :margin-bottom 20 :align-items "center"}}
-      [rnp-button {:style {:width "50%"}
-                     ;;:labelStyle {:fontWeight "bold"}
-                   :mode "contained"
-                   :on-press #(rs-events/remote-storage-new-config-connect-and-save :sftp)}
-       "Connect & Save"]]]))
+     (when edit
+       [rn-view {:style {:margin-top 20 :margin-bottom 20 :align-items "center"}}
+        [rnp-button {:style {:width "50%"}
+                            ;;:labelStyle {:fontWeight "bold"}
+                     :mode "contained"
+                     :on-press #(rs-events/remote-storage-new-config-connect-and-save kw-type)}
+         "Connect & Save"]])]))
 
 (defn webdav-connection-config-form []
-  (let [{:keys [name
+  (let [kw-type :webdav
+        {:keys [name
                 root-url
                 user-name
-                password]} @(rs-events/remote-storage-connection-form-data :webdav)]
-
+                password
+                password-visible
+                edit]} @(rs-events/remote-storage-connection-form-data kw-type)
+        errors @(rs-events/remote-storage-connection-form-errors kw-type)] 
     [rn-view {:flex 1 :backgroundColor @page-background-color}  ;;
-     [form-header (lstr-l 'connectionConfig)]
+     [form-header (if edit (lstr-l 'newConnection) "View Connection")]
      [rn-view {:style form-style}
       [rnp-text-input {:style {}
-                       :editable false
+                       :editable edit
+                       :autoCapitalize "none"
+                       :autoCorrect false
                        :label (lstr-l 'name)
-                       :value name}]
+                       :value name
+                       :onChangeText #(rs-events/remote-storage-connection-form-data-update kw-type :name %)
+                       }]
+      [error-text errors :name]
+      
       [rnp-text-input {:style {}
                        :label (lstr-l 'rootUrl)
+                       :editable edit
+                       :autoCapitalize "none"
+                       :autoCorrect false
                        :value root-url
-                       :onChangeText #()}]
-      #_(when-not (nil? (:iterations errors))
-          [rnp-helper-text {:type "error" :visible true} (:iterations errors)])
+                       :onChangeText #(rs-events/remote-storage-connection-form-data-update kw-type :root-url %)}]
+
+      [error-text errors :root-url]
 
       [rnp-text-input {:style {}
                        :label (lstr-l 'userName)
+                       :editable edit
+                       :autoCapitalize "none"
+                       :autoCorrect false
                        :value user-name
-                       :onChangeText #()}]
+                       :onChangeText #(rs-events/remote-storage-connection-form-data-update kw-type :user-name %)}]
 
+      [error-text errors :user-name]
+      
       [rnp-text-input {:style {}
                        :label (lstr-l 'password)
+                       :editable edit
+                       :autoCapitalize "none"
+                       :autoCorrect false
                        :value password
-                       :onChangeText #() #_#(stgs-events/db-settings-data-field-update [:kdf :Argon2 :memory] (str->int %))}]
-      #_(when-not (nil? (:memory errors))
-          [rnp-helper-text {:type "error" :visible true} (:memory errors)])
+                       :secureTextEntry (not password-visible)
+                       :right (r/as-element
+                               [rnp-text-input-icon
+                                {:icon  (if password-visible ICON-EYE ICON-EYE-OFF)
+                                 :onPress #(rs-events/remote-storage-connection-form-data-update
+                                            kw-type
+                                            :password-visible (not password-visible))}])
+                       :onChangeText #(rs-events/remote-storage-connection-form-data-update kw-type :password %)}]
+      [error-text errors :password]
+      ]
+     
+     
 
-      #_(when-not (nil? (:parallelism errors))
-          [rnp-helper-text {:type "error" :visible true} (:parallelism errors)])]]))
+     (when edit
+       [rn-view {:style {:margin-top 20 :margin-bottom 20 :align-items "center"}}
+        [rnp-button {:style {:width "50%"}
+                                 ;;:labelStyle {:fontWeight "bold"}
+                     :mode "contained"
+                     :on-press #(rs-events/remote-storage-new-config-connect-and-save kw-type)}
+         "Connect & Save"]])]))
 
 (defn main-content []
   (let [kw-type @(rs-events/remote-storage-current-rs-type)]

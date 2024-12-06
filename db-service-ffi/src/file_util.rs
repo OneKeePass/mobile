@@ -12,7 +12,6 @@ pub struct KeyFileInfo {
     pub file_size: Option<i64>,
 }
 
-
 pub(crate) struct OpenedFile {
     pub(crate) file: File,
     pub(crate) file_name: String,
@@ -105,11 +104,11 @@ impl HandlePickedFile for SftpPrivateKeyFile {
             ..
         } = OpenedFile::open_to_read(file_args)?;
 
-        let file_full_path = AppState::sftp_private_keys_path().join(&file_name);
+        // let file_full_path = AppState::sftp_private_keys_path().join(&file_name);
 
         // User picked key file is stored in the temp dir and later copied to the 
         // local sftp connection specific path after successful connection
-        // let file_full_path = AppState::temp_dir_path().join(&file_name);
+        let file_full_path = AppState::temp_dir_path().join(&file_name);
         
         debug!(
             "The file_full_path in SftpPrivateKeyFile is {:?}",

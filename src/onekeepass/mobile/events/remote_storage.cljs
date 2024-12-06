@@ -78,6 +78,14 @@
   []
   (dispatch [:remote-storage-listing-previous]))
 
+(defn remote-storage-delete-selected-config [connection-id]
+  (dispatch [:remote-storage-delete-selected-config connection-id]))
+
+(defn remote-storage-config-view
+  "Called to show the read only view of a remote storage config form"
+  [connection-id]
+  (dispatch [:remote-storage-config-view connection-id]))
+
 (defn remote-storage-connection-configs
   "All connection config list for the sftp or webdav"
   [kw-type]
@@ -113,42 +121,59 @@
                      :name nil
                      :host nil
                      :port nil
-                     :logon-type "password" ;; or "privateKey" from modal selector
                      :private-key-full-file-name nil
                      :private-key-file-name nil
                      :user-name nil
                      :password nil
+                     :start-dir nil
+                     ;; UI specific fields
+                     :logon-type "password" ;; or "privateKey" from modal selector
                      :password-visible false
-                     :start-dir nil})
+                     :edit true})
 
 (def webdav-init-data {:connection-id const/UUID-DEFAULT
                        :name nil
                        :root-url nil
                        :user-name nil
                        :password nil
-                       :allow-untrusted-cert false})
+                       :allow-untrusted-cert true
+
+                       ;; UI specific fields
+                       :password-visible false
+                       :edit true})
 
 ;; kw-type :sftp or :webdav
-(defn- init-type-data [app-db kw-type]
-  (println "init-type-data  kw-type is " kw-type)
+(defn- init-type-data [app-db kw-type] 
   (let [data (if (= kw-type :sftp) sftp-init-data webdav-init-data)]
     (-> app-db (assoc-in  [:remote-storage kw-type :form-data] data)
         (assoc-in  [:remote-storage kw-type :form-errors] {}))))
+
+(defn- set-type-form-data [app-db kw-type form-data]
+  (-> app-db (assoc-in  [:remote-storage kw-type :form-data] form-data)
+      (assoc-in  [:remote-storage kw-type :form-errors] {})))
 
 (defn- merge-data [db kw-type & {:as kws}]
   (let [data (get-in db [:remote-storage kw-type :form-data])
         data (merge data kws)]
     (assoc-in db [:remote-storage kw-type :form-data] data)))
 
+(defn- merge-type-form-data [kw-type {:keys [private-key-file-name] :as form-data} edit]
+  (if (= kw-type :sftp)
+    (merge form-data {:edit edit  :logon-type (if-not (nil? private-key-file-name) 
+                                                "privateKey" 
+                                                "password")})
+    (merge form-data {:edit edit})))
+
 (defn- validate-sftp-fields
   "Validates storage specific fields and returns errors map if any"
   [app-db]
-  (let [{:keys [host port user-name password private-key-file-name logon-type]} (get-in app-db [:remote-storage :sftp :form-data])
+  (let [{:keys [name host port user-name password private-key-file-name logon-type]} (get-in app-db [:remote-storage :sftp :form-data])
 
         ;;errors {} 
         ;;errors (merge errors (if (str/blank? host) {:host "Valid value is required"} {}))
 
         errors (cond-> {}
+                 (str/blank? name) (merge {:name "Valid value is required"}) 
                  (str/blank? host) (merge {:host "Valid value is required"})
                  (str/blank? port) (merge {:port "Valid value is required"})
                  (str/blank? user-name) (merge {:user-name "Valid value is required"})
@@ -157,10 +182,22 @@
 
     errors))
 
+(defn- validate-webdav-fields
+  "Validates storage specific fields and returns errors map if any"
+  [app-db]
+  (let [{:keys [name root-url user-name password]} (get-in app-db [:remote-storage :webdav :form-data]) 
+        errors (cond-> {}
+                 (str/blank? name) (merge {:name "Valid value is required"}) 
+                 (str/blank? root-url) (merge {:root-url "Valid value is required"}) 
+                 (str/blank? user-name) (merge {:user-name "Valid value is required"})
+                 (str/blank? password) (merge {:password "Valid value is required"}))]
+
+    errors))
+
 (defn- validate-fields [app-db kw-type]
   (condp = kw-type
     :sftp (validate-sftp-fields app-db)
-    :webdav #()))
+    :webdav (validate-webdav-fields app-db)))
 
 ;; Updates individual field of a form
 (reg-event-db
@@ -190,13 +227,25 @@
      {:db (-> db (init-type-data curr-kw-type))
       :fx [[:dispatch [:common/next-page const/RS_CONNECTION_CONFIG_PAGE_ID name]]]})))
 
+(reg-event-fx
+ :remote-storage-config-view
+ (fn [{:keys [db]} [_query-id connection-id]]
+   (let [curr-kw-type (get-current-rs-type db)
+         configs-v (get-in db [:remote-storage :configs curr-kw-type])
+         {:keys [] :as form-data} (first (filter (fn [m] (= (:connection-id m) connection-id)) configs-v))
+         form-data (merge-type-form-data curr-kw-type form-data false)  #_(merge form-data {:edit false :logon-type (if-not (nil? "") "privateKey" "password")})
+         name (kw-type-to-enum-tag curr-kw-type)]
+
+     {:db (-> db (set-type-form-data curr-kw-type form-data))
+      :fx [[:dispatch [:common/next-page const/RS_CONNECTION_CONFIG_PAGE_ID name]]]})))
+
 ;; Dispatched in bg/handle-picked-file after user picks the private key file and that file is 
 ;; copied to internal location. Only the file name is used in config
 ;; Sftp only
 (reg-event-fx
  :remote-storage-picked-private-key-file-handling-complete
- (fn [{:keys [db]} [_query-id  {:keys [file-name]}]]
-   {:db (-> db (merge-data :sftp :private-key-file-name file-name)
+ (fn [{:keys [db]} [_query-id  {:keys [full-file-name file-name]}]]
+   {:db (-> db (merge-data :sftp :private-key-file-name file-name :private-key-full-file-name full-file-name)
             ;; Need to remove any prior error msg
             (assoc-in [:remote-storage :sftp :form-errors :private-key-file-name] nil))}))
 
@@ -207,21 +256,32 @@
    (let [errors (validate-fields db kw-type)]
      (if (empty? errors)
        ;; No errors found and backend api is called
-       (let [connection-info (get-in db [:remote-storage kw-type :form-data])
-             ;;request {:type (kw-type-to-enum-tag kw-type) :connection_info data}
-             ]
-         {:fx [[:bg-rs-connect-and-retrieve-root-dir [kw-type connection-info]]]})
+       (let [connection-info (get-in db [:remote-storage kw-type :form-data])]
+         {:fx [[:dispatch [:common/message-modal-show nil "Connecting..."]]
+               [:bg-rs-connect-and-retrieve-root-dir [kw-type connection-info]]]})
        ;; Errors in data entry
        {:db (-> db (assoc-in [:remote-storage kw-type :form-errors] errors))}))))
 
 (reg-fx
  :bg-rs-connect-and-retrieve-root-dir
  (fn [[kw-type connection-info]]
-   (bg-rs/connect-and-retrieve-root-dir kw-type connection-info
-                                        (fn [api-response]
-                                          (when-let [connected-status (on-ok api-response)]
-                                            (dispatch [:remote-storage-dir-listing-loaded
-                                                       kw-type connected-status]))))))
+   (bg-rs/connect-and-retrieve-root-dir
+    kw-type connection-info
+    (fn [api-response]
+      (when-let [connected-status (on-ok api-response)]
+        (dispatch [:remote-storage-connect-save-complete kw-type connected-status]))))))
+
+
+(reg-event-fx
+ :remote-storage-connect-save-complete
+ (fn [{:keys [_db]} [_query-id kw-type _connected-status]]
+   ;; Returned 'connected-status' is not used. To support a proper navigation flow
+   ;; we remain on the connections page itself with updated new connections list
+   {:fx [;; Need to reload for newly added configs 
+         [:bg-rs-remote-storage-configs-for-type [kw-type]]
+         [:dispatch [:common/previous-page]]
+         [:dispatch [:common/message-modal-hide]]
+         [:dispatch [:common/message-snackbar-open "New config added"]]]}))
 
 ;; Appends to a vec (listings) where an item is a map ( struct ConnectStatus)
 (reg-event-fx
@@ -233,7 +293,6 @@
          listings (if (vector? listings) listings (vec listings))
          listings (conj listings connected-status)]
      {:db (-> db (assoc-in [:remote-storage kw-type :listings] listings))})))
-
 
 (reg-event-fx
  :remote-storage-connect-by-id-start
@@ -253,7 +312,7 @@
 
 (reg-event-fx
  :remote-storage-connect-by-id-complete
- (fn [{:keys [db]} [_query-id kw-type connected-status]]
+ (fn [{:keys [_db]} [_query-id kw-type connected-status]]
    {:fx [[:dispatch [:common/message-modal-hide]]
          [:dispatch [:remote-storage-dir-listing-loaded kw-type connected-status]]
          [:dispatch [:common/next-page const/RS_FILES_FOLDERS_PAGE_ID "Dir Entries"]]]}))
@@ -309,7 +368,21 @@
                                  (fn [api-response]
                                    (when-let [info (on-ok api-response)]
                                      (dispatch [:remote-storage-connection-configs-loaded info]))))))
+(reg-event-fx
+ :remote-storage-delete-selected-config
+ (fn [{:keys [db]} [_query-id connection-id]]
+   (let [kw-type (get-current-rs-type db)]
+     ;; Side effect call
+     (bg-rs/delete-config kw-type connection-id
+                          (fn [api-response]
+                            (when-not (on-error api-response)
+                              (dispatch [:remote-storage-delete-selected-config-complete kw-type]))))
+     {})))
 
+(reg-event-fx
+ :remote-storage-delete-selected-config-complete
+ (fn [{:keys [_db]} [_query-id kw-type]]
+   {:fx [[:bg-rs-remote-storage-configs-for-type [kw-type]]]}))
 
 ;; Gets the last dir entries data to show on the page
 (reg-sub
