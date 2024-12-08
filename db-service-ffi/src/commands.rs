@@ -561,6 +561,8 @@ impl Commands {
                 })
             }
 
+            "rs_read_kdbx" => crate::remote_storage::rs_read_kdbx(&args),
+
             "rs_read_configs" => result_json_str(read_configs()),
 
             "rs_delete_config" => {

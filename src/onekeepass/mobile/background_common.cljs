@@ -7,13 +7,12 @@
    [cljs.core.async :refer [go]]
    [cljs.core.async.interop :refer-macros [<p!]]
    [onekeepass.mobile.utils :as u :refer [contains-val?]]
+   [onekeepass.mobile.constants :as const]
+   [clojure.string :as str] 
    [camel-snake-kebab.extras :as cske]
    [camel-snake-kebab.core :as csk]))
 
-
-
 (set! *warn-on-infer* true)
-
 
 (def okp-db-service ^js/OkpDbService (.-OkpDbService rn/NativeModules))
 
@@ -25,7 +24,8 @@
 
 (def okp-events ^js/OkpEvents (.-OkpEvents rn/NativeModules))
 
-
+(defn is-rs-type [db-key]
+  (or (str/starts-with? db-key const/V-SFTP) (str/starts-with? db-key const/V-WEBDAV)))
 
 (defn- transform-resquest-args-excluding-keys
   "All keys in the incoming args map from UI will be transformed recursively except those that 

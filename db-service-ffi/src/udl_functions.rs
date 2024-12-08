@@ -284,6 +284,7 @@ pub(crate) fn save_kdbx(file_args: FileArgs, overwrite: bool) -> ApiResponse {
                     // Only for iOS.
                     if cfg!(target_os = "ios") && !overwrite {
                         // writer is from the existing db file
+                        // An error indicates the content is changed
                         if let Err(e) = db_service::verify_db_file_checksum(&db_key, &mut writer) {
                             log::error!("Database checksum check failed");
                             // backup_file_name should have a valid back file name

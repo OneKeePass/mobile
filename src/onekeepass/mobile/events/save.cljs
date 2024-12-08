@@ -37,7 +37,7 @@
                                        :error-title error-title}]) ;;title error-type message
 
     ;; This happens when the file is removed or cloud service changes the reference after 
-    ;; syncing from remote source. This invalidates the reference help by okp
+    ;; syncing from remote source. This invalidates the reference held by the app internally
     (= "FILE_NOT_FOUND" (:code error))
     (dispatch [:save-error-modal-show {:error-type :file-not-found
                                        :message (:message error)

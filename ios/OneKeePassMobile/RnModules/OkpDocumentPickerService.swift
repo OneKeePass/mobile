@@ -209,7 +209,7 @@ class OkpDocumentPickerService: NSObject {
     }
   }
   
-  // Called when user opts to use 'Save as' when there unsolvable save time error
+  // Called when user opts to use 'Save as' when there is an unsolvable save time error
   // fileName is the suggested kdbx file name to use and user can change the name in the document picker
   @objc
   func pickOnSaveErrorSaveAs(_ fileName: String,existingFullFileNameUri: String,

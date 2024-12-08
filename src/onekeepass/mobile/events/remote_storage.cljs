@@ -13,6 +13,10 @@
 
 ;; We use (csk/->kebab-case-keyword type) if we want to get the kw from  enum tag 'type'
 
+(defn form-db-key [kw-type connection-id parent-dir file-name]
+  (let [file-path-part (if (not= parent-dir "/") (str parent-dir "/" file-name) (str parent-dir file-name))   ]
+    (str (kw-type-to-enum-tag kw-type) "-" connection-id "-" file-path-part)))
+
 (defn load-all-remote-connection-configs
   "Called one time during launch of the app to load previously stored configs"
   []

@@ -63,6 +63,11 @@
                                                      :parent-dir parent-dir
                                                      :sub-dir sub-dir}} dispatch-fn))
 
+(defn read-kdbx [db-file-name password key-file-name dispatch-fn]
+  (invoke-api "rs_read_kdbx"  {:db-file-name db-file-name
+                               :password  password
+                               :key-file-name key-file-name} dispatch-fn))
+
 ;; This is mainly to load the content of root dir using the connection-id
 #_(defn list-dir
     "The arg 'connect-request' is a map and has  a key :type with value 'Sftp' or 'Webdav'
@@ -85,9 +90,9 @@
     ;; daf114d0-a518-4e13-b75b-fbe893e69a9d 8bd81fe1-f786-46c3-b0e4-d215f8247a10
   ;; onekeepass.mobile.constants
   (def UUID-DEFAULT "00000000-0000-0000-0000-000000000000")
-  
+
   (in-ns 'onekeepass.mobile.background-remote-server)
-  
+
   (-> @re-frame.db/app-db :remote-storage keys)
 
   (def ios-c {:connection-id UUID-DEFAULT :name "SftpTest1" :host "192.168.1.4" :port 2022 :private-key "/Users/jeyasankar/mytemp/sftp_keys/sftp_id_rsa" :user-name "sf-user1" :password "Matrix.2" :start-dir "/"})
@@ -103,5 +108,4 @@
 
   (def wc {:connection-id UUID-DEFAULT :name "WebdavTest1", :root-url "https://192.168.1.4:10080/" :user-name "sf-user1" :password "ss" :allow-untrusted-cert true})
 
-  (def dp {:sftp-server-name "SftpTest1" :sftp-server-parent-dir "dav"})
-  )
+  (def dp {:sftp-server-name "SftpTest1" :sftp-server-parent-dir "dav"}))
