@@ -1,20 +1,23 @@
 (ns onekeepass.mobile.background
   "All backend api calls that are used across many events"
   (:require
-   [onekeepass.mobile.background-common :as bg-cmn :refer [api-args->json
-                                                           call-api-async
-                                                           invoke-api
-                                                           ios-autofill-invoke-api
-                                                           android-invoke-api]]
    [react-native :as rn]
    ["@react-native-clipboard/clipboard" :as rnc-clipboard]
    ["react-native-file-viewer" :as native-file-viewer]
    ["react-native-vision-camera" :as rn-vision-camera]
    [cljs.core.async :refer [go]]
    [cljs.core.async.interop :refer-macros [<p!]]
-   [onekeepass.mobile.utils :as u :refer [contains-val?]]
    [camel-snake-kebab.extras :as cske]
-   [camel-snake-kebab.core :as csk]))
+   [camel-snake-kebab.core :as csk]
+
+   [onekeepass.mobile.utils :as u :refer [contains-val?]]
+   [onekeepass.mobile.background-remote-server :as bg-rs]
+   [onekeepass.mobile.background-common :as bg-cmn :refer [api-args->json
+                                                           call-api-async
+                                                           invoke-api
+                                                           ios-autofill-invoke-api
+                                                           android-invoke-api
+                                                           is-rs-type]]))
 
 (set! *warn-on-infer* true)
 
@@ -312,14 +315,13 @@
   picked-file-handler is map that corresponds to the enum 'PickedFileHandler' (ffi layer)
   e.g {:handler \"SftpPrivateKeyFile\"}
   "
-  [full-file-name picked-file-handler dispatch-fn] 
+  [full-file-name picked-file-handler dispatch-fn]
   (call-api-async (fn [] (.handlePickedFile okp-db-service full-file-name
                                             (api-args->json
                                              {:picked-file-handler picked-file-handler}
                                              ;; Recursively converts all keys to 'snake_case'
                                              :convert-request true)))
                   dispatch-fn :error-transform true))
-
 
 (defn create-kdbx
   "Called with full file name uri that was picked by the user through the document picker 
@@ -347,16 +349,20 @@
                   dispatch-fn :error-transform false))
 
 (defn load-kdbx [db-file-name password key-file-name dispatch-fn]
-  (call-api-async (fn []
-                    (.readKdbx okp-db-service
-                               db-file-name
-                               (api-args->json {:db-file-name db-file-name :password password :key_file_name key-file-name}
-                                               :convert-request true)))
-                  dispatch-fn :error-transform true))
+  (if-not (is-rs-type db-file-name)
+    (call-api-async (fn []
+                      (.readKdbx okp-db-service
+                                 db-file-name
+                                 (api-args->json {:db-file-name db-file-name :password password :key_file_name key-file-name}
+                                                 :convert-request true)))
+                    dispatch-fn :error-transform true)
+    (bg-rs/read-kdbx db-file-name password key-file-name dispatch-fn)))
 
-(defn save-kdbx [full-file-name overwrite dispatch-fn]
-  ;; By default, we pass 'false' for the overwrite arg
-  (call-api-async (fn [] (.saveKdbx okp-db-service full-file-name overwrite)) dispatch-fn :error-transform true))
+(defn save-kdbx [full-file-name overwrite dispatch-fn] 
+  (if-not (is-rs-type full-file-name)
+    ;; By default, we pass 'false' for the overwrite arg
+    (call-api-async (fn [] (.saveKdbx okp-db-service full-file-name overwrite)) dispatch-fn :error-transform true)
+    (bg-rs/save-kdbx full-file-name overwrite dispatch-fn)))
 
 ;; Deprecate
 #_(defn categories-to-show [db-key dispatch-fn]

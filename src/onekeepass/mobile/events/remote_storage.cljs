@@ -14,7 +14,7 @@
 ;; We use (csk/->kebab-case-keyword type) if we want to get the kw from  enum tag 'type'
 
 (defn form-db-key [kw-type connection-id parent-dir file-name]
-  (let [file-path-part (if (not= parent-dir "/") (str parent-dir "/" file-name) (str parent-dir file-name))   ]
+  (let [file-path-part (if (not= parent-dir "/") (str parent-dir "/" file-name) (str parent-dir file-name))]
     (str (kw-type-to-enum-tag kw-type) "-" connection-id "-" file-path-part)))
 
 (defn load-all-remote-connection-configs
@@ -90,6 +90,9 @@
   [connection-id]
   (dispatch [:remote-storage-config-view connection-id]))
 
+(defn remote-storage-file-picked [connection-id parent-dir file-name]
+  (dispatch [:remote-storage-file-picked connection-id parent-dir file-name]))
+
 (defn remote-storage-connection-configs
   "All connection config list for the sftp or webdav"
   [kw-type]
@@ -116,6 +119,9 @@
   "
   []
   (subscribe [:remote-storage-listing-to-show]))
+
+(defn remote-storage-read-no-connection-confirm-dialog-data []
+  (subscribe [:remote-storage-read-no-connection-confirm-dialog-data]))
 
 
 (defn- get-current-rs-type [db]
@@ -147,7 +153,7 @@
                        :edit true})
 
 ;; kw-type :sftp or :webdav
-(defn- init-type-data [app-db kw-type] 
+(defn- init-type-data [app-db kw-type]
   (let [data (if (= kw-type :sftp) sftp-init-data webdav-init-data)]
     (-> app-db (assoc-in  [:remote-storage kw-type :form-data] data)
         (assoc-in  [:remote-storage kw-type :form-errors] {}))))
@@ -163,8 +169,8 @@
 
 (defn- merge-type-form-data [kw-type {:keys [private-key-file-name] :as form-data} edit]
   (if (= kw-type :sftp)
-    (merge form-data {:edit edit  :logon-type (if-not (nil? private-key-file-name) 
-                                                "privateKey" 
+    (merge form-data {:edit edit  :logon-type (if-not (nil? private-key-file-name)
+                                                "privateKey"
                                                 "password")})
     (merge form-data {:edit edit})))
 
@@ -177,7 +183,7 @@
         ;;errors (merge errors (if (str/blank? host) {:host "Valid value is required"} {}))
 
         errors (cond-> {}
-                 (str/blank? name) (merge {:name "Valid value is required"}) 
+                 (str/blank? name) (merge {:name "Valid value is required"})
                  (str/blank? host) (merge {:host "Valid value is required"})
                  (str/blank? port) (merge {:port "Valid value is required"})
                  (str/blank? user-name) (merge {:user-name "Valid value is required"})
@@ -189,10 +195,10 @@
 (defn- validate-webdav-fields
   "Validates storage specific fields and returns errors map if any"
   [app-db]
-  (let [{:keys [name root-url user-name password]} (get-in app-db [:remote-storage :webdav :form-data]) 
+  (let [{:keys [name root-url user-name password]} (get-in app-db [:remote-storage :webdav :form-data])
         errors (cond-> {}
-                 (str/blank? name) (merge {:name "Valid value is required"}) 
-                 (str/blank? root-url) (merge {:root-url "Valid value is required"}) 
+                 (str/blank? name) (merge {:name "Valid value is required"})
+                 (str/blank? root-url) (merge {:root-url "Valid value is required"})
                  (str/blank? user-name) (merge {:user-name "Valid value is required"})
                  (str/blank? password) (merge {:password "Valid value is required"}))]
 
@@ -340,6 +346,16 @@
                                       {:connection-id connection-id
                                        :dir-entries dir-entries}]))))))
 
+(reg-event-fx
+ :remote-storage-file-picked
+ (fn fn [{:keys [db]} [_query-id connection-id parent-dir file-name]]
+   (let [kw-type (get-current-rs-type db)
+         db-key-formed (form-db-key kw-type connection-id parent-dir file-name)]
+
+     (println " Db key formed ... " db-key-formed)
+     {:fx [[:dispatch [:open-database/database-file-picked {:file-name file-name
+                                                            :full-file-name-uri db-key-formed}]]]})))
+
 ;; Called when user presses the back button
 (reg-event-fx
  :remote-storage-listing-previous
@@ -387,6 +403,37 @@
  :remote-storage-delete-selected-config-complete
  (fn [{:keys [_db]} [_query-id kw-type]]
    {:fx [[:bg-rs-remote-storage-configs-for-type [kw-type]]]}))
+
+(reg-event-fx
+ :remote-storage/read-kdbx-on-no-connection
+ (fn [{:keys [db]} [_query-id open-db-data]]
+   {:db (-> db (assoc-in [:remote-storage :read-no-connection-confirm-dialog]
+                         {:open-db-data open-db-data
+                          :dialog-show true}))}))
+
+(defn remote-storage-read-kdbx-on-no-connection-confirm-dialog-continue []
+  (dispatch [:remote-storage-read-kdbx-on-no-connection-confirm-dialog-continue]))
+
+(reg-event-fx
+ :remote-storage-read-kdbx-on-no-connection-confirm-dialog-continue
+ (fn [{:keys [db]} [_query-id]]
+   (println "remote-storage-read-kdbx-on-no-connection-confirm-dialog-continue event called")
+   (let [a 1]
+     {:db (-> db (assoc-in [:remote-storage :read-no-connection-confirm-dialog] {:dialog-show false}) )}
+     )
+   
+   #_(let [{:keys [db-file-name password key-file-name] :as open-db-data} [get-in db [:remote-storage :read-no-connection-confirm-dialog :open-db-data]]]
+       (println "..... open-db-data is " open-db-data)
+       
+       {:db (-> db [assoc-in [:remote-storage :read-no-connection-confirm-dialog] {:dialog-show false}])
+      ;;:fx [#_[:open-database/bg-load-kdbx [db-file-name password key-file-name]]]
+        })))
+
+(reg-sub
+ :remote-storage-read-no-connection-confirm-dialog-data
+ (fn [db [_query-id]]
+   (get-in db [:remote-storage :read-no-connection-confirm-dialog])))
+
 
 ;; Gets the last dir entries data to show on the page
 (reg-sub

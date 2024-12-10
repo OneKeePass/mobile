@@ -194,7 +194,7 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
         .is_none()
     {
         let backup_file_name = backup::generate_backup_history_file_name(&db_file_name, &file_name);
-        let mut backup_file = open_backup_file(backup_file_name.clone())
+        let mut backup_file = open_backup_file(backup_file_name.as_ref())
             .ok_or(OkpError::DataError("Opening backup file failed"))?;
 
         // Ensure that we are at the begining of the db file stream
@@ -270,7 +270,7 @@ pub(crate) fn save_kdbx(file_args: FileArgs, overwrite: bool) -> ApiResponse {
         _ => return_api_response_failure!("Unsupported file args passed"),
     };
 
-    let backup_file = open_backup_file(backup_file_name.clone());
+    let backup_file = open_backup_file(backup_file_name.as_ref());
     let response = match backup_file {
         Some(mut bf_writer) => {
             let r = match db_service::save_kdbx_to_writer(&mut bf_writer, &db_key) {
@@ -281,7 +281,14 @@ pub(crate) fn save_kdbx(file_args: FileArgs, overwrite: bool) -> ApiResponse {
                         return_api_response_failure!(e)
                     }
                     // Call verify checksum here using writer "db_service::verify_db_file_checksum"
-                    // Only for iOS.
+                    // Only for iOS. 
+
+                    // In case of Android 'udl_functions::verify_db_file_checksum' is used directly to do this check 
+                    // (See verifyDbFileChanged fn in DbServiceModule.kt)
+
+                    // This 'udl_functions::verify_db_file_checksum' is not used by iOS app 
+                    // This is because of slight differences in the save_kdbx call sequences in iOS vs Android
+                    
                     if cfg!(target_os = "ios") && !overwrite {
                         // writer is from the existing db file
                         // An error indicates the content is changed
@@ -369,7 +376,7 @@ pub(crate) fn write_to_backup_on_error(full_file_name_uri: String) -> ApiRespons
             "Writing to the backup file {:?} for the uri {}",
             &backup_file_name, &file_name
         );
-        let mut backup_file = open_backup_file(backup_file_name.clone())
+        let mut backup_file = open_backup_file(backup_file_name.as_ref())
             .ok_or(OkpError::DataError("Backup file could not be created"))?;
 
         let r = db_service::save_kdbx_to_writer(&mut backup_file, &full_file_name_uri);

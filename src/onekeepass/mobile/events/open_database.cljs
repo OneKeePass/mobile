@@ -1,5 +1,5 @@
 (ns onekeepass.mobile.events.open-database
-  (:require 
+  (:require
    [onekeepass.mobile.events.common :refer [on-ok]]
    [re-frame.core :refer [reg-event-db
                           reg-event-fx
@@ -76,8 +76,8 @@
 (defn- validate-required-fields
   [db]
   (let [error-fields {} #_(cond-> {}
-                       (str/blank? (get-in db [:open-database :password]))
-                       (assoc :password "A valid password is required"))]
+                            (str/blank? (get-in db [:open-database :password]))
+                            (assoc :password "A valid password is required"))]
     error-fields))
 
 #_(reg-event-db
@@ -197,15 +197,15 @@
                               (on-ok
                                api-response
                                (fn [error]
-                                 (dispatch [:open-database-read-kdbx-error error])))]
-                     (dispatch [:open-database-db-opened kdbx-loaded]))))))
+                                 (dispatch [:open-database/read-kdbx-error error])))]
+                     (dispatch [:open-database/db-opened kdbx-loaded]))))))
 
 (reg-event-fx
- :open-database-read-kdbx-error
+ :open-database/read-kdbx-error
  (fn [{:keys [db]} [_event-id error]]
    {:db (-> db (assoc-in [:open-database :error-fields] {})
             (assoc-in [:open-database :status] :completed))
-    
+
     ;; We get error code PERMISSION_REQUIRED_TO_READ or FILE_NOT_FOUND from middle layer readKdbx 
 
     ;; PERMISSION_REQUIRED_TO_READ may happen if the File Manager decides 
@@ -215,19 +215,25 @@
     ;; might have been changed by other program.
 
     ;; In iOS, typically the error is "NSFileProviderErrorDomain Code=-1005 "The file doesn’t exist."
-    :fx (cond (= (:code error) const/PERMISSION_REQUIRED_TO_READ)
-              [[:dispatch [:repick-confirm-show const/PERMISSION_REQUIRED_TO_READ]]
-               [:dispatch [:open-database-dialog-hide]]] 
-              
-              (= (:code error) const/FILE_NOT_FOUND)
-              [[:dispatch [:open-database-dialog-hide]]
-               [:dispatch [:repick-confirm-show const/FILE_NOT_FOUND]]]
-              
-              :else
-              [[:dispatch [:common/error-box-show "Database Open Error" error]]])}))
+    :fx (cond
+
+          (= (:code error) const/PERMISSION_REQUIRED_TO_READ)
+          [[:dispatch [:repick-confirm-show const/PERMISSION_REQUIRED_TO_READ]]
+           [:dispatch [:open-database-dialog-hide]]]
+
+          (= (:code error) const/FILE_NOT_FOUND)
+          [[:dispatch [:open-database-dialog-hide]]
+           [:dispatch [:repick-confirm-show const/FILE_NOT_FOUND]]]
+
+          (and (string? error) (= error "NoRemoteStorageConnection"))
+          (let [opd-data (select-keys (get-in db [:open-database]) [:database-full-file-name :file-name :password :key-file-name])]
+            [[:dispatch [:remote-storage/read-kdbx-on-no-connection opd-data]]])
+
+          :else
+          [[:dispatch [:common/error-box-show "Database Open Error" error]]])}))
 
 (reg-event-fx
- :open-database-db-opened
+ :open-database/db-opened
  (fn [{:keys [db]} [_event-id kdbx-loaded]]
    {:db (-> db (assoc-in [:open-database :error-fields] {})
             (assoc-in [:open-database :status] :completed))
@@ -246,13 +252,13 @@
 (reg-event-fx
  :repick-confirm-close
  (fn [{:keys [db]} [_event-id]]
-   {:db (-> db 
-            (assoc-in [:open-database :repick-confirm] 
+   {:db (-> db
+            (assoc-in [:open-database :repick-confirm]
                       {:dialog-show false :file-name nil}))
     :fx [[:bg-repick-database-file]]}))
 
 (reg-event-db
- :repick-confirm-cancel 
+ :repick-confirm-cancel
  (fn [db [_event-id]]
    (-> db
        (assoc-in [:open-database :repick-confirm :dialog-show] false)

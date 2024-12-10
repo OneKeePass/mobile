@@ -147,7 +147,7 @@ impl IosSupportService {
                 // Need to ensure that the checksum is reset to the newly saved file
                 // Otherwise, Save error modal dialog will popup !
                 let bkp_file_opt = AppState::shared().get_last_backup_on_error(&db_key);
-                if let Some(mut bkp_file) = open_backup_file(bkp_file_opt) {
+                if let Some(mut bkp_file) = open_backup_file(bkp_file_opt.as_ref()) {
                     db_service::calculate_and_set_db_file_checksum(&new_db_key, &mut bkp_file)?;
                 } else {
                     log::error!("Expected backup file is not found. 'Save as' should have this");

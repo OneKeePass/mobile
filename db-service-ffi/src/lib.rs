@@ -69,7 +69,7 @@ macro_rules! return_api_response_failure {
     };
 }
 
-pub fn open_backup_file(backup_file_path: Option<String>) -> Option<File> {
+pub fn open_backup_file(backup_file_path: Option<&String>) -> Option<File> {
     match backup_file_path {
         Some(backup_file_name) => OpenOptions::new()
             .read(true)

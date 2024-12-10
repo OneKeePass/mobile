@@ -1,27 +1,42 @@
 (ns onekeepass.mobile.rs-files-folders
   "Shows the list of files and folders found for a remote connection"
-  (:require [onekeepass.mobile.common-components :refer [list-section-header]]
+  (:require [onekeepass.mobile.common-components :refer [confirm-dialog
+                                                         list-section-header]]
             [onekeepass.mobile.constants :as const]
-            [onekeepass.mobile.rn-components :as rnc :refer [dots-icon-name
-                                                             page-background-color
+            [onekeepass.mobile.events.remote-storage :as rs-events]
+            [onekeepass.mobile.rn-components :as rnc :refer [page-background-color
                                                              rn-safe-area-view
                                                              rn-section-list
                                                              rnp-divider
-                                                             rnp-icon-button
                                                              rnp-list-icon
                                                              rnp-list-item
                                                              rnp-text]]
-            [reagent.core :as r]
-            [onekeepass.mobile.events.remote-storage :as rs-events]))
+            [onekeepass.mobile.translation :refer [lstr-bl lstr-dlg-title]]
+            [reagent.core :as r]))
+
+
+
+
+(defn on-no-connection-confirm-dialog
+  ([{:keys [dialog-show]}]
+   [confirm-dialog  {:dialog-show dialog-show
+                     :title (lstr-dlg-title 'confirm)
+                     :confirm-text "Remote server connection is not available. The local backup database file is used and it is in read only mode"
+                     :actions [{:label (lstr-bl "continue")
+                                :on-press (fn []
+                                            (rs-events/remote-storage-read-kdbx-on-no-connection-confirm-dialog-continue))}]}])
+
+  ([]
+   (on-no-connection-confirm-dialog @(rs-events/remote-storage-read-no-connection-confirm-dialog-data))))
 
 (defn row-item []
   (fn [connection-id parent-dir {:keys [entry-name is-dir]}]
     (let [color @rnc/secondary-color]
       [rnp-list-item {:style {}
                       :onPress (fn []
-                                 (when is-dir
-                                   (rs-events/remote-storage-sub-dir-listing-start 
-                                    connection-id parent-dir entry-name)))
+                                 (if  is-dir
+                                   (rs-events/remote-storage-sub-dir-listing-start connection-id parent-dir entry-name)
+                                   (rs-events/remote-storage-file-picked connection-id parent-dir entry-name)))
                       :title (r/as-element
                               [rnp-text {:style {:color color}
                                          :variant "titleMedium"} entry-name])
@@ -37,7 +52,7 @@
                       :right (when is-dir
                                (fn [_props] (r/as-element [rnp-list-icon {:icon const/ICON-CHEVRON-RIGHT}])))}])))
 
-(defn combine-entries 
+(defn combine-entries
   "Combines two vec of dir entry map and returns a single 
    vec of a map with keys :entry-name :is-dir"
   [sub-dirs files]
@@ -64,7 +79,6 @@
                                (let [props (js->clj props :keywordize-keys true)
                                      {:keys [title]} (-> props :section)]
                                  (r/as-element [list-section-header title])))}])))
-
 
 (defn dir-entries-content []
   [rn-safe-area-view {:style {:flex 1 :background-color @page-background-color}}

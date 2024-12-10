@@ -68,6 +68,9 @@
                                :password  password
                                :key-file-name key-file-name} dispatch-fn))
 
+(defn save-kdbx [full-file-name overwrite dispatch-fn]
+  (invoke-api "rs_save_kdbx" {:db-key full-file-name} dispatch-fn))
+
 ;; This is mainly to load the content of root dir using the connection-id
 #_(defn list-dir
     "The arg 'connect-request' is a map and has  a key :type with value 'Sftp' or 'Webdav'

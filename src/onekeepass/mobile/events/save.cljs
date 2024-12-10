@@ -87,9 +87,11 @@
     (dispatch [:common/message-modal-hide])
     (when on-save-ok (on-save-ok))))
 
+;; Called from entry-form, group,settings page events to save any db specific changes
 (reg-event-fx
  :save/save-current-kdbx
  (fn [{:keys [db]} [_event-id {:keys [save-message] :as m-data}]]
+   ;; m-data is a map with keys :save-message and :error-title
    (let [handler-fn (partial save-api-response-handler m-data)]
      ;; We need to hold on to the 'handler-fn' in :save-api-response-handler
      ;; as we may need to use when we need to call overwrite after 'Save error' resolution by user
