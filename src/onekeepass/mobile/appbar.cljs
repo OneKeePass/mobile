@@ -159,13 +159,16 @@
      (= page :entry-history-list)
      [:<>
       [rnp-menu-item {:title (lstr-ml "deleteAll")
+                      :disabled  @(cmn-events/current-db-disable-edit)
                       :onPress (header-menu-action ef-events/show-history-entry-delete-all-confirm-dialog)}]]
 
      (and (= page :entry-form) @(ef-events/history-entry-form?))
      [:<>
       [rnp-menu-item {:title (lstr-ml "restore")
+                      :disabled  @(cmn-events/current-db-disable-edit)
                       :onPress (header-menu-action ef-events/show-history-entry-restore-confirm-dialog)}]
       [rnp-menu-item {:title (lstr-ml "delete")
+                      :disabled  @(cmn-events/current-db-disable-edit)
                       :onPress (header-menu-action ef-events/show-history-entry-delete-confirm-dialog)}]]
 
      (= page :entry-form)
@@ -173,6 +176,7 @@
            entry-uuid @(ef-events/entry-form-uuid)]
        [:<>
         [rnp-menu-item {:title (lstr-ml "favorite") :trailingIcon (if fav "check" nil)
+                        :disabled (not @(ef-events/history-available))
                         :onPress (header-menu-action ef-events/favorite-menu-checked (not fav))}]
         [rnp-menu-item {:title "History"
                         :disabled (not @(ef-events/history-available))
@@ -181,6 +185,7 @@
         ;; [rnp-menu-item {:title "Password Generator" :onPress #()}]
         [cust-rnp-divider]
         [rnp-menu-item {:title (lstr-ml "delete")
+                        :disabled  @(cmn-events/current-db-disable-edit)
                         :onPress (header-menu-action cc/show-entry-delete-confirm-dialog entry-uuid)}]]))])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -50,7 +50,8 @@
    "
   []
   (fn [page-id]
-    (let [modified? (not @(stgs-events/db-settings-modified))]
+    (let [not-modified? (not @(stgs-events/db-settings-modified))
+          save-diabled (or not-modified? @(cmn-events/current-db-disable-edit))]
       [rn-view {:flexDirection "row"
                 :style {:width "100%"
                         :alignItems "center"
@@ -67,7 +68,7 @@
                   :variant page-title-text-variant} "Database Settings"]
        [rnp-button {:style {}
                     :textColor @appbar-text-color
-                    :disabled modified?
+                    :disabled save-diabled
                     :mode "text" :onPress (fn [_e]
                                             (cond
                                               (= page-id :settings-credentials)
@@ -308,7 +309,7 @@
     :data [{:title "allAppSettings"}]}])
 
 (defn settings-list-content []
-  (let [sections (filterv (complement nil?) (sections-data)) ]
+  (let [sections (filterv (complement nil?) (sections-data))]
     [rn-section-list  {:style {}
                        :sections (clj->js sections)
                        :renderItem  (fn [props]

@@ -17,18 +17,6 @@
 
 
 
-(defn on-no-connection-confirm-dialog
-  ([{:keys [dialog-show]}]
-   [confirm-dialog  {:dialog-show dialog-show
-                     :title (lstr-dlg-title 'confirm)
-                     :confirm-text "Remote server connection is not available. The local backup database file is used and it is in read only mode"
-                     :actions [{:label (lstr-bl "continue")
-                                :on-press (fn []
-                                            (rs-events/remote-storage-read-kdbx-on-no-connection-confirm-dialog-continue))}]}])
-
-  ([]
-   (on-no-connection-confirm-dialog @(rs-events/remote-storage-read-no-connection-confirm-dialog-data))))
-
 (defn row-item []
   (fn [connection-id parent-dir {:keys [entry-name is-dir]}]
     (let [color @rnc/secondary-color]

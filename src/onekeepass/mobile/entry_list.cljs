@@ -5,6 +5,7 @@
                                                                 select-field]]
             [onekeepass.mobile.constants :as const :refer [ICON-CHECKBOX-BLANK-OUTLINE
                                                            ICON-CHECKBOX-OUTLINE]]
+            [onekeepass.mobile.events.common :as cmn-events]
             [onekeepass.mobile.events.entry-category :as ecat-events]
             [onekeepass.mobile.events.entry-list :as elist-events :refer [find-entry-by-id]]
             [onekeepass.mobile.events.move-delete :as md-events]
@@ -83,6 +84,7 @@
        ;; TODO: Need to add a rust api to toggle an entry as Favorites or not and then enable this 
        #_[rnp-menu-item {:title "Favorites" :onPress #()  :trailingIcon "check"}]
        [rnp-menu-item {:title (lstr-ml "delete")
+                       :disabled @(cmn-events/current-db-disable-edit)
                        :onPress (entry-long-press-menu-action cc/show-entry-delete-confirm-dialog (:uuid entry-summary))}]
        ;; TDOO: 
        ;; Need to add backend api support to get history count as part of summary
@@ -92,9 +94,11 @@
 
       [rnp-menu {:visible show :onDismiss hide-entry-long-press-menu :anchor (clj->js {:x x :y y})}
        [rnp-menu-item {:title (lstr-ml "putback")
+                       :disabled @(cmn-events/current-db-disable-edit)
                        :onPress (entry-long-press-menu-action
                                  md-events/open-putback-dialog (:uuid entry-summary))}]
        [rnp-menu-item {:title (lstr-ml "deletePermanently")
+                       :disabled @(cmn-events/current-db-disable-edit)
                        :onPress (entry-long-press-menu-action
                                  md-events/openn-delete-permanent-dialog (:uuid entry-summary))}]])))
 
@@ -117,16 +121,20 @@
   (let [group-uuid (:uuid category-detail)]
     [rnp-menu {:visible show :onDismiss hide-group-long-press-menu :anchor (clj->js {:x x :y y})}
      [rnp-menu-item {:title (lstr-ml "edit")
+                     :disabled @(cmn-events/current-db-disable-edit)
                      :onPress (group-long-press-menu-action elist-events/find-group-by-id group-uuid)}]
      [rnp-divider]
      [rnp-menu-item {:title (lstr-ml "addEntry")
+                     :disabled @(cmn-events/current-db-disable-edit)
                      :onPress (group-long-press-menu-action
                                elist-events/add-entry-in-selected-group category-detail)}]
      [rnp-menu-item {:title (lstr-ml "addGroup")
+                     :disabled @(cmn-events/current-db-disable-edit)
                      :onPress (group-long-press-menu-action
                                elist-events/add-group group-uuid)}]
      [rnp-divider]
      [rnp-menu-item {:title (lstr-ml "delete")
+                     :disabled @(cmn-events/current-db-disable-edit)
                      :onPress (group-long-press-menu-action
                                cc/show-group-delete-confirm-dialog group-uuid)}]]))
 
@@ -339,6 +347,7 @@
          [rnp-icon-button {:size 24
                            :icon const/ICON-PLUS
                            :iconColor @rnc/on-error-container
+                           :disabled @(cmn-events/current-db-disable-edit)
                            :onPress (fn [e]
                                       (show-fab-action-menu e selected-category-key selected-category-detail))}]
          [rnp-text {:style {:margin-top -5}

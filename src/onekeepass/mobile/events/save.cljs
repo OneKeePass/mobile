@@ -1,18 +1,13 @@
 (ns onekeepass.mobile.events.save
-  (:require
-   [onekeepass.mobile.events.common :refer [active-db-key
-                                            current-database-file-name
-                                            assoc-in-key-db
-                                            get-in-key-db
-                                            on-ok
-                                            on-error]]
-   [re-frame.core :refer [reg-event-db
-                          reg-event-fx
-                          reg-sub
-                          dispatch
-                          reg-fx
-                          subscribe]]
-   [onekeepass.mobile.background :as bg]))
+  (:require [onekeepass.mobile.background :as bg]
+            [onekeepass.mobile.events.common :refer [active-db-key
+                                                     assoc-in-key-db
+                                                     current-database-file-name
+                                                     current-db-disable-edit
+                                                     get-in-key-db on-error
+                                                     on-ok]]
+            [re-frame.core :refer [dispatch reg-event-db reg-event-fx reg-fx
+                                   reg-sub subscribe]]))
 
 (defn save-as-on-error []
   (if (bg/is-iOS)
@@ -91,14 +86,19 @@
 (reg-event-fx
  :save/save-current-kdbx
  (fn [{:keys [db]} [_event-id {:keys [save-message] :as m-data}]]
-   ;; m-data is a map with keys :save-message and :error-title
-   (let [handler-fn (partial save-api-response-handler m-data)]
-     ;; We need to hold on to the 'handler-fn' in :save-api-response-handler
-     ;; as we may need to use when we need to call overwrite after 'Save error' resolution by user
-     ;; See event ':overwrite-on-save-error' how this handler-fn is used
-     {:db (-> db (assoc-in-key-db  [:save-api-response-handler] handler-fn))
-      :fx [[:dispatch [:common/message-modal-show nil (if-not (nil? save-message) save-message 'saving)]]
-           [:bg-save-kdbx [(active-db-key db) false handler-fn]]]})))
+   (let [save-enabled (not (current-db-disable-edit db))]
+     (if save-enabled
+       ;; m-data is a map with keys :save-message and :error-title
+       (let [handler-fn (partial save-api-response-handler m-data)]
+                   ;; We need to hold on to the 'handler-fn' in :save-api-response-handler
+                   ;; as we may need to use when we need to call overwrite after 'Save error' resolution by user
+                   ;; See event ':overwrite-on-save-error' how this handler-fn is used
+         {:db (-> db (assoc-in-key-db  [:save-api-response-handler] handler-fn))
+          :fx [[:dispatch [:common/message-modal-show nil (if-not (nil? save-message) save-message 'saving)]]
+               [:bg-save-kdbx [(active-db-key db) false handler-fn]]]})
+       {:fx [[:dispatch [:common/message-modal-hide]]
+             [:dispatch [:common/error-box-show "Read Only"
+                         "Editing is diabled as the database is opened in read only mode"]]]}))))
 
 ;; Calls the background save kdbx api
 (reg-fx
@@ -115,7 +115,7 @@
 (reg-event-fx
  :ios-save-as-on-error
  (fn [{:keys [db]} [_event-id]]
-   {:fx [[:bg-ios-save-as-on-error [(current-database-file-name db)(active-db-key db)]]]}))
+   {:fx [[:bg-ios-save-as-on-error [(current-database-file-name db) (active-db-key db)]]]}))
 
 (defn- save-as-api-response-handler [api-reponse]
   (when-let [result (on-ok api-reponse #(dispatch [:pick-save-as-on-error-not-completed %]))]
@@ -123,7 +123,7 @@
 
 (reg-fx
  :bg-ios-save-as-on-error
- (fn [[ kdbx-file-name db-key]]
+ (fn [[kdbx-file-name db-key]]
    (bg/ios-pick-on-save-error-save-as kdbx-file-name db-key save-as-api-response-handler)))
 
 (reg-event-fx
@@ -138,8 +138,8 @@
  (fn [[db-key new-db-key]]
    ;;(println "db-key new-db-key are " db-key new-db-key)
    (bg/ios-complete-save-as-on-error db-key new-db-key (fn [api-reponse]
-                                                     (when-let [kdbx-loaded (on-ok api-reponse)]
-                                                       (dispatch [:save-as-on-error-finished kdbx-loaded]))))))
+                                                         (when-let [kdbx-loaded (on-ok api-reponse)]
+                                                           (dispatch [:save-as-on-error-finished kdbx-loaded]))))))
 
 ;; Used for both  iOS and Abdroid
 (reg-event-fx

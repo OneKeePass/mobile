@@ -120,9 +120,6 @@
   []
   (subscribe [:remote-storage-listing-to-show]))
 
-(defn remote-storage-read-no-connection-confirm-dialog-data []
-  (subscribe [:remote-storage-read-no-connection-confirm-dialog-data]))
-
 
 (defn- get-current-rs-type [db]
   (get-in db [:remote-storage :current-rs-type]))
@@ -404,30 +401,6 @@
  (fn [{:keys [_db]} [_query-id kw-type]]
    {:fx [[:bg-rs-remote-storage-configs-for-type [kw-type]]]}))
 
-(reg-event-fx
- :remote-storage/read-kdbx-on-no-connection
- (fn [{:keys [db]} [_query-id open-db-data]]
-   {:db (-> db (assoc-in [:remote-storage :read-no-connection-confirm-dialog]
-                         {:open-db-data open-db-data
-                          :dialog-show true}))}))
-
-(defn remote-storage-read-kdbx-on-no-connection-confirm-dialog-continue []
-  (dispatch [:remote-storage-read-kdbx-on-no-connection-confirm-dialog-continue]))
-
-(reg-event-fx
- :remote-storage-read-kdbx-on-no-connection-confirm-dialog-continue
- (fn [{:keys [db]} [_query-id]]
-   (println "remote-storage-read-kdbx-on-no-connection-confirm-dialog-continue event called")
-   (let [a 1]
-     {:db (-> db (assoc-in [:remote-storage :read-no-connection-confirm-dialog] {:dialog-show false}) )}
-     )
-   
-   #_(let [{:keys [db-file-name password key-file-name] :as open-db-data} [get-in db [:remote-storage :read-no-connection-confirm-dialog :open-db-data]]]
-       (println "..... open-db-data is " open-db-data)
-       
-       {:db (-> db [assoc-in [:remote-storage :read-no-connection-confirm-dialog] {:dialog-show false}])
-      ;;:fx [#_[:open-database/bg-load-kdbx [db-file-name password key-file-name]]]
-        })))
 
 (reg-sub
  :remote-storage-read-no-connection-confirm-dialog-data
@@ -447,11 +420,7 @@
  (fn [db [_query-id kw-type]]
    (-> db (get-in [:remote-storage kw-type :listings]))))
 
-;; This is set to show the config form for :sftp or :webdav
-#_(reg-sub
-   :remote-storage-current-form-type
-   (fn [db [_query-id]]
-     (-> db (get-in [:remote-storage :current-form-type]))))
+
 
 ;; TODO Use this for current-form-type
 ;; Valid values are :sftp or :webdav for now
@@ -480,90 +449,3 @@
   (in-ns 'onekeepass.mobile.events.remote-storage)
   (-> @re-frame.db/app-db :remote-storage)
   (def db-key (-> @re-frame.db/app-db :current-db-file-name)))
-
-
-
-#_(bg-rs/connect-by-id-and-retrieve-root-dir
-   kw-type
-   connection-id
-   (fn [api-response]
-     (when-let [connected-status (on-ok api-response)]
-       (dispatch [:remote-storage-connect-by-id-complete kw-type connected-status]))))
-;; TODO Repalce the use of current-form-type with current-rs-type 
-#_(reg-event-db
-   :remote-storage-current-rs-type-set
-   (fn [db [_event-id kw-type]]
-     (-> db (assoc-in [:remote-storage :current-rs-type] kw-type))))
-
-#_(reg-fx
-   :bg-rs-connect-by-id-and-retrieve-root-dir
-   (fn [[kw-type connection-id]]
-     (bg-rs/connect-by-id-and-retrieve-root-dir kw-type  connection-id
-                                                (fn [api-response]
-                                                  (when-let [connected-status (on-ok api-response)]
-                                                    (dispatch [:remote-storage-connect-by-id-complete kw-type connected-status]))))))
-
-
-#_(defn connect-by-id-and-retrieve-root-dir [kw-type connection-id]
-    (bg-rs/connect-by-id-and-retrieve-root-dir kw-type  connection-id
-                                               (fn [api-response]
-                                                 (when-let [connected-status (on-ok api-response)]
-                                                   (dispatch [:remote-storage-dir-listing-loaded kw-type connected-status])))))
-
-
-#_(defn remote-storage-current-form-set
-    "Called to show the connection config form for :sftp or for :webdav connection"
-    [kw-type]
-    (dispatch [:remote-storage-current-form-set kw-type]))
-;; Should be called when user presses "Add"
-#_(reg-event-fx
-   :remote-storage-current-form-set
-   (fn [{:keys [db]} [_query-id kw-type]]
-     {:db (-> db (assoc-in [:remote-storage :current-form-type] kw-type)
-              (init-type-data kw-type))
-      :fx [[:dispatch [:common/next-page const/RS_CONNECTION_CONFIG_PAGE_ID "sftp"]]]}))
-
-#_(defn load-sub-dir-listing
-    "Loads the dir listing under a given parent-dir/sub-dir
-   using the connection identified by the connection id"
-    [kw-type connection-id parent-dir sub-dir]
-    (bg-rs/list-sub-dir connection-id parent-dir sub-dir
-                        (fn [api-response]
-                          (when-let [dir-entries (on-ok api-response)]
-                          ;; Need to form a map equivalent to struct ConnectedStatus
-                          ;; as used in 'bg-rs-connect-and-retrieve-root-dir'
-                            (dispatch [:remote-storage-dir-listing-loaded
-                                       kw-type
-                                       {:connection-id connection-id
-                                        :dir-entries dir-entries}])))))
-
-;; Do we need to have this fn?
-#_(defn remote-storage-current-rs-type-set
-    "Called to set the currently selected remote type. Valid values are :sftp or :webdav for now
-   This fn is called when user presses the Sftp or WebDav option
-   See the corresponding 'subscribe' 
-   Most of remote operations depend upon this type information
-   "
-    [kw-type]
-    (dispatch [:remote-storage-current-rs-type-set kw-type]))
-
-#_(defn remote-storage-current-form-type
-    "Determines to show the connetion form for the storage location type: sftp or webdav "
-    []
-    (subscribe [:remote-storage-current-form-type]))
-
-#_(defn remote-storage-listings
-    [kw-type]
-    (subscribe [:remote-storage-listings kw-type]))
-
-#_(defn load-remote-connection-configs
-    "Called to get the list of Sftp or Webdav connection configs"
-    [kw-type]
-    (bg-rs/remote-storage-configs {:type (kw-type kw-type-to-enum-tag)}
-                                  (fn [api-response]
-                                    (when-let [info (on-ok api-response)]
-                                      (dispatch [:remote-storage-connection-configs-loaded info])))))
-
-#_(reg-event-fx
-   :remote-storage-list-sub-dir
-   (fn [{:keys [db]} [_query-id kw-type connection-id parent-dir sub-dir]]))

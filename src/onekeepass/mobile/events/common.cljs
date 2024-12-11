@@ -105,7 +105,8 @@
   The args are the re-frame 'app-db' and KdbxLoaded struct returned by backend API.
   Returns the updated app-db
   "
-  [app-db {:keys [db-key database-name file-name key-file-name]}] ;;kdbx-loaded 
+  ;; Receives kdbx-loaded-ex in case of Sftp/Webdav calls
+  [app-db {:keys [db-key database-name file-name _key-file-name rs-additional-info]}] ;;kdbx-loaded  
   (let [app-db  (if (nil? (:opened-db-list app-db)) (assoc app-db :opened-db-list []) app-db)
         ;; Existing db-key is removed first to maintain unique db-key
         dbs (filterv (fn [m] (not= db-key (:db-key m))) (:opened-db-list app-db))
@@ -119,6 +120,8 @@
         (update-in [:opened-db-list] conj {:db-key db-key
                                            :database-name database-name
                                            :file-name file-name
+                                           ;; Sftp/Webdav
+                                           :rs-additional-info rs-additional-info
                                            ;; user-action-time is used for db timeout
                                            ;; See onekeepass.mobile.events.app-settings
                                            :user-action-time (js/Date.now)
@@ -144,6 +147,19 @@
   (let [curr-dbkey  (:current-db-file-name app-db)
         recent-dbs-info (-> app-db :app-preference :data :recent-dbs-info)]
     (-> (filter (fn [{:keys [db-file-path]}] (= curr-dbkey db-file-path)) recent-dbs-info) first :file-name)))
+
+(defn current-kdbx-loaded-info
+  [app-db]
+  (let [curr-dbkey  (:current-db-file-name app-db)]
+    (-> (filter (fn [m] (= curr-dbkey (:db-key m))) (:opened-db-list app-db))
+        first)))
+
+(defn current-db-disable-edit
+  ([app-db]
+   (let [{:keys [rs-additional-info]} (current-kdbx-loaded-info app-db)]
+     (boolean (:no-connection rs-additional-info))))
+  ([]
+   (subscribe [:current-db-disable-edit])))
 
 ;;;;;;;;;;;;;;;;;;;;  Common Events ;;;;;;;;;;;;;;;;;;;;;
 
@@ -181,15 +197,22 @@
     :page-info {:page :home
                 :title home-page-title}}))
 
+;; When the db is loaded from a remote storage connection, the ok response
+;; will have a map 'kdbx-loaded-ex' (struct KdbxLoadedEx)
 (reg-event-fx
  :common/kdbx-database-opened
- (fn [{:keys [db]} [_event-id {:keys [database-name] :as kdbx-loaded}]]
-   {:db (db-opened db kdbx-loaded) ;; current-db-file-name is set in db-opened
+ (fn [{:keys [db]} [_event-id {:keys [database-name rs-additional-info] :as kdbx-loaded-ex}]]
+   {:db (db-opened db kdbx-loaded-ex) ;; current-db-file-name is set in db-opened
     :fx [[:dispatch [:entry-category/load-categories-to-show]]
          [:dispatch [:common/next-page :entry-category database-name]]
          [:dispatch [:load-all-tags]]
          [:dispatch [:groups/load]]
          [:dispatch [:common/load-entry-type-headers]]
+
+         (when (boolean (:no-connection rs-additional-info))
+           [:dispatch [:common/message-box-show
+                       "Read Only"
+                       "Database is opened in read only mode as there is no connection to the server"]])
          ;; Loads the updated recent dbs info
          [:bg-app-preference]]}))
 
@@ -345,6 +368,13 @@
  :common/opened-database-file-names
  (fn [db _query-vec]
    (mapv (fn [m] (:db-key m)) (:opened-db-list db))))
+
+;; Editing should be disabled in case of remote connection is not availble and db content is 
+;; read from backup 
+(reg-sub
+ :current-db-disable-edit
+ (fn [db _query-vec]
+   (current-db-disable-edit db)))
 
 ;;;;;;;;;;;;;;;;;;  App preference, Recent dbs etc ;;;;;;;;;;;;;;;;;;;;
 
@@ -786,7 +816,9 @@
 (defn close-message-dialog []
   (dispatch [:message-box-hide]))
 
-(defn message-dialog-data []
+(defn message-dialog-data
+  "Data for the message-dialog component found in common-component package"
+  []
   (subscribe [:message-box]))
 
 (reg-event-db

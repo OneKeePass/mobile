@@ -197,11 +197,11 @@
                               (on-ok
                                api-response
                                (fn [error]
-                                 (dispatch [:open-database/read-kdbx-error error])))]
-                     (dispatch [:open-database/db-opened kdbx-loaded]))))))
+                                 (dispatch [:open-database-read-kdbx-error error])))]
+                     (dispatch [:open-database-db-opened kdbx-loaded]))))))
 
 (reg-event-fx
- :open-database/read-kdbx-error
+ :open-database-read-kdbx-error
  (fn [{:keys [db]} [_event-id error]]
    {:db (-> db (assoc-in [:open-database :error-fields] {})
             (assoc-in [:open-database :status] :completed))
@@ -223,17 +223,12 @@
 
           (= (:code error) const/FILE_NOT_FOUND)
           [[:dispatch [:open-database-dialog-hide]]
-           [:dispatch [:repick-confirm-show const/FILE_NOT_FOUND]]]
-
-          (and (string? error) (= error "NoRemoteStorageConnection"))
-          (let [opd-data (select-keys (get-in db [:open-database]) [:database-full-file-name :file-name :password :key-file-name])]
-            [[:dispatch [:remote-storage/read-kdbx-on-no-connection opd-data]]])
-
+           [:dispatch [:repick-confirm-show const/FILE_NOT_FOUND]]] 
           :else
           [[:dispatch [:common/error-box-show "Database Open Error" error]]])}))
 
 (reg-event-fx
- :open-database/db-opened
+ :open-database-db-opened
  (fn [{:keys [db]} [_event-id kdbx-loaded]]
    {:db (-> db (assoc-in [:open-database :error-fields] {})
             (assoc-in [:open-database :status] :completed))

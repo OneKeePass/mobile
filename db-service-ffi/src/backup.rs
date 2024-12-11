@@ -95,8 +95,9 @@ pub(crate) fn delete_backup_history_dir(full_file_uri_str: &str) {
     );
 }
 
-// Gets the latest backup file path for this uri
-fn latest_backup_file_path(full_file_uri_str: &str) -> Option<PathBuf> {
+// Gets the latest backup file path for this uri. 
+// The files are sorted based on the last modified time and the recent one is picked
+pub(crate) fn latest_backup_file_path(full_file_uri_str: &str) -> Option<PathBuf> {
     let file_hist_root = backup_file_history_root(full_file_uri_str);
     let buffer: Vec<(DirEntry, i64)> = list_of_files_with_modified_times(&file_hist_root);
     // Find the file with the latest modified time

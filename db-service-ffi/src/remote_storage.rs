@@ -1,9 +1,12 @@
+use std::fs;
 use std::io::{Cursor, Read, Seek, Write};
 use std::path::Path;
 use std::sync::Arc;
 
 use crate::app_state::AppState;
-use crate::backup::{self, latest_backup_full_file_name, matching_backup_exists};
+use crate::backup::{
+    self, latest_backup_file_path, latest_backup_full_file_name, matching_backup_exists,
+};
 use crate::commands::{result_json_str, CommandArg, ResponseJson};
 use crate::{open_backup_file, parse_command_args_or_err};
 use crate::{OkpError, OkpResult};
@@ -28,8 +31,9 @@ use nom::{
     sequence::tuple,
     IResult,
 };
-use onekeepass_core::db_service::KdbxSaved;
+use onekeepass_core::db_service::{KdbxLoaded, KdbxSaved};
 use onekeepass_core::{db_service, error};
+use serde::Serialize;
 
 // We need to parse the passed db_key and extracts the remote operation type, connection_id and the file path part
 
@@ -99,7 +103,53 @@ pub(crate) fn rs_read_kdbx(json_args: &str) -> ResponseJson {
     result_json_str(rs_read_file(json_args))
 }
 
-fn rs_read_file(json_args: &str) -> OkpResult<db_service::KdbxLoaded> {
+#[derive(Debug, Serialize)]
+struct RsAdditionalInfo {
+    no_connection: bool,
+}
+
+// This adds an additional info to the existing KdbxLoaded
+// For now we set 'no_connection' field only to indicate to the UI side
+// that we have opened the db content using the backup and editing should be 
+// disbaled for now
+#[derive(Debug, Serialize)]
+struct KdbxLoadedEx {
+    db_key: String,
+    database_name: String,
+    file_name: Option<String>,
+    key_file_name: Option<String>,
+    rs_additional_info: Option<RsAdditionalInfo>,
+}
+
+impl KdbxLoadedEx {
+    pub(crate) fn set_no_read_connection(mut self) -> Self {
+        self.rs_additional_info = Some(RsAdditionalInfo {
+            no_connection: true,
+        });
+        self
+    }
+}
+
+impl From<KdbxLoaded> for KdbxLoadedEx {
+    fn from(kdbx_loaded: KdbxLoaded) -> Self {
+        let KdbxLoaded {
+            db_key,
+            database_name,
+            file_name,
+            key_file_name,
+        } = kdbx_loaded;
+
+        KdbxLoadedEx {
+            db_key,
+            database_name,
+            file_name,
+            key_file_name,
+            rs_additional_info: None,
+        }
+    }
+}
+
+fn rs_read_file(json_args: &str) -> OkpResult<KdbxLoadedEx> {
     let (db_file_name, password, key_file_name) = parse_command_args_or_err!(
         json_args,
         OpenDbArg {
@@ -112,13 +162,33 @@ fn rs_read_file(json_args: &str) -> OkpResult<db_service::KdbxLoaded> {
     let rs_operation_type = parse_db_key_to_rs_type_opertaion(&db_file_name)?;
 
     // Ensure that the remote connection is established
-    // TODO: If the remote server is not available, send an error to UI and user determines what to do
+    // If the remote server is not available, send an error to UI and user determines what to do
 
-    rs_operation_type.connect_by_id().map_err(|e| {
-        info!("Remote storage connection error {}", e);
-        // At this any error while making connect_by_id, we send a generic error
-        error::Error::NoRemoteStorageConnection
-    })?;
+    if let Err(e) = rs_operation_type.connect_by_id() {
+        // If the db file is read earlier, then we should have at least one backup. Otherwise an error is returned
+        let path = latest_backup_file_path(&db_file_name).ok_or(error::Error::UnexpectedError(
+            format!(
+                "Connection to remote server is not available and error details:{}",
+                e
+            ),
+        ))?;
+        debug!("No remote connection: Reading the latest backup file {:?}", &path);
+        
+        let mut reader = fs::File::open(path)?;
+
+        // Kdbx content from backup is loaded, parsed and decrypted
+        let kdbx_loaded = db_service::read_kdbx(
+            &mut reader,
+            &db_file_name,
+            password.as_deref(),
+            key_file_name.as_deref(),
+            None,
+        )?;
+
+        let k:KdbxLoadedEx = kdbx_loaded.into() ;
+        // We return the no connection info so that we can show read only mode 
+        return Ok(k.set_no_read_connection())
+    }
 
     debug!("Remote server connected");
 
@@ -144,7 +214,7 @@ fn rs_read_file(json_args: &str) -> OkpResult<db_service::KdbxLoaded> {
         &file_modified_time,
     )?;
 
-    Ok(kdbx_loaded)
+    Ok(kdbx_loaded.into())
 }
 
 // Sets the modified time of the backup file to that of the db file
@@ -232,7 +302,7 @@ pub(crate) fn rs_save_kdbx(json_args: &str) -> ResponseJson {
     result_json_str(rs_write_file(json_args))
 }
 
-pub(crate) fn rs_write_file(json_args: &str) -> OkpResult<KdbxSaved> {
+fn rs_write_file(json_args: &str) -> OkpResult<KdbxSaved> {
     let (db_key,) = parse_command_args_or_err!(json_args, DbKey { db_key });
 
     let rs_operation_type = parse_db_key_to_rs_type_opertaion(&db_key)?;
@@ -245,7 +315,14 @@ pub(crate) fn rs_write_file(json_args: &str) -> OkpResult<KdbxSaved> {
 
     // Ensure that the remote connection is established
     // TODO: What to do when there is no connection?
-    let _r = rs_operation_type.connect_by_id()?;
+    // let rs_operation_type = rs_operation_type.connect_by_id()?;
+
+    rs_operation_type.connect_by_id().map_err(|e| {
+        info!("Remote storage connection error {}", e);
+        // At this any error while making connect_by_id, we send a generic error
+        error::Error::NoRemoteStorageConnection
+    })?;
+    
 
     debug!("Remote server connected");
 
