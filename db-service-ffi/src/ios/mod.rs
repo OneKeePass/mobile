@@ -13,10 +13,10 @@ use crate::app_state::AppState;
 use crate::commands::{
     error_json_str, remove_app_files, result_json_str, CommandArg, InvokeResult, ResponseJson,
 };
-use crate::{open_backup_file, util, OkpError, OkpResult};
+use crate::{backup, open_backup_file, util, OkpError, OkpResult};
 
 use std::fs::{self, File};
-use std::io::{Read, Write};
+use std::io::{Read, Seek, Write};
 use std::path::{Path, PathBuf};
 
 use log::debug;
@@ -140,15 +140,28 @@ impl IosSupportService {
 
     pub fn complete_save_as_on_error(&self, json_args: &str) -> String {
         let inner_fn = || -> OkpResult<db_service::KdbxLoaded> {
-            if let Ok(CommandArg::SaveAsArg { db_key, new_db_key }) =
+            if let Ok(CommandArg::SaveAsArg { db_key, new_db_key,file_name }) =
                 serde_json::from_str(json_args)
             {
                 let kdbx_loaded = db_service::rename_db_key(&db_key, &new_db_key)?;
+
                 // Need to ensure that the checksum is reset to the newly saved file
                 // Otherwise, Save error modal dialog will popup !
-                let bkp_file_opt = AppState::shared().get_last_backup_on_error(&db_key);
-                if let Some(mut bkp_file) = open_backup_file(bkp_file_opt.as_ref()) {
-                    db_service::calculate_and_set_db_file_checksum(&new_db_key, &mut bkp_file)?;
+                let modified_db_bkp_file_opt = AppState::shared().get_last_backup_on_error(&db_key);
+
+                if let Some(mut modified_db_bkp_file) = open_backup_file(modified_db_bkp_file_opt.as_ref()) {
+                    db_service::calculate_and_set_db_file_checksum(&new_db_key, &mut modified_db_bkp_file)?;
+
+                    // Need to create the backup file for the newly created database
+                    let mut new_db_bk_file = backup::generate_and_open_backup_file(&new_db_key, &file_name)?;
+
+                    modified_db_bkp_file.rewind()?;
+
+                    // Copy to the new db backup file
+                    let _n = std::io::copy(&mut modified_db_bkp_file, &mut new_db_bk_file)?;
+                    //debug!("The new_db_bk_file copied bytes size is {}", n);
+                    new_db_bk_file.sync_all()?;
+
                 } else {
                     log::error!("Expected backup file is not found. 'Save as' should have this");
                     return Err(OkpError::DataError("Expected backup file is not found"));

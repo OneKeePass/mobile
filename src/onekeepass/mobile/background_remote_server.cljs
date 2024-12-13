@@ -69,7 +69,7 @@
                                :key-file-name key-file-name} dispatch-fn))
 
 (defn save-kdbx [full-file-name overwrite dispatch-fn]
-  (invoke-api "rs_save_kdbx" {:db-key full-file-name} dispatch-fn))
+  (invoke-api "rs_save_kdbx" {:db-key full-file-name :overwrite overwrite} dispatch-fn))
 
 ;; This is mainly to load the content of root dir using the connection-id
 #_(defn list-dir

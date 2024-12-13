@@ -111,7 +111,7 @@ interface IosSupportService {
 interface AndroidSupportService {
     constructor();
     ApiResponse create_kdbx(u64 file_descriptor, string json_args);
-    ApiResponse complete_save_as_on_error(u64 file_descriptor, string old_full_file_name_uri,string new_full_file_name_uri);
+    ApiResponse complete_save_as_on_error(u64 file_descriptor, string old_full_file_name_uri,string new_full_file_name_uri, string file_name);
     string save_key_file(u64 file_descriptor, string full_key_file_name);
     // string save_attachment(u64 file_descriptor, string json_args);
 };

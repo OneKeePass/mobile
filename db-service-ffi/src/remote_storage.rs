@@ -8,6 +8,7 @@ use crate::backup::{
     self, latest_backup_file_path, latest_backup_full_file_name, matching_backup_exists,
 };
 use crate::commands::{result_json_str, CommandArg, ResponseJson};
+use crate::udl_types::FileInfo;
 use crate::{open_backup_file, parse_command_args_or_err};
 use crate::{OkpError, OkpResult};
 use nom::Err;
@@ -32,7 +33,7 @@ use nom::{
     IResult,
 };
 use onekeepass_core::db_service::{KdbxLoaded, KdbxSaved};
-use onekeepass_core::{db_service, error};
+use onekeepass_core::{db_service, error, service_util};
 use serde::Serialize;
 
 // We need to parse the passed db_key and extracts the remote operation type, connection_id and the file path part
@@ -110,7 +111,7 @@ struct RsAdditionalInfo {
 
 // This adds an additional info to the existing KdbxLoaded
 // For now we set 'no_connection' field only to indicate to the UI side
-// that we have opened the db content using the backup and editing should be 
+// that we have opened the db content using the backup and editing should be
 // disbaled for now
 #[derive(Debug, Serialize)]
 struct KdbxLoadedEx {
@@ -172,8 +173,11 @@ fn rs_read_file(json_args: &str) -> OkpResult<KdbxLoadedEx> {
                 e
             ),
         ))?;
-        debug!("No remote connection: Reading the latest backup file {:?}", &path);
-        
+        debug!(
+            "No remote connection: Reading the latest backup file {:?}",
+            &path
+        );
+
         let mut reader = fs::File::open(path)?;
 
         // Kdbx content from backup is loaded, parsed and decrypted
@@ -185,9 +189,9 @@ fn rs_read_file(json_args: &str) -> OkpResult<KdbxLoadedEx> {
             None,
         )?;
 
-        let k:KdbxLoadedEx = kdbx_loaded.into() ;
-        // We return the no connection info so that we can show read only mode 
-        return Ok(k.set_no_read_connection())
+        let k: KdbxLoadedEx = kdbx_loaded.into();
+        // We return the no connection info so that we can show read only mode
+        return Ok(k.set_no_read_connection());
     }
 
     debug!("Remote server connected");
@@ -287,6 +291,8 @@ fn read_with_backup<R: Read + Seek>(
         debug!("Created backup file for the db_key {}", &db_key);
     }
 
+    backup::prune_backup_history_files(&db_key);
+
     AppState::shared().add_recent_db_use_info(db_key);
 
     #[cfg(target_os = "ios")]
@@ -302,8 +308,49 @@ pub(crate) fn rs_save_kdbx(json_args: &str) -> ResponseJson {
     result_json_str(rs_write_file(json_args))
 }
 
+fn is_rs_file_modified(
+    db_key: &str,
+    rs_operation_type: &RemoteStorageOperationType,
+) -> OkpResult<bool> {
+    let Some(bk_full_path) = backup::latest_backup_file_path(db_key) else {
+        return Err(error::Error::UnRecoverableError(format!(
+            "Expected a backup file and it is not found"
+        )));
+    };
+
+    let rmd = rs_operation_type.file_metadata().map_err(|e| {
+        error::Error::UnRecoverableError(format!(
+            "Geting modified time remote file failed. Error details {:?}",
+            e
+        ))
+    })?;
+
+    let md = bk_full_path.metadata().map_err(|e| {
+        error::Error::UnRecoverableError(format!(
+            "Geting backup file metadata failed. Error details {:?}",
+            e
+        ))
+    })?;
+
+    let md = md.modified().map_err(|e| {
+        error::Error::UnexpectedError(format!(
+            "Geting modified time backup file failed. Error details {:?}",
+            e
+        ))
+    })?;
+
+    debug!(" Rmd is {:?} and md is {:?} ", &rmd, &md);
+
+    if rmd.modified == Some(service_util::system_time_to_seconds(md)) {
+        Ok(false)
+    } else {
+        Ok(true)
+    }
+}
+
 fn rs_write_file(json_args: &str) -> OkpResult<KdbxSaved> {
-    let (db_key,) = parse_command_args_or_err!(json_args, DbKey { db_key });
+    let (db_key, overwrite) =
+        parse_command_args_or_err!(json_args, SaveDbArg { db_key, overwrite });
 
     let rs_operation_type = parse_db_key_to_rs_type_opertaion(&db_key)?;
 
@@ -319,12 +366,24 @@ fn rs_write_file(json_args: &str) -> OkpResult<KdbxSaved> {
 
     rs_operation_type.connect_by_id().map_err(|e| {
         info!("Remote storage connection error {}", e);
+
+        // Writes to a backup file and sets that backup file name in app state for later Svae As call
+        crate::udl_functions::write_to_backup_on_error(db_key.clone());
+
         // At this any error while making connect_by_id, we send a generic error
         error::Error::NoRemoteStorageConnection
     })?;
-    
 
     debug!("Remote server connected");
+
+    if !overwrite {
+        // For remote storage, we use file modified time based checking instead of checksum based to avoid
+        // reading whole file for that
+        if is_rs_file_modified(&db_key, &rs_operation_type)? {
+            crate::udl_functions::write_to_backup_on_error(db_key.clone());
+            return Err(error::Error::DbFileContentChangeDetected);
+        }
+    }
 
     let backup_file_name = backup::generate_backup_history_file_name(&db_key, file_name);
 
@@ -335,6 +394,7 @@ fn rs_write_file(json_args: &str) -> OkpResult<KdbxSaved> {
         &db_key,
         &mut db_content_mem_buff,
         &backup_file_name.as_ref(),
+        overwrite,
     )?;
 
     // We now write to the remote storage the content of the db writen to the memory in 'db_content_mem_buff'
@@ -350,6 +410,9 @@ fn rs_write_file(json_args: &str) -> OkpResult<KdbxSaved> {
     // We set the backup file's modified time to the same as the remote file modified time
     set_backup_modified_time(&backup_file_name.as_ref(), &file_modified_time);
 
+    // Any previous ref stored meant for error resolution is not required
+    AppState::shared().remove_last_backup_name_on_error(&db_key);
+
     Ok(kdbx_saved)
 }
 
@@ -361,6 +424,7 @@ fn write_with_backup<R: Seek + Read + Write>(
     db_key: &str,
     reader_writer: &mut R,
     backup_file_name: &Option<&String>,
+    overwrite: bool,
 ) -> OkpResult<KdbxSaved> {
     // Create a backup file using the back file path passed
     let backup_file = open_backup_file(backup_file_name.as_deref());
@@ -375,6 +439,11 @@ fn write_with_backup<R: Seek + Read + Write>(
             //log::debug!("Syncing and rewinding of backup file result {:?}", rewind_r);
             rewind_r?;
 
+            if !overwrite {
+                // TODO
+                // db_service::verify_db_file_checksum(&db_key, &mut writer) when there is no overwrite
+            }
+
             // Now we copy the content of the backup to the actual db file (reader_writer)
             std::io::copy(&mut bf_writer, reader_writer)?;
 
@@ -382,6 +451,12 @@ fn write_with_backup<R: Seek + Read + Write>(
             db_service::calculate_and_set_db_file_checksum(&db_key, &mut bf_writer)?;
 
             log::debug!("New hash for checksum is done and set");
+
+            // We keep the last backup file ref which may be used to resolve save time error or conflicts
+            // in the follow up call from UI. On successful save, this ref from app state is removed
+            if let Some(bkp_file_name) = backup_file_name.as_deref() {
+                AppState::shared().add_last_backup_name_on_error(&db_key, bkp_file_name);
+            }
 
             #[cfg(target_os = "ios")]
             {
@@ -401,3 +476,46 @@ fn write_with_backup<R: Seek + Read + Write>(
 
     Ok(save_response)
 }
+
+pub(crate) fn uri_to_file_info(db_key: &str) -> Option<FileInfo> {
+    let Ok((remaining, parsed)) = parse_db_key(db_key) else {
+        return None;
+    };
+    if !remaining.is_empty() {
+        return None;
+    }
+
+    let mut file_info = FileInfo::default();
+    // We use the backup file to form this instead of making remote call
+    let file_info_opt = backup::latest_backup_file_path(db_key)
+        .and_then(|p| p.as_path().metadata().ok())
+        .map(|md| {
+            file_info.file_size = Some(md.len() as i64);
+            file_info.last_modified = md
+                .modified()
+                .ok()
+                .map(|t| service_util::system_time_to_seconds(t) as i64);
+            file_info.location = Some(parsed.rs_type_name.to_string());
+            file_info
+        });
+
+    file_info_opt
+}
+
+
+/*
+pub(crate) fn extract_file_provider(db_key: &str) -> Option<&str> {
+    if db_key.starts_with("Sftp") {
+        Some("Sftp")
+    } else if db_key.starts_with("Webdav") {
+        Some("Webdav")
+    } else {
+        None
+    }
+}
+
+pub(crate) fn is_remote_file(db_key: &str) -> bool {
+    db_key.starts_with("Sftp") || db_key.starts_with("Webdav")
+}
+
+*/

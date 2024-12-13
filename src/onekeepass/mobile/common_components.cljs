@@ -33,26 +33,29 @@
   "Called to show an error or a general message
   The value of key 'category' determines whether it is error or message
    "
-  [{:keys [dialog-show title category message]}]
-  (let [error? (= category :error)
-        title-txt (if error? (lstr-error-dlg-title title) (lstr-msg-dlg-title title))
-        msg-txt (if error? (lstr-error-dlg-text message) (lstr-msg-dlg-text message))]
-    [rnp-dialog {:style {}
-                 :dismissable false
-                 :visible dialog-show
-                 :onDismiss #()}
-     [rnp-dialog-icon {:icon (if error? "alert" "information")
-                       :color (if error?
-                                @rnc/error-color
-                                @rnc/outline-color)}]
-     [rnp-dialog-title {:style {:color (if error?
-                                         @rnc/error-color
-                                         @rnc/tertiary-color)}} title-txt]
-     [rnp-dialog-content
-      [rn-view {:style {:flexDirection "column" :justify-content "center"}}
-       [rnp-text msg-txt]]]
-     [rnp-dialog-actions
-      [rnp-button {:mode "text" :onPress cmn-events/close-message-dialog} (lstr-bl "close")]]]))
+  ([{:keys [dialog-show title category message]}]
+   (let [error? (= category :error)
+         title-txt (if error? (lstr-error-dlg-title title) (lstr-msg-dlg-title title))
+         msg-txt (if error? (lstr-error-dlg-text message) (lstr-msg-dlg-text message))]
+     [rnp-dialog {:style {}
+                  :dismissable false
+                  :visible dialog-show
+                  :onDismiss #()}
+      [rnp-dialog-icon {:icon (if error? "alert" "information")
+                        :color (if error?
+                                 @rnc/error-color
+                                 @rnc/outline-color)}]
+      [rnp-dialog-title {:style {:color (if error?
+                                          @rnc/error-color
+                                          @rnc/tertiary-color)}} title-txt]
+      [rnp-dialog-content
+       [rn-view {:style {:flexDirection "column" :justify-content "center"}}
+        [rnp-text msg-txt]]]
+      [rnp-dialog-actions
+       [rnp-button {:mode "text" :onPress cmn-events/close-message-dialog} (lstr-bl "close")]]]))
+
+  ([]
+   (message-dialog  @(cmn-events/message-dialog-data))))
 
 (defn select-tags-dialog [{:keys [show all-tags new-tags-str selected-tags]}
                           selected-tags-receiver-fn]

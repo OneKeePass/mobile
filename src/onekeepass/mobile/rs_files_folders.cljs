@@ -1,7 +1,7 @@
 (ns onekeepass.mobile.rs-files-folders
   "Shows the list of files and folders found for a remote connection"
-  (:require [onekeepass.mobile.common-components :refer [confirm-dialog
-                                                         list-section-header]]
+  (:require [onekeepass.mobile.common-components :refer [list-section-header
+                                                         message-dialog]]
             [onekeepass.mobile.constants :as const]
             [onekeepass.mobile.events.remote-storage :as rs-events]
             [onekeepass.mobile.rn-components :as rnc :refer [page-background-color
@@ -10,8 +10,9 @@
                                                              rnp-divider
                                                              rnp-list-icon
                                                              rnp-list-item
+                                                             rnp-portal
                                                              rnp-text]]
-            [onekeepass.mobile.translation :refer [lstr-bl lstr-dlg-title]]
+            [onekeepass.mobile.start-page :refer [open-db-dialog]]
             [reagent.core :as r]))
 
 
@@ -70,4 +71,7 @@
 
 (defn dir-entries-content []
   [rn-safe-area-view {:style {:flex 1 :background-color @page-background-color}}
-   [list-content @(rs-events/remote-storage-listing-to-show)]])
+   [list-content @(rs-events/remote-storage-listing-to-show)]
+   [rnp-portal
+    [open-db-dialog]
+    [message-dialog]]])

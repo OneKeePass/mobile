@@ -1,6 +1,6 @@
 use crate::app_state::{AppState, PreferenceData, RecentlyUsed};
 use crate::file_util::PickedFileHandler;
-use crate::{android, ios, file_util::KeyFileInfo};
+use crate::{android, file_util::KeyFileInfo, ios};
 use crate::{backup, util, OkpError, OkpResult};
 use onekeepass_core::async_service::{self, OtpTokenTtlInfoByField, TimerID};
 use onekeepass_core::db_content::AttachmentHashValue;
@@ -9,7 +9,9 @@ use onekeepass_core::db_service::{
     NewDatabase, OtpSettings, PasswordGenerationOptions,
 };
 
-use onekeepass_core::db_service::storage::{read_configs, RemoteStorageOperation, RemoteStorageOperationType};
+use onekeepass_core::db_service::storage::{
+    read_configs, RemoteStorageOperation, RemoteStorageOperationType,
+};
 
 use std::fmt::format;
 use std::{
@@ -125,6 +127,7 @@ pub enum CommandArg {
     SaveAsArg {
         db_key: String,
         new_db_key: String,
+        file_name: String,
     },
     GroupArg {
         db_key: String,
@@ -151,6 +154,11 @@ pub enum CommandArg {
         db_key: String,
         name: String,
         data_hash_str: String,
+    },
+
+    SaveDbArg {
+        db_key: String,
+        overwrite: bool,
     },
 
     OtpSettingsArg {
@@ -186,11 +194,11 @@ pub enum CommandArg {
     },
 
     RemoteServerOperationArg {
-        rs_operation_type:RemoteStorageOperationType
+        rs_operation_type: RemoteStorageOperationType,
     },
 
     PickedFileHandlerArg {
-        picked_file_handler:PickedFileHandler
+        picked_file_handler: PickedFileHandler,
     },
 
     // This variant needs to come last so that other variants starting with db_key is matched before this
@@ -216,6 +224,8 @@ pub enum CommandArg {
 
 pub type ResponseJson = String;
 
+// Parses the CommandArg enum variants and calls a fn with those args values. This fn is expected to return OkpResult<T>
+// This OkpResult is converted to a json str
 macro_rules! service_call  {
     ($args:expr,$enum_name:tt {$($enum_vals:tt)*} => $path:ident $fn_name:tt ($($fn_args:expr),*) ) => {
 
@@ -234,7 +244,9 @@ macro_rules! service_call  {
     };
 }
 
-// Wraps a fn that returns a value in a OkpResult<T>
+// Parses the CommandArg enum variants and calls a fn with those args values. This fn is expected to return any value other than
+// OkpResult<T>. The return value is then as Ok value
+
 // How to combine service_ok_call with service_call?
 macro_rules! service_ok_call  {
     ($args:expr,$enum_name:tt {$($enum_vals:tt)*} => $path:ident $fn_name:tt ($($fn_args:expr),*) ) => {
@@ -514,7 +526,6 @@ impl Commands {
             "all_kdbx_cache_keys" => result_json_str(db_service::all_kdbx_cache_keys()),
 
             // "list_backup_files" => ok_json_str(util::list_backup_files()),
-
             "list_bookmark_files" => ok_json_str(ios::list_bookmark_files()),
 
             "list_key_files" => ok_json_str(util::list_key_files()),
@@ -524,7 +535,12 @@ impl Commands {
 
             "clipboard_copy_string" => Self::clipboard_copy_string(&args),
 
-            //// All remote storage related 
+        
+            "save_conflict_resolution_cancel" => {
+                service_call!(args, DbKey {db_key} => Self save_conflict_resolution_cancel(&db_key))
+            }
+
+            //// All remote storage related
             "rs_connect_and_retrieve_root_dir" => {
                 service_call_closure!(args,RemoteServerOperationArg {rs_operation_type} => move || {
                     result_json_str(rs_operation_type.connect_and_retrieve_root_dir())
@@ -573,8 +589,7 @@ impl Commands {
                 })
             }
 
-            //// 
-
+            ////
             "test_call" => Self::test_call(&args),
             x => error_json_str(&format!("Invalid command name {} is passed", x)),
         };
@@ -756,8 +771,12 @@ impl Commands {
                 return r;
             } else {
                 // The db is not yet opened and we will form the export data from the backup
-                let backup_file_name_opt = &recent_opt
-                    .and_then(|r| backup::latest_or_generate_backup_history_file_name(&r.db_file_path, &r.file_name));
+                let backup_file_name_opt = &recent_opt.and_then(|r| {
+                    backup::latest_or_generate_backup_history_file_name(
+                        &r.db_file_path,
+                        &r.file_name,
+                    )
+                });
 
                 debug!(
                     "creating export_file from backup_file_name {:?}",
@@ -810,6 +829,17 @@ impl Commands {
     fn recently_used_dbs_info() -> ResponseJson {
         let pref = AppState::preference().lock().unwrap();
         ok_json_str(pref.recent_dbs_info.clone())
+    }
+
+    // Called to remove any backup files created during save kdbx call that resulted in some 
+    // saving conflict or some save error. This is called when user opts to cancel the resolutions provided
+    fn save_conflict_resolution_cancel(db_key: &str) -> OkpResult<()> {
+        if let Some(ref full_backup_file_name) =
+            AppState::shared().remove_last_backup_name_on_error(db_key)
+        {
+            backup::remove_backup_history_file(db_key, full_backup_file_name);
+        }
+        Ok(())
     }
 
     fn app_preference() -> ResponseJson {
@@ -898,7 +928,6 @@ impl Commands {
         };
         result_json_str(inner_fn())
     }
-
 }
 
 // Just for some testing. Comment out when testing is done
@@ -908,15 +937,17 @@ impl Commands {
         //debug!("Fn test_secure_store called and r is {:?}",&r);
 
         let inner_fn = || -> OkpResult<()> {
-            let (key_vals,) = parse_command_args_or_err!(json_args,GenericArg {key_vals});
-            let (Some(id),Some(test_data), ) = (key_vals.get("identifier"),key_vals.get("test_data")) else {
-                return Err(OkpError::DataError(
-                    "Valid key is not found in args",
-                ));
+            let (key_vals,) = parse_command_args_or_err!(json_args, GenericArg { key_vals });
+            let (Some(id), Some(test_data)) =
+                (key_vals.get("identifier"), key_vals.get("test_data"))
+            else {
+                return Err(OkpError::DataError("Valid key is not found in args"));
             };
 
-            let encrypted_data = AppState::secure_enclave_cb_service().encrypt_bytes(id.clone(), test_data.as_bytes().to_vec())?;
-            let dd = AppState::secure_enclave_cb_service().decrypt_bytes(id.clone(), encrypted_data)?;
+            let encrypted_data = AppState::secure_enclave_cb_service()
+                .encrypt_bytes(id.clone(), test_data.as_bytes().to_vec())?;
+            let dd =
+                AppState::secure_enclave_cb_service().decrypt_bytes(id.clone(), encrypted_data)?;
 
             debug!("Decrypted text is {}", String::from_utf8_lossy(&dd));
 
@@ -1005,10 +1036,10 @@ impl<T: Serialize> InvokeResult<T> {
     pub fn json_str(&self) -> String {
         let json_str = match serde_json::to_string_pretty(self) {
             Ok(s) => s,
-            Err(e) =>  {
+            Err(e) => {
                 log::error!("InvokeResult conversion failed with error {}", &e);
                 r#"{"error" : "InvokeResult conversion failed"}"#.into() // format!("Error {:?}", e)
-            } 
+            }
         };
         json_str
     }

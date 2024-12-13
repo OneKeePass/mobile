@@ -18,7 +18,7 @@ pub(crate) struct KdbxCreated {
     pub(crate) api_response: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize,Default)]
 pub struct FileInfo {
     pub file_name: Option<String>,
     pub file_size: Option<i64>,

@@ -8,9 +8,10 @@ use std::path::{Path, PathBuf};
 use log::debug;
 
 use crate::{app_state::AppState, util::create_sub_dir_path};
-use crate::{util, OkpResult};
+use crate::{util, OkpError, OkpResult};
 
 // Returns the full path of the backup file name
+// The args 'full_file_uri_str' is the db_key and 'kdbx_file_name' is just the file name part
 pub(crate) fn generate_backup_history_file_name(
     full_file_uri_str: &str,
     kdbx_file_name: &str,
@@ -39,6 +40,25 @@ pub(crate) fn generate_backup_history_file_name(
         .map(|s| s.to_string())
 }
 
+pub fn generate_and_open_backup_file(
+    db_key: &str,
+    kdbx_file_name: &str,
+) -> OkpResult<fs::File> {
+    let backup_file_path = generate_backup_history_file_name(db_key, kdbx_file_name);
+
+    let bk_file_name = backup_file_path.ok_or(OkpError::DataError("Opening backup file failed"))?;
+
+    debug!("Creating new backup file {} and going to create File object", &bk_file_name);
+
+    let file = fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .open(bk_file_name)?;
+
+    Ok(file)
+}
+
 // Gets the latest the full path name of backup file if available. Otherwise new backup file name is generated
 pub(crate) fn latest_or_generate_backup_history_file_name(
     full_file_uri_str: &str,
@@ -51,14 +71,12 @@ pub(crate) fn latest_or_generate_backup_history_file_name(
 }
 
 // Deletes a particular backup file
-// Arg full_file_uri_str is required to determine db file backup history root
+// Arg db_key is required to determine db file backup history root
+// db_key is typically 'full_file_uri_str'
 // Arg 'full_backup_file_name' give the back file to be deletted
-pub(crate) fn remove_backup_history_file(full_file_uri_str: &str, full_backup_file_name: &str) {
-    // let full_file_name_hash = string_to_simple_hash(full_file_uri_str).to_string();
-    // let file_hist_root =
-    //     create_sub_dir_path(&AppState::backup_history_dir_path(), &full_file_name_hash);
+pub(crate) fn remove_backup_history_file(db_key: &str, full_backup_file_name: &str) {
+    let file_hist_root = backup_file_history_root(db_key);
 
-    let file_hist_root = backup_file_history_root(full_file_uri_str);
     debug!("Removing backup file {}", &full_backup_file_name);
 
     // Remove this backup file and remove the backup dir for this 'full_file_uri_str' if the dir is empty
@@ -73,29 +91,58 @@ pub(crate) fn remove_backup_history_file(full_file_uri_str: &str, full_backup_fi
 
     debug!(
         "Backup dir for this full uri {}  exists {}",
-        &full_file_uri_str,
+        &db_key,
         &file_hist_root.exists()
     );
 }
 
 // Deletes all backup of the files found for this full uri
-pub(crate) fn delete_backup_history_dir(full_file_uri_str: &str) {
-    // let full_file_name_hash = string_to_simple_hash(full_file_uri_str).to_string();
-
-    // // Creates a sub dir with the full file uri hash if required
-    // // e.g /.../Documents/backups/10084644638414928086 where 10084644638414928086 is the hash 'full_file_name_hash'
-    // let file_hist_root =
-    //     create_sub_dir_path(&AppState::backup_history_dir_path(), &full_file_name_hash);
-
-    let file_hist_root = backup_file_history_root(full_file_uri_str);
-    let r = fs::remove_dir_all(&file_hist_root); //remove_dir_contents(file_hist_root);
+pub(crate) fn delete_backup_history_dir(db_key: &str) {
+    let file_hist_root = backup_file_history_root(db_key);
+    let r = fs::remove_dir_all(&file_hist_root);
     debug!(
         "Deleted all files under root {:?} with status {:?}",
         &file_hist_root, &r
     );
 }
 
-// Gets the latest backup file path for this uri. 
+pub(crate) fn prune_backup_history_files(db_key: &str) {
+    let limit = AppState::backup_history_count();
+    let file_hist_root = backup_file_history_root(db_key);
+    let mut buffer: Vec<(DirEntry, i64)> = list_of_files_with_modified_times(&file_hist_root);
+
+    let files_count = buffer.len();
+
+    // (files_count - limit) will panic if it results in -ve number as both are usize
+
+    // debug!(
+    //     "History files count {} , limit {} and  excess {}",
+    //     &files_count, limit, (files_count - limit)
+    // );
+
+    if files_count > limit {
+        debug!(
+            "History files count {} exceeded the limit {} ",
+            &files_count, limit
+        );
+        buffer.sort_by_key(|k| k.1);
+
+        // (files_count - limit) will panic if it results in -ve number as both are usize
+        // The files_count > limit check ensures that this does not happen
+        let excess = files_count - limit;
+
+        for (file, _) in &buffer[0..excess] {
+            let r = fs::remove_file(file.path());
+            debug!(
+                "Removing file {:?} and the result is {:?} ",
+                &file.path(),
+                &r
+            );
+        }
+    }
+}
+
+// Gets the latest backup file path for this uri.
 // The files are sorted based on the last modified time and the recent one is picked
 pub(crate) fn latest_backup_file_path(full_file_uri_str: &str) -> Option<PathBuf> {
     let file_hist_root = backup_file_history_root(full_file_uri_str);
@@ -144,12 +191,11 @@ pub(crate) fn matching_backup_exists(
 }
 
 // Forms the backup history root for this db file uri and returns
-fn backup_file_history_root(full_file_uri_str: &str) -> PathBuf {
-    let full_file_name_hash = string_to_simple_hash(full_file_uri_str).to_string();
-    // Creates a sub dir with the full file uri hash if required
-    // e.g /.../Documents/backups/history/10084644638414928086 where 10084644638414928086 is the hash 'full_file_name_hash'
-    let file_hist_root =
-        create_sub_dir_path(&AppState::backup_history_dir_path(), &full_file_name_hash);
+fn backup_file_history_root(db_key: &str) -> PathBuf {
+    let bk_dir_root = string_to_simple_hash(db_key).to_string();
+    // Creates a sub dir with the 'bk_dir_root' (hashed string) if required
+    // e.g /.../Documents/backups/history/10084644638414928086 where 10084644638414928086 is the hash 'bk_dir_root'
+    let file_hist_root = create_sub_dir_path(&AppState::backup_history_dir_path(), &bk_dir_root);
     file_hist_root
 }
 

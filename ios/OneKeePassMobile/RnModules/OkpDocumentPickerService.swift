@@ -17,8 +17,6 @@ class OkpDocumentPickerService: NSObject {
   var keyFilePickDelegate: KeyFilePickDelegate?
   var dummyDocumentPickDelegate:DummyDocumentPickDelegate?
   
-  
-  
   @objc static func requiresMainQueueSetup() -> Bool {
     return false
   }
@@ -221,12 +219,14 @@ class OkpDocumentPickerService: NSObject {
       
       let tempFileName =  DbServiceAPI.iosSupportService().copyLastBackupToTempFile(fileName,existingFullFileNameUri)
       guard tempFileName != nil else {
-        reject("NO_BACK_FILE_IS_FOUND", "Temp file name is nil", nil)
+        self.logger.error("No backup file is found to complete this save call. Temp file name is nil")
+        reject("NO_BACK_FILE_IS_FOUND", "No backup file is found to complete this save call ", nil)
         return
       }
       
       guard let tempFileUrl = URL(string:tempFileName!) else {
-        reject("NO_BACK_FILE_IS_FOUND", "Temp file url is nil", nil)
+        self.logger.error("No backup file is found to complete this save call. Temp file url is nil")
+        reject("NO_BACK_FILE_IS_FOUND", "No backup file is found to complete this save call ", nil)
         return
       }
       

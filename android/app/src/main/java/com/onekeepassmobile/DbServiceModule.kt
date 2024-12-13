@@ -257,7 +257,7 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
     }
 
     @ReactMethod
-    fun completeSaveAsOnError(oldFullFileNameUri: String,newFullFileNameUri: String,promise: Promise) {
+    fun completeSaveAsOnError(oldFullFileNameUri: String,newFullFileNameUri: String,fileName: String,promise: Promise) {
         executorService.execute {
             Log.i(TAG, "Received fullFileName is $newFullFileNameUri")
             val uri = Uri.parse(newFullFileNameUri);
@@ -269,7 +269,7 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
                 if (fd != null) {
                     // Rust side the file should not be closed. So fd.detachFd() is not used.
                     // if we use fd.detachFd(), then 'create db file' for google drive did not work
-                    val response = DbServiceAPI.completeSaveAsOnError(fd.fd.toULong(), oldFullFileNameUri,newFullFileNameUri);
+                    val response = DbServiceAPI.completeSaveAsOnError(fd.fd.toULong(), oldFullFileNameUri,newFullFileNameUri,fileName);
                     resolveResponse(response, promise)
                     // IMPORTANT:
                     // The caller is responsible for closing the file using its file descriptor

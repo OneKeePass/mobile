@@ -706,13 +706,13 @@ internal interface UniffiCallbackInterfaceCommonDeviceServiceExMethod1 : com.sun
     fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
 }
 internal interface UniffiCallbackInterfaceSecureEnclaveCbServiceMethod0 : com.sun.jna.Callback {
-    fun callback(`uniffiHandle`: Long,`identifier`: RustBuffer.ByValue,`data`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
+    fun callback(`uniffiHandle`: Long,`identifier`: RustBuffer.ByValue,`plainData`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
 }
 internal interface UniffiCallbackInterfaceSecureEnclaveCbServiceMethod1 : com.sun.jna.Callback {
-    fun callback(`uniffiHandle`: Long,`identifier`: RustBuffer.ByValue,`data`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
+    fun callback(`uniffiHandle`: Long,`identifier`: RustBuffer.ByValue,`encryptedData`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
 }
 internal interface UniffiCallbackInterfaceSecureEnclaveCbServiceMethod2 : com.sun.jna.Callback {
-    fun callback(`uniffiHandle`: Long,`identifier`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
+    fun callback(`uniffiHandle`: Long,`identifier`: RustBuffer.ByValue,`uniffiOutReturn`: ByteByReference,uniffiCallStatus: UniffiRustCallStatus,)
 }
 @Structure.FieldOrder("appHomeDir", "appGroupHomeDir", "cacheDir", "tempDir", "loadLanguageTranslation", "uriToFileName", "uriToFileInfo", "uniffiFree")
 internal open class UniffiVTableCallbackInterfaceCommonDeviceService(
@@ -1022,8 +1022,6 @@ internal open class UniffiVTableCallbackInterfaceSecureEnclaveCbService(
 
 
 
-
-
 // A JNA Library to expose the extern-C FFI definitions.
 // This is an implementation detail which will be called internally by the public API.
 
@@ -1055,7 +1053,7 @@ internal interface UniffiLib : Library {
     ): Unit
     fun uniffi_db_service_ffi_fn_constructor_androidsupportservice_new(uniffi_out_err: UniffiRustCallStatus, 
     ): Pointer
-    fun uniffi_db_service_ffi_fn_method_androidsupportservice_complete_save_as_on_error(`ptr`: Pointer,`fileDescriptor`: Long,`oldFullFileNameUri`: RustBuffer.ByValue,`newFullFileNameUri`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    fun uniffi_db_service_ffi_fn_method_androidsupportservice_complete_save_as_on_error(`ptr`: Pointer,`fileDescriptor`: Long,`oldFullFileNameUri`: RustBuffer.ByValue,`newFullFileNameUri`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_db_service_ffi_fn_method_androidsupportservice_create_kdbx(`ptr`: Pointer,`fileDescriptor`: Long,`jsonArgs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1137,12 +1135,12 @@ internal interface UniffiLib : Library {
     ): Unit
     fun uniffi_db_service_ffi_fn_init_callback_vtable_secureenclavecbservice(`vtable`: UniffiVTableCallbackInterfaceSecureEnclaveCbService,
     ): Unit
-    fun uniffi_db_service_ffi_fn_method_secureenclavecbservice_encrypt_bytes(`ptr`: Pointer,`identifier`: RustBuffer.ByValue,`data`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): Unit
-    fun uniffi_db_service_ffi_fn_method_secureenclavecbservice_decrypt_bytes(`ptr`: Pointer,`identifier`: RustBuffer.ByValue,`data`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    fun uniffi_db_service_ffi_fn_method_secureenclavecbservice_encrypt_bytes(`ptr`: Pointer,`identifier`: RustBuffer.ByValue,`plainData`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_db_service_ffi_fn_method_secureenclavecbservice_decrypt_bytes(`ptr`: Pointer,`identifier`: RustBuffer.ByValue,`encryptedData`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_db_service_ffi_fn_method_secureenclavecbservice_remove_key(`ptr`: Pointer,`identifier`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): Unit
+    ): Byte
     fun uniffi_db_service_ffi_fn_init_callback_vtable_commondeviceservice(`vtable`: UniffiVTableCallbackInterfaceCommonDeviceService,
     ): Unit
     fun uniffi_db_service_ffi_fn_init_callback_vtable_securekeyoperation(`vtable`: UniffiVTableCallbackInterfaceSecureKeyOperation,
@@ -1152,8 +1150,6 @@ internal interface UniffiLib : Library {
     fun uniffi_db_service_ffi_fn_func_create_temp_kdbx(`fileArgs`: RustBuffer.ByValue,`jsonArgs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_db_service_ffi_fn_func_db_service_enable_logging(uniffi_out_err: UniffiRustCallStatus, 
-    ): Unit
-    fun uniffi_db_service_ffi_fn_func_db_service_initialize(`commonDeviceService`: Long,`secureKeyOperation`: Long,`eventDispatcher`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
     fun uniffi_db_service_ffi_fn_func_extract_file_provider(`fullFileNameUri`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1171,10 +1167,10 @@ internal interface UniffiLib : Library {
     ): RustBuffer.ByValue
     fun uniffi_db_service_ffi_fn_func_android_callback_service_initialize(`androidApiService`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
-    fun uniffi_db_service_ffi_fn_func_common_device_service_ex_initialize(`commonDeviceServiceEx`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+    fun uniffi_db_service_ffi_fn_func_db_service_initialize(`commonDeviceService`: Long,`secureKeyOperation`: Long,`eventDispatcher`: Pointer,`commonDeviceServiceEx`: Pointer,`secureEnclaveCbService`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
-    fun uniffi_db_service_ffi_fn_func_initialize_callback_services(`commonDeviceServiceEx`: Pointer,`secureEnclaveCbService`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
-    ): Unit
+    fun uniffi_db_service_ffi_fn_func_handle_picked_file(`fileArgs`: RustBuffer.ByValue,`jsonArgs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
     fun ffi_db_service_ffi_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun ffi_db_service_ffi_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1293,8 +1289,6 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_db_service_ffi_checksum_func_db_service_enable_logging(
     ): Short
-    fun uniffi_db_service_ffi_checksum_func_db_service_initialize(
-    ): Short
     fun uniffi_db_service_ffi_checksum_func_extract_file_provider(
     ): Short
     fun uniffi_db_service_ffi_checksum_func_invoke_command(
@@ -1311,9 +1305,9 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_db_service_ffi_checksum_func_android_callback_service_initialize(
     ): Short
-    fun uniffi_db_service_ffi_checksum_func_common_device_service_ex_initialize(
+    fun uniffi_db_service_ffi_checksum_func_db_service_initialize(
     ): Short
-    fun uniffi_db_service_ffi_checksum_func_initialize_callback_services(
+    fun uniffi_db_service_ffi_checksum_func_handle_picked_file(
     ): Short
     fun uniffi_db_service_ffi_checksum_method_androidsupportservice_complete_save_as_on_error(
     ): Short
@@ -1415,9 +1409,6 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_db_service_ffi_checksum_func_db_service_enable_logging() != 27628.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_db_service_ffi_checksum_func_db_service_initialize() != 246.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
     if (lib.uniffi_db_service_ffi_checksum_func_extract_file_provider() != 63250.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1442,13 +1433,13 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_db_service_ffi_checksum_func_android_callback_service_initialize() != 3941.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_db_service_ffi_checksum_func_common_device_service_ex_initialize() != 49458.toShort()) {
+    if (lib.uniffi_db_service_ffi_checksum_func_db_service_initialize() != 37733.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_db_service_ffi_checksum_func_initialize_callback_services() != 56711.toShort()) {
+    if (lib.uniffi_db_service_ffi_checksum_func_handle_picked_file() != 62434.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_db_service_ffi_checksum_method_androidsupportservice_complete_save_as_on_error() != 25150.toShort()) {
+    if (lib.uniffi_db_service_ffi_checksum_method_androidsupportservice_complete_save_as_on_error() != 28451.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_ffi_checksum_method_androidsupportservice_create_kdbx() != 31333.toShort()) {
@@ -1508,13 +1499,13 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_db_service_ffi_checksum_method_commondeviceserviceex_test_secure_store() != 63040.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_db_service_ffi_checksum_method_secureenclavecbservice_encrypt_bytes() != 38856.toShort()) {
+    if (lib.uniffi_db_service_ffi_checksum_method_secureenclavecbservice_encrypt_bytes() != 4689.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_db_service_ffi_checksum_method_secureenclavecbservice_decrypt_bytes() != 65356.toShort()) {
+    if (lib.uniffi_db_service_ffi_checksum_method_secureenclavecbservice_decrypt_bytes() != 596.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_db_service_ffi_checksum_method_secureenclavecbservice_remove_key() != 3901.toShort()) {
+    if (lib.uniffi_db_service_ffi_checksum_method_secureenclavecbservice_remove_key() != 60936.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_ffi_checksum_constructor_androidsupportservice_new() != 29467.toShort()) {
@@ -2330,7 +2321,7 @@ public object FfiConverterTypeAndroidApiService: FfiConverter<AndroidApiService,
 
 public interface AndroidSupportServiceInterface {
     
-    fun `completeSaveAsOnError`(`fileDescriptor`: kotlin.ULong, `oldFullFileNameUri`: kotlin.String, `newFullFileNameUri`: kotlin.String): ApiResponse
+    fun `completeSaveAsOnError`(`fileDescriptor`: kotlin.ULong, `oldFullFileNameUri`: kotlin.String, `newFullFileNameUri`: kotlin.String, `fileName`: kotlin.String): ApiResponse
     
     fun `createKdbx`(`fileDescriptor`: kotlin.ULong, `jsonArgs`: kotlin.String): ApiResponse
     
@@ -2426,12 +2417,12 @@ open class AndroidSupportService: Disposable, AutoCloseable, AndroidSupportServi
         }
     }
 
-    override fun `completeSaveAsOnError`(`fileDescriptor`: kotlin.ULong, `oldFullFileNameUri`: kotlin.String, `newFullFileNameUri`: kotlin.String): ApiResponse {
+    override fun `completeSaveAsOnError`(`fileDescriptor`: kotlin.ULong, `oldFullFileNameUri`: kotlin.String, `newFullFileNameUri`: kotlin.String, `fileName`: kotlin.String): ApiResponse {
             return FfiConverterTypeApiResponse.lift(
     callWithPointer {
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_method_androidsupportservice_complete_save_as_on_error(
-        it, FfiConverterULong.lower(`fileDescriptor`),FfiConverterString.lower(`oldFullFileNameUri`),FfiConverterString.lower(`newFullFileNameUri`),_status)
+        it, FfiConverterULong.lower(`fileDescriptor`),FfiConverterString.lower(`oldFullFileNameUri`),FfiConverterString.lower(`newFullFileNameUri`),FfiConverterString.lower(`fileName`),_status)
 }
     }
     )
@@ -4030,11 +4021,11 @@ public object FfiConverterTypeJsonService: FfiConverter<JsonService, Pointer> {
 
 public interface SecureEnclaveCbService {
     
-    fun `encryptBytes`(`identifier`: kotlin.String, `data`: kotlin.ByteArray)
+    fun `encryptBytes`(`identifier`: kotlin.String, `plainData`: kotlin.ByteArray): kotlin.ByteArray
     
-    fun `decryptBytes`(`identifier`: kotlin.String, `data`: kotlin.ByteArray): kotlin.ByteArray
+    fun `decryptBytes`(`identifier`: kotlin.String, `encryptedData`: kotlin.ByteArray): kotlin.ByteArray
     
-    fun `removeKey`(`identifier`: kotlin.String)
+    fun `removeKey`(`identifier`: kotlin.String): kotlin.Boolean
     
     companion object
 }
@@ -4120,24 +4111,12 @@ open class SecureEnclaveCbServiceImpl: Disposable, AutoCloseable, SecureEnclaveC
     }
 
     
-    @Throws(ApiCallbackException::class)override fun `encryptBytes`(`identifier`: kotlin.String, `data`: kotlin.ByteArray)
-        = 
-    callWithPointer {
-    uniffiRustCallWithError(ApiCallbackException) { _status ->
-    UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_method_secureenclavecbservice_encrypt_bytes(
-        it, FfiConverterString.lower(`identifier`),FfiConverterByteArray.lower(`data`),_status)
-}
-    }
-    
-    
-
-    
-    @Throws(ApiCallbackException::class)override fun `decryptBytes`(`identifier`: kotlin.String, `data`: kotlin.ByteArray): kotlin.ByteArray {
+    @Throws(ApiCallbackException::class)override fun `encryptBytes`(`identifier`: kotlin.String, `plainData`: kotlin.ByteArray): kotlin.ByteArray {
             return FfiConverterByteArray.lift(
     callWithPointer {
     uniffiRustCallWithError(ApiCallbackException) { _status ->
-    UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_method_secureenclavecbservice_decrypt_bytes(
-        it, FfiConverterString.lower(`identifier`),FfiConverterByteArray.lower(`data`),_status)
+    UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_method_secureenclavecbservice_encrypt_bytes(
+        it, FfiConverterString.lower(`identifier`),FfiConverterByteArray.lower(`plainData`),_status)
 }
     }
     )
@@ -4145,15 +4124,29 @@ open class SecureEnclaveCbServiceImpl: Disposable, AutoCloseable, SecureEnclaveC
     
 
     
-    @Throws(ApiCallbackException::class)override fun `removeKey`(`identifier`: kotlin.String)
-        = 
+    @Throws(ApiCallbackException::class)override fun `decryptBytes`(`identifier`: kotlin.String, `encryptedData`: kotlin.ByteArray): kotlin.ByteArray {
+            return FfiConverterByteArray.lift(
+    callWithPointer {
+    uniffiRustCallWithError(ApiCallbackException) { _status ->
+    UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_method_secureenclavecbservice_decrypt_bytes(
+        it, FfiConverterString.lower(`identifier`),FfiConverterByteArray.lower(`encryptedData`),_status)
+}
+    }
+    )
+    }
+    
+
+    
+    @Throws(ApiCallbackException::class)override fun `removeKey`(`identifier`: kotlin.String): kotlin.Boolean {
+            return FfiConverterBoolean.lift(
     callWithPointer {
     uniffiRustCallWithError(ApiCallbackException) { _status ->
     UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_method_secureenclavecbservice_remove_key(
         it, FfiConverterString.lower(`identifier`),_status)
 }
     }
-    
+    )
+    }
     
 
     
@@ -4168,15 +4161,15 @@ open class SecureEnclaveCbServiceImpl: Disposable, AutoCloseable, SecureEnclaveC
 // Put the implementation in an object so we don't pollute the top-level namespace
 internal object uniffiCallbackInterfaceSecureEnclaveCbService {
     internal object `encryptBytes`: UniffiCallbackInterfaceSecureEnclaveCbServiceMethod0 {
-        override fun callback(`uniffiHandle`: Long,`identifier`: RustBuffer.ByValue,`data`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
+        override fun callback(`uniffiHandle`: Long,`identifier`: RustBuffer.ByValue,`plainData`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
             val uniffiObj = FfiConverterTypeSecureEnclaveCbService.handleMap.get(uniffiHandle)
             val makeCall = { ->
                 uniffiObj.`encryptBytes`(
                     FfiConverterString.lift(`identifier`),
-                    FfiConverterByteArray.lift(`data`),
+                    FfiConverterByteArray.lift(`plainData`),
                 )
             }
-            val writeReturn = { _: Unit -> Unit }
+            val writeReturn = { value: kotlin.ByteArray -> uniffiOutReturn.setValue(FfiConverterByteArray.lower(value)) }
             uniffiTraitInterfaceCallWithError(
                 uniffiCallStatus,
                 makeCall,
@@ -4186,12 +4179,12 @@ internal object uniffiCallbackInterfaceSecureEnclaveCbService {
         }
     }
     internal object `decryptBytes`: UniffiCallbackInterfaceSecureEnclaveCbServiceMethod1 {
-        override fun callback(`uniffiHandle`: Long,`identifier`: RustBuffer.ByValue,`data`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
+        override fun callback(`uniffiHandle`: Long,`identifier`: RustBuffer.ByValue,`encryptedData`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
             val uniffiObj = FfiConverterTypeSecureEnclaveCbService.handleMap.get(uniffiHandle)
             val makeCall = { ->
                 uniffiObj.`decryptBytes`(
                     FfiConverterString.lift(`identifier`),
-                    FfiConverterByteArray.lift(`data`),
+                    FfiConverterByteArray.lift(`encryptedData`),
                 )
             }
             val writeReturn = { value: kotlin.ByteArray -> uniffiOutReturn.setValue(FfiConverterByteArray.lower(value)) }
@@ -4204,14 +4197,14 @@ internal object uniffiCallbackInterfaceSecureEnclaveCbService {
         }
     }
     internal object `removeKey`: UniffiCallbackInterfaceSecureEnclaveCbServiceMethod2 {
-        override fun callback(`uniffiHandle`: Long,`identifier`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
+        override fun callback(`uniffiHandle`: Long,`identifier`: RustBuffer.ByValue,`uniffiOutReturn`: ByteByReference,uniffiCallStatus: UniffiRustCallStatus,) {
             val uniffiObj = FfiConverterTypeSecureEnclaveCbService.handleMap.get(uniffiHandle)
             val makeCall = { ->
                 uniffiObj.`removeKey`(
                     FfiConverterString.lift(`identifier`),
                 )
             }
-            val writeReturn = { _: Unit -> Unit }
+            val writeReturn = { value: kotlin.Boolean -> uniffiOutReturn.setValue(FfiConverterBoolean.lower(value)) }
             uniffiTraitInterfaceCallWithError(
                 uniffiCallStatus,
                 makeCall,
@@ -5194,14 +5187,6 @@ public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.Str
 }
     
     
- fun `dbServiceInitialize`(`commonDeviceService`: CommonDeviceService, `secureKeyOperation`: SecureKeyOperation, `eventDispatcher`: EventDispatch)
-        = 
-    uniffiRustCall() { _status ->
-    UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_func_db_service_initialize(
-        FfiConverterTypeCommonDeviceService.lower(`commonDeviceService`),FfiConverterTypeSecureKeyOperation.lower(`secureKeyOperation`),FfiConverterTypeEventDispatch.lower(`eventDispatcher`),_status)
-}
-    
-    
  fun `extractFileProvider`(`fullFileNameUri`: kotlin.String): kotlin.String {
             return FfiConverterString.lift(
     uniffiRustCall() { _status ->
@@ -5273,21 +5258,22 @@ public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.Str
 }
     
     
- fun `commonDeviceServiceExInitialize`(`commonDeviceServiceEx`: CommonDeviceServiceEx)
+ fun `dbServiceInitialize`(`commonDeviceService`: CommonDeviceService, `secureKeyOperation`: SecureKeyOperation, `eventDispatcher`: EventDispatch, `commonDeviceServiceEx`: CommonDeviceServiceEx, `secureEnclaveCbService`: SecureEnclaveCbService)
         = 
     uniffiRustCall() { _status ->
-    UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_func_common_device_service_ex_initialize(
-        FfiConverterTypeCommonDeviceServiceEx.lower(`commonDeviceServiceEx`),_status)
+    UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_func_db_service_initialize(
+        FfiConverterTypeCommonDeviceService.lower(`commonDeviceService`),FfiConverterTypeSecureKeyOperation.lower(`secureKeyOperation`),FfiConverterTypeEventDispatch.lower(`eventDispatcher`),FfiConverterTypeCommonDeviceServiceEx.lower(`commonDeviceServiceEx`),FfiConverterTypeSecureEnclaveCbService.lower(`secureEnclaveCbService`),_status)
 }
     
     
- fun `initializeCallbackServices`(`commonDeviceServiceEx`: CommonDeviceServiceEx, `secureEnclaveCbService`: SecureEnclaveCbService)
-        = 
+ fun `handlePickedFile`(`fileArgs`: FileArgs, `jsonArgs`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
     uniffiRustCall() { _status ->
-    UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_func_initialize_callback_services(
-        FfiConverterTypeCommonDeviceServiceEx.lower(`commonDeviceServiceEx`),FfiConverterTypeSecureEnclaveCbService.lower(`secureEnclaveCbService`),_status)
+    UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_func_handle_picked_file(
+        FfiConverterTypeFileArgs.lower(`fileArgs`),FfiConverterString.lower(`jsonArgs`),_status)
 }
-    
+    )
+    }
     
 
 

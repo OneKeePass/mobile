@@ -69,12 +69,10 @@ impl OpenedFile {
     }
 }
 
-
 #[enum_dispatch::enum_dispatch(PickedFileHandler)]
 pub trait HandlePickedFile {
     fn execute(&self, file_args: &FileArgs) -> OkpResult<KeyFileInfo>;
 }
-
 
 // Json string {\"handler\" : \"SftpPrivateKeyFile\"} deserializes to variant PickedFileHandler::SftpPrivateKeyFile
 

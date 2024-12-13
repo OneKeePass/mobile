@@ -11,9 +11,7 @@ use std::{
 use onekeepass_core::db_service as kp_service;
 
 use crate::{
-    udl_types::SecureKeyOperation,
-    udl_uniffi_exports::{CommonDeviceServiceEx, SecureEnclaveCbService},
-    util,
+    remote_storage, udl_types::SecureKeyOperation, udl_uniffi_exports::{CommonDeviceServiceEx, SecureEnclaveCbService}, util
 };
 use crate::{
     udl_types::{CommonDeviceService, EventDispatch, FileInfo},
@@ -48,6 +46,7 @@ pub struct AppState {
 
     // Used to keep the last backup file ref which is used for 'Save as'
     // when db save fails (as the orginal db content changed)
+    // This is reset to empty when the app starts
     last_backup_on_error: Mutex<HashMap<String, String>>,
 
     preference: Mutex<Preference>,
@@ -174,9 +173,9 @@ impl AppState {
 
     // Used in android and ios specific module
     // See ios::complete_save_as_on_error and  android::complete_save_as_on_error
-    pub fn remove_last_backup_name_on_error(&self, full_file_name_uri: &str) {
+    pub fn remove_last_backup_name_on_error(&self, full_file_name_uri: &str) -> Option<String> {
         let mut bkp = self.last_backup_on_error.lock().unwrap();
-        bkp.remove(full_file_name_uri);
+        bkp.remove(full_file_name_uri)
     }
 
     // Used in android and ios specific module
@@ -248,6 +247,11 @@ impl AppState {
     }
 
     pub fn uri_to_file_info(&self, full_file_name_uri: &str) -> Option<FileInfo> {
+        let info = remote_storage::uri_to_file_info(full_file_name_uri);
+        if info.is_some() {
+            return info;
+        }
+        
         let info = self
             .common_device_service
             .uri_to_file_info(full_file_name_uri.into());
@@ -277,8 +281,14 @@ impl AppState {
         p
     }
 
+    // TODO: Remove dir reference to Preference and route to all calls to preference struct through AppState?
     pub fn preference() -> &'static Mutex<Preference> {
         &Self::shared().preference
+    }
+
+    pub fn backup_history_count() -> usize {
+        let p = Self::shared().preference.lock().unwrap();
+        p.backup_history_count()
     }
 
     pub fn common_device_service_ex() -> &'static dyn CommonDeviceServiceEx {
@@ -336,7 +346,7 @@ pub struct Preference {
     pub theme: String,
     // Should be a two letters language id
     pub language: String,
-    //Valid values one of Types,Categories,Groups,Tags
+    // Valid values one of Types,Categories,Groups,Tags
     pub default_entry_category_groupings: String,
 }
 
@@ -368,9 +378,11 @@ impl Preference {
         } else {
             serde_json::from_str(&json_str).unwrap_or_else(|_| {
                 let mut pref_new = Self::default();
-                match serde_json::from_str::<Preference1>(&json_str) {
-                    Ok(p) => {
-                        debug!("Returning the new pref with old pref values");
+                // Need to use serde_json::from_str::<Preference1>(&json_str) if we do not use @ Bindings
+                // See https://doc.rust-lang.org/book/ch18-03-pattern-syntax.html#-bindings
+                match serde_json::from_str(&json_str) {
+                    Ok(p @ Preference1 { .. }) => {
+                        debug!("Returning the new pref with old pref values from Preference1");
                         pref_new.recent_dbs_info = p.recent_dbs_info;
                         // Update the preference json with the copied values from old preference
                         pref_new.write(app_home_dir);
@@ -434,6 +446,10 @@ impl Preference {
         if updated {
             self.write_to_app_dir();
         }
+    }
+
+    fn backup_history_count(&self) -> usize {
+        3
     }
 
     fn add_recent_db_use_info(

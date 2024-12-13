@@ -220,9 +220,13 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
         }
 
         debug!("internal_read_kdbx copied to backup file and synced");
+
+
     } else {
         debug!("Backup file already exists for this db");
     }
+
+    backup::prune_backup_history_files(&db_file_name);
 
     AppState::shared().add_recent_db_use_info(&db_file_name);
 
@@ -286,9 +290,9 @@ pub(crate) fn save_kdbx(file_args: FileArgs, overwrite: bool) -> ApiResponse {
                     // In case of Android 'udl_functions::verify_db_file_checksum' is used directly to do this check 
                     // (See verifyDbFileChanged fn in DbServiceModule.kt)
 
-                    // This 'udl_functions::verify_db_file_checksum' is not used by iOS app 
+                    // The above mentioned 'udl_functions::verify_db_file_checksum' is not used by iOS app 
                     // This is because of slight differences in the save_kdbx call sequences in iOS vs Android
-                    
+
                     if cfg!(target_os = "ios") && !overwrite {
                         // writer is from the existing db file
                         // An error indicates the content is changed

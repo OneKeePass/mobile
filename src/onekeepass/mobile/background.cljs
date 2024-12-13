@@ -240,10 +240,10 @@
                   dispatch-fn
                   :error-transform true))
 
-(defn ios-complete-save-as-on-error [db-key new-db-key dispatch-fn]
+(defn ios-complete-save-as-on-error [db-key new-db-key file-name dispatch-fn] 
   (call-api-async (fn [] (.completeSaveAsOnError
                           okp-db-service
-                          (api-args->json {:db-key db-key :new-db-key new-db-key})))
+                          (api-args->json {:db-key db-key :new-db-key new-db-key :file-name file-name})))
                   dispatch-fn))
 
 ;;;;;;   For autofill and ios app group related calls
@@ -270,8 +270,8 @@
 (defn android-pick-on-save-error-save-as [kdbx-file-name dispatch-fn]
   (pick-document-to-create kdbx-file-name dispatch-fn))
 
-(defn android-complete-save-as-on-error [db-key new-db-key dispatch-fn]
-  (call-api-async (fn [] (.completeSaveAsOnError okp-db-service db-key new-db-key)) dispatch-fn :error-transform true))
+(defn android-complete-save-as-on-error [db-key new-db-key file-name dispatch-fn]
+  (call-api-async (fn [] (.completeSaveAsOnError okp-db-service db-key new-db-key file-name)) dispatch-fn :error-transform true))
 
 #_(defn android-copy-to-clipboard
     "Called to copy a selected field value to clipboard
@@ -415,6 +415,9 @@
 
 (defn close-kdbx [db-key dispatch-fn]
   (invoke-api "close_kdbx" {:db-key db-key} dispatch-fn))
+
+(defn save-conflict-resolution-cancel [db-key dispatch-fn]
+  (invoke-api "save_conflict_resolution_cancel" {:db-key db-key} dispatch-fn))
 
 (defn unlock-kdbx
   "Calls the API to unlock the previously opened db file.

@@ -36,7 +36,7 @@
      ;; All dialogs that may be used in more than one page are added under this portal 
      [rnp-portal
       [message-snackbar] 
-      [open-db-dialog] 
+      #_[open-db-dialog] 
       [save-error-modal @(save-events/save-error-modal-data)]
       [message-modal @(cmn-events/message-modal-data)]
       [message-dialog @(cmn-events/message-dialog-data)]]]))

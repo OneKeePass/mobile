@@ -248,7 +248,6 @@ fn create_temp_kdbx(_file_args: FileArgs, _json_args: String) -> ApiResponse {
 #[cfg(target_os = "ios")]
 fn extract_file_provider(full_file_name_uri: String) -> String {
     use crate::ios;
-
     ios::extract_file_provider(&full_file_name_uri)
 }
 

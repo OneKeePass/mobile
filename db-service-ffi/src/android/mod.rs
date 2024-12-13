@@ -19,7 +19,7 @@ use crate::{
     commands::{remove_app_files, CommandArg, InvokeResult},
     util, ApiResponse, OkpError, OkpResult,
 };
-use crate::{commands, open_backup_file, return_api_response_failure};
+use crate::{backup, commands, open_backup_file, return_api_response_failure};
 use log::debug;
 use onekeepass_core::db_content::AttachmentHashValue;
 use onekeepass_core::db_service::{self, KdbxLoaded};
@@ -43,13 +43,14 @@ impl AndroidSupportService {
         file_descriptor: u64,
         old_full_file_name_uri: String,
         new_full_file_name_uri: String,
+        file_name:String,
     ) -> ApiResponse {
         log::debug!("AndroidSupportService complete_save_as_on_error is called ");
         let mut file = unsafe { util::get_file_from_fd(file_descriptor) };
 
         let mut inner = || -> OkpResult<KdbxLoaded> {
             if let Some(bkp_file_name) =
-                AppState::global().get_last_backup_on_error(&old_full_file_name_uri)
+                AppState::shared().get_last_backup_on_error(&old_full_file_name_uri)
             {
                 let mut reader = File::open(bkp_file_name)?;
                 std::io::copy(&mut reader, &mut file)?;
@@ -65,8 +66,8 @@ impl AndroidSupportService {
                 db_service::calculate_and_set_db_file_checksum(&new_full_file_name_uri, &mut reader)?;
 
                 remove_app_files(&old_full_file_name_uri);
-                AppState::global().add_recent_db_use_info(&new_full_file_name_uri);
-                AppState::global().remove_last_backup_name_on_error(&old_full_file_name_uri);
+                AppState::shared().add_recent_db_use_info(&new_full_file_name_uri);
+                AppState::shared().remove_last_backup_name_on_error(&old_full_file_name_uri);
                 Ok(kdbx_loaded)
             } else {
                 Err(OkpError::UnexpectedError(format!(
@@ -98,7 +99,7 @@ impl AndroidSupportService {
             Ok(CommandArg::NewDbArg { mut new_db }) => {
                 full_file_name_uri = new_db.database_file_name.clone();
                 // Need to get the file name from full uri
-                new_db.file_name = AppState::global()
+                new_db.file_name = AppState::shared()
                     .common_device_service
                     .uri_to_file_name(full_file_name_uri.clone());
 
@@ -110,8 +111,8 @@ impl AndroidSupportService {
                     //return as_api_response::<()>(Err(OkpError::DataError("No valid file name formed from the full file uri")));
                 };
                 let backup_file_name =
-                    util::generate_backup_file_name(&full_file_name_uri, file_name);
-                let backup_file = open_backup_file(backup_file_name);
+                    backup::generate_backup_history_file_name(&full_file_name_uri, file_name);
+                let backup_file = open_backup_file(backup_file_name.as_ref());
 
                 let Some(mut bf_writer) = backup_file else {
                     return_api_response_failure!(
@@ -154,7 +155,7 @@ impl AndroidSupportService {
             Ok(v) => match serde_json::to_string_pretty(&InvokeResult::with_ok(v)) {
                 Ok(s) => {
                     //Add this newly created db file to the recent list
-                    AppState::global().add_recent_db_use_info(&full_file_name_uri);
+                    AppState::shared().add_recent_db_use_info(&full_file_name_uri);
                     ApiResponse::Success { result: s }
                 }
 
@@ -243,6 +244,7 @@ impl AndroidSupportService {
         _file_descriptor: u64,
         _old_full_file_name_uri: String,
         _new_full_file_name_uri: String,
+        _file_name:String,
     ) -> ApiResponse {
         unimplemented!();
     }

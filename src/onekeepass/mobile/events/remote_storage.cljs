@@ -43,7 +43,7 @@
 
 ;; Used only for Sftp form to pick the private key file if required
 (defn pick-private-key-file
-  "Called when user presses to select the private key file"
+  "Called when user presses to select the private key file from any location on the device file app"
   []
   ;; We make first backend api call 'bg/pick-file' followed 
   ;; by the second backend api call 'bg-rs/copy-private-key-file' based on the response from first
