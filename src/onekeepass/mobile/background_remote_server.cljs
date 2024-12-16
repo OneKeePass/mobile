@@ -106,9 +106,12 @@
 
   (def connect-request {:type "Sftp" :connection-info ios-c})
 
-  (def adroid-c {:name "SftpTest1" :host "192.168.1.4" :port 2022 :private-key "/data/data/com.onekeepassmobile/files/sftp_id_rsa" :user-name "sf-user1" :password "Matrix.2" :start-dir "/"})
+  (def adroid-c {:connection-id UUID-DEFAULT :name "SftpTest1" :host "192.168.1.4" :port 2022 :private-key "/data/data/com.onekeepassmobile/files/sftp_id_rsa" :user-name "sf-user1" :password "Matrix.2" :start-dir "/"})
 
+  
+  (connect-and-retrieve-root-dir "Sftp" adroid-c)
 
   (def wc {:connection-id UUID-DEFAULT :name "WebdavTest1", :root-url "https://192.168.1.4:10080/" :user-name "sf-user1" :password "ss" :allow-untrusted-cert true})
 
-  (def dp {:sftp-server-name "SftpTest1" :sftp-server-parent-dir "dav"}))
+  (def dp {:sftp-server-name "SftpTest1" :sftp-server-parent-dir "dav"})
+  )

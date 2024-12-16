@@ -1,15 +1,25 @@
+use std::{fs::File, io::Seek, os::fd::IntoRawFd, path::Path};
+
 use log::debug;
-use onekeepass_core::db_service;
+use onekeepass_core::db_service::{self, KdbxLoaded};
 use url::Url;
 
 use crate::{
-    commands::{error_json_str, result_json_str, CommandArg, ResponseJson},
-    parse_command_args_or_err,
+    app_state::AppState,
+    as_api_response, backup,
+    commands::{
+        self, error_json_str, remove_app_files, result_json_str, CommandArg, InvokeResult,
+        ResponseJson,
+    },
+    open_backup_file, parse_command_args_or_err,
+    udl_types::ApiResponse,
     udl_uniffi_exports::AppClipboardCopyData,
-    OkpError, OkpResult,
+    util, OkpError, OkpResult,
 };
 
 use super::{AndroidApiCallbackImpl, AutoFillDbData};
+
+use crate::return_api_response_failure;
 
 // NOTE: We have another service 'AndroidSupportService' in udl file
 // Later need to move those services here
@@ -38,6 +48,8 @@ impl AndroidSupportServiceExtra {
 
             "clipboard_copy" => self.clipboard_copy(json_args),
 
+            "test_call" => result_json_str(self.test_call(json_args)),
+
             x => error_json_str(&format!(
                 "Invalid command or args: Command call {} with args {} failed",
                 x, &json_args
@@ -45,6 +57,193 @@ impl AndroidSupportServiceExtra {
         };
 
         r
+    }
+
+    // called after DocumentPickerServiceModule.pickKdbxFileToCreate to do Save as feature
+    // Note: This impl is slightly different from iOS
+    pub fn complete_save_as_on_error(
+        &self,
+        file_descriptor: u64,
+        old_full_file_name_uri: String,
+        new_full_file_name_uri: String,
+        file_name: String,
+    ) -> ApiResponse {
+        log::debug!("AndroidSupportService complete_save_as_on_error is called ");
+        let mut file = unsafe { util::get_file_from_fd(file_descriptor) };
+
+        let mut inner = || -> OkpResult<KdbxLoaded> {
+            // get_last_backup_on_error should have a valid back file created 
+            // for the content of db failed to save
+            if let Some(bkp_file_name) =
+                AppState::shared().get_last_backup_on_error(&old_full_file_name_uri)
+            {
+                // The last modified db is written to the 'bkp_file_name' 
+                let mut modified_bk_file_reader = File::open(bkp_file_name)?;
+
+                // Writes the modified db data to the new the file selected by the user
+                std::io::copy(&mut modified_bk_file_reader, &mut file)?;
+                // sync_all ensures the file is created and synced in case of dropbbox and one drive
+                let _ = file.sync_all();
+
+                let kdbx_loaded =
+                    db_service::rename_db_key(&old_full_file_name_uri, &new_full_file_name_uri)?;
+
+                // Need to set the checksum for the newly saved file and checksum is calculated using the backup file itself
+                // as using the newly written 'file' from 'file_descriptor' fails
+                modified_bk_file_reader.rewind()?;
+                db_service::calculate_and_set_db_file_checksum(
+                    &new_full_file_name_uri,
+                    &mut modified_bk_file_reader,
+                )?;
+
+                // Need to create the backup file for the newly created database
+                let mut new_db_bk_file = backup::generate_and_open_backup_file(&new_full_file_name_uri, &file_name)?;
+
+                modified_bk_file_reader.rewind()?;
+
+                // Copies data from the latest modification of old db that we could not save to the new db's backup
+                std::io::copy(&mut modified_bk_file_reader, &mut new_db_bk_file)?;
+                let _ = new_db_bk_file.sync_all();
+
+                // For now we remove all reference of the db file that failed to save
+                remove_app_files(&old_full_file_name_uri);
+
+                AppState::shared().add_recent_db_use_info2(&new_full_file_name_uri,&file_name);
+
+                AppState::shared().remove_last_backup_name_on_error(&old_full_file_name_uri);
+                Ok(kdbx_loaded)
+            } else {
+                Err(OkpError::UnexpectedError(format!(
+                    "Last backup is not found"
+                )))
+            }
+        };
+
+        let api_response = as_api_response(inner());
+
+        {
+            log::debug!("AndroidSupportService complete_save_as_on_error: File fd_used is used  and will not be closed here");
+            // We need to transfer the ownership of the underlying file descriptor to the caller.
+            // By this call, the file instance created using incoming fd will not close the file at the end of
+            // this function (Files are automatically closed when they go out of scope) and the caller
+            // function from device will be responsible for the file closing.
+            let _fd = file.into_raw_fd();
+        }
+        api_response
+    }
+
+    pub fn create_kdbx(&self, file_descriptor: u64, json_args: String) -> ApiResponse {
+        log::debug!("AndroidSupportService create_kdbx is called ");
+
+        let mut file = unsafe { util::get_file_from_fd(file_descriptor) };
+
+        let mut full_file_name_uri: String = String::default();
+        let r = match serde_json::from_str(&json_args) {
+            Ok(CommandArg::NewDbArg { mut new_db }) => {
+                full_file_name_uri = new_db.database_file_name.clone();
+                // Need to get the file name from full uri
+                new_db.file_name = AppState::shared()
+                    .common_device_service
+                    .uri_to_file_name(full_file_name_uri.clone());
+
+                // Need to create a backup file for this newly created database
+                let Some(file_name) = new_db.file_name.as_ref() else {
+                    return_api_response_failure!(
+                        "No valid file name formed from the full file uri"
+                    );
+                    //return as_api_response::<()>(Err(OkpError::DataError("No valid file name formed from the full file uri")));
+                };
+                let backup_file_name =
+                    backup::generate_backup_history_file_name(&full_file_name_uri, file_name);
+                let backup_file = open_backup_file(backup_file_name.as_ref());
+
+                let Some(mut bf_writer) = backup_file else {
+                    return_api_response_failure!(
+                        "Backup file could not be opened to write the new database backup"
+                    );
+                    //return as_api_response::<()>(Err(OkpError::DataError("Backup file could not be opened to write the new database backup")));
+                };
+
+                let r = db_service::create_and_write_to_writer(&mut bf_writer, new_db);
+                let rewind_r = bf_writer.sync_all().and(bf_writer.rewind());
+                log::debug!(
+                    "Syncing and rewinding of new db backup file result {:?}",
+                    rewind_r
+                );
+
+                let _n = std::io::copy(&mut bf_writer, &mut file);
+                log::debug!("Copied the backup to the new db file ");
+                // sync_all ensures the file is created and synced in case of dropbbox and one drive
+                let _ = file.sync_all();
+
+                r
+            }
+            Ok(_) => Err(OkpError::UnexpectedError(
+                "Unexpected arguments for create_kdbx api call".into(),
+            )),
+            Err(e) => Err(OkpError::UnexpectedError(format!("{:?}", e))),
+        };
+
+        {
+            log::debug!("File fd_used is used and will not be closed here");
+            // We need to transfer the ownership of the underlying file descriptor to the caller.
+            // By this call, the file instance created using incoming fd will not close the file at the end of
+            // this function (Files are automatically closed when they go out of scope) and the caller
+            // function from device will be responsible for the file closing.
+            // If this is not done, android app will crash!
+            let _fd = file.into_raw_fd();
+        }
+
+        let api_response = match r {
+            Ok(v) => match serde_json::to_string_pretty(&InvokeResult::with_ok(v)) {
+                Ok(s) => {
+                    //Add this newly created db file to the recent list
+                    AppState::shared().add_recent_db_use_info(&full_file_name_uri);
+                    ApiResponse::Success { result: s }
+                }
+
+                Err(e) => ApiResponse::Failure {
+                    result: InvokeResult::<()>::with_error(&format!("{:?}", e)).json_str(),
+                },
+            },
+            Err(e) => ApiResponse::Failure {
+                result: InvokeResult::<()>::with_error(&format!("{:?}", e)).json_str(),
+            },
+        };
+        api_response
+    }
+
+    pub fn save_key_file(&self, file_descriptor: u64, full_key_file_name: String) -> String {
+        log::debug!(
+            "AndroidSupportService save_key_file is called with full_key_file_name {}",
+            &full_key_file_name
+        );
+
+        let inner = || -> OkpResult<()> {
+            let p = Path::new(&full_key_file_name);
+            if !p.exists() {
+                return Err(OkpError::UnexpectedError(format!(
+                    "Key file {:?} is not found",
+                    p.file_name()
+                )));
+            }
+
+            let mut reader = File::open(p)?;
+            let mut writer = unsafe { util::get_file_from_fd(file_descriptor) };
+            std::io::copy(&mut reader, &mut writer).and(writer.sync_all())?;
+            {
+                log::debug!("Key File fd is used and will not be closed here");
+                // IMPORTANT
+                // We need to transfer the ownership of the underlying file descriptor to the caller.
+                // By this call, the file instance created using incoming fd will not close the file at the end of
+                // this function (Files are automatically closed when they go out of scope) and the caller
+                // function from device will be responsible for the file closing.
+                // If this is not done, android app will crash!
+                let _fd = writer.into_raw_fd();
+            }
+            Ok(())
+        };
+        commands::result_json_str(inner())
     }
 }
 
@@ -110,7 +309,7 @@ impl AndroidSupportServiceExtra {
     }
 
     // Called to complete the pending autofill request
-    // The arg json_args should be parseable as AutoFillDbData 
+    // The arg json_args should be parseable as AutoFillDbData
     // instead of the usual CommandArgs
     fn complete_autofill(&self, json_args: &str) -> ResponseJson {
         let inner_fn = || -> OkpResult<()> {
@@ -136,4 +335,36 @@ fn error_message(enum_name: &str, json_args: &str) -> OkpResult<()> {
         json_args, enum_name
     );
     return Err(OkpError::UnexpectedError(error_msg));
+}
+
+//////
+
+impl AndroidSupportServiceExtra {
+    fn test_call(&self, _json_args: &str) -> OkpResult<()> {
+        let identifier = "TestAlias";
+        let data = "This is my sentence";
+        // let r = AppState::secure_enclave_cb_service().remove_key(identifier.to_string());
+        // debug!("Removing key done with r {:?}", &r);
+
+        let encrypted_data = AppState::secure_enclave_cb_service().encrypt_bytes(
+            identifier.to_string(),
+            data.as_bytes().to_vec(),
+        )?;
+
+        debug!(
+            "Encrypted and size is {} and will write this data {}",
+            &encrypted_data.len(),data,
+        );
+
+        let decrypted_data = AppState::secure_enclave_cb_service()
+            .decrypt_bytes(identifier.to_string(), encrypted_data)?;
+
+        debug!("Uncrypted and size is {}", &decrypted_data.len());
+
+        let s = String::from_utf8_lossy(&decrypted_data);
+
+        debug!("Uncrypted string data is  {}", &s);
+
+        Ok(())
+    }
 }

@@ -9,7 +9,7 @@ use crate::{
     commands::{self, full_path_file_to_create, CommandArg, Commands, ResponseJson},
     event_dispatcher,
     file_util::{KeyFileInfo, OpenedFile},
-    open_backup_file, secure_store,
+    open_backup_file,
     udl_types::EventDispatch,
     InvokeResult,
 };
@@ -41,8 +41,22 @@ pub(crate) fn invoke_command(command_name: String, args: String) -> String {
 pub(crate) fn db_service_enable_logging() {
     #[cfg(target_os = "android")]
     {
+        // Use "db_service_ffi" in Android Studio's Logcat to see all logs from this crate
+
+        // if we use "tag:DbServiceFFI" in Logcat, we will see all logs from this crate and 
+        // from crates used by this crate
+
         let _ = std::panic::catch_unwind(|| {
-            let _filter = android_logger::FilterBuilder::new()
+            let filter = android_logger::FilterBuilder::new()
+                .filter_module("russh-sftp::client", log::LevelFilter::Info)
+                .filter_module("russh::client::kex", log::LevelFilter::Info)
+                .filter_module("russh::cipher", log::LevelFilter::Info)
+                .filter_module("russh::client", log::LevelFilter::Info)
+                .filter_module("russh::session", log::LevelFilter::Info)
+
+                .filter_module("onekeepass_core", log::LevelFilter::Debug)
+                .filter_module("db_service_ffi", log::LevelFilter::Debug)
+                
                 //.filter_module("commands", log::LevelFilter::Debug)
                 // .filter_module("", log::LevelFilter::Debug)
                 // .filter_module("", log::LevelFilter::Debug)
@@ -52,8 +66,8 @@ pub(crate) fn db_service_enable_logging() {
                 android_logger::Config::default()
                     .with_max_level(log::LevelFilter::Trace)
                     //.with_min_level(log::Level::Debug)
-                    //.with_filter(filter)
-                    .with_tag("DbServiceFFI"),
+                    .with_filter(filter)
+                    .with_tag("DbServiceFFI"),  
             );
             log::trace!("Android logging should be hooked up!")
         });

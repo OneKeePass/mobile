@@ -9,7 +9,6 @@ mod file_util;
 mod ios;
 mod key_secure;
 mod remote_storage;
-mod secure_store;
 mod util;
 
 mod udl_functions;
@@ -51,7 +50,7 @@ pub type OkpError = db_service::Error;
 
 // Needs to be added here to expose in the generated rs code
 // These are interfaces declared in udl file and implemented in Rust
-use android::AndroidSupportService;
+// use android::AndroidSupportService;
 use ios::IosSupportService;
 
 #[macro_export]

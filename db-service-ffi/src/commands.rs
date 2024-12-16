@@ -535,7 +535,6 @@ impl Commands {
 
             "clipboard_copy_string" => Self::clipboard_copy_string(&args),
 
-        
             "save_conflict_resolution_cancel" => {
                 service_call!(args, DbKey {db_key} => Self save_conflict_resolution_cancel(&db_key))
             }
@@ -831,7 +830,7 @@ impl Commands {
         ok_json_str(pref.recent_dbs_info.clone())
     }
 
-    // Called to remove any backup files created during save kdbx call that resulted in some 
+    // Called to remove any backup files created during save kdbx call that resulted in some
     // saving conflict or some save error. This is called when user opts to cancel the resolutions provided
     fn save_conflict_resolution_cancel(db_key: &str) -> OkpResult<()> {
         if let Some(ref full_backup_file_name) =

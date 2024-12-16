@@ -8,7 +8,7 @@ use crate::{
     commands::{self, InvokeResult},
 };
 
-// Most of types decalred in db_service.udl follows here
+// Most of types declared in db_service.udl follows here
 // except few like  'IosSupportService' and 'AndroidSupportService' and functions from 'namespace db_service'.
 // The implementation of the =top level functions from 'namespace db_service' can be found in crate root lib.rs
 
@@ -22,6 +22,10 @@ pub(crate) struct KdbxCreated {
 pub struct FileInfo {
     pub file_name: Option<String>,
     pub file_size: Option<i64>,
+    // In milliseconds sice 00:00:00 UTC on 1 January 1970 
+    // The UI side it is expected in milliseconds - see onekeepass/mobile/date_utils.cljs
+    // In case of remote storage file, we need to convert modified time from seconds to milli seconds
+    // 
     pub last_modified: Option<i64>,
     pub location: Option<String>,
 }

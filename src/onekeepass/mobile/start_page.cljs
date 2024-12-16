@@ -228,7 +228,7 @@
   ([]
    (open-db-dialog @(opndb-events/dialog-data))))
 
-(defn file-info-dialog [{:keys [dialog-show file-size location last-modified]}]
+(defn file-info-dialog [{:keys [dialog-show file-size location last-modified] :as _data}] 
   [cust-dialog {:style {}
                 :visible dialog-show :onDismiss #(cmn-events/close-file-info-dialog)}
    [rnp-dialog-title "File Info"]

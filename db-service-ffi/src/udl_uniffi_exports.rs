@@ -12,10 +12,19 @@ use serde::Deserialize;
 use std::{collections::HashMap, sync::Arc};
 
 use crate::{
-    app_state::AppState, callback_service_provider, commands::{self, CommandArg, ResponseJson}, event_dispatcher, file_util::KeyFileInfo, key_secure, parse_command_args_or_err, secure_store, udl_types::{
+    app_state::AppState,
+    callback_service_provider,
+    commands::{self, CommandArg, ResponseJson},
+    event_dispatcher,
+    file_util::KeyFileInfo,
+    key_secure, parse_command_args_or_err,
+    udl_types::{
         ApiCallbackResult, CommonDeviceService, EventDispatch, FileArgs, SecureKeyOperation,
-    }, OkpError, OkpResult
+    },
+    OkpError, OkpResult,
 };
+
+use crate::remote_storage::secure_store;
 
 use crate::file_util::HandlePickedFile;
 
@@ -180,11 +189,16 @@ pub(crate) fn db_service_initialize(
     log::info!("callback_service_provider::init_callback_service_provider call completed");
 }
 
-// Called from Swift or Kotlin 
+// Called from Swift or Kotlin
 #[uniffi::export]
 pub(crate) fn handle_picked_file(file_args: FileArgs, json_args: &str) -> ResponseJson {
     let inner_fn = || -> OkpResult<KeyFileInfo> {
-        let (picked_file_handler,) = parse_command_args_or_err!(json_args,PickedFileHandlerArg {picked_file_handler});
+        let (picked_file_handler,) = parse_command_args_or_err!(
+            json_args,
+            PickedFileHandlerArg {
+                picked_file_handler
+            }
+        );
         picked_file_handler.execute(&file_args)
     };
     commands::result_json_str(inner_fn())

@@ -15,6 +15,14 @@ use onekeepass_core::error::Result;
 
 // This module provides the callback service for the types in onekeepas-core crate
 
+// Initalized onetime by calling this fn in 'db_service_initialize'
+pub(crate) fn init_callback_service_provider() {
+    let instance = Arc::new(CommonCallbackServiceImpl::default());
+    // // In case, we need to hold any reference at this module, then we need to Arc::clone and use it
+    CallbackServiceProvider::setup(instance);
+    debug!("Remote storage connection config_reader_writer is initialized in init_rs_connection_configs_store ");
+}
+
 #[derive(Default)]
 struct CommonCallbackServiceImpl {}
 
@@ -71,12 +79,4 @@ impl CommonCallbackService for CommonCallbackServiceImpl {
 
         Ok(())
     }
-}
-
-// Initalized onetime by calling this fn in 'db_service_initialize'
-pub(crate) fn init_callback_service_provider() {
-    let instance = Arc::new(CommonCallbackServiceImpl::default());
-    // // In case, we need to hold any reference at this module, then we need to Arc::clone and use it
-    CallbackServiceProvider::setup(instance);
-    debug!("Remote storage connection config_reader_writer is initialized in init_rs_connection_configs_store ");
 }

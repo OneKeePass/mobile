@@ -11,7 +11,10 @@ use std::{
 use onekeepass_core::db_service as kp_service;
 
 use crate::{
-    remote_storage, udl_types::SecureKeyOperation, udl_uniffi_exports::{CommonDeviceServiceEx, SecureEnclaveCbService}, util
+    remote_storage,
+    udl_types::SecureKeyOperation,
+    udl_uniffi_exports::{CommonDeviceServiceEx, SecureEnclaveCbService},
+    util,
 };
 use crate::{
     udl_types::{CommonDeviceService, EventDispatch, FileInfo},
@@ -59,6 +62,9 @@ pub struct AppState {
     pub event_dispatcher: Arc<dyn EventDispatch>,
 
     common_device_service_ex: Arc<dyn CommonDeviceServiceEx>,
+
+    // This trait is implemented in Swift (class SecureEnclaveServiceSupport) and in Kotlin as callbacks from rust side
+    // The trait is a udlffi exported. See src/udl_uniffi_exports.rs
     secure_enclave_cb_service: Arc<dyn SecureEnclaveCbService>,
 }
 
@@ -203,6 +209,18 @@ impl AppState {
         pref.add_recent_db_use_info(&self.app_home_dir, recently_used);
     }
 
+    // The file_name is given
+    // Used with remote storage related FileInfo call
+    pub fn add_recent_db_use_info2(&self, full_file_name_uri: &str, file_name: &str) {
+        let recently_used = RecentlyUsed {
+            file_name: file_name.into(),
+            db_file_path: full_file_name_uri.into(),
+        };
+
+        let mut pref = self.preference.lock().unwrap();
+        pref.add_recent_db_use_info(&self.app_home_dir, recently_used);
+    }
+
     // Finds the recently used info for a given uri
     pub fn get_recently_used(&self, full_file_name_uri: &str) -> Option<RecentlyUsed> {
         let pref = self.preference.lock().unwrap();
@@ -251,7 +269,7 @@ impl AppState {
         if info.is_some() {
             return info;
         }
-        
+
         let info = self
             .common_device_service
             .uri_to_file_info(full_file_name_uri.into());

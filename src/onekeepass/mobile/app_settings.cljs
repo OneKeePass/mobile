@@ -1,25 +1,22 @@
 (ns onekeepass.mobile.app-settings
-  (:require [onekeepass.mobile.constants :as const :refer [DARK-THEME
-                                                           DEFAULT-SYSTEM-THEME
-                                                           LIGHT-THEME]]
-            [onekeepass.mobile.events.app-settings :as as-events]
-            [onekeepass.mobile.events.common :as cmn-events]
-            [onekeepass.mobile.rn-components :as rnc :refer [inverse-onsurface-color
-                                                             modal-selector-colors
-                                                             page-background-color
-                                                             rn-safe-area-view
-                                                             rn-section-list
-                                                             rn-view
-                                                             rnms-modal-selector
-                                                             rnp-divider
-                                                             rnp-list-icon
-                                                             rnp-list-item
-                                                             rnp-text]]
-            [onekeepass.mobile.translation :as t :refer [lstr-bl lstr-cv
-                                                         lstr-l lstr-mt]]
-            [reagent.core :as r]))
+  (:require
+   [onekeepass.mobile.common-components :refer [settings-section-header]]
+   [onekeepass.mobile.constants :as const :refer [DARK-THEME
+                                                  DEFAULT-SYSTEM-THEME
+                                                  LIGHT-THEME]]
+   [onekeepass.mobile.events.app-settings :as as-events]
+   [onekeepass.mobile.events.common :as cmn-events]
+   [onekeepass.mobile.rn-components :as rnc :refer [modal-selector-colors
+                                                    page-background-color
+                                                    rn-safe-area-view
+                                                    rn-section-list rn-view
+                                                    rnms-modal-selector
+                                                    rnp-divider rnp-list-icon
+                                                    rnp-list-item rnp-text]]
+   [onekeepass.mobile.translation :as t :refer [lstr-bl lstr-cv lstr-l lstr-mt]]
+   [reagent.core :as r]))
 
-(defn section-header [title]
+#_(defn section-header [title]
   [rn-view  {:style {:flexDirection "row"
                      :width "100%"
                      :backgroundColor @inverse-onsurface-color
@@ -119,7 +116,6 @@
       (= value (:key m)))
     options)))
 
-
 (defn field-explain [title option]
   (cond
     (= title "dbTimeout")
@@ -209,7 +205,7 @@
                        :renderSectionHeader (fn [props]
                                               (let [props (js->clj props :keywordize-keys true)
                                                     {:keys [title]} (-> props :section)]
-                                                (r/as-element [section-header title])))}]))
+                                                (r/as-element [settings-section-header title])))}]))
 
 (defn language-update-feedback []
   [rnc/rn-view {:style {:flex 1 :justify-content "center" :backgroundColor @page-background-color}}

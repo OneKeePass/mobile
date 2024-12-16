@@ -301,22 +301,22 @@
 
 (reg-event-fx
  :open-database-unlock-kdbx
- (fn [{:keys [_db]} [_event-id credential-m]]
-   ;; credential-m is map with keys [file-name full-file-name-uri key-file-name..]
+ ;; kdbx-file-info-m is map with keys [file-name full-file-name-uri key-file-name..]
+ (fn [{:keys [_db]} [_event-id kdbx-file-info-m]]
    ;; Determine whether, we can do bio authentication or credential dialog auth or PIN based here (yet to add)
    (let [biometric-available (bg/is-biometric-available)]
      (if biometric-available
        ;; Need to cofirm from user and then use biometric to authenticate
-       {:fx [[:dispatch [:open-database-authenticate-biometric-confirm credential-m]]]}
-       {:fx [[:dispatch [:open-database-unlock-dialog-show credential-m]]]}))))
+       {:fx [[:dispatch [:open-database-authenticate-biometric-confirm kdbx-file-info-m]]]}
+       {:fx [[:dispatch [:open-database-unlock-dialog-show kdbx-file-info-m]]]}))))
 
 ;; Called from event :open-database-unlock-kdbx
 (reg-event-fx
  :open-database-authenticate-biometric-confirm
- (fn [{:keys [db]} [_event-id credential-m]]
+ (fn [{:keys [db]} [_event-id kdbx-file-info-m]]
    {:db (-> db
             (assoc-in [:open-database :authenticate-biometric-confirm :dialog-show] true)
-            (assoc-in [:open-database :authenticate-biometric-confirm :data] credential-m))}))
+            (assoc-in [:open-database :authenticate-biometric-confirm :data] kdbx-file-info-m))}))
 
 ;; Called from a confirm dialog
 (reg-event-fx
@@ -375,7 +375,7 @@
 
 (reg-fx
  :bg-authenticate-with-biometric
- (fn [[{:keys [full-file-name-uri] :as credential-m}]]
+ (fn [[{:keys [full-file-name-uri] :as kdbx-file-info-m}]]
    (bg/authenticate-with-biometric (fn [api-response]
                                      (when-let [result
                                                 (on-ok api-response
@@ -385,7 +385,7 @@
                                           full-file-name-uri
                                           on-unlock-response)
                                          ;; As biometric based failed, we need to use credential based one
-                                         (dispatch [:open-database-unlock-dialog-show credential-m])))))))
+                                         (dispatch [:open-database-unlock-dialog-show kdbx-file-info-m])))))))
 
 (reg-fx
  :bg-unlock-kdbx

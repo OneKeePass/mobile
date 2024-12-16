@@ -423,26 +423,32 @@ pub fn extract_file_provider(full_file_name_uri: &str) -> String {
 }
 
 #[cfg(target_os = "ios")]
-const FILE_PROVIDER_IDS: [&str; 8] = [
+const FILE_PROVIDER_IDS: [&str; 11] = [
     r"com.apple.FileProvider.LocalStorage",
-    r"com.apple.CloudDocs.MobileDocumentsFileProvider",
+    r"com.apple.CloudDocs.iCloudDriveFileProvider",
+    r"com.apple.CloudDocs.MobileDocumentsFileProvider",  // legacy one
     r"com.getdropbox.Dropbox.FileProvider",
     r"com.microsoft.skydrive.onedrivefileprovider",
     r"com.google.Drive.FileProviderExtension",
     r"com.pcloud.pcloud.FileProvider",
     r"net.box.BoxNet.documentPickerFileProvider",
+    r"com.pcloud.pcloud.FileProvider",
+    r"com.owncloud.ios-app.ownCloud-File-Provider",
     r"com.apple.filesystems.UserFS.FileProvider",
 ];
 
 #[cfg(target_os = "ios")]
-const FILE_PROVIDER_NAMES: [&str; 8] = [
+const FILE_PROVIDER_NAMES: [&str; 11] = [
     "On My Device",
+    "iCloud Drive",
     "iCloud Drive",
     "Dropbox",
     "OneDrive",
     "Google Drive",
     "pCloud",
     "Box",
+    "pCloud",
+    "Own Cloud",
     "USB drive",
 ];
 

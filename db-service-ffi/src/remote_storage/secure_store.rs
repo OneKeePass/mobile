@@ -20,6 +20,7 @@ pub fn init_rs_connection_configs_store() {
 
 const RS_CONFIG_FILE: &str = "rs_storage_configs.enc";
 
+// This encrypted data is stored under this key
 const SECURE_TAG: &str = "rs_config_data";
 
 #[derive(Default)]

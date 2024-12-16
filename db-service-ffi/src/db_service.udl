@@ -104,17 +104,17 @@ interface IosSupportService {
 
 };
 
-// TODO: Move the android platform specific services to AndroidSupportServiceExtra in android/support_servicess 
+//  Moveed the android platform specific services to AndroidSupportServiceExtra in android/support_servicess 
 
 // Android specific APIs. Called from Kotlin side to Rust
 // All methods need to receive &self in Rust side implementaion side except constructor 
-interface AndroidSupportService {
-    constructor();
-    ApiResponse create_kdbx(u64 file_descriptor, string json_args);
-    ApiResponse complete_save_as_on_error(u64 file_descriptor, string old_full_file_name_uri,string new_full_file_name_uri, string file_name);
-    string save_key_file(u64 file_descriptor, string full_key_file_name);
-    // string save_attachment(u64 file_descriptor, string json_args);
-};
+// interface AndroidSupportService {
+//     constructor();
+//     ApiResponse create_kdbx(u64 file_descriptor, string json_args);
+//     ApiResponse complete_save_as_on_error(u64 file_descriptor, string old_full_file_name_uri,string new_full_file_name_uri, string file_name);
+//     string save_key_file(u64 file_descriptor, string full_key_file_name);
+//     // string save_attachment(u64 file_descriptor, string json_args);
+// };
 
 // Called from middle layer (Swift or Kotlin side) to form a json string and  return to UI layer
 // UI layer deserializes this to a valid json object and used accordingly

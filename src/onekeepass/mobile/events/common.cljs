@@ -202,6 +202,7 @@
 (reg-event-fx
  :common/kdbx-database-opened
  (fn [{:keys [db]} [_event-id {:keys [database-name rs-additional-info] :as kdbx-loaded-ex}]]
+   ;;(println "kdbx-loaded-ex is " kdbx-loaded-ex)
    {:db (db-opened db kdbx-loaded-ex) ;; current-db-file-name is set in db-opened
     :fx [[:dispatch [:entry-category/load-categories-to-show]]
          [:dispatch [:common/next-page :entry-category database-name]]
@@ -424,7 +425,7 @@
    ;; pref is a map - {:version \"0.0.1\" :recent-dbs-info [{},{}..]}
    ;; based on Preference struct 
    {:db (-> db
-            ;; Set the biometric availablity info in db so that we can use it in a subscription
+            ;; Set the biometric availablity info in db so that we can use it in a reg-sub subscription
             (assoc :biometric-available (bg/is-biometric-available))
             (assoc-in [:app-preference :status] :loaded)
             (assoc-in [:app-preference :data] pref))

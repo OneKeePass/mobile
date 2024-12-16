@@ -4,6 +4,7 @@
             [onekeepass.mobile.rn-components
              :as rnc
              :refer [primary-container-color
+                     inverse-onsurface-color
                      cust-dialog message-modal-background-color
                      modal-selector-colors on-background-color rn-scroll-view
                      rn-view rnms-modal-selector rnp-button rnp-chip
@@ -96,6 +97,18 @@
                                             ;; Send the current selected tags to the caller in entry form or group form
                                             (selected-tags-receiver-fn selected-tags)
                                             (cmn-events/tags-dialog-done))} (lstr-bl 'close)]]]))
+
+(defn settings-section-header [title]
+  [rn-view  {:style {:flexDirection "row"
+                     :width "100%"
+                     :backgroundColor @inverse-onsurface-color
+                     :margin-top 0
+                     :min-height 38}}
+   [rnp-text {:style {:textTransform "uppercase"
+                      :alignSelf "center"
+                      ;;:width "85%"
+                      :text-align "center"
+                      :padding-left 5} :variant "titleSmall"} (lstr-l title)]])
 
 (defn list-section-header [title]
   [rn-view  {:style {:flexDirection "row"

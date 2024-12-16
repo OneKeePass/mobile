@@ -19,10 +19,11 @@
                                                     rnp-list-icon
                                                     rnp-portal
                                                     rnp-text]]
+   [onekeepass.mobile.biometrics-settings]
    [onekeepass.mobile.translation :refer [lstr-bl lstr-l lstr-mt]]
    [onekeepass.mobile.background :refer [is-iOS]]
    [onekeepass.mobile.utils  :refer [str->int]]
-   [onekeepass.mobile.common-components :as cc :refer [select-field confirm-dialog]]
+   [onekeepass.mobile.common-components :as cc :refer [select-field confirm-dialog settings-section-header]]
    [onekeepass.mobile.events.settings :as stgs-events :refer [cancel-db-settings-form]]
    [onekeepass.mobile.events.password-generator :as pg-events]
    [onekeepass.mobile.events.common :as cmn-events]
@@ -254,7 +255,7 @@
     (= page-id :settings-security)
     [security-content]))
 
-(defn section-header [title]
+#_(defn section-header [title]
   [rn-view  {:style {:flexDirection "row"
                      :width "100%"
                      :backgroundColor @inverse-onsurface-color
@@ -267,6 +268,7 @@
                       :padding-left 5} :variant "titleSmall"} (lstr-l title)]])
 
 (def ^:private ^:const SECTION-KEY-DB-SETTINGS "DbSettings")
+(def ^:private ^:const SECTION-KEY-BIOMETRICS "Biometrics")
 (def ^:private ^:const SECTION-KEY-APP-SETTINGS "AppSettings")
 (def ^:private ^:const SECTION-KEY-AUTOFILL "AutofillSettings")
 
@@ -298,11 +300,16 @@
     :data [{:title "general" :page-id :settings-general}
            {:title "credentials" :page-id :settings-credentials}
            {:title "security" :page-id :settings-security}]}
+   
+   {:title "biometrics"
+    :key SECTION-KEY-BIOMETRICS
+    :data [{:title "enableDisable"}]}
+   
    ;; For android this is nil and need to be filtered out
    (when (is-iOS)
      {:title "autofillSettings"
       :key SECTION-KEY-AUTOFILL
-      :data [{:title "autofillSettings"}]})
+      :data [{:title "autofillSettings"}]}) 
 
    {:title "appSettings"
     :key SECTION-KEY-APP-SETTINGS
@@ -323,7 +330,7 @@
                        :renderSectionHeader (fn [props]
                                               (let [props (js->clj props :keywordize-keys true)
                                                     {:keys [title]} (-> props :section)]
-                                                (r/as-element [section-header title])))}]))
+                                                (r/as-element [settings-section-header title])))}]))
 
 (defn main-content []
   [rn-view {:style {:flex 1}}

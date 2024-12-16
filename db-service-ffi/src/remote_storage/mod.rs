@@ -1,3 +1,5 @@
+pub(crate) mod secure_store;
+
 use std::fs;
 use std::io::{Cursor, Read, Seek, Write};
 use std::path::Path;
@@ -293,7 +295,7 @@ fn read_with_backup<R: Read + Seek>(
 
     backup::prune_backup_history_files(&db_key);
 
-    AppState::shared().add_recent_db_use_info(db_key);
+    AppState::shared().add_recent_db_use_info2(db_key,file_name);
 
     #[cfg(target_os = "ios")]
     {
@@ -490,11 +492,19 @@ pub(crate) fn uri_to_file_info(db_key: &str) -> Option<FileInfo> {
     let file_info_opt = backup::latest_backup_file_path(db_key)
         .and_then(|p| p.as_path().metadata().ok())
         .map(|md| {
+            //debug!("RS Bk modified Metadata is {:?} ", &md);
             file_info.file_size = Some(md.len() as i64);
             file_info.last_modified = md
                 .modified()
                 .ok()
-                .map(|t| service_util::system_time_to_seconds(t) as i64);
+                .map(|t| {
+                    //debug!(" RS file_info.last_modified (SystemTime) {:?} ",&t);
+                    let mut r = service_util::system_time_to_seconds(t) as i64;
+                    // Need to be in milliseconds
+                    r = r * 1000;
+                    //debug!(" RS file_info.last_modified since epoch {} ",&r);
+                    r
+                });
             file_info.location = Some(parsed.rs_type_name.to_string());
             file_info
         });
