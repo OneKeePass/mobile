@@ -314,9 +314,9 @@ class ReadFilePickDelegate: NSObject, UIDocumentPickerDelegate {
       do {
         // Secured access to url should be available before bookmarking
         let bookmarkData = try saved_file_url.bookmarkData(options: .minimalBookmark, includingResourceValuesForKeys: nil, relativeTo: nil)
-        let byteArray: [UInt8] = .init(bookmarkData)
-        logger.debug("Calling rust api to save bookmark data with size \(byteArray.count)")
-        let b = DbServiceAPI.iosSupportService().saveBookMarkData(saved_file_url.absoluteString, byteArray)
+        // let byteArray: [UInt8] = .init(bookmarkData)
+        // logger.debug("Calling rust api to save bookmark data with size \(byteArray.count)")
+        let b = DbServiceAPI.iosSupportService().saveBookMarkData(saved_file_url.absoluteString, bookmarkData)
         logger.debug("Bookmark save rust api call result is \(b)")
       
         // After bookmarking just the uri is returned to the UI to use
@@ -392,10 +392,10 @@ class KeyFilePickDelegate: NSObject, UIDocumentPickerDelegate {
       do {
         // Secured access to url should be available before bookmarking
         let bookmarkData = try pickedFileUrl.bookmarkData(options: .minimalBookmark, includingResourceValuesForKeys: nil, relativeTo: nil)
-        let byteArray: [UInt8] = .init(bookmarkData)
+        // let byteArray: [UInt8] = .init(bookmarkData)
         
         // Note: At this time both kdbx and the key file uri bookmarking use the same way
-        let b = DbServiceAPI.iosSupportService().saveBookMarkData(pickedFileUrl.absoluteString, byteArray)
+        let b = DbServiceAPI.iosSupportService().saveBookMarkData(pickedFileUrl.absoluteString, bookmarkData)
         logger.debug("Bookmark save rust api call result is \(b)")
       
         // After bookmarking just the uri is returned to the UI to use

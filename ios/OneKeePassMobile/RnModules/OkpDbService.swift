@@ -51,6 +51,39 @@ class OkpDbService: NSObject {
     ]
   }
   
+  @objc
+  func invokeCommand(_ commandName: String, args: String,
+                     resolve: @escaping RCTPromiseResolveBlock,
+                     reject _: @escaping RCTPromiseRejectBlock)
+  {
+    DispatchQueue.global(qos: .userInteractive).async { [unowned self] in
+      logger.debug("InvokeCommand for \(commandName) called with args \(args) and delegating to api call")
+      resolve(OneKeePassMobile.invokeCommand(commandName, args))
+    }
+  }
+  
+  @objc
+  func iOSInvokeCommand(_ commandName: String, args: String,
+                     resolve: @escaping RCTPromiseResolveBlock,
+                     reject _: @escaping RCTPromiseRejectBlock)
+  {
+    DispatchQueue.global(qos: .userInteractive).async { [unowned self] in
+      logger.debug("The iOSInvokeCommand InvokeCommand for \(commandName) called with args \(args) and delegating to api call")
+      resolve(DbServiceAPI.iosSupportService().invoke(commandName, args))
+    }
+  }
+  
+  /// All app group realted API calls
+  
+  @objc
+  func autoFillInvokeCommand(_ commandName: String, args: String, resolve: @escaping RCTPromiseResolveBlock,reject _: @escaping RCTPromiseRejectBlock)
+  {
+    DispatchQueue.global(qos: .userInteractive).async { [unowned self] in
+      logger.debug("The autoFillInvokeCommand InvokeCommand for \(commandName) called with args \(args) and delegating to api call")
+      resolve(DbServiceAPI.iosAppGroupSupportService().invoke(commandName, args))
+    }
+  }
+  
   // UI layer needs to call to see if the app is opened by pressing a .kdbx file an
   // if that is the case, show the login dialog accordingly with the available uri
   @objc
@@ -71,17 +104,6 @@ class OkpDbService: NSObject {
     }
     // Ensure that we clear the url afeter UI pull call
     SceneDelegate.openUrl = nil
-  }
-  
-  @objc
-  func invokeCommand(_ commandName: String, args: String,
-                     resolve: @escaping RCTPromiseResolveBlock,
-                     reject _: @escaping RCTPromiseRejectBlock)
-  {
-    DispatchQueue.global(qos: .userInteractive).async { [unowned self] in
-      logger.debug("InvokeCommand for \(commandName) called with args \(args) and delegating to api call")
-      resolve(OneKeePassMobile.invokeCommand(commandName, args))
-    }
   }
   
   // Called when user picked a file to save the changed kdbx during the 'Save As' call
@@ -108,10 +130,13 @@ class OkpDbService: NSObject {
       
       let dbFileUrl = URL(string: fullFileNameUri)
       
-      let byteArray: [UInt8] = DbServiceAPI.iosSupportService().loadBookMarkData(dbFileUrl!.absoluteString)
       
-      if byteArray.count > 0 {
-        let bookmarkData = Data(_: byteArray)
+      let bookmarkData = DbServiceAPI.iosSupportService().loadBookMarkData(dbFileUrl!.absoluteString)
+            
+      // let byteArray: [UInt8] = DbServiceAPI.iosSupportService().loadBookMarkData(dbFileUrl!.absoluteString)
+      
+      if bookmarkData.count > 0 {
+        // let bookmarkData = Data(_: byteArray)
         var isStale = false
         do {
           let burl = try URL(resolvingBookmarkData: bookmarkData, bookmarkDataIsStale: &isStale)
@@ -177,11 +202,11 @@ class OkpDbService: NSObject {
         reject(E_DB_SERVICE_MODULE_ERROR, "fullFileNameUri cannot be nil", nil)
         return
       }
+      let bookmarkData = DbServiceAPI.iosSupportService().loadBookMarkData(dbFileUrl!.absoluteString)
+      // let byteArray: [UInt8] = DbServiceAPI.iosSupportService().loadBookMarkData(dbFileUrl!.absoluteString)
       
-      let byteArray: [UInt8] = DbServiceAPI.iosSupportService().loadBookMarkData(dbFileUrl!.absoluteString)
-      
-      if byteArray.count > 0 {
-        let bookmarkData = Data(_: byteArray)
+      if bookmarkData.count > 0 {
+        // let bookmarkData = Data(_: byteArray)
         var isStale = false
         do {
           let burl = try URL(resolvingBookmarkData: bookmarkData, bookmarkDataIsStale: &isStale)
@@ -267,15 +292,16 @@ class OkpDbService: NSObject {
     }
     
     // Previously stored bookmark
-    let byteArray: [UInt8] = DbServiceAPI.iosSupportService().loadBookMarkData(keyFileUrl!.absoluteString)
+    let bookmarkData = DbServiceAPI.iosSupportService().loadBookMarkData(keyFileUrl!.absoluteString)
+    // let byteArray: [UInt8] = DbServiceAPI.iosSupportService().loadBookMarkData(keyFileUrl!.absoluteString)
     
-    guard byteArray.count > 0 else {
+    guard bookmarkData.count > 0 else {
       logger.error("No bookmark data is found for the url \(String(describing: keyFileUrl?.absoluteString))")
       reject(E_BOOK_MARK_NOT_FOUND, "No bookmark data is found for the url \(String(describing: keyFileUrl?.absoluteString))", nil)
       return
     }
     
-    let bookmarkData = Data(_: byteArray)
+    // let bookmarkData = Data(_: byteArray)
     var isStale = false
     do {
       let burl = try URL(resolvingBookmarkData: bookmarkData, bookmarkDataIsStale: &isStale)
@@ -411,16 +437,5 @@ class OkpDbService: NSObject {
       return 0
     }
     return supportedType ?? 0
-  }
-  
-  /// All app group realted API calls
-  
-  @objc
-  func autoFillInvokeCommand(_ commandName: String, args: String, resolve: @escaping RCTPromiseResolveBlock,reject _: @escaping RCTPromiseRejectBlock)
-  {
-    DispatchQueue.global(qos: .userInteractive).async { [unowned self] in
-      logger.debug("InvokeCommand for \(commandName) called with args \(args) and delegating to api call")
-      resolve(DbServiceAPI.iosAppGroupSupportService().invoke(commandName, args))
-    }
   }
 }

@@ -64,7 +64,7 @@ class SecureEnclaveServiceSupport: SecureEnclaveCbService {
     let status: OSStatus = SecItemDelete(query as CFDictionary)
     
     if let error = status.error {
-      logger.error("Remving key for the identifier \(identifier) failed wirth error \(error)")
+      logger.error("Removing key for the identifier \(identifier) failed wirth error \(error)")
       return false
     }
     
@@ -96,7 +96,7 @@ class SecureEnclaveServiceSupport: SecureEnclaveCbService {
     }
   }
   
-  // Finds if there is any existing key for identifier
+  // Finds if there is any existing key for the identifier
   private func getPrivateKey(_ identifier: String) throws -> SecKey? {
     let query = prepareQueryAttributes(identifier)
     var itemCopy: CFTypeRef? // AnyObject? can also be used

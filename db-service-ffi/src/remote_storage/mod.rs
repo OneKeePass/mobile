@@ -58,12 +58,16 @@ fn parse_db_key<'a>(db_key: &'a str) -> IResult<&'a str, ParsedDbKey> {
 
     // remaining should be empty str after a successful db key parsing
 
+    // We extract the file name 
+    let file_name = file_path_part.rsplit_once("/").map_or_else(||"", |p| p.1 ) ; 
+
     Ok((
         remaining,
         ParsedDbKey {
             rs_type_name,
             connection_id,
             file_path_part,
+            file_name,
         },
     ))
 }
@@ -153,12 +157,13 @@ impl From<KdbxLoaded> for KdbxLoadedEx {
 }
 
 fn rs_read_file(json_args: &str) -> OkpResult<KdbxLoadedEx> {
-    let (db_file_name, password, key_file_name) = parse_command_args_or_err!(
+    let (db_file_name, password, key_file_name,biometric_auth_used) = parse_command_args_or_err!(
         json_args,
         OpenDbArg {
             db_file_name,
             password,
-            key_file_name
+            key_file_name,
+            biometric_auth_used
         }
     );
 
@@ -300,7 +305,7 @@ fn read_with_backup<R: Read + Seek>(
     #[cfg(target_os = "ios")]
     {
         // iOS specific copying when we read a database if this db is used in Autofill extension
-        crate::ios::app_group::copy_files_to_app_group_on_save_or_read(&db_key);
+        crate::ios::autofill_app_group::copy_files_to_app_group_on_save_or_read(&db_key);
     }
 
     Ok(kdbx_loaded)
@@ -463,7 +468,7 @@ fn write_with_backup<R: Seek + Read + Write>(
             #[cfg(target_os = "ios")]
             {
                 // iOS specific copying of a database when we save a  database if this db is used in Autofill extension
-                crate::ios::app_group::copy_files_to_app_group_on_save_or_read(&db_key);
+                crate::ios::autofill_app_group::copy_files_to_app_group_on_save_or_read(&db_key);
             }
 
             ks
@@ -512,6 +517,15 @@ pub(crate) fn uri_to_file_info(db_key: &str) -> Option<FileInfo> {
     file_info_opt
 }
 
+pub(crate) fn uri_to_file_name(db_key: &str) -> Option<&str>{
+    let Ok((remaining, parsed)) = parse_db_key(db_key) else {
+        return None;
+    };
+    if !remaining.is_empty() {
+        return None;
+    }
+    return Some(parsed.file_name);    
+}
 
 /*
 pub(crate) fn extract_file_provider(db_key: &str) -> Option<&str> {

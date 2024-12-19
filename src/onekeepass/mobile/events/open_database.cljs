@@ -1,18 +1,10 @@
 (ns onekeepass.mobile.events.open-database
   (:require
-   [onekeepass.mobile.events.common :refer [on-ok]]
-   [re-frame.core :refer [reg-event-db
-                          reg-event-fx
-                          reg-sub
-                          dispatch
-                          reg-fx
-                          subscribe]]
    [onekeepass.mobile.background :as bg]
-   [onekeepass.mobile.constants :as const]))
-
-
-#_(defn open-database-dialog-show []
-    (dispatch [:open-database-dialog-show]))
+   [onekeepass.mobile.constants :as const]
+   [onekeepass.mobile.events.common :refer [biometric-enabled-to-open-db on-ok]]
+   [re-frame.core :refer [dispatch reg-event-db reg-event-fx reg-fx reg-sub
+                          subscribe]]))
 
 (defn cancel-on-press []
   (dispatch [:open-database-dialog-hide]))
@@ -80,11 +72,6 @@
                             (assoc :password "A valid password is required"))]
     error-fields))
 
-#_(reg-event-db
-   :open-database-dialog-show
-   (fn [db [_event-id]]
-     (-> db init-open-database-data (assoc-in [:open-database :dialog-show] true))))
-
 (reg-event-db
  :open-database-dialog-hide
  (fn [db [_event-id]]
@@ -118,7 +105,7 @@
  (fn []
    (bg/pick-database-to-read-write
     (fn [api-response]
-      (println " pick-database-to-read-write response " api-response)
+      ;;(println " pick-database-to-read-write response " api-response)
       (when-let [picked-response (on-ok
                                   api-response
                                   #(dispatch [:database-file-pick-error %]))]
@@ -146,6 +133,23 @@
             (assoc-in [:open-database :database-file-name] file-name)
             (assoc-in [:open-database :database-full-file-name] full-file-name-uri)
             (assoc-in [:open-database :dialog-show] true))}))
+
+
+;; TODO: Not yet complete
+(reg-event-fx
+ :open-database/database-file-picked-1
+ (fn [{:keys [db]} [_event-id {:keys [file-name full-file-name-uri]}]]
+   (let [biometric-enabled? (biometric-enabled-to-open-db db full-file-name-uri)])
+   
+   
+   {:db (-> db init-open-database-data
+               ;; database-file-name is just the 'file name' part derived from full uri 'database-full-file-name'
+               ;; to show in the dialog
+            (assoc-in [:open-database :database-file-name] file-name)
+            (assoc-in [:open-database :database-full-file-name] full-file-name-uri)
+            (assoc-in [:open-database :dialog-show] true))}
+   ))
+
 
 (reg-event-fx
  :database-file-repicked
@@ -224,6 +228,7 @@
           (= (:code error) const/FILE_NOT_FOUND)
           [[:dispatch [:open-database-dialog-hide]]
            [:dispatch [:repick-confirm-show const/FILE_NOT_FOUND]]] 
+          
           :else
           [[:dispatch [:common/error-box-show "Database Open Error" error]]])}))
 
@@ -306,7 +311,7 @@
    ;; Determine whether, we can do bio authentication or credential dialog auth or PIN based here (yet to add)
    (let [biometric-available (bg/is-biometric-available)]
      (if biometric-available
-       ;; Need to cofirm from user and then use biometric to authenticate
+       ;; Need to confirm from user and then use biometric to authenticate
        {:fx [[:dispatch [:open-database-authenticate-biometric-confirm kdbx-file-info-m]]]}
        {:fx [[:dispatch [:open-database-unlock-dialog-show kdbx-file-info-m]]]}))))
 

@@ -1,4 +1,5 @@
-use crate::app_state::{AppState, PreferenceData, RecentlyUsed};
+use crate::app_preference::{PreferenceData, RecentlyUsed};
+use crate::app_state::AppState;
 use crate::file_util::PickedFileHandler;
 use crate::{android, file_util::KeyFileInfo, ios};
 use crate::{backup, util, OkpError, OkpResult};
@@ -80,16 +81,19 @@ pub enum CommandArg {
     PrefefenceUpdateArg {
         preference_data: PreferenceData,
     },
-    OpenDbArgWithFileName {
-        file_name: String,
-        db_file_name: String,
-        password: String,
-        key_file_name: Option<String>,
-    },
+    // Not used
+    // OpenDbArgWithFileName {
+    //     file_name: String,
+    //     db_file_name: String,
+    //     password: String,
+    //     key_file_name: Option<String>,
+    // },
     OpenDbArg {
         db_file_name: String,
         password: Option<String>,
         key_file_name: Option<String>,
+        #[serde(default)]
+        biometric_auth_used:bool,
     },
     NewDbArgWithFileName {
         file_name: String,
@@ -159,6 +163,11 @@ pub enum CommandArg {
     SaveDbArg {
         db_key: String,
         overwrite: bool,
+    },
+
+    DbOpenBiomerticArg {
+        db_key: String,
+        db_open_enabled: bool,
     },
 
     OtpSettingsArg {
@@ -348,7 +357,7 @@ impl Commands {
             }
 
             "unlock_kdbx" => {
-                service_call!(args, OpenDbArg{db_file_name,password,key_file_name} =>
+                service_call!(args, OpenDbArg{db_file_name,password,key_file_name,biometric_auth_used} =>
                     Self unlock_kdbx(&db_file_name,password.as_deref(),key_file_name.as_deref()))
             }
 
@@ -537,6 +546,11 @@ impl Commands {
 
             "save_conflict_resolution_cancel" => {
                 service_call!(args, DbKey {db_key} => Self save_conflict_resolution_cancel(&db_key))
+            }
+
+            "set_db_open_biometric" => {
+                service_call!(args,DbOpenBiomerticArg {db_key,db_open_enabled} => 
+                    Self set_db_open_biometric(&db_key,db_open_enabled))
             }
 
             //// All remote storage related
@@ -728,6 +742,10 @@ impl Commands {
 
     fn update_preference(preference_data: PreferenceData) -> OkpResult<()> {
         Ok(AppState::shared().update_preference(preference_data))
+    }
+
+    fn set_db_open_biometric(db_key: &str, enabled: bool) -> OkpResult<()> {
+        Ok(AppState::shared().set_db_open_biometric(db_key, enabled))
     }
 
     fn prepare_export_kdbx_data(args: &str) -> String {
@@ -977,7 +995,7 @@ pub fn remove_app_files(db_key: &str) {
 
     #[cfg(target_os = "ios")]
     {
-        let r = crate::ios::app_group::delete_copied_autofill_details(&db_key);
+        let r = crate::ios::autofill_app_group::delete_copied_autofill_details(&db_key);
         log::debug!("Delete of copied db data done with result {:?}", r);
     }
 }

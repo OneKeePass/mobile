@@ -345,15 +345,16 @@ impl IosAppGroupSupportService {
         result_json_str(inner_fn())
     }
 
-    // Gets the list of all entries in a database that is openned in autofill extension
+    // Gets the list of all entries in a database that is opened in autofill extension
     fn all_entries_on_db_open(&self, json_args: &str) -> ResponseJson {
         let inner_fn = || -> OkpResult<Vec<EntrySummary>> {
-            let (db_file_name, password, key_file_name) = parse_command_args_or_err!(
+            let (db_file_name, password, key_file_name,biometric_auth_success) = parse_command_args_or_err!(
                 json_args,
                 OpenDbArg {
                     db_file_name,
                     password,
-                    key_file_name
+                    key_file_name,
+                    biometric_auth_used
                 }
             );
 
@@ -469,48 +470,3 @@ impl IosAppGroupSupportService {
         r
     }
 }
-
-/*
-fn internal_read_kdbx_from_app_group(
-        &self,
-        json_args: &str,
-    ) -> OkpResult<db_service::KdbxLoaded> {
-        let CommandArg::OpenDbArg {
-            db_file_name,
-            password,
-            key_file_name,
-        } = serde_json::from_str(&json_args)?
-        else {
-            return Err(OkpError::UnexpectedError(format!(
-                "Argument 'json_args' {:?} parsing failed for readkdbx api call",
-                json_args
-            )));
-        };
-        let mut file = File::open(&util::url_to_unix_file_name(&db_file_name))?;
-        let file_name = AppState::global().uri_to_file_name(&db_file_name);
-
-        let kdbx_loaded = db_service::read_kdbx(
-            &mut file,
-            &db_file_name,
-            password.as_deref(),
-            key_file_name.as_deref(),
-            Some(&file_name),
-        )?;
-
-        Ok(kdbx_loaded)
-    }
-
-    pub fn all_entries_on_db_open(&self, json_args: &str) -> ResponseJson {
-        let Ok(kdbx_loaded) = self.internal_read_kdbx_from_app_group(json_args) else {
-            return error_json_str(&format!(
-                "Opening databse failed from the app group location"
-            ));
-        };
-        let r = db_service::entry_summary_data(
-            &kdbx_loaded.db_key,
-            db_service::EntryCategory::AllEntries,
-        );
-        result_json_str(r)
-    }
-
-*/

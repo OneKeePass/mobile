@@ -11,6 +11,7 @@ use std::{
 use onekeepass_core::db_service as kp_service;
 
 use crate::{
+    app_preference::{Preference, PreferenceData, RecentlyUsed},
     remote_storage,
     udl_types::SecureKeyOperation,
     udl_uniffi_exports::{CommonDeviceServiceEx, SecureEnclaveCbService},
@@ -57,9 +58,9 @@ pub struct AppState {
     // Callback service implemented in Swift/Kotlin and called from rust side
     pub common_device_service: Box<dyn CommonDeviceService>,
     // Callback service implemented in Swift/Kotlin and called from rust side
-    pub secure_key_operation: Box<dyn SecureKeyOperation>,
-    // Callback service implemented in Swift/Kotlin and called from rust side
     pub event_dispatcher: Arc<dyn EventDispatch>,
+    // Callback service implemented in Swift/Kotlin and called from rust side
+    secure_key_operation: Box<dyn SecureKeyOperation>,
 
     common_device_service_ex: Arc<dyn CommonDeviceServiceEx>,
 
@@ -194,68 +195,14 @@ impl AppState {
             .map(|s| s.clone())
     }
 
-    pub fn add_recent_db_use_info(&self, full_file_name_uri: &str) {
-        let file_name = self
-            .common_device_service
-            .uri_to_file_name(full_file_name_uri.into())
-            .map_or_else(|| "".into(), |s| s);
-
-        let recently_used = RecentlyUsed {
-            file_name,
-            db_file_path: full_file_name_uri.into(),
-        };
-
-        let mut pref = self.preference.lock().unwrap();
-        pref.add_recent_db_use_info(&self.app_home_dir, recently_used);
-    }
-
-    // The file_name is given
-    // Used with remote storage related FileInfo call
-    pub fn add_recent_db_use_info2(&self, full_file_name_uri: &str, file_name: &str) {
-        let recently_used = RecentlyUsed {
-            file_name: file_name.into(),
-            db_file_path: full_file_name_uri.into(),
-        };
-
-        let mut pref = self.preference.lock().unwrap();
-        pref.add_recent_db_use_info(&self.app_home_dir, recently_used);
-    }
-
-    // Finds the recently used info for a given uri
-    pub fn get_recently_used(&self, full_file_name_uri: &str) -> Option<RecentlyUsed> {
-        let pref = self.preference.lock().unwrap();
-        pref.recent_dbs_info
-            .iter()
-            .find(|r| r.db_file_path == full_file_name_uri)
-            .map(|r| RecentlyUsed { ..r.clone() })
-    }
-
-    pub fn language(&self) -> String {
-        let pref = self.preference.lock().unwrap();
-        pref.language.clone()
-    }
-
-    pub fn file_name_in_recently_used(&self, full_file_name_uri: &str) -> Option<String> {
-        let pref = self.preference.lock().unwrap();
-        pref.recent_dbs_info
-            .iter()
-            .find(|r| r.db_file_path == full_file_name_uri)
-            .map(|r| r.file_name.clone())
-    }
-
-    pub fn remove_recent_db_use_info(&self, full_file_name_uri: &str) {
-        let mut pref = self.preference.lock().unwrap();
-        pref.remove_recent_db_use_info(full_file_name_uri);
-    }
-
-    pub fn update_preference(&self, preference_data: PreferenceData) {
-        let mut store_pref = self.preference.lock().unwrap();
-        store_pref.update(preference_data);
-    }
-
     // Called to get the file name from the platform specific full file uri passed as arg 'full_file_name_uri'
-    // The uri may start with file: or content:
+    // The uri may start with file: or content: or Sftp or WebDav
     pub fn uri_to_file_name(&self, full_file_name_uri: &str) -> String {
+        // Need to find out whether this is a remote storage db_key and then find the file name accordingly
+        if let Some(s) = remote_storage::uri_to_file_name(full_file_name_uri) {
+            return s.to_string();
+        }
+
         // We use platform specific callback fn to get the file name
         // e.g uri file:///Users/jeyasankar/Library/Developer/CoreSimulator/Devices/A45B3252-1AA4-4D50-9E6E-89AB1E873B1F/data/Containers/Shared/AppGroup/6CFFA9FC-169B-482E-A817-9C0D2A6F5241/File%20Provider%20Storage/TJ-fixit.kdbx
         // Note the encoding in the uri
@@ -299,22 +246,16 @@ impl AppState {
         p
     }
 
-    // TODO: Remove dir reference to Preference and route to all calls to preference struct through AppState?
-    pub fn preference() -> &'static Mutex<Preference> {
-        &Self::shared().preference
-    }
-
-    pub fn backup_history_count() -> usize {
-        let p = Self::shared().preference.lock().unwrap();
-        p.backup_history_count()
-    }
-
     pub fn common_device_service_ex() -> &'static dyn CommonDeviceServiceEx {
         Self::shared().common_device_service_ex.as_ref()
     }
 
     pub fn secure_enclave_cb_service() -> &'static dyn SecureEnclaveCbService {
         Self::shared().secure_enclave_cb_service.as_ref()
+    }
+
+    pub fn secure_key_operation() -> &'static dyn SecureKeyOperation {
+        Self::shared().secure_key_operation.as_ref()
     }
 
     // pub fn read_preference(&self) {
@@ -326,176 +267,92 @@ impl AppState {
     // }
 }
 
-#[derive(Clone, Serialize, Deserialize)]
-pub struct RecentlyUsed {
-    pub(crate) file_name: String,
-    // This is full file url str. In case of android, it will start with "content://" and in case of ios, it will
-    // start with "file://".  This is also db_key
-    pub(crate) db_file_path: String,
-}
+// All fns using the Preference object are implemented here
+impl AppState {
+    // TODO: Remove dir reference to Preference and route to all calls to preference struct through AppState?
+    pub fn preference() -> &'static Mutex<Preference> {
+        &Self::shared().preference
+    }
 
-#[derive(Debug, Deserialize)]
-pub struct PreferenceData {
-    pub db_session_timeout: Option<i64>,
-    pub clipboard_timeout: Option<i64>,
-    pub default_entry_category_groupings: Option<String>,
-    pub theme: Option<String>,
-    pub language: Option<String>,
-}
+    pub fn backup_history_count() -> usize {
+        let p = Self::shared().preference.lock().unwrap();
+        p.backup_history_count()
+    }
 
-// This struct matches any previous verion (0.0.2) of preference.json
-#[derive(Clone, Serialize, Deserialize)]
-pub struct Preference1 {
-    pub version: String,
-    pub recent_dbs_info: Vec<RecentlyUsed>,
-    pub db_session_timeout: i64,
-    pub clipboard_timeout: i64,
-}
+    pub fn remove_recent_db_use_info(&self, db_key: &str) {
+        let mut pref = self.preference.lock().unwrap();
+        pref.remove_recent_db_use_info(db_key);
+    }
 
-#[derive(Clone, Serialize, Deserialize)]
-pub struct Preference {
-    pub version: String,
-    pub recent_dbs_info: Vec<RecentlyUsed>,
-    // Session will time out in these milli seconds
-    pub db_session_timeout: i64,
-    // clipboard will be cleared in these milli seconds
-    pub clipboard_timeout: i64,
-    // Determines the theme colors etc
-    pub theme: String,
-    // Should be a two letters language id
-    pub language: String,
-    // Valid values one of Types,Categories,Groups,Tags
-    pub default_entry_category_groupings: String,
-}
+    pub fn file_name_in_recently_used(&self, db_key: &str) -> Option<String> {
+        let pref = self.preference.lock().unwrap();
+        find_db_info(&pref, db_key).map(|r| r.file_name.clone())
+    }
 
-impl Default for Preference {
-    fn default() -> Self {
-        Self {
-            // Here we are using the version to determine the preference data struct used
-            // and not the app release version
-            version: "0.0.3".into(),
-            recent_dbs_info: vec![],
-            db_session_timeout: 1_800_000, // 30 minutes
-            clipboard_timeout: 10_000,     // 10 secondds
-            theme: "system".into(),
-            language: util::current_locale_language(),
-            default_entry_category_groupings: "Types".into(),
-        }
+    
+    pub fn set_db_open_biometric(&self, db_key: &str, enabled: bool) {
+        let mut pref = self.preference.lock().unwrap();
+        pref.set_db_open_biometric(db_key, enabled);
+    }
+
+    pub fn db_open_biometeric_enabled(&self, db_key: &str) -> bool {
+        self.preference
+            .lock()
+            .unwrap()
+            .db_open_biometeric_enabled(db_key)
+    }
+
+    // Finds the recently used info for a given uri
+    pub fn get_recently_used(&self, db_key: &str) -> Option<RecentlyUsed> {
+        let pref = self.preference.lock().unwrap();
+        pref.recent_dbs_info
+            .iter()
+            .find(|r| r.db_file_path == db_key)
+            .map(|r| RecentlyUsed { ..r.clone() })
+    }
+
+    pub fn add_recent_db_use_info(&self, db_key: &str) {
+        let file_name = self
+            .common_device_service
+            .uri_to_file_name(db_key.into())
+            .map_or_else(|| "".into(), |s| s);
+
+        let recently_used = RecentlyUsed {
+            file_name,
+            db_file_path: db_key.into(),
+            biometric_enabled_db_open: false,
+        };
+
+        let mut pref = self.preference.lock().unwrap();
+        pref.add_recent_db_use_info(&self.app_home_dir, recently_used);
+    }
+
+    // The file_name is given
+    // Used with remote storage related FileInfo call
+    pub fn add_recent_db_use_info2(&self, db_key: &str, file_name: &str) {
+        let recently_used = RecentlyUsed {
+            file_name: file_name.into(),
+            db_file_path: db_key.into(),
+            biometric_enabled_db_open: false,
+        };
+
+        let mut pref = self.preference.lock().unwrap();
+        pref.add_recent_db_use_info(&self.app_home_dir, recently_used);
+    }
+
+    pub fn language(&self) -> String {
+        let pref = self.preference.lock().unwrap();
+        pref.language.clone()
+    }
+
+    pub fn update_preference(&self, preference_data: PreferenceData) {
+        let mut store_pref = self.preference.lock().unwrap();
+        store_pref.update(preference_data);
     }
 }
 
-impl Preference {
-    fn read(app_home_dir: &str) -> Self {
-        let pref_file_name = Path::new(app_home_dir).join("preference.json");
-        info!("pref_file_name is {:?} ", &pref_file_name);
-        let json_str = fs::read_to_string(pref_file_name).unwrap_or("".into());
-        debug!("Pref json_str is {}", &json_str);
-        if json_str.is_empty() {
-            info!("Preference is empty and default used ");
-            Self::default()
-        } else {
-            serde_json::from_str(&json_str).unwrap_or_else(|_| {
-                let mut pref_new = Self::default();
-                // Need to use serde_json::from_str::<Preference1>(&json_str) if we do not use @ Bindings
-                // See https://doc.rust-lang.org/book/ch18-03-pattern-syntax.html#-bindings
-                match serde_json::from_str(&json_str) {
-                    Ok(p @ Preference1 { .. }) => {
-                        debug!("Returning the new pref with old pref values from Preference1");
-                        pref_new.recent_dbs_info = p.recent_dbs_info;
-                        // Update the preference json with the copied values from old preference
-                        pref_new.write(app_home_dir);
-                    }
-                    Err(_) => {
-                        debug!("Returning the default pref");
-                    }
-                }
-                pref_new
-            })
-        }
-    }
-
-    fn write(&self, app_home_dir: &str) {
-        // Remove old file names from the list before writing
-        //self.remove_old_db_use_info();
-        let json_str_result = serde_json::to_string_pretty(self);
-        let pref_file_name = Path::new(app_home_dir).join("preference.json");
-        if let Ok(json_str) = json_str_result {
-            if let Err(err) = fs::write(pref_file_name, json_str.as_bytes()) {
-                error!(
-                    "Preference file write failed and error is {}",
-                    err.to_string()
-                );
-            }
-        }
-    }
-
-    pub fn write_to_app_dir(&self) {
-        self.write(&AppState::shared().app_home_dir);
-    }
-
-    // Update the preference with any non null values
-    pub fn update(&mut self, preference_data: PreferenceData) {
-        let mut updated = false;
-        if let Some(v) = preference_data.language {
-            self.language = v;
-            updated = true;
-        }
-
-        if let Some(v) = preference_data.theme {
-            self.theme = v;
-            updated = true;
-        }
-
-        if let Some(v) = preference_data.default_entry_category_groupings {
-            self.default_entry_category_groupings = v;
-            updated = true;
-        }
-
-        if let Some(v) = preference_data.db_session_timeout {
-            self.db_session_timeout = v;
-            updated = true;
-        }
-
-        if let Some(v) = preference_data.clipboard_timeout {
-            self.clipboard_timeout = v;
-            updated = true;
-        }
-
-        if updated {
-            self.write_to_app_dir();
-        }
-    }
-
-    fn backup_history_count(&self) -> usize {
-        3
-    }
-
-    fn add_recent_db_use_info(
-        &mut self,
-        app_home_dir: &str,
-        recently_used: RecentlyUsed,
-    ) -> &mut Self {
-        // First we need to remove any previously added if any
-        self.recent_dbs_info
-            .retain(|s| s.db_file_path != recently_used.db_file_path);
-
-        self.recent_dbs_info.insert(0, recently_used);
-        // Write the preference to the file system immediately
-        self.write(app_home_dir);
-        self
-    }
-
-    fn remove_recent_db_use_info(&mut self, full_file_name_uri: &str) {
-        self.recent_dbs_info
-            .retain(|s| s.db_file_path != full_file_name_uri);
-
-        // Write the preference to the file system immediately
-        self.write(&AppState::shared().app_home_dir);
-    }
-
-    fn _remove_old_db_use_info(&mut self) { //-> &mut Self
-                                            // Keeps the most recet 5 entries
-                                            //self.recent_files.truncate(5);
-                                            //self
-    }
+fn find_db_info<'a>(pref: &'a Preference, db_key: &'a str) -> Option<&'a RecentlyUsed> {
+    pref.recent_dbs_info
+        .iter()
+        .find(|r| r.db_file_path == db_key)
 }

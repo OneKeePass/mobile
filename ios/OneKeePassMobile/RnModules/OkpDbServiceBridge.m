@@ -9,9 +9,13 @@
 
 @interface RCT_EXTERN_MODULE(OkpDbService, NSObject)
 
-RCT_EXTERN_METHOD(kdbxUriToOpenOnCreate:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
-
+///  Invoke 
 RCT_EXTERN_METHOD(invokeCommand:(NSString *)commandName args:(NSString *)args  resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+
+RCT_EXTERN_METHOD(iOSInvokeCommand:(NSString *)commandName args:(NSString *)args  resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+///
+
+RCT_EXTERN_METHOD(kdbxUriToOpenOnCreate:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 
 RCT_EXTERN_METHOD(completeSaveAsOnError:(NSString *)args resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 

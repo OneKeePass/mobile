@@ -17,6 +17,7 @@
                                                            invoke-api
                                                            ios-autofill-invoke-api
                                                            android-invoke-api
+                                                           ios-invoke-api
                                                            is-rs-type]]))
 
 (set! *warn-on-infer* true)
@@ -649,6 +650,9 @@
 (defn update-preference [preference-data dispatch-fn]
   (invoke-api "update_preference" {:preference-data preference-data} dispatch-fn))
 
+(defn set-db-open-biometric [db-key db-open-enabled dispatch-fn]
+  (invoke-api "set_db_open_biometric" {:db-key db-key :db-open-enabled db-open-enabled} dispatch-fn))
+
 (defn load-language-translations [language-ids dispatch-fn]
   (invoke-api "load_language_translations" {:language-ids language-ids} dispatch-fn))
 
@@ -838,8 +842,8 @@
   
   (in-ns 'onekeepass.mobile.background)
   
-  (android-invoke-api "test_call" {} #(println %))
-
+  (android-invoke-api "test_call" {} #(println %)) 
+  
   (re-frame.core/dispatch [:common/update-page-info {:page :home :title "Welcome"}])
 
   (defn test-call [dispatch-fn]

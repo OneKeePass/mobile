@@ -21,8 +21,7 @@ use super::{AndroidApiCallbackImpl, AutoFillDbData};
 
 use crate::return_api_response_failure;
 
-// NOTE: We have another service 'AndroidSupportService' in udl file
-// Later need to move those services here
+// NOTE: The fns declared in service 'AndroidSupportService' in udl file are moved here
 
 // Corresponding UDL:
 // interface AndroidSupportServiceExtra {};

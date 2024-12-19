@@ -205,6 +205,26 @@
                   dispatch-fn :convert-response convert-response :convert-response-fn convert-response-fn))
 
 
+(defn ios-invoke-api
+  "Called to invoke commands from ffi
+   The arg 'name' is the name of backend fn to call
+   The args 'api-args' is map that provides arguments to the ffi fns (commands.rs) on the backend 
+   The arg 'dispatch-fn' is called with the returned map (parsed from a json string)
+   The final arg is an optional map 
+  "
+  [name api-args dispatch-fn &
+   {:keys [convert-request args-keys-excluded convert-response convert-response-fn]
+    :or {convert-request true
+         args-keys-excluded nil
+         convert-response true}}]
+  (call-api-async (fn [] (.iOSInvokeCommand okp-db-service
+                                                name
+                                                (api-args->json api-args
+                                                                :convert-request convert-request
+                                                                :args-keys-excluded args-keys-excluded)))
+                  dispatch-fn :convert-response convert-response :convert-response-fn convert-response-fn))
+
+
 (defn android-invoke-api
   "Called to invoke commands from ffi
    The arg 'name' is the name of backend fn to call

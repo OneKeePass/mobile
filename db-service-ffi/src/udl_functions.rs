@@ -105,38 +105,6 @@ pub(crate) fn db_service_enable_logging() {
     }
 }
 
-// Called from Swift/Kotlin side to initialize callbacks,
-// backend tokio runtime etc when Native Modules are loaded - See db_service.udl
-// Also see 'udl_uniffi_exports' module for other callbacks initialization
-
-// TODO: Need to merge these two separate calls to one callbacks intialization
-
-/*
-pub(crate) fn db_service_initialize(
-    common_device_service: Box<dyn CommonDeviceService>,
-    secure_key_operation: Box<dyn SecureKeyOperation>,
-    event_dispatcher: Arc<dyn EventDispatch>,
-) {
-    AppState::setup(
-        common_device_service,
-        secure_key_operation,
-        event_dispatcher,
-    );
-    log::info!(
-        "AppState with CommonDeviceService,secure_key_operation,event_dispatcher is initialized"
-    );
-
-    key_secure::init_key_main_store();
-    log::info!("key_secure::init_key_main_store call done after AppState setup");
-
-    onekeepass_core::async_service::start_runtime();
-    log::info!("onekeepass_core::async_service::start_runtime completed");
-
-    event_dispatcher::init_async_listeners();
-    log::info!("event_dispatcher::init_async_listeners call completed");
-}
-*/
-
 pub(crate) fn read_kdbx(file_args: FileArgs, json_args: String) -> ApiResponse {
     log::debug!("file_args received is {:?}", file_args);
 
@@ -162,6 +130,7 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
         db_file_name,
         password,
         key_file_name,
+        biometric_auth_used: biometric_auth_success,
     } = serde_json::from_str(json_args)?
     else {
         return Err(OkpError::UnexpectedError(format!(
@@ -170,12 +139,7 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
         )));
     };
 
-    let file_name = AppState::shared().uri_to_file_name(&db_file_name);
-
-    debug!(
-        "File name from db_file_name {} is {} ",
-        &db_file_name, &file_name
-    );
+    // biometric_auth_success here
 
     // TODO Set the backup file's modified time to the same as the file in 'db_file_name'
     // We are printing this so that we can check these in devices before using this concept instead
@@ -183,6 +147,7 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
     let info = AppState::shared().uri_to_file_info(&db_file_name);
     debug!("File info of db-key {}, is {:?}", &db_file_name, info);
 
+    let file_name = AppState::shared().uri_to_file_name(&db_file_name);
 
     // First we read the db file 
     let kdbx_loaded = db_service::read_kdbx(
@@ -192,8 +157,6 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
         key_file_name.as_deref(),
         Some(&file_name),
     )?;
-
-    debug!("internal_read_kdbx kdbx_loaded  is {:?}", &kdbx_loaded);
 
     let read_db_checksum = db_service::db_checksum_hash(&db_file_name)?;
 
@@ -232,10 +195,6 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
             debug!("Setting modified time of backup file status is {:?}",r);
             debug!("After setting mtime {:?}", Path::new(&bp).metadata());
         }
-
-        debug!("internal_read_kdbx copied to backup file and synced");
-
-
     } else {
         debug!("Backup file already exists for this db");
     }
@@ -247,15 +206,14 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
     #[cfg(target_os = "ios")]
     {
         // iOS specific copying when we read a database if this db is used in Autofill extension
-        crate::ios::app_group::copy_files_to_app_group_on_save_or_read(&db_file_name);
+        crate::ios::autofill_app_group::copy_files_to_app_group_on_save_or_read(&db_file_name);
     }
 
     Ok(kdbx_loaded)
 }
 
 pub(crate) fn save_kdbx(file_args: FileArgs, overwrite: bool) -> ApiResponse {
-    log::debug!("save_kdbx: file_args received is {:?}", file_args);
-
+    
     let mut fd_used = false;
     let (mut writer, db_key, backup_file_name) = match file_args {
         FileArgs::FileDecriptorWithFullFileName {
@@ -336,7 +294,7 @@ pub(crate) fn save_kdbx(file_args: FileArgs, overwrite: bool) -> ApiResponse {
                     #[cfg(target_os = "ios")]
                     {
                         // iOS specific copying of a database when we save a  database if this db is used in Autofill extension
-                        crate::ios::app_group::copy_files_to_app_group_on_save_or_read(&db_key);
+                        crate::ios::autofill_app_group::copy_files_to_app_group_on_save_or_read(&db_key);
                     }
 
                     r
@@ -731,7 +689,5 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
 
     Ok(kdbx_loaded)
 }
-
-
 
 */

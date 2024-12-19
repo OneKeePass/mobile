@@ -1,7 +1,9 @@
 #![allow(dead_code, unused_imports)]
 mod android;
+mod app_preference;
 mod app_state;
 mod backup;
+mod biometric_auth;
 mod callback_service_provider;
 mod commands;
 mod event_dispatcher;
@@ -15,7 +17,8 @@ mod udl_functions;
 mod udl_types;
 mod udl_uniffi_exports;
 
-use app_state::{AppState, RecentlyUsed};
+use crate::app_preference::RecentlyUsed;
+use app_state::AppState;
 use commands::{
     error_json_str, full_path_file_to_create, CommandArg, Commands, InvokeResult, ResponseJson,
 };
@@ -51,7 +54,7 @@ pub type OkpError = db_service::Error;
 // Needs to be added here to expose in the generated rs code
 // These are interfaces declared in udl file and implemented in Rust
 // use android::AndroidSupportService;
-use ios::IosSupportService;
+// use ios::IosSupportService;
 
 #[macro_export]
 macro_rules! return_api_response_failure {

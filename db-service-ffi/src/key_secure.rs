@@ -37,7 +37,7 @@ impl kp_service::KeyStoreService for KeyStoreServiceImpl {
         let acct_key = kp_service::service_util::formatted_key(&db_key);
         let enc_key = hex::encode(&data);
 
-        let ops = &AppState::shared().secure_key_operation;
+        let ops = AppState::secure_key_operation();
 
         debug!(
             "Storing in key chain / key store for the acct_key {}",
@@ -89,7 +89,7 @@ impl kp_service::KeyStoreService for KeyStoreServiceImpl {
 
         let acct_key = kp_service::service_util::formatted_key(db_key);
 
-        let key_str_opt = match AppState::shared().secure_key_operation.get_key(acct_key) {
+        let key_str_opt = match AppState::secure_key_operation().get_key(acct_key) {
             Ok(v) => v,
             Err(e) => {
                 error!("Query call to key chain failed {:?}", e);
@@ -113,7 +113,7 @@ impl kp_service::KeyStoreService for KeyStoreServiceImpl {
     fn delete_key(&mut self, db_key: &str) -> kp_service::Result<()> {
         let acct_key = kp_service::service_util::formatted_key(db_key);
         //self.store.remove(db_key);
-        let _r = AppState::shared().secure_key_operation.delete_key(acct_key);
+        let _r = AppState::secure_key_operation().delete_key(acct_key);
         debug!("Keys are deleted..");
         Ok(())
     }

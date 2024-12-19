@@ -383,7 +383,8 @@
   (subscribe [:app-preference-status-loaded]))
 
 (defn recently-used
-  "Returns a vec of maps (from struct RecentlyUsed) with keys :file-name and :db-file-path 
+  "Returns a vec of maps (from struct RecentlyUsed) with keys :file-name , :db-file-path 
+   and biometric-enabled-db-open
    The kdbx file name is found here for each db-key
  "
   []
@@ -391,6 +392,17 @@
 
 (defn biometric-available []
   (subscribe [:biometric-available]))
+
+(defn biometric-enabled-to-open-db 
+  "Called to check whether a db can be opened with biometric authentication or not"
+  ([app-db db-key] 
+   (let [db-infos (get-in app-db [:app-preference :data :recent-dbs-info])
+           ;; r is a single member list
+         r (filter (fn [{:keys [db-file-path]}] (= db-file-path db-key)) db-infos)]
+
+     (boolean (-> r first :biometric-enabled-db-open))))
+  ([db-key]
+   (subscribe [:biometric-enabled-to-open-db db-key])))
 
 (reg-event-fx
  :load-app-preference
@@ -436,6 +448,11 @@
  (fn [db [_event-id]]
    (let [r (get-in db [:app-preference :data :recent-dbs-info])]
      (if (nil? r) [] r))))
+
+(reg-sub
+ :biometric-enabled-to-open-db
+ (fn [db [_event-id db-key]]
+   (biometric-enabled-to-open-db db db-key)))
 
 (reg-sub
  :biometric-available
