@@ -1,10 +1,10 @@
-use log;
+use log::{self, debug};
 use onekeepass_core::{error, service_util::string_to_simple_hash};
 use serde::{Deserialize, Serialize};
 
 use crate::{app_state::AppState, udl_types::SecureKeyOperationError, OkpResult};
 
-#[derive(Serialize, Deserialize, Debug,PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub(crate) struct StoredCredential {
     pub(crate) password: Option<String>,
     pub(crate) key_file_name: Option<String>,
@@ -21,13 +21,35 @@ fn key_store_formatted_key(db_key: &str) -> String {
 const OKP_DB_OPEN_TAG: &str = "OKP_DB_OPEN_KEY";
 
 impl StoredCredential {
-    pub(crate) fn store_credentials(&self, db_key: &str) -> OkpResult<()> {
-        let sc = StoredCredential {
-            password: self.password.clone(),
-            key_file_name: self.key_file_name.clone(),
-        };
+    pub(crate) fn store_credentials_on_check(
+        db_key: &str,
+        password: &Option<String>,
+        key_file_name: &Option<String>,
+        biometric_auth_used: bool,
+    ) -> OkpResult<()> {
 
-        let plain_data = serde_json::to_string(&sc)?;
+        let bio_enabled = AppState::shared().db_open_biometeric_enabled(db_key);
+        debug!("Flags are {}, {}",bio_enabled,!biometric_auth_used);
+
+        if bio_enabled && !biometric_auth_used {
+            let sc = StoredCredential {
+                password: password.clone(),
+                key_file_name: key_file_name.clone(),
+            };
+
+            let r = sc.store_credentials(db_key).inspect_err(|e| {
+                log::debug!("Storing credentials failed with eroor {e}");
+            });
+            debug!("store_credentials_on_check done {:?}",&r);
+            return r;
+        } else {
+            debug!("No crdentials stored for this key {}",&db_key);
+            Ok(())
+        }
+    }
+
+    pub(crate) fn store_credentials(&self, db_key: &str) -> OkpResult<()> {
+        let plain_data = serde_json::to_string(&self)?;
 
         let ks_key = key_store_formatted_key(db_key);
 
@@ -41,12 +63,15 @@ impl StoredCredential {
 
         KeyStoreServiceImpl {}.store_key(&ks_key, encrypted_data)?;
 
-        log::debug!("The credentials are stored in the key store after encryption");
+        log::debug!(
+            "The credentials are stored in the key store after encryption for the db_key {db_key}"
+        );
 
         Ok(())
     }
 
-    // Any previously stored credentials are retreived if found 
+    // Any previously stored credentials are retrieved if found. It is expected this is called 
+    // after a successful biometric authentication from the UI side
     pub(crate) fn get_credentials(db_key: &str) -> Option<Self> {
         let ks_key = key_store_formatted_key(db_key);
 
@@ -85,8 +110,7 @@ impl StoredCredential {
     }
 
     pub(crate) fn remove_credentials(db_key: &str) -> OkpResult<()> {
-        let ks_key = key_store_formatted_key(db_key);
-        KeyStoreServiceImpl {}.delete_key(&ks_key)
+        remove_credentials_from_key_store(db_key)
     }
 }
 
@@ -176,4 +200,20 @@ impl KeyStoreServiceImpl {
 
         Ok(())
     }
+}
+
+fn remove_credentials_from_key_store(db_key: &str) -> OkpResult<()> {
+    let ks_key = key_store_formatted_key(db_key);
+    KeyStoreServiceImpl {}.delete_key(&ks_key)
+}
+
+pub(crate) fn set_db_open_biometric(db_key: &str, enabled: bool) -> OkpResult<()> {
+
+    AppState::shared().set_db_open_biometric(db_key, enabled);
+    
+    // enabled is false when the biometric is disabled for the db
+    if !enabled {
+        remove_credentials_from_key_store(db_key)?;
+    }
+    Ok(())
 }

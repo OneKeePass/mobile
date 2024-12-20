@@ -32,7 +32,8 @@ pub(crate) fn generate_backup_history_file_name(
     // the original file name "MyPassword.kdbx" where 10084644638414928086 is the seconds from  'now' call
     let backup_file_name = vec![fname_no_extension, "_", &secs, ".kdbx"].join("");
 
-    debug!("backup_file_name generated is {}", backup_file_name);
+    //debug!("backup_file_name generated is {}", backup_file_name);
+
     // Note: We should not use any explicit /  like .join("/") while joining components
     file_hist_root
         .join(backup_file_name)
@@ -40,15 +41,12 @@ pub(crate) fn generate_backup_history_file_name(
         .map(|s| s.to_string())
 }
 
-pub fn generate_and_open_backup_file(
-    db_key: &str,
-    kdbx_file_name: &str,
-) -> OkpResult<fs::File> {
+pub fn generate_and_open_backup_file(db_key: &str, kdbx_file_name: &str) -> OkpResult<fs::File> {
     let backup_file_path = generate_backup_history_file_name(db_key, kdbx_file_name);
 
     let bk_file_name = backup_file_path.ok_or(OkpError::DataError("Opening backup file failed"))?;
 
-    debug!("Creating new backup file {} and going to create File object", &bk_file_name);
+    //debug!("Creating new backup file {} and going to create File object", &bk_file_name);
 
     let file = fs::OpenOptions::new()
         .read(true)
@@ -77,7 +75,7 @@ pub(crate) fn latest_or_generate_backup_history_file_name(
 pub(crate) fn remove_backup_history_file(db_key: &str, full_backup_file_name: &str) {
     let file_hist_root = backup_file_history_root(db_key);
 
-    debug!("Removing backup file {}", &full_backup_file_name);
+    // debug!("Removing backup file {}", &full_backup_file_name);
 
     // Remove this backup file and remove the backup dir for this 'full_file_uri_str' if the dir is empty
     let r = fs::remove_file(full_backup_file_name)
@@ -89,21 +87,15 @@ pub(crate) fn remove_backup_history_file(db_key: &str, full_backup_file_name: &s
         }
     }
 
-    debug!(
-        "Backup dir for this full uri {}  exists {}",
-        &db_key,
-        &file_hist_root.exists()
-    );
+    // debug!("Backup dir for this full uri {}  exists {}",&db_key,&file_hist_root.exists());
 }
 
 // Deletes all backup of the files found for this full uri
 pub(crate) fn delete_backup_history_dir(db_key: &str) {
     let file_hist_root = backup_file_history_root(db_key);
-    let r = fs::remove_dir_all(&file_hist_root);
-    debug!(
-        "Deleted all files under root {:?} with status {:?}",
-        &file_hist_root, &r
-    );
+    let _r = fs::remove_dir_all(&file_hist_root);
+    
+    // debug!("Deleted all files under root {:?} with status {:?}",&file_hist_root, &r);
 }
 
 pub(crate) fn prune_backup_history_files(db_key: &str) {
@@ -121,10 +113,8 @@ pub(crate) fn prune_backup_history_files(db_key: &str) {
     // );
 
     if files_count > limit {
-        debug!(
-            "History files count {} exceeded the limit {} ",
-            &files_count, limit
-        );
+        // debug!( "History files count {} exceeded the limit {} ", &files_count, limit);
+        
         buffer.sort_by_key(|k| k.1);
 
         // (files_count - limit) will panic if it results in -ve number as both are usize
@@ -132,12 +122,8 @@ pub(crate) fn prune_backup_history_files(db_key: &str) {
         let excess = files_count - limit;
 
         for (file, _) in &buffer[0..excess] {
-            let r = fs::remove_file(file.path());
-            debug!(
-                "Removing file {:?} and the result is {:?} ",
-                &file.path(),
-                &r
-            );
+            let _r = fs::remove_file(file.path());
+            // debug!("Removing file {:?} and the result is {:?} ",&file.path(),&r);
         }
     }
 }

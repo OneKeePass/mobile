@@ -11,7 +11,7 @@ use crate::backup::{
 };
 use crate::commands::{result_json_str, CommandArg, ResponseJson};
 use crate::udl_types::FileInfo;
-use crate::{open_backup_file, parse_command_args_or_err};
+use crate::{biometric_auth, open_backup_file, parse_command_args_or_err};
 use crate::{OkpError, OkpResult};
 use nom::Err;
 use onekeepass_core::db_service::storage::{
@@ -47,7 +47,7 @@ use serde::Serialize;
 // a 36-character string, formatted in five groups of hexadecimal digits
 // separated by hyphens, following the pattern 8-4-4-4-12
 
-fn parse_db_key<'a>(db_key: &'a str) -> IResult<&'a str, ParsedDbKey> {
+fn parse_db_key(db_key: &str) -> IResult<&str, ParsedDbKey> {
     let (remaining, (rs_type_name, _, connection_id, _, file_path_part)) = tuple((
         alpha1,
         bytes::complete::tag("-"),
@@ -58,8 +58,8 @@ fn parse_db_key<'a>(db_key: &'a str) -> IResult<&'a str, ParsedDbKey> {
 
     // remaining should be empty str after a successful db key parsing
 
-    // We extract the file name 
-    let file_name = file_path_part.rsplit_once("/").map_or_else(||"", |p| p.1 ) ; 
+    // We extract the file name
+    let file_name = file_path_part.rsplit_once("/").map_or_else(|| "", |p| p.1);
 
     Ok((
         remaining,
@@ -157,7 +157,7 @@ impl From<KdbxLoaded> for KdbxLoadedEx {
 }
 
 fn rs_read_file(json_args: &str) -> OkpResult<KdbxLoadedEx> {
-    let (db_file_name, password, key_file_name,biometric_auth_used) = parse_command_args_or_err!(
+    let (db_file_name, password, key_file_name, biometric_auth_used) = parse_command_args_or_err!(
         json_args,
         OpenDbArg {
             db_file_name,
@@ -221,6 +221,7 @@ fn rs_read_file(json_args: &str) -> OkpResult<KdbxLoadedEx> {
         &db_file_name,
         password.as_deref(),
         key_file_name.as_deref(),
+        biometric_auth_used,
         file_name,
         &file_modified_time,
     )?;
@@ -258,12 +259,22 @@ fn read_with_backup<R: Read + Seek>(
     db_key: &str,
     password: Option<&str>,
     key_file_name: Option<&str>,
+    biometric_auth_used: bool,
     file_name: &str,
     file_modified_time: &Option<i64>,
 ) -> OkpResult<db_service::KdbxLoaded> {
     // First we read the db file
     let kdbx_loaded =
-        db_service::read_kdbx(reader, db_key, password, key_file_name, Some(file_name))?;
+        db_service::read_kdbx(reader, db_key, password, key_file_name, Some(file_name)).map_err(
+            |e| match e {
+                // Need this when db login fails while using the previously stored credentials
+                // and the UI will then popup the usual dialog
+                error::Error::HeaderHmacHashCheckFailed if biometric_auth_used => {
+                    error::Error::BiometricCredentialsAuthenticationFailed
+                }
+                _ => e,
+            },
+        )?;
 
     // Gets the checksum of the loaded db in the above 'read_kdbx' call
     let read_db_checksum = db_service::db_checksum_hash(db_key)?;
@@ -300,13 +311,21 @@ fn read_with_backup<R: Read + Seek>(
 
     backup::prune_backup_history_files(&db_key);
 
-    AppState::shared().add_recent_db_use_info2(db_key,file_name);
+    AppState::shared().add_recent_db_use_info2(db_key, file_name);
 
     #[cfg(target_os = "ios")]
     {
         // iOS specific copying when we read a database if this db is used in Autofill extension
         crate::ios::autofill_app_group::copy_files_to_app_group_on_save_or_read(&db_key);
     }
+
+    // Store the crdentials if we will be using biometric
+    let _r = biometric_auth::StoredCredential::store_credentials_on_check(
+        db_key,
+        &password.map(|s| s.to_string()),
+        &key_file_name.map(|s| s.to_string()),
+        biometric_auth_used,
+    );
 
     Ok(kdbx_loaded)
 }
@@ -499,17 +518,14 @@ pub(crate) fn uri_to_file_info(db_key: &str) -> Option<FileInfo> {
         .map(|md| {
             //debug!("RS Bk modified Metadata is {:?} ", &md);
             file_info.file_size = Some(md.len() as i64);
-            file_info.last_modified = md
-                .modified()
-                .ok()
-                .map(|t| {
-                    //debug!(" RS file_info.last_modified (SystemTime) {:?} ",&t);
-                    let mut r = service_util::system_time_to_seconds(t) as i64;
-                    // Need to be in milliseconds
-                    r = r * 1000;
-                    //debug!(" RS file_info.last_modified since epoch {} ",&r);
-                    r
-                });
+            file_info.last_modified = md.modified().ok().map(|t| {
+                //debug!(" RS file_info.last_modified (SystemTime) {:?} ",&t);
+                let mut r = service_util::system_time_to_seconds(t) as i64;
+                // Need to be in milliseconds
+                r = r * 1000;
+                //debug!(" RS file_info.last_modified since epoch {} ",&r);
+                r
+            });
             file_info.location = Some(parsed.rs_type_name.to_string());
             file_info
         });
@@ -517,14 +533,14 @@ pub(crate) fn uri_to_file_info(db_key: &str) -> Option<FileInfo> {
     file_info_opt
 }
 
-pub(crate) fn uri_to_file_name(db_key: &str) -> Option<&str>{
+pub(crate) fn uri_to_file_name(db_key: &str) -> Option<&str> {
     let Ok((remaining, parsed)) = parse_db_key(db_key) else {
         return None;
     };
     if !remaining.is_empty() {
         return None;
     }
-    return Some(parsed.file_name);    
+    return Some(parsed.file_name);
 }
 
 /*

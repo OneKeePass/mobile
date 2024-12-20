@@ -268,7 +268,7 @@
 (reg-fx
  :bg-load-new-kdbx
  (fn [[db-file-name password key-file-name]]
-   (bg/load-kdbx db-file-name password key-file-name on-database-creation-completed)))
+   (bg/load-kdbx db-file-name password key-file-name false on-database-creation-completed)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

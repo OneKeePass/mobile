@@ -97,7 +97,7 @@ impl kp_service::KeyStoreService for KeyStoreServiceImpl {
             }
         };
 
-        debug!("Get key returned {:?}", &key_str_opt);
+        // debug!("Get key returned {:?}", &key_str_opt);
 
         let val = key_str_opt.and_then(|v| match hex::decode(&v) {
             Ok(v) => Some(v),
@@ -114,14 +114,14 @@ impl kp_service::KeyStoreService for KeyStoreServiceImpl {
         let acct_key = kp_service::service_util::formatted_key(db_key);
         //self.store.remove(db_key);
         let _r = AppState::secure_key_operation().delete_key(acct_key);
-        debug!("Keys are deleted..");
+        // debug!("Keys are deleted..");
         Ok(())
     }
 
     fn copy_key(&mut self, source_db_key: &str, target_db_key: &str) -> kp_service::Result<()> {
         if let Some(source_key) = self.get_key(source_db_key) {
             let _r = self.store_key(target_db_key, source_key);
-            debug!("Keys are copied...");
+            // debug!("Keys are copied...");
         }
 
         Ok(())

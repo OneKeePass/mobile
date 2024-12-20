@@ -108,14 +108,12 @@ impl HandlePickedFile for SftpPrivateKeyFile {
         // local sftp connection specific path after successful connection
         let file_full_path = AppState::temp_dir_path().join(&file_name);
         
-        debug!(
-            "The file_full_path in SftpPrivateKeyFile is {:?}",
-            file_full_path
-        );
+        // debug!("The file_full_path in SftpPrivateKeyFile is {:?}",file_full_path);
 
         let mut target_file = File::create(&file_full_path)?;
         std::io::copy(&mut file, &mut target_file).and(target_file.sync_all())?;
-        debug!("Copied the private key file {} locally", &file_name);
+        
+        // debug!("Copied the private key file {} locally", &file_name);
 
         let full_file_name = file_full_path.as_os_str().to_string_lossy().to_string();
 

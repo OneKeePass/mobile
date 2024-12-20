@@ -13,16 +13,6 @@ use crate::{
 };
 
 #[derive(Clone, Serialize, Deserialize, Default)]
-pub struct RecentlyUsed1 {
-    pub(crate) file_name: String,
-    // This is full file url str.
-    // It will start with "content://" for android, "file://" in case of ios
-    // or "Sftp" or "Webdav"
-    // This is also db_key
-    pub(crate) db_file_path: String,
-}
-
-#[derive(Clone, Serialize, Deserialize, Default)]
 pub struct RecentlyUsed {
     pub(crate) file_name: String,
     // This is full file url str.
@@ -30,7 +20,6 @@ pub struct RecentlyUsed {
     // or "Sftp" or "Webdav"
     // This is also db_key
     pub(crate) db_file_path: String,
-    pub(crate) biometric_enabled_db_open: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -56,7 +45,7 @@ pub struct Preference1 {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Preference2 {
     pub version: String,
-    pub recent_dbs_info: Vec<RecentlyUsed1>,
+    pub recent_dbs_info: Vec<RecentlyUsed>,
     // Session will time out in these milli seconds
     pub db_session_timeout: i64,
     // clipboard will be cleared in these milli seconds
@@ -85,6 +74,8 @@ pub(crate) struct Preference {
     pub(crate) language: String,
     // Valid values one of Types,Categories,Groups,Tags
     pub(crate) default_entry_category_groupings: String,
+    // All dbs that can be opened using biometric
+    biometric_enabled_dbs: Vec<String>,
 }
 
 impl Default for Preference {
@@ -99,6 +90,7 @@ impl Default for Preference {
             theme: "system".into(),
             language: util::current_locale_language(),
             default_entry_category_groupings: "Types".into(),
+            biometric_enabled_dbs: vec![],
         }
     }
 }
@@ -138,7 +130,6 @@ impl Preference {
             .recent_dbs_info
             .iter()
             .map(|p| RecentlyUsed {
-                biometric_enabled_db_open: false,
                 file_name: p.file_name.clone(),
                 db_file_path: p.db_file_path.clone(),
             })
@@ -226,19 +217,21 @@ impl Preference {
     }
 
     pub fn set_db_open_biometric(&mut self, db_key: &str, enabled: bool) {
-        if let Some(info) = self
-            .recent_dbs_info
-            .iter_mut()
-            .find(|r| r.db_file_path == db_key)
-        {
-            info.biometric_enabled_db_open = enabled;
-            self.write_to_app_dir();
+        let key = db_key.to_string();
+
+        // First remove the matching key if any
+        self.biometric_enabled_dbs.retain(|s| s != &key);
+
+        // We add the db-key when it is enabled
+        if enabled {
+            self.biometric_enabled_dbs.push(key);
         }
+
+        self.write_to_app_dir();
     }
 
     pub fn db_open_biometeric_enabled(&self, db_key: &str) -> bool {
-        self.find_db_info(db_key)
-            .map_or(false, |r| r.biometric_enabled_db_open)
+        self.biometric_enabled_dbs.contains(&db_key.to_string())
     }
 
     fn find_db_info(&self, db_key: &str) -> Option<&RecentlyUsed> {

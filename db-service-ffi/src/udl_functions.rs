@@ -6,6 +6,7 @@ use onekeepass_core::{
 
 use crate::{
     backup::{self, matching_backup_exists},
+    biometric_auth,
     commands::{self, full_path_file_to_create, CommandArg, Commands, ResponseJson},
     event_dispatcher,
     file_util::{KeyFileInfo, OpenedFile},
@@ -31,7 +32,7 @@ use crate::{
 // This module will have all the implementation for the top level functions declared in db_service.udl
 // TODO: Once this refactoring works for both iOS and Android, we can move all such fn implementations here
 
-// This is the implementation for the fn 'invoke_command' decalared in db_service.udl
+// This is the implementation for the fn 'invoke_command' declared in db_service.udl
 // This is called from Swift/Kotlin code
 pub(crate) fn invoke_command(command_name: String, args: String) -> String {
     Commands::invoke(command_name, args)
@@ -43,7 +44,7 @@ pub(crate) fn db_service_enable_logging() {
     {
         // Use "db_service_ffi" in Android Studio's Logcat to see all logs from this crate
 
-        // if we use "tag:DbServiceFFI" in Logcat, we will see all logs from this crate and 
+        // if we use "tag:DbServiceFFI" in Logcat, we will see all logs from this crate and
         // from crates used by this crate
 
         let _ = std::panic::catch_unwind(|| {
@@ -53,10 +54,8 @@ pub(crate) fn db_service_enable_logging() {
                 .filter_module("russh::cipher", log::LevelFilter::Info)
                 .filter_module("russh::client", log::LevelFilter::Info)
                 .filter_module("russh::session", log::LevelFilter::Info)
-
                 .filter_module("onekeepass_core", log::LevelFilter::Debug)
                 .filter_module("db_service_ffi", log::LevelFilter::Debug)
-                
                 //.filter_module("commands", log::LevelFilter::Debug)
                 // .filter_module("", log::LevelFilter::Debug)
                 // .filter_module("", log::LevelFilter::Debug)
@@ -67,7 +66,7 @@ pub(crate) fn db_service_enable_logging() {
                     .with_max_level(log::LevelFilter::Trace)
                     //.with_min_level(log::Level::Debug)
                     .with_filter(filter)
-                    .with_tag("DbServiceFFI"),  
+                    .with_tag("DbServiceFFI"),
             );
             log::trace!("Android logging should be hooked up!")
         });
@@ -130,7 +129,7 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
         db_file_name,
         password,
         key_file_name,
-        biometric_auth_used: biometric_auth_success,
+        biometric_auth_used,
     } = serde_json::from_str(json_args)?
     else {
         return Err(OkpError::UnexpectedError(format!(
@@ -149,19 +148,27 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
 
     let file_name = AppState::shared().uri_to_file_name(&db_file_name);
 
-    // First we read the db file 
+    // First we read the db file
     let kdbx_loaded = db_service::read_kdbx(
         file,
         &db_file_name,
         password.as_deref(),
         key_file_name.as_deref(),
         Some(&file_name),
-    )?;
+    )
+    .map_err(|e| match e {
+        // Need this when db login fails while using the previously stored credentials
+        // and the UI will then popup the usual dialog 
+        error::Error::HeaderHmacHashCheckFailed if biometric_auth_used => {
+            error::Error::BiometricCredentialsAuthenticationFailed
+        }
+        _ => e,
+    })?;
 
     let read_db_checksum = db_service::db_checksum_hash(&db_file_name)?;
 
-    // Note:  The db file 'file' object is read two times 
-    // 1. in 'read_kdbx' call 
+    // Note:  The db file 'file' object is read two times
+    // 1. in 'read_kdbx' call
     // 2. std::io::copy call
 
     // Create backup only if there is no backup for this db with the matching checksum
@@ -183,16 +190,16 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
             .and(backup_file.rewind())?;
 
         if let Some(mtime) = info.map(|f| f.last_modified).flatten() {
-            let mtime = mtime/1000; // milli to seconds
-            // backup_file_name unwrap will not fail as we have used this path in the previous call
-            // in open_backup_file
+            let mtime = mtime / 1000; // milli to seconds
+                                      // backup_file_name unwrap will not fail as we have used this path in the previous call
+                                      // in open_backup_file
             let bp = backup_file_name.unwrap();
 
             debug!("Before setting mtime {:?}", Path::new(&bp).metadata());
-            
+
             let r = filetime::set_file_mtime(&bp, filetime::FileTime::from_unix_time(mtime, 0));
 
-            debug!("Setting modified time of backup file status is {:?}",r);
+            debug!("Setting modified time of backup file status is {:?}", r);
             debug!("After setting mtime {:?}", Path::new(&bp).metadata());
         }
     } else {
@@ -209,11 +216,18 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
         crate::ios::autofill_app_group::copy_files_to_app_group_on_save_or_read(&db_file_name);
     }
 
+    // Store the crdentials if we will be using biometric
+    let _r = biometric_auth::StoredCredential::store_credentials_on_check(
+        &db_file_name,
+        &password,
+        &key_file_name,
+        biometric_auth_used,
+    );
+
     Ok(kdbx_loaded)
 }
 
 pub(crate) fn save_kdbx(file_args: FileArgs, overwrite: bool) -> ApiResponse {
-    
     let mut fd_used = false;
     let (mut writer, db_key, backup_file_name) = match file_args {
         FileArgs::FileDecriptorWithFullFileName {
@@ -257,12 +271,12 @@ pub(crate) fn save_kdbx(file_args: FileArgs, overwrite: bool) -> ApiResponse {
                         return_api_response_failure!(e)
                     }
                     // Call verify checksum here using writer "db_service::verify_db_file_checksum"
-                    // Only for iOS. 
+                    // Only for iOS.
 
-                    // In case of Android 'udl_functions::verify_db_file_checksum' is used directly to do this check 
+                    // In case of Android 'udl_functions::verify_db_file_checksum' is used directly to do this check
                     // (See verifyDbFileChanged fn in DbServiceModule.kt)
 
-                    // The above mentioned 'udl_functions::verify_db_file_checksum' is not used by iOS app 
+                    // The above mentioned 'udl_functions::verify_db_file_checksum' is not used by iOS app
                     // This is because of slight differences in the save_kdbx call sequences in iOS vs Android
 
                     if cfg!(target_os = "ios") && !overwrite {
@@ -294,7 +308,9 @@ pub(crate) fn save_kdbx(file_args: FileArgs, overwrite: bool) -> ApiResponse {
                     #[cfg(target_os = "ios")]
                     {
                         // iOS specific copying of a database when we save a  database if this db is used in Autofill extension
-                        crate::ios::autofill_app_group::copy_files_to_app_group_on_save_or_read(&db_key);
+                        crate::ios::autofill_app_group::copy_files_to_app_group_on_save_or_read(
+                            &db_key,
+                        );
                     }
 
                     r
@@ -548,7 +564,7 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
     debug!("File info of db-key {}, is {:?}", &db_file_name, info);
 
 
-    // First we read the db file 
+    // First we read the db file
     let kdbx_loaded = db_service::read_kdbx(
         file,
         &db_file_name,
@@ -559,8 +575,8 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
 
     debug!("internal_read_kdbx kdbx_loaded  is {:?}", &kdbx_loaded);
 
-    // Note:  The db file 'file' object is read two or three times 
-    // 1. in 'read_kdbx' call 
+    // Note:  The db file 'file' object is read two or three times
+    // 1. in 'read_kdbx' call
     // 2. matching_db_reader_backup_exists call
     // 3. std::io::copy call
 
@@ -589,7 +605,7 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
             let bp = backup_file_name.unwrap();
 
             debug!("Before setting mtime {:?}", Path::new(&bp).metadata());
-            
+
             let r = filetime::set_file_mtime(&bp, filetime::FileTime::from_unix_time(mtime, 0));
 
             debug!("Setting modified time of backup file status is {:?}",r);

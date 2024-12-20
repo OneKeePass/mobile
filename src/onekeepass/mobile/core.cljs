@@ -1,29 +1,28 @@
 (ns onekeepass.mobile.core
   (:require ;; When we build iOS production main bundle, we can comment out this ns
  ;; and this will ensure that all android autofill related code are excluded
-            [onekeepass.mobile.android.autofill.core :as android-core] ;;;;;;; ;;;;;;; ;;;;;;; ;;;;;;;
-            [onekeepass.mobile.appbar :refer [appbar-main-content
-                                              hardware-back-pressed]]
-            [onekeepass.mobile.background :as bg]
-            [onekeepass.mobile.common-components :as cc :refer [message-dialog
-                                                                message-modal
-                                                                message-snackbar]]
-            [onekeepass.mobile.constants :refer [DARK-THEME]]
-            [onekeepass.mobile.events.app-settings :as as-events :refer [app-theme]]
-            [onekeepass.mobile.events.common :as cmn-events]
-            [onekeepass.mobile.events.native-events :as native-events]
-            [onekeepass.mobile.events.remote-storage :as rs-events]
-            [onekeepass.mobile.events.save :as save-events]
-            [onekeepass.mobile.rn-components :as rnc :refer [react-use-effect
-                                                             reset-colors
-                                                             rnp-portal
-                                                             rnp-provider
-                                                             use-color-scheme]] 
-            [onekeepass.mobile.save-error-dialog :refer [save-error-modal]]
-            [onekeepass.mobile.start-page :refer [open-db-dialog]]
-            [onekeepass.mobile.translation :as t]
-            [react-native :as rn]
-            [reagent.core :as r]))
+   [onekeepass.mobile.android.autofill.core :as android-core] ;;;;;;; ;;;;;;; ;;;;;;; ;;;;;;;
+   [onekeepass.mobile.appbar :refer [appbar-main-content
+                                     hardware-back-pressed]]
+   [onekeepass.mobile.background :as bg]
+   [onekeepass.mobile.common-components :as cc :refer [message-dialog
+                                                       message-modal
+                                                       message-snackbar]]
+   [onekeepass.mobile.constants :refer [DARK-THEME]]
+   [onekeepass.mobile.events.app-settings :as as-events :refer [app-theme]]
+   [onekeepass.mobile.events.common :as cmn-events]
+   [onekeepass.mobile.events.native-events :as native-events]
+   [onekeepass.mobile.events.remote-storage :as rs-events]
+   [onekeepass.mobile.events.save :as save-events]
+   [onekeepass.mobile.rn-components :as rnc :refer [react-use-effect
+                                                    reset-colors
+                                                    rnp-portal
+                                                    rnp-provider
+                                                    use-color-scheme]]
+   [onekeepass.mobile.save-error-dialog :refer [save-error-modal]]
+   [onekeepass.mobile.translation :as t]
+   [react-native :as rn]
+   [reagent.core :as r]))
 ;;(set! *warn-on-infer* true)
 
 (defn main-content
@@ -35,8 +34,8 @@
      [appbar-main-content]
      ;; All dialogs that may be used in more than one page are added under this portal 
      [rnp-portal
-      [message-snackbar] 
-      #_[open-db-dialog] 
+      [message-snackbar]
+      #_[open-db-dialog]
       [save-error-modal @(save-events/save-error-modal-data)]
       [message-modal @(cmn-events/message-modal-data)]
       [message-dialog @(cmn-events/message-dialog-data)]]]))
@@ -101,7 +100,6 @@
   ;; See https://docs.swmansion.com/react-native-gesture-handler/docs/installation
   [rnc/gh-gesture-handler-root-view {:style {:flex 1}}
    [:f> main]])
-
 
 (defn init-calls []
   (native-events/register-backend-event-handlers)

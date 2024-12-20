@@ -1,12 +1,12 @@
 (ns onekeepass.mobile.events.common
   "All common events that are used across many pages"
-  (:require [cljs.core.async :refer [<! go timeout]]
-            [clojure.string :as str]
-            [onekeepass.mobile.background-remote-server :as bg-rs]
-            [onekeepass.mobile.background :as bg :refer [is-Android]]
-            [onekeepass.mobile.utils :as u :refer [str->int tags->vec]]
-            [re-frame.core :refer [dispatch dispatch-sync reg-event-db
-                                   reg-event-fx reg-fx reg-sub subscribe]]))
+  (:require
+   [cljs.core.async :refer [<! go timeout]]
+   [clojure.string :as str]
+   [onekeepass.mobile.background :as bg :refer [is-Android]]
+   [onekeepass.mobile.utils :as u :refer [contains-val? str->int tags->vec]]
+   [re-frame.core :refer [dispatch dispatch-sync reg-event-db reg-event-fx
+                          reg-fx reg-sub subscribe]]))
 
 (def home-page-title "home")
 
@@ -393,7 +393,7 @@
 (defn biometric-available []
   (subscribe [:biometric-available]))
 
-(defn biometric-enabled-to-open-db 
+#_(defn biometric-enabled-to-open-db 
   "Called to check whether a db can be opened with biometric authentication or not"
   ([app-db db-key] 
    (let [db-infos (get-in app-db [:app-preference :data :recent-dbs-info])
@@ -401,6 +401,14 @@
          r (filter (fn [{:keys [db-file-path]}] (= db-file-path db-key)) db-infos)]
 
      (boolean (-> r first :biometric-enabled-db-open))))
+  ([db-key]
+   (subscribe [:biometric-enabled-to-open-db db-key])))
+
+(defn biometric-enabled-to-open-db
+  "Called to check whether a db can be opened with biometric authentication or not"
+  ([app-db db-key]
+   (let [db-infos (get-in app-db [:app-preference :data :biometric-enabled-dbs])]
+     (contains-val? db-infos db-key)))
   ([db-key]
    (subscribe [:biometric-enabled-to-open-db db-key])))
 

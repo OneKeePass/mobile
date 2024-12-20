@@ -2,7 +2,7 @@ use crate::app_preference::{PreferenceData, RecentlyUsed};
 use crate::app_state::AppState;
 use crate::file_util::PickedFileHandler;
 use crate::{android, file_util::KeyFileInfo, ios};
-use crate::{backup, util, OkpError, OkpResult};
+use crate::{backup, biometric_auth, util, OkpError, OkpResult};
 use onekeepass_core::async_service::{self, OtpTokenTtlInfoByField, TimerID};
 use onekeepass_core::db_content::AttachmentHashValue;
 use onekeepass_core::db_service::{
@@ -92,8 +92,7 @@ pub enum CommandArg {
         db_file_name: String,
         password: Option<String>,
         key_file_name: Option<String>,
-        #[serde(default)]
-        biometric_auth_used:bool,
+        biometric_auth_used: bool,
     },
     NewDbArgWithFileName {
         file_name: String,
@@ -357,7 +356,7 @@ impl Commands {
             }
 
             "unlock_kdbx" => {
-                service_call!(args, OpenDbArg{db_file_name,password,key_file_name,biometric_auth_used} =>
+                service_call!(args, OpenDbArg{db_file_name,password,key_file_name,biometric_auth_used: _} =>
                     Self unlock_kdbx(&db_file_name,password.as_deref(),key_file_name.as_deref()))
             }
 
@@ -534,12 +533,10 @@ impl Commands {
 
             "all_kdbx_cache_keys" => result_json_str(db_service::all_kdbx_cache_keys()),
 
-            // "list_backup_files" => ok_json_str(util::list_backup_files()),
             "list_bookmark_files" => ok_json_str(ios::list_bookmark_files()),
 
             "list_key_files" => ok_json_str(util::list_key_files()),
 
-            // "delete_key_file" => Self::delete_key_file(&args),
             "clean_export_data_dir" => result_json_str(util::clean_export_data_dir()),
 
             "clipboard_copy_string" => Self::clipboard_copy_string(&args),
@@ -549,8 +546,15 @@ impl Commands {
             }
 
             "set_db_open_biometric" => {
-                service_call!(args,DbOpenBiomerticArg {db_key,db_open_enabled} => 
-                    Self set_db_open_biometric(&db_key,db_open_enabled))
+                service_call_closure!(args,DbOpenBiomerticArg {db_key,db_open_enabled}  => move || {
+                    result_json_str(biometric_auth::set_db_open_biometric(&db_key,db_open_enabled))
+                })
+            }
+
+            "stored_db_credentials" => {
+                service_call_closure!(args,DbKey {db_key}  => move || {
+                    ok_json_str(biometric_auth::StoredCredential::get_credentials(&db_key))
+                })
             }
 
             //// All remote storage related
@@ -601,9 +605,12 @@ impl Commands {
                     result_json_str(rs_operation_type.delete_config())
                 })
             }
-
             ////
+
+            // "list_backup_files" => ok_json_str(util::list_backup_files()),
+            // "delete_key_file" => Self::delete_key_file(&args),
             "test_call" => Self::test_call(&args),
+
             x => error_json_str(&format!("Invalid command name {} is passed", x)),
         };
         r
@@ -629,7 +636,7 @@ impl Commands {
     fn get_file_info(args: &str) -> ResponseJson {
         if let Ok(CommandArg::DbKey { db_key }) = serde_json::from_str(args) {
             let info = AppState::shared().uri_to_file_info(&db_key);
-            log::debug!("FileInfo is {:?}", info);
+            // log::debug!("FileInfo is {:?}", info);
             ok_json_str(info)
         } else {
             error_json_str(&format!(
@@ -742,10 +749,6 @@ impl Commands {
 
     fn update_preference(preference_data: PreferenceData) -> OkpResult<()> {
         Ok(AppState::shared().update_preference(preference_data))
-    }
-
-    fn set_db_open_biometric(db_key: &str, enabled: bool) -> OkpResult<()> {
-        Ok(AppState::shared().set_db_open_biometric(db_key, enabled))
     }
 
     fn prepare_export_kdbx_data(args: &str) -> String {
@@ -939,7 +942,7 @@ impl Commands {
             };
             AppState::common_device_service_ex().clipboard_copy_string(cd)?;
 
-            debug!("clipboard_copy_string is called ");
+            // debug!("clipboard_copy_string is called ");
 
             Ok(())
         };
@@ -982,13 +985,15 @@ pub fn remove_app_files(db_key: &str) {
     // let file_name = AppState::global().uri_to_file_name(&db_key);
     // util::delete_backup_file(&db_key, &file_name);
 
-    if let Some(ru) = AppState::shared().get_recently_used(&db_key) {
+    if let Some(_ru) = AppState::shared().get_recently_used(&db_key) {
         backup::delete_backup_history_dir(&db_key);
-        debug!("Backup file {} is deleted", &ru.file_name)
+        // debug!("Backup file {} is deleted", &ru.file_name)
     }
 
     AppState::shared().remove_recent_db_use_info(&db_key);
-    log::debug!("Removed db file info from recent list");
+    // log::debug!("Removed db file info from recent list");
+
+    let _ = biometric_auth::StoredCredential::remove_credentials(db_key);
 
     #[cfg(target_os = "ios")]
     ios::delete_book_mark_data(&db_key);

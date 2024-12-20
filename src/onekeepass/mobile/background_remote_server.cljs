@@ -63,10 +63,11 @@
                                                      :parent-dir parent-dir
                                                      :sub-dir sub-dir}} dispatch-fn))
 
-(defn read-kdbx [db-file-name password key-file-name dispatch-fn]
+(defn read-kdbx [db-file-name password key-file-name biometric-auth-used dispatch-fn] 
   (invoke-api "rs_read_kdbx"  {:db-file-name db-file-name
                                :password  password
-                               :key-file-name key-file-name} dispatch-fn))
+                               :key-file-name key-file-name
+                               :biometric-auth-used biometric-auth-used} dispatch-fn))
 
 (defn save-kdbx [full-file-name overwrite dispatch-fn]
   (invoke-api "rs_save_kdbx" {:db-key full-file-name :overwrite overwrite} dispatch-fn))
@@ -108,10 +109,9 @@
 
   (def adroid-c {:connection-id UUID-DEFAULT :name "SftpTest1" :host "192.168.1.4" :port 2022 :private-key "/data/data/com.onekeepassmobile/files/sftp_id_rsa" :user-name "sf-user1" :password "Matrix.2" :start-dir "/"})
 
-  
+
   (connect-and-retrieve-root-dir "Sftp" adroid-c)
 
   (def wc {:connection-id UUID-DEFAULT :name "WebdavTest1", :root-url "https://192.168.1.4:10080/" :user-name "sf-user1" :password "ss" :allow-untrusted-cert true})
 
-  (def dp {:sftp-server-name "SftpTest1" :sftp-server-parent-dir "dav"})
-  )
+  (def dp {:sftp-server-name "SftpTest1" :sftp-server-parent-dir "dav"}))

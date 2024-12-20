@@ -241,7 +241,7 @@
                   dispatch-fn
                   :error-transform true))
 
-(defn ios-complete-save-as-on-error [db-key new-db-key file-name dispatch-fn] 
+(defn ios-complete-save-as-on-error [db-key new-db-key file-name dispatch-fn]
   (call-api-async (fn [] (.completeSaveAsOnError
                           okp-db-service
                           (api-args->json {:db-key db-key :new-db-key new-db-key :file-name file-name})))
@@ -316,7 +316,7 @@
   picked-file-handler is map that corresponds to the enum 'PickedFileHandler' (ffi layer)
   e.g {:handler \"SftpPrivateKeyFile\"}
   "
-  [full-file-name picked-file-handler dispatch-fn] 
+  [full-file-name picked-file-handler dispatch-fn]
   (call-api-async (fn [] (.handlePickedFile okp-db-service full-file-name
                                             (api-args->json
                                              {:picked-file-handler picked-file-handler}
@@ -349,17 +349,20 @@
   (call-api-async (fn [] (.exportKdbx okp-export full-file-name))
                   dispatch-fn :error-transform false))
 
-(defn load-kdbx [db-file-name password key-file-name dispatch-fn]
+(defn load-kdbx [db-file-name password key-file-name biometric-auth-used dispatch-fn]
   (if-not (is-rs-type db-file-name)
     (call-api-async (fn []
                       (.readKdbx okp-db-service
                                  db-file-name
-                                 (api-args->json {:db-file-name db-file-name :password password :key_file_name key-file-name}
+                                 (api-args->json {:db-file-name db-file-name
+                                                  :password password
+                                                  :key_file_name key-file-name
+                                                  :biometric-auth-used biometric-auth-used}
                                                  :convert-request true)))
                     dispatch-fn :error-transform true)
-    (bg-rs/read-kdbx db-file-name password key-file-name dispatch-fn)))
+    (bg-rs/read-kdbx db-file-name password key-file-name biometric-auth-used dispatch-fn)))
 
-(defn save-kdbx [full-file-name overwrite dispatch-fn] 
+(defn save-kdbx [full-file-name overwrite dispatch-fn]
   (if-not (is-rs-type full-file-name)
     ;; By default, we pass 'false' for the overwrite arg
     (call-api-async (fn [] (.saveKdbx okp-db-service full-file-name overwrite)) dispatch-fn :error-transform true)
@@ -433,6 +436,9 @@
 
 (defn unlock-kdbx-on-biometric-authentication [db-key dispatch-fn]
   (invoke-api "unlock_kdbx_on_biometric_authentication" {:db-key db-key} dispatch-fn))
+
+(defn stored-db-credentials-on-biometric-authentication [db-key dispatch-fn]
+  (invoke-api "stored_db_credentials" {:db-key db-key} dispatch-fn))
 
 (defn remove-from-recently-used
   "Removes recently used file info for the passed db-key and the database id also 
@@ -839,11 +845,11 @@
   (require '[cljs.pprint]) ;;https://cljs.github.io/api/cljs.pprint/
   (cljs.pprint/pprint someobject)
   ;; daf114d0-a518-4e13-b75b-fbe893e69a9d 8bd81fe1-f786-46c3-b0e4-d215f8247a10
-  
+
   (in-ns 'onekeepass.mobile.background)
-  
-  (android-invoke-api "test_call" {} #(println %)) 
-  
+
+  (android-invoke-api "test_call" {} #(println %))
+
   (re-frame.core/dispatch [:common/update-page-info {:page :home :title "Welcome"}])
 
   (defn test-call [dispatch-fn]
@@ -868,6 +874,5 @@
   (invoke-api "clean_export_data_dir" {} #(println %))
 
   ;;(invoke-api  "list_backup_files" {} #(println %))
-  
-  (invoke-api  "list_bookmark_files" {} #(println %))
-  )
+
+  (invoke-api  "list_bookmark_files" {} #(println %)))

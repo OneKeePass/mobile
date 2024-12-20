@@ -320,7 +320,6 @@ impl AppState {
         let recently_used = RecentlyUsed {
             file_name,
             db_file_path: db_key.into(),
-            biometric_enabled_db_open: false,
         };
 
         let mut pref = self.preference.lock().unwrap();
@@ -333,7 +332,6 @@ impl AppState {
         let recently_used = RecentlyUsed {
             file_name: file_name.into(),
             db_file_path: db_key.into(),
-            biometric_enabled_db_open: false,
         };
 
         let mut pref = self.preference.lock().unwrap();
