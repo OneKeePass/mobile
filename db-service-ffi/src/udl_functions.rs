@@ -143,10 +143,10 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
     // TODO Set the backup file's modified time to the same as the file in 'db_file_name'
     // We are printing this so that we can check these in devices before using this concept instead
     // of checksum in matching_db_reader_backup_exists
-    let info = AppState::shared().uri_to_file_info(&db_file_name);
+    let info = AppState::uri_to_file_info(&db_file_name);
     debug!("File info of db-key {}, is {:?}", &db_file_name, info);
 
-    let file_name = AppState::shared().uri_to_file_name(&db_file_name);
+    let file_name = AppState::uri_to_file_name(&db_file_name);
 
     // First we read the db file
     let kdbx_loaded = db_service::read_kdbx(
@@ -208,7 +208,7 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
 
     backup::prune_backup_history_files(&db_file_name);
 
-    AppState::shared().add_recent_db_use_info(&db_file_name);
+    AppState::add_recent_db_use_info(&db_file_name);
 
     #[cfg(target_os = "ios")]
     {
@@ -249,7 +249,7 @@ pub(crate) fn save_kdbx(file_args: FileArgs, overwrite: bool) -> ApiResponse {
                 Ok(f) => {
                     // mainly for ios
                     //let file_name = util::file_name_from_full_path(&full_file_name);
-                    let file_name = AppState::shared().uri_to_file_name(&full_file_name);
+                    let file_name = AppState::uri_to_file_name(&full_file_name);
                     let backup_file_name =
                         backup::generate_backup_history_file_name(&full_file_name, &file_name);
                     (f, full_file_name, backup_file_name)
@@ -286,8 +286,7 @@ pub(crate) fn save_kdbx(file_args: FileArgs, overwrite: bool) -> ApiResponse {
                             log::error!("Database checksum check failed");
                             // backup_file_name should have a valid back file name
                             if let Some(bkp_file_name) = backup_file_name.as_deref() {
-                                AppState::shared()
-                                    .add_last_backup_name_on_error(&db_key, bkp_file_name);
+                                AppState::add_last_backup_name_on_error(&db_key, bkp_file_name);
                             }
                             return_api_response_failure!(e)
                         }
@@ -356,8 +355,7 @@ pub(crate) fn write_to_backup_on_error(full_file_name_uri: String) -> ApiRespons
     let f = || {
         // We will get the file name from the recently used list
         // instead of using AppState uri_to_file_name method as that call may fail in case of Android
-        let file_name = AppState::shared()
-            .file_name_in_recently_used(&full_file_name_uri)
+        let file_name = AppState::file_name_in_recently_used(&full_file_name_uri)
             .ok_or(OkpError::UnexpectedError(format!(
                 "There is no file name found for the uri {} in the recently used list",
                 &full_file_name_uri
@@ -376,7 +374,7 @@ pub(crate) fn write_to_backup_on_error(full_file_name_uri: String) -> ApiRespons
 
         // Need to store
         if let Some(bkp_file_name) = backup_file_name.as_deref() {
-            AppState::shared().add_last_backup_name_on_error(&full_file_name_uri, bkp_file_name);
+            AppState::add_last_backup_name_on_error(&full_file_name_uri, bkp_file_name);
             debug!("Added the backup file key on save error")
         }
 
@@ -457,7 +455,7 @@ pub(crate) fn copy_picked_key_file(file_args: FileArgs) -> String {
             ..
         } = OpenedFile::open_to_read(&file_args)?;
 
-        let key_file_full_path = AppState::shared().key_files_dir_path.join(&file_name);
+        let key_file_full_path = AppState::key_files_dir_path().join(&file_name);
         debug!(
             "copy_picked_key_file:key_file_full_path is {:?}",
             key_file_full_path

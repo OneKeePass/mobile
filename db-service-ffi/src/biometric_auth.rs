@@ -28,7 +28,7 @@ impl StoredCredential {
         biometric_auth_used: bool,
     ) -> OkpResult<()> {
 
-        let bio_enabled = AppState::shared().db_open_biometeric_enabled(db_key);
+        let bio_enabled = AppState::db_open_biometeric_enabled(db_key);
         debug!("Flags are {}, {}",bio_enabled,!biometric_auth_used);
 
         if bio_enabled && !biometric_auth_used {
@@ -207,13 +207,13 @@ fn remove_credentials_from_key_store(db_key: &str) -> OkpResult<()> {
     KeyStoreServiceImpl {}.delete_key(&ks_key)
 }
 
-pub(crate) fn set_db_open_biometric(db_key: &str, enabled: bool) -> OkpResult<()> {
+// pub(crate) fn set_db_open_biometric(db_key: &str, enabled: bool) -> OkpResult<()> {
 
-    AppState::shared().set_db_open_biometric(db_key, enabled);
-    
-    // enabled is false when the biometric is disabled for the db
-    if !enabled {
-        remove_credentials_from_key_store(db_key)?;
-    }
-    Ok(())
-}
+//     AppState::shared().set_db_open_biometric(db_key, enabled);
+
+//     // enabled is false when the biometric is disabled for the db
+//     if !enabled {
+//         remove_credentials_from_key_store(db_key)?;
+//     }
+//     Ok(())
+// }

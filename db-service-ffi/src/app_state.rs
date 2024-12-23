@@ -24,12 +24,12 @@ use crate::{
 
 // Any mutable field needs to be behind Mutex
 pub struct AppState {
-    pub app_home_dir: String,
+    app_home_dir: String,
     // iOS specific
-    pub app_group_home_dir: Option<String>,
+    app_group_home_dir: Option<String>,
     // Android specific use (in save_attachment_as_temp_file) ?
-    pub cache_dir: String,
-    // Not used ?
+    cache_dir: String,
+
     temp_dir: String,
     // Dir where all db files backups are created
     backup_dir_path: PathBuf,
@@ -44,9 +44,9 @@ pub struct AppState {
     // pub local_db_dir_path: PathBuf,
 
     // Dir path where db file for export is created and used in export calls
-    pub export_data_dir_path: PathBuf,
+    export_data_dir_path: PathBuf,
     // Dir where all key files are copied for latter use
-    pub key_files_dir_path: PathBuf,
+    key_files_dir_path: PathBuf,
 
     // Used to keep the last backup file ref which is used for 'Save as'
     // when db save fails (as the orginal db content changed)
@@ -56,9 +56,9 @@ pub struct AppState {
     preference: Mutex<Preference>,
 
     // Callback service implemented in Swift/Kotlin and called from rust side
-    pub common_device_service: Box<dyn CommonDeviceService>,
+    common_device_service: Box<dyn CommonDeviceService>,
     // Callback service implemented in Swift/Kotlin and called from rust side
-    pub event_dispatcher: Arc<dyn EventDispatch>,
+    event_dispatcher: Arc<dyn EventDispatch>,
     // Callback service implemented in Swift/Kotlin and called from rust side
     secure_key_operation: Box<dyn SecureKeyOperation>,
 
@@ -169,58 +169,20 @@ impl AppState {
         }
     }
 
-    pub fn add_last_backup_name_on_error(
-        &self,
-        full_file_name_uri: &str,
-        backup_file_full_name: &str,
-    ) {
-        let mut bkp = self.last_backup_on_error.lock().unwrap();
-        bkp.insert(full_file_name_uri.into(), backup_file_full_name.into());
+    pub fn app_home_dir() -> &'static String {
+        &Self::shared().app_home_dir
     }
 
-    // Used in android and ios specific module
-    // See ios::complete_save_as_on_error and  android::complete_save_as_on_error
-    pub fn remove_last_backup_name_on_error(&self, full_file_name_uri: &str) -> Option<String> {
-        let mut bkp = self.last_backup_on_error.lock().unwrap();
-        bkp.remove(full_file_name_uri)
+    pub fn app_group_home_dir() -> &'static Option<String> {
+        &Self::shared().app_group_home_dir
     }
 
-    // Used in android and ios specific module
-    // See ios::copy_last_backup_to_temp_file, android::complete_save_as_on_error
-    pub fn get_last_backup_on_error(&self, full_file_name_uri: &str) -> Option<String> {
-        self.last_backup_on_error
-            .lock()
-            .unwrap()
-            .get(full_file_name_uri)
-            .map(|s| s.clone())
+    pub fn key_files_dir_path() -> &'static PathBuf {
+        &Self::shared().key_files_dir_path
     }
 
-    // Called to get the file name from the platform specific full file uri passed as arg 'full_file_name_uri'
-    // The uri may start with file: or content: or Sftp or WebDav
-    pub fn uri_to_file_name(&self, full_file_name_uri: &str) -> String {
-        // Need to find out whether this is a remote storage db_key and then find the file name accordingly
-        if let Some(s) = remote_storage::uri_to_file_name(full_file_name_uri) {
-            return s.to_string();
-        }
-
-        // We use platform specific callback fn to get the file name
-        // e.g uri file:///Users/jeyasankar/Library/Developer/CoreSimulator/Devices/A45B3252-1AA4-4D50-9E6E-89AB1E873B1F/data/Containers/Shared/AppGroup/6CFFA9FC-169B-482E-A817-9C0D2A6F5241/File%20Provider%20Storage/TJ-fixit.kdbx
-        // Note the encoding in the uri
-        self.common_device_service
-            .uri_to_file_name(full_file_name_uri.into())
-            .map_or_else(|| "".into(), |s| s)
-    }
-
-    pub fn uri_to_file_info(&self, full_file_name_uri: &str) -> Option<FileInfo> {
-        let info = remote_storage::uri_to_file_info(full_file_name_uri);
-        if info.is_some() {
-            return info;
-        }
-
-        let info = self
-            .common_device_service
-            .uri_to_file_info(full_file_name_uri.into());
-        info
+    pub fn export_data_dir_path() -> &'static PathBuf {
+        &Self::shared().export_data_dir_path
     }
 
     pub fn backup_dir_path() -> &'static PathBuf {
@@ -239,6 +201,10 @@ impl AppState {
         PathBuf::from(&Self::shared().temp_dir)
     }
 
+    pub fn cache_dir() -> &'static String {
+        &Self::shared().cache_dir
+    }
+
     // Root dir where all the private key files of one or more SFTP connections are stored
     pub fn sftp_private_keys_path() -> PathBuf {
         // Sub dir "sftp" should exist
@@ -250,12 +216,73 @@ impl AppState {
         Self::shared().common_device_service_ex.as_ref()
     }
 
+    pub fn event_dispatcher() -> &'static dyn EventDispatch {
+        Self::shared().event_dispatcher.as_ref()
+    }
+
+    pub fn common_device_service() -> &'static dyn CommonDeviceService {
+        Self::shared().common_device_service.as_ref()
+    }
+
     pub fn secure_enclave_cb_service() -> &'static dyn SecureEnclaveCbService {
         Self::shared().secure_enclave_cb_service.as_ref()
     }
 
     pub fn secure_key_operation() -> &'static dyn SecureKeyOperation {
         Self::shared().secure_key_operation.as_ref()
+    }
+
+    ///   
+
+    pub fn add_last_backup_name_on_error(full_file_name_uri: &str, backup_file_full_name: &str) {
+        let mut bkp = Self::shared().last_backup_on_error.lock().unwrap();
+        bkp.insert(full_file_name_uri.into(), backup_file_full_name.into());
+    }
+
+    // Used in android and ios specific module
+    // See ios::complete_save_as_on_error and  android::complete_save_as_on_error
+    pub fn remove_last_backup_name_on_error(full_file_name_uri: &str) -> Option<String> {
+        let mut bkp = Self::shared().last_backup_on_error.lock().unwrap();
+        bkp.remove(full_file_name_uri)
+    }
+
+    // Used in android and ios specific module
+    // See ios::copy_last_backup_to_temp_file, android::complete_save_as_on_error
+    pub fn get_last_backup_on_error(full_file_name_uri: &str) -> Option<String> {
+        Self::shared()
+            .last_backup_on_error
+            .lock()
+            .unwrap()
+            .get(full_file_name_uri)
+            .map(|s| s.clone())
+    }
+
+    // Called to get the file name from the platform specific full file uri passed as arg 'full_file_name_uri'
+    // The uri may start with file: or content: or Sftp or WebDav
+    pub fn uri_to_file_name(full_file_name_uri: &str) -> String {
+        // Need to find out whether this is a remote storage db_key and then find the file name accordingly
+        if let Some(s) = remote_storage::uri_to_file_name(full_file_name_uri) {
+            return s.to_string();
+        }
+
+        // We use platform specific callback fn to get the file name
+        // e.g uri file:///Users/jeyasankar/Library/Developer/CoreSimulator/Devices/A45B3252-1AA4-4D50-9E6E-89AB1E873B1F/data/Containers/Shared/AppGroup/6CFFA9FC-169B-482E-A817-9C0D2A6F5241/File%20Provider%20Storage/TJ-fixit.kdbx
+        // Note the encoding in the uri
+        Self::common_device_service()
+            .uri_to_file_name(full_file_name_uri.into())
+            .map_or_else(|| "".into(), |s| s)
+    }
+
+    pub fn uri_to_file_info(full_file_name_uri: &str) -> Option<FileInfo> {
+        let info = remote_storage::uri_to_file_info(full_file_name_uri);
+        if info.is_some() {
+            return info;
+        }
+
+        let info = Self::shared()
+            .common_device_service
+            .uri_to_file_info(full_file_name_uri.into());
+        info
     }
 
     // pub fn read_preference(&self) {
@@ -270,49 +297,73 @@ impl AppState {
 // All fns using the Preference object are implemented here
 impl AppState {
     // TODO: Remove dir reference to Preference and route to all calls to preference struct through AppState?
-    pub fn preference() -> &'static Mutex<Preference> {
-        &Self::shared().preference
+    // pub fn preference() -> &'static Mutex<Preference> {
+    //     &Self::shared().preference
+    // }
+
+    pub fn preference_clone() -> Preference {
+        let store_pref = Self::shared().preference.lock().unwrap();
+        store_pref.clone()
     }
 
-    pub fn backup_history_count() -> usize {
+    pub fn update_preference(preference_data: PreferenceData) -> OkpResult<()> {
+        let mut store_pref = Self::shared().preference.lock().unwrap();
+        store_pref.update(preference_data)
+    }
+
+    // TODO: Need to change UI side to use 'update_preference' and then deprecate this method
+    pub fn update_session_timeout(
+        db_session_timeout: Option<i64>,
+        clipboard_timeout: Option<i64>,
+    ) -> OkpResult<()> {
+        let mut pref = Self::shared().preference.lock().unwrap();
+        if let Some(t) = db_session_timeout {
+            pref.db_session_timeout = t;
+        }
+        if let Some(t) = clipboard_timeout {
+            pref.clipboard_timeout = t;
+        }
+
+        pref.write_to_app_dir();
+        Ok(())
+    }
+
+    pub fn backup_history_count() -> u8 {
         let p = Self::shared().preference.lock().unwrap();
         p.backup_history_count()
     }
 
-    pub fn remove_recent_db_use_info(&self, db_key: &str) {
-        let mut pref = self.preference.lock().unwrap();
+    pub fn language() -> String {
+        let pref = Self::shared().preference.lock().unwrap();
+        pref.language.clone()
+    }
+
+    pub fn remove_recent_db_use_info(db_key: &str) {
+        let mut pref = Self::shared().preference.lock().unwrap();
         pref.remove_recent_db_use_info(db_key);
     }
 
-    pub fn file_name_in_recently_used(&self, db_key: &str) -> Option<String> {
-        let pref = self.preference.lock().unwrap();
+    pub fn file_name_in_recently_used(db_key: &str) -> Option<String> {
+        let pref = Self::shared().preference.lock().unwrap();
         find_db_info(&pref, db_key).map(|r| r.file_name.clone())
     }
 
-    
-    pub fn set_db_open_biometric(&self, db_key: &str, enabled: bool) {
-        let mut pref = self.preference.lock().unwrap();
-        pref.set_db_open_biometric(db_key, enabled);
-    }
-
-    pub fn db_open_biometeric_enabled(&self, db_key: &str) -> bool {
-        self.preference
-            .lock()
-            .unwrap()
-            .db_open_biometeric_enabled(db_key)
+    pub fn db_open_biometeric_enabled(db_key: &str) -> bool {
+        let pref = Self::shared().preference.lock().unwrap();
+        pref.db_open_biometeric_enabled(db_key)
     }
 
     // Finds the recently used info for a given uri
-    pub fn get_recently_used(&self, db_key: &str) -> Option<RecentlyUsed> {
-        let pref = self.preference.lock().unwrap();
+    pub fn get_recently_used(db_key: &str) -> Option<RecentlyUsed> {
+        let pref = Self::shared().preference.lock().unwrap();
         pref.recent_dbs_info
             .iter()
             .find(|r| r.db_file_path == db_key)
             .map(|r| RecentlyUsed { ..r.clone() })
     }
 
-    pub fn add_recent_db_use_info(&self, db_key: &str) {
-        let file_name = self
+    pub fn add_recent_db_use_info(db_key: &str) {
+        let file_name = Self::shared()
             .common_device_service
             .uri_to_file_name(db_key.into())
             .map_or_else(|| "".into(), |s| s);
@@ -322,31 +373,56 @@ impl AppState {
             db_file_path: db_key.into(),
         };
 
-        let mut pref = self.preference.lock().unwrap();
-        pref.add_recent_db_use_info(&self.app_home_dir, recently_used);
+        let mut pref = Self::shared().preference.lock().unwrap();
+
+        pref.add_recent_db_use_info(Self::app_home_dir(), recently_used);
     }
 
     // The file_name is given
     // Used with remote storage related FileInfo call
-    pub fn add_recent_db_use_info2(&self, db_key: &str, file_name: &str) {
+    pub fn add_recent_db_use_info2(db_key: &str, file_name: &str) {
         let recently_used = RecentlyUsed {
             file_name: file_name.into(),
             db_file_path: db_key.into(),
         };
 
-        let mut pref = self.preference.lock().unwrap();
-        pref.add_recent_db_use_info(&self.app_home_dir, recently_used);
+        let mut pref = Self::shared().preference.lock().unwrap();
+        pref.add_recent_db_use_info(Self::app_home_dir(), recently_used);
     }
 
-    pub fn language(&self) -> String {
-        let pref = self.preference.lock().unwrap();
-        pref.language.clone()
+    pub fn recent_dbs_info() ->  Vec<RecentlyUsed>{
+        let pref = Self::shared().preference.lock().unwrap();
+        pref.recent_dbs_info.clone()
     }
 
-    pub fn update_preference(&self, preference_data: PreferenceData) {
-        let mut store_pref = self.preference.lock().unwrap();
-        store_pref.update(preference_data);
-    }
+    ///////////
+
+    // pub fn set_db_open_biometric(&self, db_key: &str, enabled: bool) {
+    //     let mut pref = self.preference.lock().unwrap();
+    //     pref.set_db_open_biometric(db_key, enabled);
+    // }
+
+    // pub fn db_open_biometeric_enabled(&self, db_key: &str) -> bool {
+    //     self.preference
+    //         .lock()
+    //         .unwrap()
+    //         .db_open_biometeric_enabled(db_key)
+    // }
+
+    // pub fn add_recent_db_use_info(&self, db_key: &str) {
+    //     let file_name = self
+    //         .common_device_service
+    //         .uri_to_file_name(db_key.into())
+    //         .map_or_else(|| "".into(), |s| s);
+
+    //     let recently_used = RecentlyUsed {
+    //         file_name,
+    //         db_file_path: db_key.into(),
+    //     };
+
+    //     let mut pref = self.preference.lock().unwrap();
+    //     pref.add_recent_db_use_info(&self.app_home_dir, recently_used);
+    // }
 }
 
 fn find_db_info<'a>(pref: &'a Preference, db_key: &'a str) -> Option<&'a RecentlyUsed> {

@@ -141,11 +141,13 @@
      (-> (filter (fn [m] (= curr-dbkey (:db-key m))) (:opened-db-list app-db))
          first :database-name))))
 
+(declare recently-used)
+
 (defn current-database-file-name
   "Gets the database kdbx file name"
   [app-db]
   (let [curr-dbkey  (:current-db-file-name app-db)
-        recent-dbs-info (-> app-db :app-preference :data :recent-dbs-info)]
+        recent-dbs-info (recently-used app-db) #_(-> app-db :app-preference :data :recent-dbs-info)]
     (-> (filter (fn [{:keys [db-file-path]}] (= curr-dbkey db-file-path)) recent-dbs-info) first :file-name)))
 
 (defn current-kdbx-loaded-info
@@ -383,34 +385,101 @@
   (subscribe [:app-preference-status-loaded]))
 
 (defn recently-used
-  "Returns a vec of maps (from struct RecentlyUsed) with keys :file-name , :db-file-path 
-   and biometric-enabled-db-open
+  "Returns a vec of maps (from struct RecentlyUsed) 
+   with keys :file-name, :db-file-path 
    The kdbx file name is found here for each db-key
  "
-  []
-  (subscribe [:recently-used]))
+  ([app-db]
+   (let [r (get-in app-db [:app-preference :data :recent-dbs-info])]
+     (if (nil? r) [] r)))
+  ([]
+   (subscribe [:recently-used])))
+
+(defn database-preferences
+  "Returns a vec of maps  (the map is from struct DatabasePreference) or an empty vec
+ "
+  ([app-db]
+   (let [r (get-in app-db [:app-preference :data :database-preferences])]
+     (if (nil? r) [] r)))
+  ([]
+   (subscribe [:database-preferences])))
 
 (defn biometric-available []
   (subscribe [:biometric-available]))
 
-#_(defn biometric-enabled-to-open-db 
-  "Called to check whether a db can be opened with biometric authentication or not"
-  ([app-db db-key] 
-   (let [db-infos (get-in app-db [:app-preference :data :recent-dbs-info])
+#_(defn biometric-enabled-to-open-db
+    "Called to check whether a db can be opened with biometric authentication or not"
+    ([app-db db-key]
+     (let [db-infos (get-in app-db [:app-preference :data :recent-dbs-info])
            ;; r is a single member list
-         r (filter (fn [{:keys [db-file-path]}] (= db-file-path db-key)) db-infos)]
+           r (filter (fn [{:keys [db-file-path]}] (= db-file-path db-key)) db-infos)]
 
-     (boolean (-> r first :biometric-enabled-db-open))))
-  ([db-key]
-   (subscribe [:biometric-enabled-to-open-db db-key])))
+       (boolean (-> r first :biometric-enabled-db-open))))
+    ([db-key]
+     (subscribe [:biometric-enabled-to-open-db db-key])))
+
+#_(defn biometric-enabled-to-open-db
+    "Called to check whether a db can be opened with biometric authentication or not"
+    ([app-db db-key]
+     (let [db-infos (get-in app-db [:app-preference :data :biometric-enabled-dbs])]
+       (contains-val? db-infos db-key)))
+    ([db-key]
+     (subscribe [:biometric-enabled-to-open-db db-key])))
+
+
+(defn database-preference-by-db-key
+  "Gets the database preference ( a map ) for a given db-key from the vec or the default DatabasePreference"
+  [app-db db-key]
+  (let [db-prefs (database-preferences app-db)
+        db-p (first (filter (fn [db-pref] (= (:db-key db-pref) db-key)) db-prefs))]
+    (if (empty? db-p) {:db-key db-key
+                       :db-open-biometric-enabled false
+                       :db-unlock-biometric-enabled true}  db-p)))
+
+
+(defn update-database-preference-list 
+  "Adds the passed database preference by removing the existing one from the list and then 
+   add back the updated one at the end.
+   The arg in-db-pref is a map.
+   Returns the updated app-db
+   "
+  [app-db in-db-pref]
+  (let [;; Remove the existing db-pref if any from the vec
+        db-prefs (filterv (fn [m] (not= (:db-key in-db-pref) (:db-key m))) (database-preferences app-db))
+        ;; Add back the incoming updated db-pref to the end 
+        ;; At this time the order of db-pref does not matter
+        db-prefs (conj db-prefs in-db-pref)] 
+    (assoc-in app-db [:app-preference :data :database-preferences] db-prefs)))
 
 (defn biometric-enabled-to-open-db
   "Called to check whether a db can be opened with biometric authentication or not"
   ([app-db db-key]
-   (let [db-infos (get-in app-db [:app-preference :data :biometric-enabled-dbs])]
-     (contains-val? db-infos db-key)))
+   (boolean (-> (database-preference-by-db-key app-db db-key) :db-open-biometric-enabled)))
   ([db-key]
    (subscribe [:biometric-enabled-to-open-db db-key])))
+
+(defn biometric-enabled-to-unlock-db
+  "Called to check whether a db can be opened with biometric authentication or not"
+  ([app-db db-key]
+   (boolean (-> (database-preference-by-db-key app-db db-key) :db-unlock-biometric-enabled)))
+  ([db-key]
+   (subscribe [:biometric-enabled-to-unlock-db db-key])))
+
+;; field-kw should be one of 
+;; [:database-preferences :backup-history-count :theme :
+;; db-session-timeout :recent-dbs-info :language :version :clipboard-timeout :default-entry-category-groupings]
+;; This is from struct Preference
+(defn preference-field-data [app-db field-kw default-value]
+  (let [r (get-in app-db [:app-preference :data field-kw])
+        r (if-not (nil? r) r default-value)]
+    r))
+
+(defn update-preference-field-data
+  "Update the field of app preference map with the given value
+  Returns the updated app-db 
+  "
+  [app-db field-kw value]
+  (assoc-in app-db [:app-preference :data field-kw] value))
 
 (reg-event-fx
  :load-app-preference
@@ -454,13 +523,24 @@
 (reg-sub
  :recently-used
  (fn [db [_event-id]]
-   (let [r (get-in db [:app-preference :data :recent-dbs-info])]
-     (if (nil? r) [] r))))
+   (recently-used db)
+   #_(let [r (get-in db [:app-preference :data :recent-dbs-info])]
+       (if (nil? r) [] r))))
+
+(reg-sub
+ :database-preferences
+ (fn [db [_event-id]]
+   (database-preferences db)))
 
 (reg-sub
  :biometric-enabled-to-open-db
  (fn [db [_event-id db-key]]
    (biometric-enabled-to-open-db db db-key)))
+
+(reg-sub
+ :biometric-enabled-to-unlock-db
+ (fn [db [_event-id db-key]]
+   (biometric-enabled-to-unlock-db db db-key)))
 
 (reg-sub
  :biometric-available

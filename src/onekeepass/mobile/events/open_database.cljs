@@ -4,7 +4,8 @@
    [onekeepass.mobile.background :as bg]
    [onekeepass.mobile.constants :as const]
    [onekeepass.mobile.events.common :refer [biometric-enabled-to-open-db
-                                            on-error on-ok]]
+                                            biometric-enabled-to-unlock-db
+                                            on-ok]]
    [re-frame.core :refer [dispatch reg-event-db reg-event-fx reg-fx reg-sub
                           subscribe]]))
 
@@ -14,11 +15,11 @@
 (defn open-database-on-press []
   (dispatch [:pick-database-file]))
 
-(defn open-selected-database 
+(defn open-selected-database
   "Called when user picks a db on the start page database list"
   [file-name full-file-name-uri already-opened?]
   (if already-opened?
-    (dispatch [:common/set-active-db-key full-file-name-uri]) 
+    (dispatch [:common/set-active-db-key full-file-name-uri])
     (dispatch [:open-database/database-file-picked-1 {:file-name file-name :full-file-name-uri full-file-name-uri}])))
 
 (defn database-field-update [kw-field-name value]
@@ -108,7 +109,7 @@
  :bg-pick-database-file
  (fn []
    (bg/pick-database-to-read-write
-    (fn [api-response] 
+    (fn [api-response]
       (when-let [picked-response (on-ok
                                   api-response
                                   #(dispatch [:database-file-pick-error %]))]
@@ -129,7 +130,7 @@
 ;; This will make dialog open status true
 (reg-event-fx
  :open-database/database-file-picked
- (fn [{:keys [db]} [_event-id {:keys [file-name full-file-name-uri]}]] 
+ (fn [{:keys [db]} [_event-id {:keys [file-name full-file-name-uri]}]]
    {:db (-> db init-open-database-data
             ;; database-file-name is just the 'file name' part derived from full uri 'database-full-file-name'
             ;; to show in the dialog
@@ -137,7 +138,7 @@
             (assoc-in [:open-database :database-full-file-name] full-file-name-uri)
             (assoc-in [:open-database :dialog-show] true))}))
 
-;;;;;;;;;;;;;;;;;;;;  DB open using biometric  ;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;  DB open using biometric  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Called when user picks a db on the start page database list
 (reg-event-fx
@@ -165,7 +166,8 @@
     (if (nil? stored-crdentials)
       ;; Handles the situation the stored-crdentials returned from backend api is None
       ;; This happens when user presses the db on db list first time after enabling Biometric in the settings
-      (dispatch [:open-database/database-file-picked kdbx-file-info-m])
+      #_(dispatch [:open-database/database-file-picked kdbx-file-info-m])
+      (dispatch [:open-database-db-open-with-credentials kdbx-file-info-m])
       ;; Found some stored-crdentials value
       (dispatch [:open-database-db-open-credentials-retrieved stored-crdentials kdbx-file-info-m]))))
 
@@ -182,11 +184,17 @@
                                    ;; As a fallback if there is any error in using biometric call. Not expected
                                    (println "The bg/authenticate-with-biometric call returned error " error)
                                    (dispatch [:open-database/database-file-picked kdbx-file-info-m])))]
-             ;; The variable 'result' will have some valid when biometric call works
+             ;; The variable 'result' will have some valid when biometric call works 
           (if (= result const/BIOMETRIC-AUTHENTICATION-SUCCESS)
             (bg/stored-db-credentials-on-biometric-authentication full-file-name-uri cr-response-handler)
                ;; As biometric matching failed, we need to use credential based one
             (dispatch [:open-database/database-file-picked kdbx-file-info-m]))))))))
+
+(reg-event-fx
+ :open-database-db-open-with-credentials
+ (fn [{:keys [_db]} [_event-id kdbx-file-info-m]]
+   {:fx [[:dispatch [:open-database/database-file-picked kdbx-file-info-m]]
+         [:dispatch [:common/error-box-show "Database Open" "Please enter the credentials"]]]}))
 
 ;; Called after getting the stored credentials from secure enclave
 (reg-event-fx
@@ -235,7 +243,7 @@
 ;; credentials to open the db
 (reg-event-fx
  :open-database-read-db-file
- (fn [{:keys [db]} [_event-id]] 
+ (fn [{:keys [db]} [_event-id]]
    (let [error-fields (validate-required-fields db)
          errors-found (boolean (seq error-fields))
          {:keys [database-full-file-name password key-file-name]} (get-in db [:open-database])]
@@ -287,8 +295,9 @@
            [:dispatch [:repick-confirm-show const/FILE_NOT_FOUND]]]
 
           (= error "BiometricCredentialsAuthenticationFailed")
-          [[:dispatch [:open-database/database-file-picked kdbx-file-info-m]]
-           [:dispatch [:common/error-box-show "Database Open" "Please enter the credentials"]]]
+          [[:dispatch [:open-database-db-open-with-credentials kdbx-file-info-m]]]
+          #_[[:dispatch [:open-database/database-file-picked kdbx-file-info-m]]
+             [:dispatch [:common/error-box-show "Database Open" "Please enter the credentials"]]]
 
           :else
           (let [b (str/starts-with? error "InvalidCredentials:")
@@ -376,12 +385,20 @@
 (reg-event-fx
  :open-database-unlock-kdbx
  ;; kdbx-file-info-m is map with keys [file-name full-file-name-uri key-file-name..]
- (fn [{:keys [_db]} [_event-id kdbx-file-info-m]]
+ (fn [{:keys [db]} [_event-id {:keys [full-file-name-uri] :as kdbx-file-info-m}]]
    ;; Determine whether, we can do bio authentication or credential dialog auth or PIN based here (yet to add)
-   (let [biometric-available (bg/is-biometric-available)]
-     (if biometric-available
-       ;; Need to confirm from user and then use biometric to authenticate
+   (let [biometric-available (bg/is-biometric-available)
+         biometric-enabled-db? (biometric-enabled-to-unlock-db db full-file-name-uri)]
+     
+     #_(if biometric-available
+            ;; Need to confirm from user and then use biometric to authenticate
        {:fx [[:dispatch [:open-database-authenticate-biometric-confirm kdbx-file-info-m]]]}
+       {:fx [[:dispatch [:open-database-unlock-dialog-show kdbx-file-info-m]]]})
+     
+     (if (and  biometric-available biometric-enabled-db?)
+       ;; We are not using any confirmation dialog before biometric use as done earlier
+       {:db (-> db (assoc-in [:open-database :authenticate-biometric-confirm :data] kdbx-file-info-m))
+        :fx [[:dispatch [:open-database-authenticate-biometric-ok]]]} 
        {:fx [[:dispatch [:open-database-unlock-dialog-show kdbx-file-info-m]]]}))))
 
 ;; Called from event :open-database-unlock-kdbx

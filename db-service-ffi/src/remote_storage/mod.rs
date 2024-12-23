@@ -311,7 +311,7 @@ fn read_with_backup<R: Read + Seek>(
 
     backup::prune_backup_history_files(&db_key);
 
-    AppState::shared().add_recent_db_use_info2(db_key, file_name);
+    AppState::add_recent_db_use_info2(db_key, file_name);
 
     #[cfg(target_os = "ios")]
     {
@@ -437,7 +437,7 @@ fn rs_write_file(json_args: &str) -> OkpResult<KdbxSaved> {
     set_backup_modified_time(&backup_file_name.as_ref(), &file_modified_time);
 
     // Any previous ref stored meant for error resolution is not required
-    AppState::shared().remove_last_backup_name_on_error(&db_key);
+    AppState::remove_last_backup_name_on_error(&db_key);
 
     Ok(kdbx_saved)
 }
@@ -481,7 +481,7 @@ fn write_with_backup<R: Seek + Read + Write>(
             // We keep the last backup file ref which may be used to resolve save time error or conflicts
             // in the follow up call from UI. On successful save, this ref from app state is removed
             if let Some(bkp_file_name) = backup_file_name.as_deref() {
-                AppState::shared().add_last_backup_name_on_error(&db_key, bkp_file_name);
+                AppState::add_last_backup_name_on_error(&db_key, bkp_file_name);
             }
 
             #[cfg(target_os = "ios")]

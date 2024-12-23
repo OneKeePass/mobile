@@ -11,7 +11,6 @@ pub(crate) use callback_services::*;
 #[cfg(target_os = "ios")]
 pub(crate) mod support_services;
 
-
 use crate::app_state::AppState;
 use crate::commands::{
     error_json_str, remove_app_files, result_json_str, CommandArg, InvokeResult, ResponseJson,
@@ -30,7 +29,7 @@ use regex::{Regex, RegexSet};
 #[cfg(target_os = "ios")]
 fn form_bookmark_file_path(full_file_name_uri: &str) -> PathBuf {
     let file_name = string_to_simple_hash(&full_file_name_uri).to_string();
-    let book_mark_file_path = Path::new(&AppState::shared().app_home_dir)
+    let book_mark_file_path = Path::new(AppState::app_home_dir())
         .join("bookmarks")
         .join(file_name);
 
@@ -51,14 +50,14 @@ pub fn delete_book_mark_data(full_file_name_uri: &str) {
 
 #[cfg(target_os = "ios")]
 pub fn get_app_group_root() -> Option<String> {
-    let Some(app_group_home_dir) = &AppState::shared().app_group_home_dir else {
+    let Some(app_group_home_dir) = AppState::app_group_home_dir() else {
         log::error!("No app group home dir is found");
         return None;
     };
 
     debug!("App group home dir is {:?} ", &app_group_home_dir);
 
-    let db_file_root = Path::new(&app_group_home_dir).join("db_files");
+    let db_file_root = Path::new(app_group_home_dir).join("db_files");
     // Ensure that the parent dir exists
     if !db_file_root.exists() {
         if let Err(e) = std::fs::create_dir_all(&db_file_root) {
@@ -80,7 +79,7 @@ pub fn list_app_group_db_files() -> Vec<String> {
 
 pub fn list_bookmark_files() -> Vec<String> {
     if cfg!(target_os = "ios") {
-        util::list_dir_files(&Path::new(&AppState::shared().app_home_dir).join("bookmarks"))
+        util::list_dir_files(&Path::new(AppState::app_home_dir()).join("bookmarks"))
     } else {
         vec![]
     }
@@ -115,7 +114,8 @@ pub fn to_ios_file_uri_str(file_path: &Option<String>) -> Option<String> {
 
 #[cfg(target_os = "ios")]
 pub fn extract_file_provider(full_file_name_uri: &str) -> String {
-    let data = support_services::IosSupportService {}.load_book_mark_data(full_file_name_uri.into());
+    let data =
+        support_services::IosSupportService {}.load_book_mark_data(full_file_name_uri.into());
     parse_bookmark_data(data)
 }
 
@@ -123,7 +123,7 @@ pub fn extract_file_provider(full_file_name_uri: &str) -> String {
 const FILE_PROVIDER_IDS: [&str; 11] = [
     r"com.apple.FileProvider.LocalStorage",
     r"com.apple.CloudDocs.iCloudDriveFileProvider",
-    r"com.apple.CloudDocs.MobileDocumentsFileProvider",  // legacy one
+    r"com.apple.CloudDocs.MobileDocumentsFileProvider", // legacy one
     r"com.getdropbox.Dropbox.FileProvider",
     r"com.microsoft.skydrive.onedrivefileprovider",
     r"com.google.Drive.FileProviderExtension",

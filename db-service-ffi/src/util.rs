@@ -88,8 +88,7 @@ pub fn form_export_file_name(kdbx_file_name: &str) -> Option<String> {
     if kdbx_file_name.trim().is_empty() {
         return None;
     }
-    AppState::shared()
-        .export_data_dir_path
+    AppState::export_data_dir_path()
         .join(kdbx_file_name)
         .to_str()
         .map(|s| s.to_string())
@@ -161,7 +160,7 @@ pub fn remove_dir_contents<P: AsRef<Path>>(path: P) -> Result<()> {
 }
 
 pub fn clean_export_data_dir() -> Result<()> {
-    remove_dir_contents(&AppState::shared().export_data_dir_path)
+    remove_dir_contents(AppState::export_data_dir_path())
 }
 
 // TODO: Merge create_sub_dir,create_sub_dirs,create_sub_dir_path
@@ -247,7 +246,7 @@ pub fn create_sub_dirs<P: AsRef<Path>>(root_dir: P, sub_dirs: Vec<&str>) -> Path
 }
 
 pub fn list_key_files() -> Vec<KeyFileInfo> {
-    let path = &AppState::shared().key_files_dir_path;
+    let path = &AppState::key_files_dir_path();
     let mut bfiles: Vec<KeyFileInfo> = vec![];
     if let Ok(entries) = fs::read_dir(path) {
         for entry in entries {
@@ -272,9 +271,7 @@ pub fn list_key_files() -> Vec<KeyFileInfo> {
 
 // key_file_name_component is just the file name and not the full uri
 pub fn delete_key_file(key_file_name_component: &str) {
-    let path = &AppState::shared()
-        .key_files_dir_path
-        .join(key_file_name_component);
+    let path = &AppState::key_files_dir_path().join(key_file_name_component);
     let r = fs::remove_file(&path);
     log::debug!("Delete key file  {:?} result {:?}", &path, r);
 }
@@ -399,7 +396,7 @@ pub fn remove_backup_history_file(full_file_uri_str: &str, full_backup_file_name
         create_sub_dir_path(&AppState::backup_history_dir_path(), &full_file_name_hash);
 
     debug!("Removing backup file {}",&full_backup_file_name);
-    
+
     // Remove this backup file and remove the backup dir for this 'full_file_uri_str' if the dir is empty
     let r = fs::remove_file(full_backup_file_name)
         .and_then(|_| fs::read_dir(&file_hist_root))
@@ -416,7 +413,6 @@ pub fn remove_backup_history_file(full_file_uri_str: &str, full_backup_file_name
 
 
 */
-
 
 #[cfg(test)]
 mod tests {

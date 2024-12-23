@@ -99,7 +99,7 @@ pub(crate) fn delete_backup_history_dir(db_key: &str) {
 }
 
 pub(crate) fn prune_backup_history_files(db_key: &str) {
-    let limit = AppState::backup_history_count();
+    let limit = AppState::backup_history_count() as usize;
     let file_hist_root = backup_file_history_root(db_key);
     let mut buffer: Vec<(DirEntry, i64)> = list_of_files_with_modified_times(&file_hist_root);
 

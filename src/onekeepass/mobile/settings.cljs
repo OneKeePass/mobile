@@ -18,8 +18,7 @@
                                                     rnp-divider
                                                     rnp-list-icon
                                                     rnp-portal
-                                                    rnp-text]]
-   [onekeepass.mobile.biometrics-settings]
+                                                    rnp-text]] 
    [onekeepass.mobile.translation :refer [lstr-bl lstr-l lstr-mt]]
    [onekeepass.mobile.background :refer [is-iOS]]
    [onekeepass.mobile.utils  :refer [str->int]]

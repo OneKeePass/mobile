@@ -53,7 +53,7 @@ impl IosSupportService {
     pub fn save_book_mark_data(&self, url: String, data: Vec<u8>) -> bool {
         let file_name = string_to_simple_hash(&url).to_string();
 
-        let book_mark_file_root = Path::new(&AppState::shared().app_home_dir).join("bookmarks");
+        let book_mark_file_root = Path::new(AppState::app_home_dir()).join("bookmarks");
         // Ensure that the parent dir exists
         if !book_mark_file_root.exists() {
             if let Err(e) = std::fs::create_dir_all(&book_mark_file_root) {
@@ -93,7 +93,7 @@ impl IosSupportService {
             &url,
             &file_name
         );
-        let book_mark_file_path = Path::new(&AppState::shared().app_home_dir)
+        let book_mark_file_path = Path::new(AppState::app_home_dir())
             .join("bookmarks")
             .join(file_name);
         log::info!("Book mark path to load data is {:?}", book_mark_file_path);
@@ -127,7 +127,7 @@ impl IosSupportService {
         full_file_name_uri: String,
     ) -> Option<String> {
         if let Some(bkp_file_name) =
-            AppState::shared().get_last_backup_on_error(&full_file_name_uri)
+            AppState::get_last_backup_on_error(&full_file_name_uri)
         {
             let mut temp_file = std::env::temp_dir();
             // kdbx_file_name is the suggested file name to use in the Docuemnt picker
@@ -162,7 +162,7 @@ impl IosSupportService {
 
                 // Need to ensure that the checksum is reset to the newly saved file
                 // Otherwise, Save error modal dialog will popup !
-                let modified_db_bkp_file_opt = AppState::shared().get_last_backup_on_error(&db_key);
+                let modified_db_bkp_file_opt = AppState::get_last_backup_on_error(&db_key);
 
                 if let Some(mut modified_db_bkp_file) =
                     open_backup_file(modified_db_bkp_file_opt.as_ref())
@@ -194,8 +194,8 @@ impl IosSupportService {
                 // we have the newly saved db with 'new_db_key'
                 remove_app_files(&db_key);
 
-                AppState::shared().add_recent_db_use_info(&new_db_key);
-                AppState::shared().remove_last_backup_name_on_error(&db_key);
+                AppState::add_recent_db_use_info(&new_db_key);
+                AppState::remove_last_backup_name_on_error(&db_key);
 
                 Ok(kdbx_loaded)
             } else {

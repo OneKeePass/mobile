@@ -42,7 +42,7 @@ impl OpenedFile {
             ),
             // For iOS
             FileArgs::FullFileName { full_file_name } => {
-                let name = AppState::shared().uri_to_file_name(&full_file_name);
+                let name = AppState::uri_to_file_name(&full_file_name);
                 let ux_file_path = util::url_to_unix_file_name(&full_file_name);
 
                 let file = if create {

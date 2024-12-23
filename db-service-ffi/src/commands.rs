@@ -545,12 +545,11 @@ impl Commands {
                 service_call!(args, DbKey {db_key} => Self save_conflict_resolution_cancel(&db_key))
             }
 
-            "set_db_open_biometric" => {
-                service_call_closure!(args,DbOpenBiomerticArg {db_key,db_open_enabled}  => move || {
-                    result_json_str(biometric_auth::set_db_open_biometric(&db_key,db_open_enabled))
-                })
-            }
-
+            // "set_db_open_biometric" => {
+            //     service_call_closure!(args,DbOpenBiomerticArg {db_key,db_open_enabled}  => move || {
+            //         result_json_str(biometric_auth::set_db_open_biometric(&db_key,db_open_enabled))
+            //     })
+            // }
             "stored_db_credentials" => {
                 service_call_closure!(args,DbKey {db_key}  => move || {
                     ok_json_str(biometric_auth::StoredCredential::get_credentials(&db_key))
@@ -635,7 +634,7 @@ impl Commands {
 
     fn get_file_info(args: &str) -> ResponseJson {
         if let Ok(CommandArg::DbKey { db_key }) = serde_json::from_str(args) {
-            let info = AppState::shared().uri_to_file_info(&db_key);
+            let info = AppState::uri_to_file_info(&db_key);
             // log::debug!("FileInfo is {:?}", info);
             ok_json_str(info)
         } else {
@@ -654,18 +653,14 @@ impl Commands {
         let mut kdbx_loaded = db_service::unlock_kdbx(db_key, password, key_file_name)?;
         // For now, we are replacing any file_name formed in db_service::unlock_kdbx as that is desktop file system specific
         // In case of mobile, the file uri is just some handle and need to get the file name using mobile api
-        kdbx_loaded.file_name = AppState::shared()
-            .common_device_service
-            .uri_to_file_name(db_key.into());
+        kdbx_loaded.file_name = AppState::common_device_service().uri_to_file_name(db_key.into());
 
         Ok(kdbx_loaded)
     }
 
     fn unlock_kdbx_on_biometric_authentication(db_key: &str) -> OkpResult<KdbxLoaded> {
         let mut kdbx_loaded = db_service::unlock_kdbx_on_biometric_authentication(db_key)?;
-        kdbx_loaded.file_name = AppState::shared()
-            .common_device_service
-            .uri_to_file_name(db_key.into());
+        kdbx_loaded.file_name = AppState::common_device_service().uri_to_file_name(db_key.into());
         Ok(kdbx_loaded)
     }
 
@@ -676,9 +671,7 @@ impl Commands {
             ));
         };
 
-        let path = &AppState::shared()
-            .key_files_dir_path
-            .join(key_file_name_component.trim());
+        let path = AppState::key_files_dir_path().join(key_file_name_component.trim());
 
         debug!(
             "Key file Path is {:?} and exists check {}",
@@ -730,32 +723,23 @@ impl Commands {
         }
     }
 
+    // TODO: Need to change UI side to use 'update_preference' and then deprecate this method
     fn update_session_timeout(
         db_session_timeout: Option<i64>,
         clipboard_timeout: Option<i64>,
     ) -> OkpResult<()> {
-        // TODO: Move this to a fn in AppState
-        let mut pref = AppState::preference().lock().unwrap();
-        if let Some(t) = db_session_timeout {
-            pref.db_session_timeout = t;
-        }
-        if let Some(t) = clipboard_timeout {
-            pref.clipboard_timeout = t;
-        }
-
-        pref.write_to_app_dir();
-        Ok(())
+        AppState::update_session_timeout(db_session_timeout, clipboard_timeout)
     }
 
     fn update_preference(preference_data: PreferenceData) -> OkpResult<()> {
-        Ok(AppState::shared().update_preference(preference_data))
+        AppState::update_preference(preference_data)
     }
 
     fn prepare_export_kdbx_data(args: &str) -> String {
         if let Ok(CommandArg::DbKey { db_key }) = serde_json::from_str(args) {
             // Check whether the db is opened now
             let found = db_service::all_kdbx_cache_keys().map_or(false, |v| v.contains(&db_key));
-            let recent_opt = AppState::shared().get_recently_used(&db_key);
+            let recent_opt = AppState::get_recently_used(&db_key);
             // Form the export data file first by finding the kdbx file name from recent list
             let export_file_path_opt = &recent_opt
                 .as_ref()
@@ -847,15 +831,13 @@ impl Commands {
 
     // Gets the recent files list
     fn recently_used_dbs_info() -> ResponseJson {
-        let pref = AppState::preference().lock().unwrap();
-        ok_json_str(pref.recent_dbs_info.clone())
+        ok_json_str(AppState::recent_dbs_info())
     }
 
     // Called to remove any backup files created during save kdbx call that resulted in some
     // saving conflict or some save error. This is called when user opts to cancel the resolutions provided
     fn save_conflict_resolution_cancel(db_key: &str) -> OkpResult<()> {
-        if let Some(ref full_backup_file_name) =
-            AppState::shared().remove_last_backup_name_on_error(db_key)
+        if let Some(ref full_backup_file_name) = AppState::remove_last_backup_name_on_error(db_key)
         {
             backup::remove_backup_history_file(db_key, full_backup_file_name);
         }
@@ -863,15 +845,14 @@ impl Commands {
     }
 
     fn app_preference() -> ResponseJson {
-        let pref = AppState::preference().lock().unwrap();
-        ok_json_str(pref.clone())
+        ok_json_str(AppState::preference_clone())
     }
 
     fn load_language_translations(language_ids: Vec<String>) -> OkpResult<TranslationResource> {
         let current_locale_language = util::current_locale_language();
         debug!("current_locale is {}", &current_locale_language);
 
-        let prefered_language = AppState::shared().language(); //current_locale_language.clone();
+        let prefered_language = AppState::language(); //current_locale_language.clone();
         debug!("prefered_language is {}", &prefered_language);
 
         let language_ids_to_load = if !language_ids.is_empty() {
@@ -898,9 +879,8 @@ impl Commands {
         // }
 
         for lng in language_ids_to_load {
-            if let Some(data) = AppState::shared()
-                .common_device_service
-                .load_language_translation(lng.clone())
+            if let Some(data) =
+                AppState::common_device_service().load_language_translation(lng.clone())
             {
                 debug!(
                     "Got translations json from resources for language id {}",
@@ -985,12 +965,12 @@ pub fn remove_app_files(db_key: &str) {
     // let file_name = AppState::global().uri_to_file_name(&db_key);
     // util::delete_backup_file(&db_key, &file_name);
 
-    if let Some(_ru) = AppState::shared().get_recently_used(&db_key) {
+    if let Some(_ru) = AppState::get_recently_used(&db_key) {
         backup::delete_backup_history_dir(&db_key);
         // debug!("Backup file {} is deleted", &ru.file_name)
     }
 
-    AppState::shared().remove_recent_db_use_info(&db_key);
+    AppState::remove_recent_db_use_info(&db_key);
     // log::debug!("Removed db file info from recent list");
 
     let _ = biometric_auth::StoredCredential::remove_credentials(db_key);

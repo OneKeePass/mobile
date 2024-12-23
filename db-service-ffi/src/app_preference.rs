@@ -8,6 +8,7 @@ use onekeepass_core::db_service as kp_service;
 
 use crate::{
     app_state::AppState,
+    biometric_auth,
     udl_types::{CommonDeviceService, EventDispatch, FileInfo},
     util, OkpError, OkpResult,
 };
@@ -22,13 +23,15 @@ pub struct RecentlyUsed {
     pub(crate) db_file_path: String,
 }
 
+// Used for the update of preferences from the app settings page
 #[derive(Debug, Deserialize)]
 pub struct PreferenceData {
-    pub db_session_timeout: Option<i64>,
-    pub clipboard_timeout: Option<i64>,
-    pub default_entry_category_groupings: Option<String>,
-    pub theme: Option<String>,
-    pub language: Option<String>,
+    db_session_timeout: Option<i64>,
+    clipboard_timeout: Option<i64>,
+    default_entry_category_groupings: Option<String>,
+    theme: Option<String>,
+    language: Option<String>,
+    database_preference: Option<DatabasePreference>,
 }
 
 // This struct matches any previous verion (0.0.2) of preference.json
@@ -58,24 +61,48 @@ pub struct Preference2 {
     pub default_entry_category_groupings: String,
 }
 
+// Database specific preferences
+#[derive(Clone, Serialize, Deserialize, Debug)]
+struct DatabasePreference {
+    db_key: String,
+    db_open_biometric_enabled: bool,
+    db_unlock_biometric_enabled: bool,
+    //TDOO:
+    // Add after how many times of using biometric, we need to ask user to enter password something similar MacOS does
+    // Add PIN protection for each db  - db_open_pin_enabled:bool,; Need to store the PIN in secure enclave
+    // Flag to indicate whether to use biometric during autofill (iOS specific?)
+}
+
 // This struct matches current verion (0.0.4) of preference.json
 // The struct RecentlyUsed changed
 #[derive(Clone, Serialize, Deserialize)]
 pub(crate) struct Preference {
     pub(crate) version: String,
     pub(crate) recent_dbs_info: Vec<RecentlyUsed>,
+
     // Session will time out in these milli seconds
     pub(crate) db_session_timeout: i64,
+
     // clipboard will be cleared in these milli seconds
     pub(crate) clipboard_timeout: i64,
+
     // Determines the theme colors etc
     pub(crate) theme: String,
+
     // Should be a two letters language id
     pub(crate) language: String,
+
     // Valid values one of Types,Categories,Groups,Tags
     pub(crate) default_entry_category_groupings: String,
+
     // All dbs that can be opened using biometric
-    biometric_enabled_dbs: Vec<String>,
+    // biometric_enabled_dbs: Vec<String>,
+
+    // Number of backs to keep for all databases
+    backup_history_count: u8,
+
+    // All databases specific preferences
+    database_preferences: Vec<DatabasePreference>,
 }
 
 impl Default for Preference {
@@ -90,7 +117,9 @@ impl Default for Preference {
             theme: "system".into(),
             language: util::current_locale_language(),
             default_entry_category_groupings: "Types".into(),
-            biometric_enabled_dbs: vec![],
+            backup_history_count: 3,
+            // biometric_enabled_dbs: vec![],
+            database_preferences: vec![],
         }
     }
 }
@@ -153,11 +182,11 @@ impl Preference {
     }
 
     pub(crate) fn write_to_app_dir(&self) {
-        self.write(&AppState::shared().app_home_dir);
+        self.write(AppState::app_home_dir());
     }
 
     // Update the preference with any non null values
-    pub(crate) fn update(&mut self, preference_data: PreferenceData) {
+    pub(crate) fn update(&mut self, preference_data: PreferenceData) -> OkpResult<()> {
         let mut updated = false;
         if let Some(v) = preference_data.language {
             self.language = v;
@@ -184,13 +213,43 @@ impl Preference {
             updated = true;
         }
 
+        if let Some(db_pref) = preference_data.database_preference {
+            self.upate_or_insert_database_preference(db_pref);
+            updated = true;
+        }
+
         if updated {
             self.write_to_app_dir();
         }
+
+        Ok(())
     }
 
-    pub(crate) fn backup_history_count(&self) -> usize {
-        3
+    fn upate_or_insert_database_preference(&mut self, db_pref: DatabasePreference) {
+        let (db_key, db_open_flag) = (db_pref.db_key.clone(), db_pref.db_open_biometric_enabled);
+
+        if let Some(m) = self
+            .database_preferences
+            .iter_mut()
+            .find(|d| d.db_key == db_pref.db_key)
+        {
+            *m = db_pref;
+        } else {
+            self.database_preferences.push(db_pref);
+        }
+
+        // Remove any previously stored credentials when the flag is false
+        if !db_open_flag {
+            let _ = biometric_auth::StoredCredential::remove_credentials(&db_key);
+        }
+    }
+
+    pub(crate) fn remove_database_preference(&mut self, db_key: &str) {
+        self.database_preferences.retain(|s| s.db_key != db_key);
+    }
+
+    pub(crate) fn backup_history_count(&self) -> u8 {
+        self.backup_history_count
     }
 
     pub(crate) fn add_recent_db_use_info(
@@ -213,25 +272,32 @@ impl Preference {
             .retain(|s| s.db_file_path != full_file_name_uri);
 
         // Write the preference to the file system immediately
-        self.write(&AppState::shared().app_home_dir);
+        self.write(&AppState::app_home_dir());
     }
 
-    pub fn set_db_open_biometric(&mut self, db_key: &str, enabled: bool) {
-        let key = db_key.to_string();
+    // pub(crate) fn set_db_open_biometric(&mut self, db_key: &str, enabled: bool) {
+    //     let key = db_key.to_string();
 
-        // First remove the matching key if any
-        self.biometric_enabled_dbs.retain(|s| s != &key);
+    //     // First remove the matching key if any
+    //     self.biometric_enabled_dbs.retain(|s| s != &key);
 
-        // We add the db-key when it is enabled
-        if enabled {
-            self.biometric_enabled_dbs.push(key);
-        }
+    //     // We add the db-key when it is enabled
+    //     if enabled {
+    //         self.biometric_enabled_dbs.push(key);
+    //     }
 
-        self.write_to_app_dir();
-    }
+    //     self.write_to_app_dir();
+    // }
 
-    pub fn db_open_biometeric_enabled(&self, db_key: &str) -> bool {
-        self.biometric_enabled_dbs.contains(&db_key.to_string())
+    // pub(crate) fn db_open_biometeric_enabled(&self, db_key: &str) -> bool {
+    //     self.biometric_enabled_dbs.contains(&db_key.to_string())
+    // }
+
+    pub(crate) fn db_open_biometeric_enabled(&self, db_key: &str) -> bool {
+        self.database_preferences
+            .iter()
+            .find(|p| p.db_key == db_key)
+            .map_or(false, |d| d.db_open_biometric_enabled)
     }
 
     fn find_db_info(&self, db_key: &str) -> Option<&RecentlyUsed> {

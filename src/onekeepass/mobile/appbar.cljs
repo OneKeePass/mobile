@@ -2,6 +2,7 @@
   (:require [onekeepass.mobile.about :as about :refer [about-content
                                                        privacy-policy-content]]
             [onekeepass.mobile.app-settings :as app-settings]
+            [onekeepass.mobile.app-database-settings :as app-db-settings]
             [onekeepass.mobile.autofill :as af-settings]
             [onekeepass.mobile.common-components :as cc :refer [menu-action-factory]]
             [onekeepass.mobile.constants  :refer [AUTOFILL_SETTINGS_PAGE_ID
@@ -24,6 +25,7 @@
             [onekeepass.mobile.events.search :as search-events]
             [onekeepass.mobile.events.settings :as stgs-events]
             [onekeepass.mobile.events.remote-storage :as rs-events]
+            [onekeepass.mobile.events.app-database-settings :as ads-settings]
             [onekeepass.mobile.group-form :as group-form]
             [onekeepass.mobile.icons-list :as icons-list]
             [onekeepass.mobile.key-file-form :as kf-form]

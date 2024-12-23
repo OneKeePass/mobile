@@ -71,12 +71,11 @@ impl AndroidSupportServiceExtra {
         let mut file = unsafe { util::get_file_from_fd(file_descriptor) };
 
         let mut inner = || -> OkpResult<KdbxLoaded> {
-            // get_last_backup_on_error should have a valid back file created 
+            // get_last_backup_on_error should have a valid back file created
             // for the content of db failed to save
-            if let Some(bkp_file_name) =
-                AppState::shared().get_last_backup_on_error(&old_full_file_name_uri)
+            if let Some(bkp_file_name) = AppState::get_last_backup_on_error(&old_full_file_name_uri)
             {
-                // The last modified db is written to the 'bkp_file_name' 
+                // The last modified db is written to the 'bkp_file_name'
                 let mut modified_bk_file_reader = File::open(bkp_file_name)?;
 
                 // Writes the modified db data to the new the file selected by the user
@@ -96,7 +95,8 @@ impl AndroidSupportServiceExtra {
                 )?;
 
                 // Need to create the backup file for the newly created database
-                let mut new_db_bk_file = backup::generate_and_open_backup_file(&new_full_file_name_uri, &file_name)?;
+                let mut new_db_bk_file =
+                    backup::generate_and_open_backup_file(&new_full_file_name_uri, &file_name)?;
 
                 modified_bk_file_reader.rewind()?;
 
@@ -107,9 +107,9 @@ impl AndroidSupportServiceExtra {
                 // For now we remove all reference of the db file that failed to save
                 remove_app_files(&old_full_file_name_uri);
 
-                AppState::shared().add_recent_db_use_info2(&new_full_file_name_uri,&file_name);
+                AppState::add_recent_db_use_info2(&new_full_file_name_uri, &file_name);
 
-                AppState::shared().remove_last_backup_name_on_error(&old_full_file_name_uri);
+                AppState::remove_last_backup_name_on_error(&old_full_file_name_uri);
                 Ok(kdbx_loaded)
             } else {
                 Err(OkpError::UnexpectedError(format!(
@@ -141,9 +141,8 @@ impl AndroidSupportServiceExtra {
             Ok(CommandArg::NewDbArg { mut new_db }) => {
                 full_file_name_uri = new_db.database_file_name.clone();
                 // Need to get the file name from full uri
-                new_db.file_name = AppState::shared()
-                    .common_device_service
-                    .uri_to_file_name(full_file_name_uri.clone());
+                new_db.file_name =
+                    AppState::common_device_service().uri_to_file_name(full_file_name_uri.clone());
 
                 // Need to create a backup file for this newly created database
                 let Some(file_name) = new_db.file_name.as_ref() else {
@@ -197,7 +196,7 @@ impl AndroidSupportServiceExtra {
             Ok(v) => match serde_json::to_string_pretty(&InvokeResult::with_ok(v)) {
                 Ok(s) => {
                     //Add this newly created db file to the recent list
-                    AppState::shared().add_recent_db_use_info(&full_file_name_uri);
+                    AppState::add_recent_db_use_info(&full_file_name_uri);
                     ApiResponse::Success { result: s }
                 }
 
@@ -345,14 +344,13 @@ impl AndroidSupportServiceExtra {
         // let r = AppState::secure_enclave_cb_service().remove_key(identifier.to_string());
         // debug!("Removing key done with r {:?}", &r);
 
-        let encrypted_data = AppState::secure_enclave_cb_service().encrypt_bytes(
-            identifier.to_string(),
-            data.as_bytes().to_vec(),
-        )?;
+        let encrypted_data = AppState::secure_enclave_cb_service()
+            .encrypt_bytes(identifier.to_string(), data.as_bytes().to_vec())?;
 
         debug!(
             "Encrypted and size is {} and will write this data {}",
-            &encrypted_data.len(),data,
+            &encrypted_data.len(),
+            data,
         );
 
         let decrypted_data = AppState::secure_enclave_cb_service()

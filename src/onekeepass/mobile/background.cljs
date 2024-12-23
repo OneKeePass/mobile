@@ -430,7 +430,8 @@
   [db-key password key-file-name dispatch-fn]
   (invoke-api "unlock_kdbx" {:db-file-name db-key
                              :password password
-                             :key-file-name key-file-name} dispatch-fn))
+                             :key-file-name key-file-name
+                             :biometric-auth-used false} dispatch-fn))
 
 ;; See authenticate-with-biometric api above
 

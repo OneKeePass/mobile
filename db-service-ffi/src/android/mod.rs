@@ -67,7 +67,7 @@ pub fn save_attachment_as_temp_file(
     name: &str,
     data_hash: &AttachmentHashValue,
 ) -> OkpResult<String> {
-    let path = Path::new(&AppState::shared().cache_dir).join(name);
+    let path = Path::new(AppState::cache_dir()).join(name);
     let mut file = OpenOptions::new()
         .read(true)
         .write(true)
