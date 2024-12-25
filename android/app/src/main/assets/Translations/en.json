@@ -3,6 +3,7 @@
         "about": "About",
         "add": "Add",
         "additionalProtection": "Additional Protection",
+        "additionalDbAcccess": "Additional Database Access",
         "algorithm": "Algorithm",
         "allAppSettings": "All App Settings",
         "allEntries": "AllEntries",
@@ -16,10 +17,13 @@
         "credentials": "Credentials",
         "dark": "Dark",
         "databases": "Databases",
+        "databaseAccess":"Database Access",
         "databaseAutoFill":"Database AutoFill",
         "databaseDesc": "Database Description",
         "databaseDetails": "Database Details",
         "databaseFile": "Database File",
+        "databaseOpen": "Database Open",
+        "databaseUnlock": "Database Unlock",
         "dataProtection": "Data Protection",
         "databaseName": "Database Name",
         "dbSettings": "Database Settings",
@@ -33,6 +37,8 @@
         "entries": "Entries",
         "entryType": "Entry type",
         "error": "Error",
+        "faceId":"Face ID",
+        "faceUnlockFingerprint":"Face Unlock / Fingerprint",
         "favorites": "Favorites",
         "fieldName": "Field name",
         "general": "General",
@@ -215,6 +221,7 @@
             "deletingAllEntries":"Deleting all entries ...",
             "deletingGroup":"Deleting group ...",
             "overwritingDb":"Overwriting the database ...",
+            "loading": "Loading ...",
             "preparingExportData":"Preparing data to export",
             "saving": "Saving..."
         }
@@ -226,9 +233,10 @@
         "attachmentFileSaved": "Attachment file saved",
         "attachmentRenamed": "Attachment renamed",
         "copied":"Copied",
-        "createdEntry": "Created Entry",
+        "createdEntry": "Created entry",
         "databaseClosed": "Database closed",
         "databaseLocked": "Database locked",
+        "databaseOpened": "Database opened",
         "databaseSettingsSaved": "Database Settings saved",
         "databaseUnlocked": "Database unlocked",
         "databaseRemovedFromList": "Database is removed from the list",
@@ -242,14 +250,17 @@
         "newSectionCreated": "New section is created",
         "noCopy":"Nothing to copy",
         "sectionNameChanged": "Section name is changed",
-        "updatedEntry": "Updated Entry"
+        "updatedEntry": "Updated entry",
+        "updatedSettings": "Updated settings"
     },
     "pageTitles": {
         "about": "About",
         "appSettings": "App Settings",
+        "additionalDbAcccess": "Additional Database Access",
         "autoFillPassword":"AutoFill Password",
         "autofillSettings":"Autofill Settings",
         "category": "Category",
+        "databaseAccess":"Database Access",
         "entry": "Entry",
         "generator": "Generator",
         "group": "Group",
@@ -396,6 +407,9 @@
             "backCameraNotFound":"Back camera is not found. Please enter the secret code manually",
             "cameraPermissionEnable":"Camera permission is required for OneKeePass to scan a QR code. Please enable it",
             "cameraPermissionRequired":"Camera permission is required for OneKeePass to scan a QR code"
+        },
+        "settings": {
+            "additionalDbAccessExplain": "Use {{biometricType}} to open and unlock this database" 
         }
 
     }

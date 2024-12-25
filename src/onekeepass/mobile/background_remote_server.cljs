@@ -26,7 +26,7 @@
 (defn remote-storage-configs
   "The arg 'connect-request' is a map (type enum RemoteStorageOperationType) and has  
    a key :type with value 'Sftp' or 'Webdav'
-   Gets all stored connection config info for Sftp or Webdav "
+   Gets a vec of stored connection config infos for Sftp or Webdav "
   [connect-request dispatch-fn]
   (invoke-api "rs_remote_storage_configs" {:rs-operation-type connect-request}  dispatch-fn))
 

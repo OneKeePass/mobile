@@ -164,18 +164,10 @@
                                                       ;; Just show error message if any
                                                     (on-error api-response)))))
 
-#_(defn- on-success [m]
-  #_(when (= kw :language)
-    (dispatch [:common/reset-load-language-translation-status])
-    (dispatch [])
-    )
-  #_(println "Preference field kw " kw " is updated"))
-
 ;; Called to update a single field found in the app preference map
 (reg-event-fx
  :app-preference-update-data
  (fn [{:keys [db]} [_event-id kw value call-on-success]] 
-   (println "app-preference-update-data is called with kw value " kw value)
    ;; First we update the UI side app prefence. 
    {:db  (update-preference-field-data db kw value) #_(assoc-in db [:app-preference :data kw] value)
     ;; When this event is called in on-change handler of a 'list-item-modal-selector', 
@@ -185,28 +177,25 @@
 
 ;; Updates the backend
 ;; pref-update-m is a map (struct PreferenceData)
+;; At this time it appears we are using any one field from struct PreferenceData
 (reg-fx
  :app-settings/bg-update-preference
- (fn [[pref-update-m  call-on-success]]
-   (println "Calling bg/update-preference " pref-update-m)
-   (bg/update-preference pref-update-m (fn [api-response] 
-                                         (when-not (on-error api-response)
-                                           (when-not (nil? call-on-success) 
-                                             (call-on-success pref-update-m)))))))
+ (fn [[pref-update-m  call-on-success]] 
+   (bg/update-preference pref-update-m 
+                         (fn [api-response] 
+                           (when-not (on-error api-response)
+                             (when-not (nil? call-on-success) 
+                               (call-on-success pref-update-m)))))))
 
 (reg-sub
  :db-session-timeout
  (fn [db [_event-id]]
-   (preference-field-data db :db-session-timeout 15000)
-   #_(let [r (get-in db [:app-preference :data :db-session-timeout])]
-       (if (nil? r) 15000 r))))
+   (preference-field-data db :db-session-timeout 15000)))
 
 (reg-sub
  :clipboard-timeout
  (fn [db [_event-id]]
-   (preference-field-data db :clipboard-timeou 10000)
-   #_(let [r (get-in db [:app-preference :data :clipboard-timeout])]
-       (if (nil? r) 10000 r))))
+   (preference-field-data db :clipboard-timeout 10000)))
 
 #_(reg-sub
    :app-theme
@@ -216,12 +205,8 @@
 
 (reg-sub
  :app-preference-data
- (fn [db [_event-id kw default-value]]
-   ;;(println "kw default-value are " kw default-value)
-   (preference-field-data db kw default-value)
-   #_(let [r (get-in db [:app-preference :data kw])
-           r (if-not (nil? r) r default-value)]
-       r)))
+ (fn [db [_event-id kw default-value]] 
+   (preference-field-data db kw default-value)))
 
 ;;;;;;;;;
 

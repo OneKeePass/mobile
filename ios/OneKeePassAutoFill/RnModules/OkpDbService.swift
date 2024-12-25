@@ -13,7 +13,7 @@ class OkpDbService: NSObject {
   private let logger = OkpLogger(tag: "OkpDbService")
   
   override init() {
-    logger.debug("Going to call initialize from ")
+    logger.debug("Going to call initialize from autofill OkpDbService class using AutoFillDbServiceAPI.initialize")
     AutoFillDbServiceAPI.initialize()
   }
 

@@ -15,8 +15,7 @@
                                                              rnp-text
                                                              rnp-text-input
                                                              rnp-text-input-icon]]
-            [onekeepass.mobile.translation :refer [lstr-bl lstr-cv lstr-l
-                                                   lstr-mt]]
+            [onekeepass.mobile.translation :refer [lstr-bl lstr-cv lstr-l]]
             [onekeepass.mobile.utils :refer [str->int]]
             [reagent.core :as r]))
 
@@ -74,7 +73,7 @@
                 password-visible]} @(rs-events/remote-storage-connection-form-data kw-type)
         errors @(rs-events/remote-storage-connection-form-errors kw-type)]
     [rn-view {:flex 1 :backgroundColor @page-background-color}  ;;
-     [form-header (if edit (lstr-l 'newConnection) "View Connection")]
+     [form-header (if edit (lstr-l 'newConnection) (lstr-l 'viewConnection))]
      [rn-view {:style form-style}
       [rnp-text-input {:style {}
                        :label (lstr-l 'name)
@@ -113,7 +112,7 @@
       [error-text errors :user-name]]
 
      [rn-view {:style form-style}
-      [select-field {:text-label "Select Logon Type"
+      [select-field {:text-label (lstr-l 'selectSftpLogonType)
                      :options sftp-logon-types
                      :disabled (not edit)
                      :value (lstr-cv logon-type)
@@ -139,7 +138,7 @@
                                       #(rs-events/pick-private-key-file))}]
 
         [error-text errors :private-key-file-name]
-        [password-field password password-visible "Private Key Passphrase" errors edit]])
+        [password-field password password-visible (lstr-l 'privateKeyPassphrase) errors edit]])
 
      (when edit
        [rn-view {:style {:margin-top 20 :margin-bottom 20 :align-items "center"}}
@@ -147,7 +146,7 @@
                             ;;:labelStyle {:fontWeight "bold"}
                      :mode "contained"
                      :on-press #(rs-events/remote-storage-new-config-connect-and-save kw-type)}
-         "Connect & Save"]])]))
+         (lstr-bl 'connectAndSave)]])]))
 
 (defn webdav-connection-config-form []
   (let [kw-type :webdav
@@ -157,9 +156,9 @@
                 password
                 password-visible
                 edit]} @(rs-events/remote-storage-connection-form-data kw-type)
-        errors @(rs-events/remote-storage-connection-form-errors kw-type)] 
+        errors @(rs-events/remote-storage-connection-form-errors kw-type)]
     [rn-view {:flex 1 :backgroundColor @page-background-color}  ;;
-     [form-header (if edit (lstr-l 'newConnection) "View Connection")]
+     [form-header (if edit (lstr-l 'newConnection) (lstr-l 'viewConnection))]
      [rn-view {:style form-style}
       [rnp-text-input {:style {}
                        :editable edit
@@ -167,13 +166,13 @@
                        :autoCorrect false
                        :label (lstr-l 'name)
                        :value name
-                       :onChangeText #(rs-events/remote-storage-connection-form-data-update kw-type :name %)
-                       }]
+                       :onChangeText #(rs-events/remote-storage-connection-form-data-update kw-type :name %)}]
       [error-text errors :name]
-      
+
       [rnp-text-input {:style {}
                        :label (lstr-l 'rootUrl)
                        :editable edit
+                       :placeholder "e.g https://www.mywebdav.com:8080"
                        :autoCapitalize "none"
                        :autoCorrect false
                        :value root-url
@@ -190,7 +189,7 @@
                        :onChangeText #(rs-events/remote-storage-connection-form-data-update kw-type :user-name %)}]
 
       [error-text errors :user-name]
-      
+
       [rnp-text-input {:style {}
                        :label (lstr-l 'password)
                        :editable edit
@@ -205,10 +204,9 @@
                                             kw-type
                                             :password-visible (not password-visible))}])
                        :onChangeText #(rs-events/remote-storage-connection-form-data-update kw-type :password %)}]
-      [error-text errors :password]
-      ]
-     
-     
+      [error-text errors :password]]
+
+
 
      (when edit
        [rn-view {:style {:margin-top 20 :margin-bottom 20 :align-items "center"}}
@@ -216,7 +214,7 @@
                                  ;;:labelStyle {:fontWeight "bold"}
                      :mode "contained"
                      :on-press #(rs-events/remote-storage-new-config-connect-and-save kw-type)}
-         "Connect & Save"]])]))
+         (lstr-bl 'connectAndSave)]])]))
 
 (defn main-content []
   (let [kw-type @(rs-events/remote-storage-current-rs-type)]

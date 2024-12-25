@@ -98,7 +98,9 @@
                                             (selected-tags-receiver-fn selected-tags)
                                             (cmn-events/tags-dialog-done))} (lstr-bl 'close)]]]))
 
-(defn settings-section-header [title]
+(defn settings-section-header 
+  "The arg title is expected to be the translation key"
+  [title]
   [rn-view  {:style {:flexDirection "row"
                      :width "100%"
                      :backgroundColor @inverse-onsurface-color
@@ -110,7 +112,9 @@
                       :text-align "center"
                       :padding-left 5} :variant "titleSmall"} (lstr-l title)]])
 
-(defn list-section-header [title]
+(defn list-section-header 
+  "The arg title is expected to be the translation key"
+  [title]
   [rn-view  {:style {:flexDirection "row"
                      :width "100%"
                      :backgroundColor @primary-container-color
@@ -120,7 +124,7 @@
    [rnp-text {:style {:alignSelf "center"
                       :width "85%"
                       :text-align "center"
-                      :padding-left 0} :variant "titleLarge"} title]])
+                      :padding-left 0} :variant "titleLarge"} (lstr-l title)]])
 
 (defn select-field-label-extractor
   "Default label extractor for the modal based selector"
@@ -253,8 +257,8 @@
     [rnp-text (lstr-modal-dlg-text message)]]])
 
 (defn menu-action-factory
-  "Wraps the hide-menu-action and returns a factory which itself returns another factory
-  This inner factory can be used in menu items' onPress call
+  "Wraps the hide-menu-action and returns a fn factory which itself when called returns another inner fn.
+  This inner fn can be used in menu items' onPress call
  "
   [hide-menu-action]
   (fn [action & action-args]

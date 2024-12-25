@@ -76,6 +76,8 @@
 
 (def BIOMETRIC_SETTINGS_PAGE_ID :biometric-settings)
 
+(def ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID :additional-db-access-settings)
+
 ;; All remote storage related page ids
 (def RS_CONNECTIONS_LIST_PAGE_ID :rs-connections-list)
 ;; Key :sftp or :webdav will determine which form data to use on this page

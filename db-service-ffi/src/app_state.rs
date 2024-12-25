@@ -11,7 +11,7 @@ use std::{
 use onekeepass_core::db_service as kp_service;
 
 use crate::{
-    app_preference::{Preference, PreferenceData, RecentlyUsed},
+    app_preference::{Preference, PreferenceData, RecentlyUsed, PREFERENCE_JSON_FILE_NAME},
     remote_storage,
     udl_types::SecureKeyOperation,
     udl_uniffi_exports::{CommonDeviceServiceEx, SecureEnclaveCbService},
@@ -25,14 +25,16 @@ use crate::{
 // Any mutable field needs to be behind Mutex
 pub struct AppState {
     app_home_dir: String,
+
     // iOS specific
     app_group_home_dir: Option<String>,
+
+    prefrence_home_dir: PathBuf,
+
     // Android specific use (in save_attachment_as_temp_file) ?
     cache_dir: String,
 
     temp_dir: String,
-    // Dir where all db files backups are created
-    backup_dir_path: PathBuf,
 
     // We keep last 'n' number of backups for a db that was edited
     backup_history_dir_path: PathBuf,
@@ -40,11 +42,9 @@ pub struct AppState {
     // Dir path where all remote storage related files are stored
     remote_storage_path: PathBuf,
 
-    // The dir where an edited db file is stored if the remote connection is not avilable
-    // pub local_db_dir_path: PathBuf,
-
     // Dir path where db file for export is created and used in export calls
     export_data_dir_path: PathBuf,
+
     // Dir where all key files are copied for latter use
     key_files_dir_path: PathBuf,
 
@@ -57,8 +57,10 @@ pub struct AppState {
 
     // Callback service implemented in Swift/Kotlin and called from rust side
     common_device_service: Box<dyn CommonDeviceService>,
+
     // Callback service implemented in Swift/Kotlin and called from rust side
     event_dispatcher: Arc<dyn EventDispatch>,
+
     // Callback service implemented in Swift/Kotlin and called from rust side
     secure_key_operation: Box<dyn SecureKeyOperation>,
 
@@ -70,21 +72,6 @@ pub struct AppState {
 }
 
 static APP_STATE: OnceCell<AppState> = OnceCell::new();
-
-// iOS specific idea to move all internal dirs and files from the current app_home dir to app_group home dir
-// Also see comments in Swift impl 'CommonDeviceServiceImpl appHoemDir'
-fn _temp_move_documents_to_okp_app_dir(app_dir: &str, app_group_dir: &Option<String>) {
-    // Check if there is the sub dir 'okp_app'  under app_group_dir
-    // If the dir is available then, app_group_dir/okp_app is already created
-    // Return app_dir,app_group_dir where app_dir = app_group_dir
-
-    // If not, create app_group_dir/okp_app, then move app_dir/[bookmarks,backups,key_files,preference.json] to
-    // app_group_dir/okp_app[bookmarks,backups,key_files,preference.json]
-
-    // Remove app_dir/[bookmarks,backups,key_files,preference.json]
-
-    // Return app_dir,app_group_dir where app_dir = app_group_dir
-}
 
 impl AppState {
     pub fn shared() -> &'static AppState {
@@ -110,48 +97,41 @@ impl AppState {
             None
         };
 
-        debug!(
-            "app_dir {}, cache_dir {}, temp_dir {}, app_group_home_dir {:?}",
-            &app_dir, &cache_dir, &temp_dir, &app_group_home_dir
-        );
+        // Ensure that preference home dir is available before preference reading
+        let preference_home_dir = Self::create_preference_dir_path(&app_dir, &app_group_home_dir);
 
-        let pref = Preference::read(&app_dir);
+        // debug!("app_dir {}, cache_dir {}, temp_dir {}, app_group_home_dir {:?},prefrence_home_dir {:?}",&app_dir, &cache_dir, &temp_dir, &app_group_home_dir,&preference_home_dir,);
+
+        // let preference = Preference::read(&app_dir);
+
+        // IMPORTANT: preference_home_dir should have a valid path
+        let preference = Preference::read(&preference_home_dir);
 
         let export_data_dir_path = util::create_sub_dir(&app_dir, "export_data");
         log::debug!("export_data_dir_path is {:?}", &export_data_dir_path);
 
-        // To be removed after the complete use of 'backup_history_dir_path'
-        let backup_dir_path = util::create_sub_dir(&app_dir, "backups");
-        log::debug!("backup_dir_path is {:?}", backup_dir_path);
-
         let backup_history_dir_path = util::create_sub_dirs(&app_dir, vec!["backups", "history"]);
-        log::debug!("backup_dir_path is {:?}", backup_dir_path);
-
-        // Meant for SFTP,WebDAV files save when offline ?
-        // let local_db_dir_path = util::create_sub_dir(&app_dir, "local_dbs");
-        // log::debug!("local_db_dir_path is {:?}", backup_dir_path);
+        log::debug!("backup_history_dir_path is {:?}", &backup_history_dir_path);
 
         let key_files_dir_path = util::create_sub_dir(&app_dir, "key_files");
-        log::debug!("key_files_dir_path is {:?}", key_files_dir_path);
+        log::debug!("key_files_dir_path is {:?}", &key_files_dir_path);
 
         // All remote storage related dirs
-        // TODO: Need to use app group home for ios
         let remote_storage_path = util::create_sub_dir(&app_dir, "remote_storage");
         util::create_sub_dir_path(&remote_storage_path, "sftp");
 
         let app_state = AppState {
             app_home_dir: app_dir.into(),
             app_group_home_dir,
+            prefrence_home_dir: preference_home_dir,
             cache_dir,
             temp_dir,
-            backup_dir_path,
             backup_history_dir_path,
-            // local_db_dir_path,
             remote_storage_path,
             export_data_dir_path,
             key_files_dir_path,
             last_backup_on_error: Mutex::new(HashMap::default()),
-            preference: Mutex::new(pref),
+            preference: Mutex::new(preference),
 
             common_device_service,
             secure_key_operation,
@@ -169,8 +149,48 @@ impl AppState {
         }
     }
 
+    fn create_preference_dir_path(app_dir: &String, app_group_dir: &Option<String>) -> PathBuf {
+        if cfg!(target_os = "ios") {
+            // in iOS, we should have a valid app group dir
+            let gd = app_group_dir.as_ref().unwrap();
+            let new_pref_file_home_dir = util::create_sub_dir(gd, "okp_shared");
+
+            // debug!("Ios: Created preference_dir_path {:?}", &new_pref_file_home_dir);
+
+            let old_pref_file_p = Path::new(app_dir).join(PREFERENCE_JSON_FILE_NAME);
+
+            // Need to copy the prefernce file from old location to new
+            if old_pref_file_p.exists() {
+                // debug!("Found old preference file at {:?}", &old_pref_file_p);
+                let new_pref_file_p = new_pref_file_home_dir.join(PREFERENCE_JSON_FILE_NAME);
+                let r = fs::copy(&old_pref_file_p, &new_pref_file_p);
+
+                debug!("Preference file copied with result {:?}", r);
+
+                // Need to delete old pref file
+                if r.is_ok() {
+                    let _r = fs::remove_file(&old_pref_file_p);
+                    // debug!("Old Preference file is deleted with result {:?}", r);
+                }
+            }
+
+            new_pref_file_home_dir
+        } else {
+            let pref_file_home_dir = PathBuf::from(app_dir);
+            debug!(
+                "Android: Created preference_dir_path {:?}",
+                &pref_file_home_dir
+            );
+            pref_file_home_dir
+        }
+    }
+
     pub fn app_home_dir() -> &'static String {
         &Self::shared().app_home_dir
+    }
+
+    pub fn preference_home_dir() -> &'static PathBuf {
+        &Self::shared().prefrence_home_dir
     }
 
     pub fn app_group_home_dir() -> &'static Option<String> {
@@ -185,9 +205,9 @@ impl AppState {
         &Self::shared().export_data_dir_path
     }
 
-    pub fn backup_dir_path() -> &'static PathBuf {
-        &Self::shared().backup_dir_path
-    }
+    // pub fn backup_dir_path() -> &'static PathBuf {
+    //     &Self::shared().backup_dir_path
+    // }
 
     pub fn backup_history_dir_path() -> &'static PathBuf {
         &Self::shared().backup_history_dir_path
@@ -317,49 +337,61 @@ impl AppState {
         clipboard_timeout: Option<i64>,
     ) -> OkpResult<()> {
         let mut pref = Self::shared().preference.lock().unwrap();
-        if let Some(t) = db_session_timeout {
-            pref.db_session_timeout = t;
-        }
-        if let Some(t) = clipboard_timeout {
-            pref.clipboard_timeout = t;
-        }
-
-        pref.write_to_app_dir();
-        Ok(())
+        pref.update_session_timeout(db_session_timeout, clipboard_timeout)
     }
 
+    #[inline]
     pub fn backup_history_count() -> u8 {
-        let p = Self::shared().preference.lock().unwrap();
-        p.backup_history_count()
+        Self::shared()
+            .preference
+            .lock()
+            .unwrap()
+            .backup_history_count()
     }
 
+    #[inline]
     pub fn language() -> String {
-        let pref = Self::shared().preference.lock().unwrap();
-        pref.language.clone()
+        Self::shared()
+            .preference
+            .lock()
+            .unwrap()
+            .language()
+            .to_string()
     }
 
-    pub fn remove_recent_db_use_info(db_key: &str) {
+    // Removes this db related info from recent db info list and also removes this db preference
+    #[inline]
+    pub fn remove_recent_db_use_info(db_key: &str,delete_db_pref:bool) {
         let mut pref = Self::shared().preference.lock().unwrap();
-        pref.remove_recent_db_use_info(db_key);
+        pref.remove_recent_db_use_info(db_key,delete_db_pref);
     }
 
+    #[inline]
     pub fn file_name_in_recently_used(db_key: &str) -> Option<String> {
-        let pref = Self::shared().preference.lock().unwrap();
-        find_db_info(&pref, db_key).map(|r| r.file_name.clone())
+        Self::shared()
+            .preference
+            .lock()
+            .unwrap()
+            .file_name_in_recently_used(db_key)
     }
 
+    #[inline]
     pub fn db_open_biometeric_enabled(db_key: &str) -> bool {
-        let pref = Self::shared().preference.lock().unwrap();
-        pref.db_open_biometeric_enabled(db_key)
+        Self::shared()
+            .preference
+            .lock()
+            .unwrap()
+            .db_open_biometeric_enabled(db_key)
     }
 
     // Finds the recently used info for a given uri
+    #[inline]
     pub fn get_recently_used(db_key: &str) -> Option<RecentlyUsed> {
-        let pref = Self::shared().preference.lock().unwrap();
-        pref.recent_dbs_info
-            .iter()
-            .find(|r| r.db_file_path == db_key)
-            .map(|r| RecentlyUsed { ..r.clone() })
+        Self::shared()
+            .preference
+            .lock()
+            .unwrap()
+            .get_recently_used(db_key)
     }
 
     pub fn add_recent_db_use_info(db_key: &str) {
@@ -375,7 +407,7 @@ impl AppState {
 
         let mut pref = Self::shared().preference.lock().unwrap();
 
-        pref.add_recent_db_use_info(Self::app_home_dir(), recently_used);
+        pref.add_recent_db_use_info(recently_used);
     }
 
     // The file_name is given
@@ -387,12 +419,12 @@ impl AppState {
         };
 
         let mut pref = Self::shared().preference.lock().unwrap();
-        pref.add_recent_db_use_info(Self::app_home_dir(), recently_used);
+        pref.add_recent_db_use_info(recently_used);
     }
 
-    pub fn recent_dbs_info() ->  Vec<RecentlyUsed>{
-        let pref = Self::shared().preference.lock().unwrap();
-        pref.recent_dbs_info.clone()
+    #[inline]
+    pub fn recent_dbs_info() -> Vec<RecentlyUsed> {
+        Self::shared().preference.lock().unwrap().recent_dbs_info()
     }
 
     ///////////
@@ -425,8 +457,17 @@ impl AppState {
     // }
 }
 
-fn find_db_info<'a>(pref: &'a Preference, db_key: &'a str) -> Option<&'a RecentlyUsed> {
-    pref.recent_dbs_info
-        .iter()
-        .find(|r| r.db_file_path == db_key)
+// iOS specific idea to move all internal dirs and files from the current app_home dir to app_group home dir
+// Also see comments in Swift impl 'CommonDeviceServiceImpl appHoemDir'
+fn _temp_move_documents_to_okp_app_dir(_app_dir: &str, _app_group_dir: &Option<String>) {
+    // Check if there is the sub dir 'okp_app'  under app_group_dir
+    // If the dir is available then, app_group_dir/okp_app is already created
+    // Return app_dir,app_group_dir where app_dir = app_group_dir
+
+    // If not, create app_group_dir/okp_app, then move app_dir/[bookmarks,backups,key_files,preference.json] to
+    // app_group_dir/okp_app[bookmarks,backups,key_files,preference.json]
+
+    // Remove app_dir/[bookmarks,backups,key_files,preference.json]
+
+    // Return app_dir,app_group_dir where app_dir = app_group_dir
 }

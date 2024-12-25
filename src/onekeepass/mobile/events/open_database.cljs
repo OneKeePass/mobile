@@ -160,7 +160,7 @@
   (let [stored-crdentials (on-ok api-response
                                  (fn [error]
                                    (println "The bg/stored-db-credentials-on-biometric-authentication call returned error " error)
-                                   ;; When Backendi api 'stored-db-credentials-on-biometric-authentication' results in error 
+                                   ;; When Backend api 'stored-db-credentials-on-biometric-authentication' results in error 
                                    ;; for whatever reason. Ideally should not happen!
                                    (dispatch [:open-database/database-file-picked kdbx-file-info-m])))]
     (if (nil? stored-crdentials)
@@ -184,6 +184,7 @@
                                    ;; As a fallback if there is any error in using biometric call. Not expected
                                    (println "The bg/authenticate-with-biometric call returned error " error)
                                    (dispatch [:open-database/database-file-picked kdbx-file-info-m])))]
+          
              ;; The variable 'result' will have some valid when biometric call works 
           (if (= result const/BIOMETRIC-AUTHENTICATION-SUCCESS)
             (bg/stored-db-credentials-on-biometric-authentication full-file-name-uri cr-response-handler)
@@ -202,7 +203,8 @@
  (fn [{:keys [_db]} [_event-id {:keys [password key-file-name]} {:keys [full-file-name-uri] :as kdbx-file-info-m}]]
    ;; load-kdbx as we have credentials
    ;; Show dialog when db load fails with authentication fails for the user to enter credentials
-   {:fx [[:bg-load-kdbx  [{:db-file-name full-file-name-uri
+   {:fx [[:dispatch [:common/message-modal-show nil 'loading]]
+         [:bg-load-kdbx  [{:db-file-name full-file-name-uri
                            :password password
                            :key-file-name key-file-name
                            :biometric-auth-used true
@@ -266,6 +268,9 @@
                               (on-ok
                                api-response
                                (fn [error]
+                                 ;; We use modal message after a biometric auth is used
+                                 ;; The same thing is also done in 'common/kdbx-database-opened'
+                                 (dispatch [:common/message-modal-hide])
                                  (dispatch [:open-database-read-kdbx-error error kdbx-file-info-m])))]
                      (dispatch [:open-database-db-opened kdbx-loaded]))))))
 

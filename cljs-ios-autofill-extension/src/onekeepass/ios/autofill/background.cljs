@@ -1,12 +1,12 @@
 (ns onekeepass.ios.autofill.background
   "All backend api calls that are used across many events"
-   (:require
-    [react-native :as rn] 
-    [onekeepass.ios.autofill.utils :as u :refer [contains-val?]]
-    [cljs.core.async :refer [go]]
-    [cljs.core.async.interop :refer-macros [<p!]] 
-    [camel-snake-kebab.extras :as cske]
-    [camel-snake-kebab.core :as csk]))
+  (:require
+   [react-native :as rn]
+   [onekeepass.ios.autofill.utils :as u :refer [contains-val?]]
+   [cljs.core.async :refer [go]]
+   [cljs.core.async.interop :refer-macros [<p!]]
+   [camel-snake-kebab.extras :as cske]
+   [camel-snake-kebab.core :as csk]))
 
 
 (def okp-db-service ^js/OkpDbService (.-OkpDbService rn/NativeModules))
@@ -192,24 +192,28 @@
   (autofill-invoke-api "list_of_key_files" {} dispatch-fn))
 
 #_(defn read-kdbx-from-app-group
-  "Calls the API to read a kdbx file.
+    "Calls the API to read a kdbx file.
    Calls the dispatch-fn with the received map of type 'KdbxLoaded' 
   "
-  [db-key password key-file-name dispatch-fn]
-  (invoke-api "read_kdbx_from_app_group" {:db-file-name db-key
-                             :password password
-                             :key-file-name key-file-name} dispatch-fn))
+    [db-key password key-file-name dispatch-fn]
+    (invoke-api "read_kdbx_from_app_group" {:db-file-name db-key
+                                            :password password
+                                            :key-file-name key-file-name} dispatch-fn))
 
 (defn all-entries-on-db-open
   "Calls the API to read a kdbx file.
    Calls the dispatch-fn with the received map of type 'KdbxLoaded' 
   "
-  [db-key password key-file-name dispatch-fn]
+  [db-key password key-file-name biometric-auth-used dispatch-fn]
   (autofill-invoke-api "all_entries_on_db_open" {:db-file-name db-key
-                                          :password password
-                                          :key-file-name key-file-name} dispatch-fn))
+                                                 :password password
+                                                 :key-file-name key-file-name
+                                                 :biometric-auth-used biometric-auth-used} dispatch-fn))
 
-(defn credential-service-identifier-filtering 
+(defn stored-db-credentials-on-biometric-authentication [db-key dispatch-fn]
+  (invoke-api "stored_db_credentials" {:db-key db-key} dispatch-fn))
+
+(defn credential-service-identifier-filtering
   "Prepares search term based on the domain or url passed by iOS on autofill launch and uses that term
   to search any matching entries.
   The 'dispatch-fn' is called with same result as the api call 'search_term' does
@@ -318,8 +322,7 @@
 (comment
   ;;(call-api-async (fn [] (.cancelExtension okp-db-service)) #(println %))
   (in-ns 'onekeepass.ios.autofill.background)
-  
+
   (def db-key (-> @re-frame.db/app-db :current-db-file-name))
   ;; Use this to see :MainBundleDir, :LibraryDir, :DocumentDir etc
-  (-> okp-db-service .getConstants .-MainBundleDir)
-  )
+  (-> okp-db-service .getConstants .-MainBundleDir))

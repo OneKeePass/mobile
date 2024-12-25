@@ -959,6 +959,9 @@ impl Commands {
     }
 }
 
+// Called when user initiates a "Remove" call from UI
+// Also this is used when user calls "Save As" while resolving save time error
+
 pub fn remove_app_files(db_key: &str) {
     // Using uri_to_file_name may fail if the uri is stale or no more available
     // as this is a callback to native side and any exception there results in rust panic in ffi
@@ -970,11 +973,13 @@ pub fn remove_app_files(db_key: &str) {
         // debug!("Backup file {} is deleted", &ru.file_name)
     }
 
-    AppState::remove_recent_db_use_info(&db_key);
-    // log::debug!("Removed db file info from recent list");
-
+    // Need to remove any stored crdentials
+    // TODO: Should we make this call only when this db_key is found with flag 'db_open_biometric_enabled' true
     let _ = biometric_auth::StoredCredential::remove_credentials(db_key);
 
+    // Removes this db related info from recent db info list and also removes this db preference 
+    AppState::remove_recent_db_use_info(&db_key,true);
+    
     #[cfg(target_os = "ios")]
     ios::delete_book_mark_data(&db_key);
 

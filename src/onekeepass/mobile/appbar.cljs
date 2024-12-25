@@ -7,6 +7,7 @@
             [onekeepass.mobile.common-components :as cc :refer [menu-action-factory]]
             [onekeepass.mobile.constants  :refer [AUTOFILL_SETTINGS_PAGE_ID
                                                   CAMERA_SCANNER_PAGE_ID
+                                                  ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID
                                                   RS_CONNECTION_CONFIG_PAGE_ID
                                                   RS_CONNECTIONS_LIST_PAGE_ID
                                                   RS_FILES_FOLDERS_PAGE_ID]]
@@ -91,7 +92,8 @@
      (= page :about)
      (= page :privacy-policy)
      (= page RS_CONNECTION_CONFIG_PAGE_ID)
-     (= page RS_CONNECTIONS_LIST_PAGE_ID))
+     (= page RS_CONNECTIONS_LIST_PAGE_ID)
+     (= page ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID))
     (do
       (cmn-events/to-previous-page)
       true)
@@ -266,6 +268,7 @@
         (= page AUTOFILL_SETTINGS_PAGE_ID)
         (= page :key-file-form)
         (= page CAMERA_SCANNER_PAGE_ID)
+        (= page ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID)
         (= page RS_CONNECTION_CONFIG_PAGE_ID)
         (= page RS_FILES_FOLDERS_PAGE_ID))
     [positioned-title :title title]
@@ -316,6 +319,7 @@
         (= page :settings)
         (= page :app-settings)
         (= page AUTOFILL_SETTINGS_PAGE_ID)
+        (= page ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID)
         (= page CAMERA_SCANNER_PAGE_ID)
         (= page RS_CONNECTION_CONFIG_PAGE_ID)
         (= page :key-file-form))
@@ -410,15 +414,17 @@
 
     (= page RS_CONNECTION_CONFIG_PAGE_ID)
     [rs-form/connection-config-form]
-    
+
     (= page RS_FILES_FOLDERS_PAGE_ID)
     [rs-files-folders/dir-entries-content]
+    
+    (= page ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID)
+    [app-db-settings/content]
 
     ;; For now, this page is shown after loading the newly selected language translation
     ;; Other attempts to refresh the app settings page itself did not work
     (= page :blank)
     (app-settings/language-update-feedback)
-
 
     ;; (= page :qr-scanner)
     ;; [totp/content]

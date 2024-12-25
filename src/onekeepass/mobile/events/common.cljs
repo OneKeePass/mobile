@@ -217,7 +217,10 @@
                        "Read Only"
                        "Database is opened in read only mode as there is no connection to the server"]])
          ;; Loads the updated recent dbs info
-         [:bg-app-preference]]}))
+         [:bg-app-preference]
+         [:dispatch [:common/message-modal-hide]]
+         [:dispatch [:common/message-snackbar-open 'databaseOpened]]
+         ]}))
 
 (reg-event-fx
  :close-kdbx-db

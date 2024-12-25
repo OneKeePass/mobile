@@ -5,7 +5,7 @@ use std::{
 
 use log::debug;
 use onekeepass_core::db_service::{
-    self, copy_and_write_autofill_ready_db, service_util::string_to_simple_hash, EntrySummary,
+    self, service_util::string_to_simple_hash, EntrySummary,
 };
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -110,6 +110,7 @@ fn autofill_meta_json_file() -> Option<PathBuf> {
     Some(pref_file_name)
 }
 
+// This is called to copy the selected db's data content and all key file used to the shared location for the extension to use
 fn copy_files_to_app_group(db_key: &str) -> OkpResult<CopiedDbFileInfo> {
     let file_name = AppState::uri_to_file_name(&db_key);
     debug!("File name from db_file_name  is {} ", &file_name);
@@ -124,7 +125,7 @@ fn copy_files_to_app_group(db_key: &str) -> OkpResult<CopiedDbFileInfo> {
 
     debug!("group_db_file_name is {:?} ", &group_db_file_name);
 
-    copy_and_write_autofill_ready_db(&db_key, &group_db_file_name.as_os_str().to_string_lossy())?;
+    db_service::copy_and_write_autofill_ready_db(&db_key, &group_db_file_name.as_os_str().to_string_lossy())?;
 
     // Add and persist the copied file info
     let db_file_path = group_db_file_name.as_os_str().to_string_lossy().to_string();

@@ -93,7 +93,7 @@
      [rnp-text {:style {:margin-left 15}}
       (lstr-mt 'appSettings 'inactiveDbLocked {:dbTimeoutTime label})]]))
 
-(defn clipboard-timeout-explain [{:keys [key label]}]
+(defn clipboard-timeout-explain [{:keys [key label]}] 
   (if (= key -1)
     [rn-view {:style {:margin-top 5} :flexDirection "row" :flexWrap "wrap"}
      [rnp-text {:style {:margin-left 15}} (lstr-mt 'appSettings 'clipboardCleard1)]]
@@ -109,10 +109,12 @@
   [rn-view {:style {:margin-top 1} :flexDirection "row" :flexWrap "wrap"}
    [rnp-text {:style {:margin-left 15}} label]])
 
-(defn find-match [options value]
+(defn find-match 
+  "Gets the option map from the selected value"
+  [options value]
   (first
    (filter
-    (fn [m]
+    (fn [m] 
       (= value (:key m)))
     options)))
 
@@ -134,11 +136,13 @@
     nil))
 
 (defn row-item-with-select
-  [title options current-selection update-fn]
+  [title options current-selection-value update-fn]
   ;; title is used as key to the i18n map to get the transalated text
   ;; title - may be dbTimeout or clipboardTimeout or theme ... 
+  ;; options is a vec of maps ( see db-session-timeout-options, clipboard-session-timeout-options ...)
+  ;; current-selection-value is the option value selected ( a value - from :key of a option map)
 
-  (let [{:keys [label] :as selected-option} (find-match options current-selection)
+  (let [{:keys [label] :as selected-option} (find-match options current-selection-value)
         ;; Need to use label extraction fn to use lstr calls
         label-extractor-fn (when (= title "theme") (fn [^js/RnModal d] (lstr-cv (.-label d))))]
     [rn-view {:style {:margin-bottom 15}}

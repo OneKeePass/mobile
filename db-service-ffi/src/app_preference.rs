@@ -73,27 +73,32 @@ struct DatabasePreference {
     // Flag to indicate whether to use biometric during autofill (iOS specific?)
 }
 
-// This struct matches current verion (0.0.4) of preference.json
+pub(crate) const PREFERENCE_JSON_FILE_NAME: &str = "preference.json";
+
+const PREFERENCE_JSON_FILE_VERSION: &str = "4.0.0"; // started using 4.0.0 instead of 0.0.4
+
+// This struct matches current verion of preference.json
 // The struct RecentlyUsed changed
 #[derive(Clone, Serialize, Deserialize)]
 pub(crate) struct Preference {
-    pub(crate) version: String,
-    pub(crate) recent_dbs_info: Vec<RecentlyUsed>,
+    version: String,
+
+    recent_dbs_info: Vec<RecentlyUsed>,
 
     // Session will time out in these milli seconds
-    pub(crate) db_session_timeout: i64,
+    db_session_timeout: i64,
 
     // clipboard will be cleared in these milli seconds
-    pub(crate) clipboard_timeout: i64,
+    clipboard_timeout: i64,
 
     // Determines the theme colors etc
-    pub(crate) theme: String,
+    theme: String,
 
     // Should be a two letters language id
-    pub(crate) language: String,
+    language: String,
 
     // Valid values one of Types,Categories,Groups,Tags
-    pub(crate) default_entry_category_groupings: String,
+    default_entry_category_groupings: String,
 
     // All dbs that can be opened using biometric
     // biometric_enabled_dbs: Vec<String>,
@@ -110,7 +115,7 @@ impl Default for Preference {
         Self {
             // Here we are using the version to determine the preference data struct used
             // and not the app release version
-            version: "0.0.4".into(),
+            version: PREFERENCE_JSON_FILE_VERSION.into(),
             recent_dbs_info: vec![],
             db_session_timeout: 1_800_000, // 30 minutes
             clipboard_timeout: 10_000,     // 10 secondds
@@ -125,8 +130,9 @@ impl Default for Preference {
 }
 
 impl Preference {
-    pub(crate) fn read(app_home_dir: &str) -> Self {
-        let pref_file_name = Path::new(app_home_dir).join("preference.json");
+    pub(crate) fn read<P: AsRef<Path>>(preference_home_dir: P) -> Self {
+        let pref_file_name =
+            Path::new(preference_home_dir.as_ref()).join(PREFERENCE_JSON_FILE_NAME);
         info!("pref_file_name is {:?} ", &pref_file_name);
         let json_str = fs::read_to_string(pref_file_name).unwrap_or("".into());
         debug!("Pref json_str is {}", &json_str);
@@ -143,7 +149,7 @@ impl Preference {
                         debug!("Returning the new pref with old pref values from Preference2");
                         Self::from_prev_version_to_recent(&mut pref_new, &p);
                         // Update the preference json with the copied values from old preference
-                        pref_new.write(app_home_dir);
+                        pref_new.write(preference_home_dir.as_ref());
                     }
                     Err(_) => {
                         debug!("Returning the default pref");
@@ -166,11 +172,12 @@ impl Preference {
         new_pref.recent_dbs_info = info;
     }
 
-    fn write(&self, app_home_dir: &str) {
+    fn write<P: AsRef<Path>>(&self, preference_home_dir: P) {
         // Remove old file names from the list before writing
         //self.remove_old_db_use_info();
         let json_str_result = serde_json::to_string_pretty(self);
-        let pref_file_name = Path::new(app_home_dir).join("preference.json");
+        let pref_file_name =
+            Path::new(preference_home_dir.as_ref()).join(PREFERENCE_JSON_FILE_NAME);
         if let Ok(json_str) = json_str_result {
             if let Err(err) = fs::write(pref_file_name, json_str.as_bytes()) {
                 error!(
@@ -182,7 +189,7 @@ impl Preference {
     }
 
     pub(crate) fn write_to_app_dir(&self) {
-        self.write(AppState::app_home_dir());
+        self.write(AppState::preference_home_dir());
     }
 
     // Update the preference with any non null values
@@ -244,6 +251,22 @@ impl Preference {
         }
     }
 
+    pub fn update_session_timeout(
+        &mut self,
+        db_session_timeout: Option<i64>,
+        clipboard_timeout: Option<i64>,
+    ) -> OkpResult<()> {
+        if let Some(t) = db_session_timeout {
+            self.db_session_timeout = t;
+        }
+        if let Some(t) = clipboard_timeout {
+            self.clipboard_timeout = t;
+        }
+
+        self.write_to_app_dir();
+        Ok(())
+    }
+
     pub(crate) fn remove_database_preference(&mut self, db_key: &str) {
         self.database_preferences.retain(|s| s.db_key != db_key);
     }
@@ -252,27 +275,31 @@ impl Preference {
         self.backup_history_count
     }
 
-    pub(crate) fn add_recent_db_use_info(
-        &mut self,
-        app_home_dir: &str,
-        recently_used: RecentlyUsed,
-    ) -> &mut Self {
+    pub(crate) fn add_recent_db_use_info(&mut self, recently_used: RecentlyUsed) -> &mut Self {
         // First we need to remove any previously added if any
         self.recent_dbs_info
             .retain(|s| s.db_file_path != recently_used.db_file_path);
 
         self.recent_dbs_info.insert(0, recently_used);
         // Write the preference to the file system immediately
-        self.write(app_home_dir);
+        self.write_to_app_dir();
         self
     }
 
-    pub(crate) fn remove_recent_db_use_info(&mut self, full_file_name_uri: &str) {
+    pub(crate) fn remove_recent_db_use_info(
+        &mut self,
+        full_file_name_uri: &str,
+        delete_db_pref: bool,
+    ) {
         self.recent_dbs_info
             .retain(|s| s.db_file_path != full_file_name_uri);
 
+        if delete_db_pref {
+            self.remove_database_preference(full_file_name_uri)
+        } 
+
         // Write the preference to the file system immediately
-        self.write(&AppState::app_home_dir());
+        self.write(&AppState::preference_home_dir());
     }
 
     // pub(crate) fn set_db_open_biometric(&mut self, db_key: &str, enabled: bool) {
@@ -298,6 +325,25 @@ impl Preference {
             .iter()
             .find(|p| p.db_key == db_key)
             .map_or(false, |d| d.db_open_biometric_enabled)
+    }
+
+    pub fn get_recently_used(&self, db_key: &str) -> Option<RecentlyUsed> {
+        self.recent_dbs_info
+            .iter()
+            .find(|r| r.db_file_path == db_key)
+            .map(|r| RecentlyUsed { ..r.clone() })
+    }
+
+    pub fn file_name_in_recently_used(&self, db_key: &str) -> Option<String> {
+        self.find_db_info(db_key).map(|r| r.file_name.clone())
+    }
+
+    pub(crate) fn recent_dbs_info(&self) -> Vec<RecentlyUsed> {
+        self.recent_dbs_info.clone()
+    }
+
+    pub(crate) fn language(&self) -> &str {
+        self.language.as_str()
     }
 
     fn find_db_info(&self, db_key: &str) -> Option<&RecentlyUsed> {

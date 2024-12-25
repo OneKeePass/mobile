@@ -188,8 +188,6 @@
         :title home-page-title}
        info))))
 
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;; opend db events ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -262,10 +260,12 @@
 (reg-event-fx
  :open-database-read-db-file
  (fn [{:keys [db]} [_event-id]]
-   {:db (-> db (assoc-in [:open-database :status] :in-progress))
-    :fx [[:bg-all-entries-on-db-open [(get-in db [:open-database :database-full-file-name])
-                                      (get-in db [:open-database :password])
-                                      (get-in db [:open-database :key-file-name])]]]}))
+   (let [{:keys [database-full-file-name password key-file-name]} (get-in db [:open-database])]
+     {:db (-> db (assoc-in [:open-database :status] :in-progress))
+      :fx [[:bg-all-entries-on-db-open [{:db-key database-full-file-name
+                                         :password password
+                                         :key-file-name key-file-name
+                                         :biometric-auth-used false}]]]})))
 
 (reg-event-fx
  :open-database-read-kdbx-error
@@ -275,8 +275,8 @@
 ;; Backend call to get all entries on openning a databse
 (reg-fx
  :bg-all-entries-on-db-open
- (fn [[db-key password key-file-name]]
-   (bg/all-entries-on-db-open db-key password key-file-name
+ (fn [[{:keys [db-key password key-file-name biometric-auth-used]}]]
+   (bg/all-entries-on-db-open db-key password key-file-name biometric-auth-used
                               (fn [api-response]
                                 (when-let [entry-summaries (on-ok api-response #(dispatch [:open-database-read-kdbx-error %]))]
                                   #_(dispatch [:entry-list/update-selected-entry-items db-key entry-summaries])
@@ -319,7 +319,7 @@
   []
   (subscribe [:search-result-entry-items]))
 
-(defn search-term 
+(defn search-term
   "Gets the search term"
   []
   (subscribe [:search-term]))

@@ -15,9 +15,6 @@
             [onekeepass.mobile.start-page :refer [open-db-dialog]]
             [reagent.core :as r]))
 
-
-
-
 (defn row-item []
   (fn [connection-id parent-dir {:keys [entry-name is-dir]}]
     (let [color @rnc/secondary-color]
@@ -53,7 +50,7 @@
   (fn [{:keys [connection-id]
         {:keys [parent-dir sub-dirs files]} :dir-entries}]
     (let [all-entries-m (combine-entries sub-dirs files)
-          sections  [{:title "All Items" #_(lstr-l "databases")
+          sections  [{:title "allItems" #_(lstr-l "databases")
                       :key "AllItems"
                       :data all-entries-m}]]
       [rn-section-list
