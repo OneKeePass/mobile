@@ -37,6 +37,8 @@
 		F969C3F128D4C8D90020FA62 /* OkpDbService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F969C3EF28D4C8D90020FA62 /* OkpDbService.swift */; };
 		F969C3F228D4C8D90020FA62 /* OkpDbServiceBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = F969C3F028D4C8D90020FA62 /* OkpDbServiceBridge.m */; };
 		F98AB8C42C30E11400F334BE /* Translations in Resources */ = {isa = PBXBuildFile; fileRef = F9C4EFE72BEBFEC200B7214E /* Translations */; };
+		F9A5C9B92D1E2F77001BC9B2 /* XcodeConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9A5C9B82D1E2F72001BC9B2 /* XcodeConfiguration.swift */; };
+		F9A5C9BA2D1E3032001BC9B2 /* XcodeConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9A5C9B82D1E2F72001BC9B2 /* XcodeConfiguration.swift */; };
 		F9AD1B6729B63B6C00BED32A /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9AD1B6629B63B6C00BED32A /* SceneDelegate.swift */; };
 		F9AD1B6B29B78F1200BED32A /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9AD1B6A29B78F1100BED32A /* AppDelegate.swift */; };
 		F9AE2F40290440380013D9AB /* OkpLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9AE2F3E290440380013D9AB /* OkpLogger.swift */; };
@@ -148,6 +150,7 @@
 		F969C3EF28D4C8D90020FA62 /* OkpDbService.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OkpDbService.swift; sourceTree = "<group>"; };
 		F969C3F028D4C8D90020FA62 /* OkpDbServiceBridge.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OkpDbServiceBridge.m; sourceTree = "<group>"; };
 		F969C3F528D4CC570020FA62 /* OneKeePassMobile-Bridging-Header.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "OneKeePassMobile-Bridging-Header.h"; sourceTree = "<group>"; };
+		F9A5C9B82D1E2F72001BC9B2 /* XcodeConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XcodeConfiguration.swift; sourceTree = "<group>"; };
 		F9AD1B6629B63B6C00BED32A /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SceneDelegate.swift; path = OneKeePassMobile/SceneDelegate.swift; sourceTree = "<group>"; };
 		F9AD1B6A29B78F1100BED32A /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = OneKeePassMobile/AppDelegate.swift; sourceTree = "<group>"; };
 		F9AE2F3E290440380013D9AB /* OkpLogger.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OkpLogger.swift; sourceTree = "<group>"; };
@@ -365,6 +368,7 @@
 		F9AE2F3D290440380013D9AB /* Utils */ = {
 			isa = PBXGroup;
 			children = (
+				F9A5C9B82D1E2F72001BC9B2 /* XcodeConfiguration.swift */,
 				F944B9EA2CE135B600AC010E /* SecureEnclaveServiceSupport.swift */,
 				F944B9E42CDE94C100AC010E /* SecureStoreService.swift */,
 				F92CB10228FF7A7500A79F60 /* DbServiceAPI.swift */,
@@ -836,6 +840,7 @@
 				F955AC1D2C2DF41B00D0DFB6 /* ClipboardHelper.swift in Sources */,
 				F9C4D29929AFEC8A00B83DEB /* OkpEventsBridge.m in Sources */,
 				F9E4235929E5F45900A8F366 /* db_service.swift in Sources */,
+				F9A5C9B92D1E2F77001BC9B2 /* XcodeConfiguration.swift in Sources */,
 				F92CB10128FDCBC400A79F60 /* OkpDocumentPickerService.swift in Sources */,
 				F9AE2F41290440380013D9AB /* FileUtils.swift in Sources */,
 			);
@@ -855,6 +860,7 @@
 				F955AC0B2C1C978A00D0DFB6 /* BackendEventDispatcher.swift in Sources */,
 				F955AC102C1C983300D0DFB6 /* OkpDbService.swift in Sources */,
 				F9F81C402C1380A200E1FE8C /* db_service.swift in Sources */,
+				F9A5C9BA2D1E3032001BC9B2 /* XcodeConfiguration.swift in Sources */,
 				F955AC122C1C9B2500D0DFB6 /* OkpDbServiceBridge.m in Sources */,
 				F955AC192C20C42700D0DFB6 /* AutoFillEvents.swift in Sources */,
 				F9F81C5E2C138E6300E1FE8C /* OkpError.swift in Sources */,

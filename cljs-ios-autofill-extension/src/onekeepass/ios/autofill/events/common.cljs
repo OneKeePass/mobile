@@ -3,7 +3,6 @@
   (:require [clojure.string :as str]
             [onekeepass.ios.autofill.background :as bg]
             [onekeepass.ios.autofill.events.common-dialogs]
-            [onekeepass.ios.autofill.utils :as u :refer [str->int tags->vec find-match]]
             [re-frame.core :refer [dispatch dispatch-sync reg-event-db
                                    reg-event-fx reg-fx reg-sub subscribe]]))
 
@@ -53,6 +52,7 @@
   ([api-response]
    (on-ok api-response nil)))
 
+;; :current-db-file-name is set in :entry-list/update-selected-entry-items
 (defn active-db-key
   "Returns the current database key 'db-key'"
   ;; To be called only in react components as it used 'subscribe' (i.e in React context)
@@ -62,6 +62,19 @@
   ([app-db]
    (:current-db-file-name app-db)))
 
+(defn all-autofill-db-files-info
+  "Returns a vec of maps  (the map is from struct CopiedDbFileInfo) or an empty vec
+ "
+  ([app-db]
+   (let [r (get-in app-db [:autofill-db-files-info])]
+     (if (nil? r) [] r))))
+
+(defn org-db-file-path
+  "Gets the full original db key for the selected db's db-key (which comes from :current-db-file-name)"
+  [app-db db-key]
+  (let [infos (all-autofill-db-files-info app-db)
+        info (first (filter (fn [info] (= (:db-file-path info) db-key)) infos))]
+    (:org-db-file-path info)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -84,7 +97,8 @@
  :autofill-db-files-info-loaded
  (fn [{:keys [db]} [_event-id files-info]]
    {:db (-> db (assoc-in [:autofill-db-files-info] files-info))
-    :fx [[:bg-list-key-files]]}))
+    :fx [[:bg-load-database-preferences]
+         [:bg-list-key-files]]}))
 
 (reg-fx
  :bg-list-app-group-db-files
@@ -126,6 +140,39 @@
    (:current-db-file-name db)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+
+(defn database-preferences
+  "Returns a vec of maps  (the map is from struct DatabasePreference) or an empty vec
+ "
+  ([app-db]
+   (let [r (get-in app-db [:app-preference :data :database-preferences])]
+     (if (nil? r) [] r))))
+
+
+(defn database-preference-by-db-key
+  "Gets the database preference ( a map ) for a given db-key from the vec or the default DatabasePreference"
+  [app-db db-key]
+  (let [org-db-key (org-db-file-path app-db db-key)
+        db-prefs (database-preferences app-db)
+        db-p (first (filter (fn [db-pref] (= (:db-key db-pref) org-db-key)) db-prefs))]
+    (if (empty? db-p) {:db-key org-db-key
+                       :db-open-biometric-enabled false
+                       :db-unlock-biometric-enabled true}  db-p)))
+
+(reg-fx
+ :bg-load-database-preferences
+ (fn []
+   (bg/database-preferences (fn [api-response]
+                              (when-let [db-prefs (on-ok api-response #())]
+                                (dispatch [:database-preferences-loaded db-prefs]))))))
+
+(reg-event-fx
+ :database-preferences-loaded
+ (fn [{:keys [db]} [_event-id db-prefs]]
+   {:db (-> db (assoc-in [:app-preference :data :database-preferences] db-prefs))}))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 (defn cancel-extension []
@@ -188,125 +235,7 @@
         :title home-page-title}
        info))))
 
-;;;;;;;;;;;;;;;;;;;;;;;; opend db events ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-(defn show-login [file-name full-file-name-uri]
-  (dispatch [:open-database/database-file-picked {:file-name file-name :full-file-name-uri full-file-name-uri}]))
-
-(defn database-field-update [kw-field-name value]
-  (dispatch [:open-database-field-update kw-field-name value]))
-
-(defn open-database-read-db-file
-  "Called when user clicks the continue button. By this time user would have picked a file to open in the 
-  previous pick file call
-  "
-  []
-  (dispatch [:open-database-read-db-file]))
-
-(defn cancel-login []
-  (to-previous-page))
-
-(defn login-page-data []
-  (subscribe [:open-database-login-data]))
-
-(def blank-open-db  {:dialog-show false
-                     :password-visible false
-                     :error-fields {}
-                     ;; database-file-name is just the 'file name' part derived from full 
-                     ;; uri 'database-full-file-name' to show in the dialog
-                     :database-file-name nil
-                     :key-file-name-part nil
-
-                     :status nil
-                     ;; For read/load kdbx args
-                     :database-full-file-name nil
-                     :password nil
-                     :key-file-name nil})
-
-(defn- init-open-database-data
-  "Initializes all open db related values in the incoming main app db 
-  and returns the updated main app db
-  "
-  [db]
-  (assoc-in db [:open-database] blank-open-db))
-
-(reg-event-db
- :open-database-field-update
- (fn [db [_event-id kw-field-name value]] ;; kw-field-name is single kw or a vec of kws
-   (-> db
-       (assoc-in (into [:open-database]
-                       (if (vector? kw-field-name)
-                         kw-field-name
-                         [kw-field-name])) value)
-       ;; Hide any previous api-error-text
-       #_(assoc-in [:open-database :api-error-text] nil))))
-
-
-;; Shows the login page
-(reg-event-fx
- :open-database/database-file-picked
- (fn [{:keys [db]} [_event-id {:keys [file-name full-file-name-uri]}]]
-   {:db (-> db init-open-database-data
-            ;; database-file-name is just the 'file name' part derived from full uri 'database-full-file-name'
-            ;; to show in the dialog
-            (assoc-in [:open-database :database-file-name] file-name)
-            (assoc-in [:open-database :database-full-file-name] full-file-name-uri)
-            (assoc-in [:open-database :dialog-show] true))
-
-    :fx [[:dispatch [:common/next-page LOGIN_PAGE_ID "Unlock Database"]]]}))
-
-
-(reg-event-fx
- :open-database-read-db-file
- (fn [{:keys [db]} [_event-id]]
-   (let [{:keys [database-full-file-name password key-file-name]} (get-in db [:open-database])]
-     {:db (-> db (assoc-in [:open-database :status] :in-progress))
-      :fx [[:bg-all-entries-on-db-open [{:db-key database-full-file-name
-                                         :password password
-                                         :key-file-name key-file-name
-                                         :biometric-auth-used false}]]]})))
-
-(reg-event-fx
- :open-database-read-kdbx-error
- (fn [{:keys [_db]} [_event-id error]]
-   {:fx [[:dispatch [:common/error-box-show "Database Open Error" error]]]}))
-
-;; Backend call to get all entries on openning a databse
-(reg-fx
- :bg-all-entries-on-db-open
- (fn [[{:keys [db-key password key-file-name biometric-auth-used]}]]
-   (bg/all-entries-on-db-open db-key password key-file-name biometric-auth-used
-                              (fn [api-response]
-                                (when-let [entry-summaries (on-ok api-response #(dispatch [:open-database-read-kdbx-error %]))]
-                                  #_(dispatch [:entry-list/update-selected-entry-items db-key entry-summaries])
-                                  (dispatch [:all-entries-loaded db-key entry-summaries]))))))
-
-;; Called after retreiving all entries for the opened database
-(reg-event-fx
- :all-entries-loaded
- (fn [{:keys [_db]} [_event-id db-key entry-summaries]]
-   {:fx [[:dispatch [:entry-list/update-selected-entry-items db-key entry-summaries]]
-         [:bg-credential-service-identifier-filtering [db-key]]]}))
-
-;; Called to load any matching entries based on ios autofill credential identifiers 
-;; This is called after loading all entries summary - see the above event
-(reg-fx
- :bg-credential-service-identifier-filtering
- (fn [[db-key]]
-   (bg/credential-service-identifier-filtering
-    db-key
-    (fn [api-response]
-      (when-let [result (on-ok api-response)]
-        (dispatch [:search-term-completed result]))))))
-
-(reg-sub
- :open-database-login-data
- (fn [db _query-vec]
-   (get-in db [:open-database])))
-
 ;;;;;;;;;;;;;;;;;;;; Search  ;;;;;;;;;;;;;;
-
 
 #_(defn show-selected-entry [entry-id]
     (dispatch [:entry-form/find-entry-by-id entry-id]))
@@ -338,10 +267,9 @@
      {:db (-> db
               (assoc-in  [:search :result] (:entry-items result))
               (assoc-in  [:search :term] (:term result))
-              (assoc-in [:search :selected-entry-id] nil)
+              (assoc-in  [:search :selected-entry-id] nil)
               (assoc-in  [:search :error-text] nil)
               (assoc-in  [:search :not-matched] not-matched))})))
-
 
 (reg-event-db
  :search-term-clear
@@ -350,7 +278,6 @@
        (assoc-in  [:search :error-text] nil)
        (assoc-in [:search :selected-entry-id] nil)
        (assoc-in  [:search :result] []))))
-
 
 ;; Backend API call 
 (reg-fx
@@ -361,7 +288,6 @@
                    (fn [api-response]
                      (when-let [result (on-ok api-response #(dispatch [:search-error-text %]))]
                        (dispatch [:search-term-completed result]))))))
-
 
 ;; Gets the matched entry items if any
 (reg-sub
@@ -404,7 +330,6 @@
 
 (defn message-snackbar-data []
   (subscribe [:message-snackbar-data]))
-
 
 ;;;;;;;;;;;;;;;;;;; Loading translation data related ;;;;;;;;;;;;
 

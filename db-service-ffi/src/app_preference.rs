@@ -63,7 +63,7 @@ pub struct Preference2 {
 
 // Database specific preferences
 #[derive(Clone, Serialize, Deserialize, Debug)]
-struct DatabasePreference {
+pub(crate) struct DatabasePreference {
     db_key: String,
     db_open_biometric_enabled: bool,
     db_unlock_biometric_enabled: bool,
@@ -325,6 +325,10 @@ impl Preference {
             .iter()
             .find(|p| p.db_key == db_key)
             .map_or(false, |d| d.db_open_biometric_enabled)
+    }
+
+    pub fn database_preferences(&self,) -> &Vec<DatabasePreference> {
+        &self.database_preferences
     }
 
     pub fn get_recently_used(&self, db_key: &str) -> Option<RecentlyUsed> {

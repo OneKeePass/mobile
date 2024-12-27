@@ -191,6 +191,9 @@
 (defn list-key-files [dispatch-fn]
   (autofill-invoke-api "list_of_key_files" {} dispatch-fn))
 
+(defn database-preferences [dispatch-fn]
+  (autofill-invoke-api "database_preferences" {} dispatch-fn))
+
 #_(defn read-kdbx-from-app-group
     "Calls the API to read a kdbx file.
    Calls the dispatch-fn with the received map of type 'KdbxLoaded' 
@@ -212,6 +215,14 @@
 
 (defn stored-db-credentials-on-biometric-authentication [db-key dispatch-fn]
   (invoke-api "stored_db_credentials" {:db-key db-key} dispatch-fn))
+
+(defn authenticate-with-biometric
+  "Called to authenticate the previously locked database. 
+  There is no db specific biometric authentication settings or control. If the device supports
+  the biometric, then that feature is used for any locked database to unlock
+  "
+  [dispatch-fn]
+  (call-api-async (fn [] (.authenticateWithBiometric okp-db-service)) dispatch-fn))
 
 (defn credential-service-identifier-filtering
   "Prepares search term based on the domain or url passed by iOS on autofill launch and uses that term
@@ -258,7 +269,6 @@
 
 (defn find-entry-by-id [db-key entry-uuid dispatch-fn]
   (invoke-api "get_entry_form_data_by_id" {:db_key db-key :uuid entry-uuid} dispatch-fn :convert-response-fn transform-response-entry-form-data))
-
 
 (defn start-polling-entry-otp-fields [db-key entry-uuid otp-fields dispatch-fn]
   ;; otp-fields is a map where keys are otp field names and values are a map with keys [ttl period]

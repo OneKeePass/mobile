@@ -175,7 +175,9 @@
 (reg-fx
  :bg-authenticate-with-biometric-before-db-open
  (fn [[{:keys [full-file-name-uri] :as kdbx-file-info-m}]]
-   (let [cr-response-handler (partial handle-db-credentials-response kdbx-file-info-m)]
+   (let [;; Need to use 'partial' to create a backend call response handler 
+         ;; that holds 'kdbx-file-info-m' for later use 
+         cr-response-handler (partial handle-db-credentials-response kdbx-file-info-m)]
 
      (bg/authenticate-with-biometric
       (fn [api-response]
@@ -197,7 +199,7 @@
    {:fx [[:dispatch [:open-database/database-file-picked kdbx-file-info-m]]
          [:dispatch [:common/error-box-show "Database Open" "Please enter the credentials"]]]}))
 
-;; Called after getting the stored credentials from secure enclave
+;; Called after getting the stored credentials ( a map from struct StoredCredential ) from secure enclave
 (reg-event-fx
  :open-database-db-open-credentials-retrieved
  (fn [{:keys [_db]} [_event-id {:keys [password key-file-name]} {:keys [full-file-name-uri] :as kdbx-file-info-m}]]

@@ -11,7 +11,9 @@ use std::{
 use onekeepass_core::db_service as kp_service;
 
 use crate::{
-    app_preference::{Preference, PreferenceData, RecentlyUsed, PREFERENCE_JSON_FILE_NAME},
+    app_preference::{
+        DatabasePreference, Preference, PreferenceData, RecentlyUsed, PREFERENCE_JSON_FILE_NAME,
+    },
     remote_storage,
     udl_types::SecureKeyOperation,
     udl_uniffi_exports::{CommonDeviceServiceEx, SecureEnclaveCbService},
@@ -359,11 +361,21 @@ impl AppState {
             .to_string()
     }
 
+    #[inline]
+    pub fn database_preferences() -> Vec<DatabasePreference> {
+        Self::shared()
+            .preference
+            .lock()
+            .unwrap()
+            .database_preferences()
+            .clone()
+    }
+
     // Removes this db related info from recent db info list and also removes this db preference
     #[inline]
-    pub fn remove_recent_db_use_info(db_key: &str,delete_db_pref:bool) {
+    pub fn remove_recent_db_use_info(db_key: &str, delete_db_pref: bool) {
         let mut pref = Self::shared().preference.lock().unwrap();
-        pref.remove_recent_db_use_info(db_key,delete_db_pref);
+        pref.remove_recent_db_use_info(db_key, delete_db_pref);
     }
 
     #[inline]

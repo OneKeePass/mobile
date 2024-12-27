@@ -7,6 +7,7 @@
             [onekeepass.ios.autofill.entry-form :as entry-form]
             [onekeepass.ios.autofill.entry-list :as entry-list]
             [onekeepass.ios.autofill.events.common :as cmn-events]
+            [onekeepass.ios.autofill.events.open-database :as opndb-events]
             [onekeepass.ios.autofill.events.entry-form :as form-events]
             [onekeepass.ios.autofill.rn-components :as rnc
              :refer [appbar-text-color dots-icon-name page-title-text-variant
@@ -26,7 +27,7 @@
                 _database-full-file-name
                 password
                 password-visible
-                key-file-name-part]} @(cmn-events/login-page-data)
+                key-file-name-part]} @(opndb-events/login-page-data)
         key-files-info @(cmn-events/key-files-info)
 
         names (mapv (fn [{:keys [full-key-file-path file-name]}]
@@ -34,8 +35,8 @@
 
         on-change (fn [^js/SelOption option]
                     ;; option is the selected member from the names list passed as :options  
-                    (cmn-events/database-field-update :key-file-name (.-key option))
-                    (cmn-events/database-field-update :key-file-name-part (.-label option)))]
+                    (opndb-events/database-field-update :key-file-name (.-key option))
+                    (opndb-events/database-field-update :key-file-name-part (.-label option)))]
     [rn-view {:style {:flex 1
                       :flexDirection "column"
                       :width "90%"
@@ -56,11 +57,11 @@
                       :right (r/as-element
                               [rnp-text-input-icon
                                {:icon (if password-visible "eye" "eye-off")
-                                :onPress #(cmn-events/database-field-update :password-visible (not password-visible))}])
+                                :onPress #(opndb-events/database-field-update :password-visible (not password-visible))}])
                       :onChangeText (fn [v]
                                                ;; After entering some charaters and delete is used to remove those charaters
                                                ;; password will have a string value "" resulting in a non visible password. Need to use nil instead
-                                      (cmn-events/database-field-update :password (if (empty? v) nil v)))}]
+                                      (opndb-events/database-field-update :password (if (empty? v) nil v)))}]
 
 
      [rn-view {}
@@ -71,13 +72,13 @@
 
      [rn-view {:flexDirection FLEX-DIR-ROW :style {:margin-top 20 :justify-content "center"}}
       [rnp-button {:mode "text"
-                   :onPress  cmn-events/cancel-login}
+                   :onPress  opndb-events/cancel-login}
        (lstr-bl 'back)]
       [rnp-button {:mode "text"
                    :onPress (fn []
                               (.dismiss rn-keyboard)
                                 ;;^js/RNKeyboard (.dismiss rn-keyboard)
-                              (cmn-events/open-database-read-db-file))}
+                              (opndb-events/open-database-read-db-file))}
        (lstr-bl 'continue)]]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -123,7 +124,7 @@
           locked? false
           [icon-name color] (icon-name-color found locked?)]
       [rnp-list-item {:style {}
-                      :onPress #(cmn-events/show-login file-name db-file-path)
+                      :onPress #(opndb-events/show-login file-name db-file-path)
                       :title (r/as-element
                               [rnp-text {:style {:color color}
                                          :variant (if found "titleMedium" "titleSmall")} file-name])

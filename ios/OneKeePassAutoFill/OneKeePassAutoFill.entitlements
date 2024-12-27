@@ -8,5 +8,9 @@
 	<array>
 		<string>group.com.onekeepass.afshared</string>
 	</array>
+  <key>keychain-access-groups</key>
+  <array>
+    <string>$(AppIdentifierPrefix)com.onekeepass.SharedItems</string>
+  </array>
 </dict>
 </plist>

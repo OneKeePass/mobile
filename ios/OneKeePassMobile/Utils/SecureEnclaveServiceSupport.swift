@@ -6,6 +6,9 @@
 //
 
 class SecureEnclaveServiceSupport: SecureEnclaveCbService {
+  
+  static var okpAccessGroup = getOkpKeychainAccessGroup()
+  
   let logger = OkpLogger(tag: "SecureEnclaveServiceSupport")
   
   private let ALOGRITHM = SecKeyAlgorithm.eciesEncryptionStandardVariableIVX963SHA256AESGCM
@@ -145,6 +148,8 @@ class SecureEnclaveServiceSupport: SecureEnclaveCbService {
         kSecAttrEffectiveKeySize: 256,
         kSecAttrApplicationLabel: SECURE_STORE_LABEL_AS_DATA,
         kSecAttrTokenID: kSecAttrTokenIDSecureEnclave,
+        // Need this for the shared keychain items
+        kSecAttrAccessGroup: Self.okpAccessGroup,
         kSecPrivateKeyAttrs as String:
           [kSecAttrIsPermanent as String: true,
            kSecAttrAccessControl: accessControl,
@@ -162,10 +167,25 @@ class SecureEnclaveServiceSupport: SecureEnclaveCbService {
                                kSecAttrEffectiveKeySize: 256,
                                kSecAttrApplicationTag: Data(identifier.utf8),
                                kSecMatchLimit: kSecMatchLimitOne,
+                               // Need this for the shared keychain items
+                               kSecAttrAccessGroup: Self.okpAccessGroup,
                                kSecReturnRef: true] as CFDictionary
     
     return query
   }
+  
+  
+  static func getOkpKeychainAccessGroup() -> String {
+    
+    let v = XcodeConfiguration.developmentTeam
+    // Prefixes the Team ID
+    // See https://developer.apple.com/documentation/security/sharing-access-to-keychain-items-among-a-collection-of-apps
+    // keychain-access-groups has the value $(AppIdentifierPrefix)com.onekeepass.SharedItems in 'OneKeePassMobile.entitlements'
+    // and in 'OneKeePassAutoFill.entitlements'
+    let fullAccssGroupName = "\(v).com.onekeepass.SharedItems"
+    return  fullAccssGroupName
+  }
+  
 }
 
 /*

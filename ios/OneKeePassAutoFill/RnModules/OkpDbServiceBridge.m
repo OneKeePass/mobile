@@ -20,5 +20,7 @@ RCT_EXTERN_METHOD(cancelExtension:(RCTPromiseResolveBlock)resolve reject:(RCTPro
 
 RCT_EXTERN_METHOD(credentialSelected:(NSString *)user password:(NSString *)password resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 
+RCT_EXTERN_METHOD(authenticateWithBiometric:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+
 @end
 

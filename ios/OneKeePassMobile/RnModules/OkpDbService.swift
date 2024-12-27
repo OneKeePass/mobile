@@ -334,6 +334,9 @@ class OkpDbService: NSObject {
     DbServiceAPI.iosSupportService().deleteBookMarkData(keyFileUrl!.absoluteString)
   }
   
+  
+  // TDODO: Need to move authenticateWithBiometric and getAuthenticationErrorDescription to a common class and share between app and autofill
+  
   @objc
   func authenticateWithBiometric(_ resolve: @escaping RCTPromiseResolveBlock,
                                  reject _: @escaping RCTPromiseRejectBlock)
