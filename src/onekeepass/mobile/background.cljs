@@ -1,24 +1,21 @@
 (ns onekeepass.mobile.background
   "All backend api calls that are used across many events"
   (:require
-   [react-native :as rn]
    ["@react-native-clipboard/clipboard" :as rnc-clipboard]
    ["react-native-file-viewer" :as native-file-viewer]
    ["react-native-vision-camera" :as rn-vision-camera]
-   [cljs.core.async :refer [go]]
-   [cljs.core.async.interop :refer-macros [<p!]]
-   [camel-snake-kebab.extras :as cske]
    [camel-snake-kebab.core :as csk]
-
-   [onekeepass.mobile.utils :as u :refer [contains-val?]]
-   [onekeepass.mobile.background-remote-server :as bg-rs]
-   [onekeepass.mobile.background-common :as bg-cmn :refer [api-args->json
+   [camel-snake-kebab.extras :as cske]
+   [onekeepass.mobile.background-common :as bg-cmn :refer [android-invoke-api
+                                                           api-args->json
                                                            call-api-async
                                                            invoke-api
                                                            ios-autofill-invoke-api
-                                                           android-invoke-api
-                                                           ios-invoke-api
-                                                           is-rs-type]]))
+                                                           is-rs-type
+                                                           new-db-request-argon2key-transformer]]
+   [onekeepass.mobile.background-remote-server :as bg-rs]
+   [onekeepass.mobile.utils :as u :refer [contains-val?]]
+   [react-native :as rn]))
 
 (set! *warn-on-infer* true)
 
@@ -126,15 +123,6 @@
                   dispatch-fn
                   :error-transform true))
 
-(defn- request-argon2key-transformer
-  "A custom transformer that transforms a map that has ':Argon2' key "
-  [new-db]
-  (let [t (fn [k] (if (= k :Argon2)
-                    ;;retains the key as :Argon2 instead of :argon-2
-                    :Argon2
-                    (csk/->snake_case k)))]
-    (cske/transform-keys t new-db)))
-
 ;; This is used specifically in iOS. Here the call sequence - pickAndSaveNewKdbxFile,readKdbx - is used
 ;; This works for Local,iCloud. But the cases of GDrive, OneDrive, the new database files are created
 ;; But we get 'COORDINATOR_CALL_FAILED' error 'Couldn’t communicate with a helper application'
@@ -148,8 +136,9 @@
   (call-api-async (fn [] (.pickAndSaveNewKdbxFile
                           okp-document-pick-service file-name
                           ;; Explicit conversion of the api args to json here
-                          (api-args->json
-                           {:new_db (request-argon2key-transformer new-db)}
+                          ;; Note the use of ':new_db' 
+                          (api-args->json 
+                           {:new_db (new-db-request-argon2key-transformer new-db)}
                            :convert-request false)))
                   ;; This dipatch function receives a map with keys [file-name full-file-name-uri] as ':ok' value
                   dispatch-fn
@@ -329,11 +318,17 @@
    and new db related info in a map
    Used only in case of Android. See comments in pick-document-to-create and pick-and-save-new-kdbxFile
    "
-  [full-file-name new-db dispatch-fn]
-  (call-api-async (fn [] (.createKdbx okp-db-service full-file-name
-                                       ;; Note the use of snake_case for all keys and false as convert-request value
-                                      (api-args->json {:new_db (request-argon2key-transformer new-db)} :convert-request false)))
-                  dispatch-fn :error-transform true))
+  [full-file-name new-db dispatch-fn] 
+  (if-not (is-rs-type full-file-name)
+    (call-api-async (fn [] 
+                      (.createKdbx 
+                       okp-db-service 
+                       full-file-name
+                       ;; Note the use of snake_case for all keys and false as convert-request value
+                       (api-args->json {:new_db (new-db-request-argon2key-transformer new-db)} :convert-request false)))
+                    dispatch-fn :error-transform true)
+
+    (bg-rs/create-kdbx new-db dispatch-fn)))
 
 ;; Used to get any uri that may be avaiable to open when user starts our app by pressing 
 ;; a db file with extension .kdbx. 

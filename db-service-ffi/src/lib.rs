@@ -83,62 +83,6 @@ pub fn open_backup_file(backup_file_path: Option<&String>) -> Option<File> {
     }
 }
 
-// struct OpenedFile {
-//     file: File,
-//     file_name: String,
-//     full_file_name: String,
-// }
-
-// impl OpenedFile {
-//     fn open_to_read(file_args: &FileArgs) -> OkpResult<OpenedFile> {
-//         Self::open(file_args, false)
-//     }
-
-//     fn open_to_create(file_args: &FileArgs) -> OkpResult<OpenedFile> {
-//         Self::open(file_args, true)
-//     }
-
-//     // Only for iOS, create flag is relevant as file read,write or create is set in Kotlin layer for android
-//     fn open(file_args: &FileArgs, create: bool) -> OkpResult<OpenedFile> {
-//         let (file, file_name, full_file_name) = match file_args {
-//             // For Android
-//             FileArgs::FileDecriptorWithFullFileName {
-//                 fd,
-//                 file_name,
-//                 full_file_name,
-//             } => (
-//                 unsafe { util::get_file_from_fd(*fd) },
-//                 file_name.clone(),
-//                 full_file_name.clone(),
-//             ),
-//             // For iOS
-//             FileArgs::FullFileName { full_file_name } => {
-//                 let name = AppState::shared().uri_to_file_name(&full_file_name);
-//                 let ux_file_path = util::url_to_unix_file_name(&full_file_name);
-
-//                 let file = if create {
-//                     full_path_file_to_create(&full_file_name)?
-//                 } else {
-//                     File::open(ux_file_path)?
-//                 };
-
-//                 (file, name.clone(), full_file_name.clone())
-//             }
-//             _ => {
-//                 return Err(OkpError::UnexpectedError(
-//                     "Unsupported file args passed".into(),
-//                 ))
-//             }
-//         };
-//         let r = OpenedFile {
-//             file,
-//             file_name,
-//             full_file_name,
-//         };
-
-//         Ok(r)
-//     }
-// }
 
 // Does not work if we use From<OkpResult<T:Serialize>> as discussed in  https://github.com/rust-lang/rust/issues/52662
 // impl<T> From<OkpResult<T:Serialize>> for ApiResponse {
@@ -188,7 +132,10 @@ fn create_temp_kdbx(file_args: FileArgs, json_args: String) -> ApiResponse {
             full_file_name_uri = full_file_name.clone();
             match full_path_file_to_create(&full_file_name) {
                 Ok(f) => f,
-                Err(e) => return_api_response_failure!(e),
+                Err(e) => {
+                    log::debug!("full_path_file_to_create failed with error {:?}", &e);
+                    return_api_response_failure!(e)
+                },
             }
         }
         _ => {

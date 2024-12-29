@@ -65,6 +65,14 @@
       ;; fn itself
       (->>  api-args clj->js  (.stringify js/JSON)))))
 
+(defn new-db-request-argon2key-transformer
+  "A custom transformer that transforms a map that has ':Argon2' key "
+  [new-db]
+  (let [t (fn [k] (if (= k :Argon2)
+                    ;;retains the key as :Argon2 instead of :argon-2
+                    :Argon2
+                    (csk/->snake_case k)))]
+    (cske/transform-keys t new-db)))
 
 (defn transform-response-excluding-keys
   "Called to transform the keys recursively in all maps found in the json response except those 

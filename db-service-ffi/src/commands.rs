@@ -597,6 +597,8 @@ impl Commands {
 
             "rs_save_kdbx" => crate::remote_storage::rs_save_kdbx(&args),
 
+            "rs_create_kdbx" => crate::remote_storage::rs_create_kdbx(&args),
+
             "rs_read_configs" => result_json_str(read_configs()),
 
             "rs_delete_config" => {
@@ -1067,6 +1069,21 @@ pub fn full_path_file_to_create(full_file_name: &str) -> db_service::Result<File
         "Creating file object for full file path  {:?} with read,write and create permissions",
         full_file_path
     );
+
+    // let p = Path::new(&full_file_path);
+    // log::debug!(".. full_file_path {:?} exists {} ",&p,p.exists());
+    // log::debug!("Deleting temp file {:?}", std::fs::remove_file(&p));
+
+    // Sometimes in iOS Simulator, the 'OpenOptions' call failed (called from create_temp_kdbx) 
+    // for some file names with the following error  
+    
+    // Io(Os { code: 17, kind: AlreadyExists, message: "File exists" })
+    
+    // e.g While checking simulator 'tmp' dir, found a file Test45.kdbx and but when full_file_name file ends in 'test45.kdbx'
+    // the error happend and not when ends in 'Test45.kdbx'
+
+    // Not sure this will happen often; Need to watch out this hapepening on devices
+    
     // IMPORTANT: We need to create a file using OpenOptions so that the file is opened for read and write
     let file = OpenOptions::new()
         .read(true)

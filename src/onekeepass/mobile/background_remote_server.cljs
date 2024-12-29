@@ -1,8 +1,8 @@
 (ns onekeepass.mobile.background-remote-server
   (:require
-   [react-native :as rn]
-   [onekeepass.mobile.constants :as const]
-   [onekeepass.mobile.background-common :refer [invoke-api]]))
+   [onekeepass.mobile.background-common :refer [invoke-api
+                                                new-db-request-argon2key-transformer]]
+   [onekeepass.mobile.constants :as const]))
 
 (set! *warn-on-infer* true)
 
@@ -63,14 +63,26 @@
                                                      :parent-dir parent-dir
                                                      :sub-dir sub-dir}} dispatch-fn))
 
-(defn read-kdbx [db-file-name password key-file-name biometric-auth-used dispatch-fn] 
+(defn read-kdbx
+  "The connection-id, file path etc are parsed from the 'db-file-name'"
+  [db-file-name password key-file-name biometric-auth-used dispatch-fn]
   (invoke-api "rs_read_kdbx"  {:db-file-name db-file-name
                                :password  password
                                :key-file-name key-file-name
                                :biometric-auth-used biometric-auth-used} dispatch-fn))
 
-(defn save-kdbx [full-file-name overwrite dispatch-fn]
+(defn save-kdbx
+  "The connection-id, file path etc are parsed from the 'db-key'"
+  [full-file-name overwrite dispatch-fn]
   (invoke-api "rs_save_kdbx" {:db-key full-file-name :overwrite overwrite} dispatch-fn))
+
+(defn create-kdbx
+  "Creates a new db and writes to the remote storage location
+   The connection-id, file path etc are parsed using the field new_db.database_file_name 
+   which has the formed 'db-key'
+   "
+  [new-db dispatch-fn] 
+  (invoke-api "rs_create_kdbx" {:new_db (new-db-request-argon2key-transformer new-db)} dispatch-fn :convert-request false))
 
 ;; This is mainly to load the content of root dir using the connection-id
 #_(defn list-dir

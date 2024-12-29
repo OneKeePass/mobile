@@ -10,12 +10,12 @@
    [onekeepass.mobile.rn-components
     :as rnc
     :refer [appbar-text-color dots-icon-name page-title-text-variant
-            rn-safe-area-view rn-section-list rn-view rnp-button
-            rnp-divider rnp-icon-button rnp-list-icon rnp-list-item
-            rnp-menu rnp-menu-item rnp-portal rnp-text]]
-   [onekeepass.mobile.translation :refer [lstr-bl lstr-l lstr-ml lstr-pt]]
+            rn-safe-area-view rn-section-list rn-view rnp-button rnp-divider
+            rnp-icon-button rnp-list-icon rnp-list-item rnp-menu rnp-menu-item
+            rnp-portal rnp-text]]
+   [onekeepass.mobile.translation :refer [lstr-bl lstr-dlg-text lstr-dlg-title
+                                          lstr-ml lstr-pt]]
    [reagent.core :as r]))
-
 
 (defn appbar-title []
   [rn-view {:flexDirection "row"
@@ -51,8 +51,8 @@
 (defn delete-config-confirm-dialog []
   (let [{:keys [dialog-show connection-id]} @conn-del-confirm-dialog-data]
     [confirm-dialog {:dialog-show dialog-show
-                     :title "Delete remote connection"
-                     :confirm-text "Do you want to delete this connection permanently?"
+                     :title (lstr-dlg-title 'deleteRemoteConnection)
+                     :confirm-text (lstr-dlg-text 'deleteRemoteConnection)
                      :actions [{:label (lstr-bl "yes")
                                 :on-press (fn []
                                             (rs-events/remote-storage-delete-selected-config connection-id)
@@ -114,7 +114,6 @@
                                               :style {:margin -10}
                                               :icon dots-icon-name
                                               :onPress #(show-list-menu % connection-id)}]]))}])))
-
 
 (defn connections-list-content []
   (fn [connections]

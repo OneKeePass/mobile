@@ -154,6 +154,7 @@
             "deleteField": "Delete field",
             "deleteHistoryEntry": "Delete history entry",
             "deleteOtp": "Deleting one time password",
+            "deleteRemoteConnection":"Delete remote connection",
             "fileInfo": "File Info",
             "modifySectionField": "Modify field in {{sectionName}}",
             "modifySectionName": "Modify section name",
@@ -184,6 +185,7 @@
             "deleteField": "Are you sure you want to delete this field permanently?",
             "deleteHistoryEntry": "Are you sure you want to delete this history entry permanently?",
             "deleteOtp": "Are you sure you want to delete this permanently?",
+            "deleteRemoteConnection":"Do you want to delete this connection permanently?",
             "putBack": "Please select a parent group",
             "restoreHistoryEntry": "Are you sure you want to restore the entry from this history entry?",
             "remove": "All references to the database by the app will be removed. The original database is not deleted and can be opened later",
@@ -196,6 +198,7 @@
     "errorDialog": {
         "titles": {
             "apiError": "API Call Error",
+            "biometricDbOpenFirstTime":"Database Open",
             "filePickError": "File Pick Error",
             "keyFileSavingCancelled": "Key file saving cancelled",
             "missingFields": "Missing Fields",
@@ -205,6 +208,7 @@
             "uploadStatus": "Upload status"
         },
         "texts": {
+            "biometricDbOpenFirstTime": "Please enter the credentials",
             "noScanning": "Please enter the secret code instead of scanning QR code",
             "restricted": "Please enter the secret code instead of scanning QR code",
             "scannedUrlNotOtpUri":"The scanned url is not an otp type url",
@@ -213,10 +217,14 @@
     },
     "messageDialog": {
         "titles": {
-            "noCamera": "No Camera"
+            "biometricDbOpenEnabled":"Attention",
+            "noCamera": "No Camera",
+            "dbReadOnly":"Read Only"
         },
         "texts": {
-            "noCamera": "No camera is found. Please enter the secret code manually"
+            "biometricDbOpenEnabled": "You need to login again for this change to take effect",
+            "noCamera": "No camera is found. Please enter the secret code manually",
+            "dbReadOnly":"Database is opened in read only mode as there is no connection to the server"
         }
     },
     "modalDialog": {
@@ -270,7 +278,6 @@
         "category": "Category",
         "databaseAccess":"Database Access",
         "databaseSettings":"Database Settings",
-        "dirEntries":"Dir Entries",
         "entry": "Entry",
         "generator": "Generator",
         "group": "Group",
@@ -288,6 +295,7 @@
         "selectConnection": "Select Connection",
         "settings": "Settings",
         "sftp":"SFTP",
+        "storageBrowser":"Storage Browser",
         "webdav":"WebDAV"
     },
     "buttonLabels": {
@@ -314,6 +322,7 @@
         "refresh":"Refresh",
         "removePassword": "Remove password",
         "select": "Select",
+        "selectFolder":"Select this folder",
         "sftp": "SFTP",
         "save": "Save",
         "scanQRcode": "Scan QR Code",

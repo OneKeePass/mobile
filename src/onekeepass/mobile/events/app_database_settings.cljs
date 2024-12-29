@@ -44,8 +44,10 @@
       ;; Call backend to update  
       :fx [[:app-settings/bg-update-preference [{:database_preference db-pref}
                                                 ;; on success, this fn is called
-                                                (fn [_m] 
-                                                  (dispatch [:common/message-snackbar-open 'updatedSettings ]))]]]})))
+                                                (fn [_m]
+                                                  (when (and (= kw  :db-open-biometric-enabled) value)
+                                                    (dispatch [:common/message-box-show 'biometricDbOpenEnabled 'biometricDbOpenEnabled]))
+                                                  (dispatch [:common/message-snackbar-open 'updatedSettings]))]]]})))
 
 ;; Gets the DatabasePreference for the current opened database
 ;; Should be called when a database is opened

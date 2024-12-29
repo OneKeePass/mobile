@@ -197,7 +197,7 @@
  :open-database-db-open-with-credentials
  (fn [{:keys [_db]} [_event-id kdbx-file-info-m]]
    {:fx [[:dispatch [:open-database/database-file-picked kdbx-file-info-m]]
-         [:dispatch [:common/error-box-show "Database Open" "Please enter the credentials"]]]}))
+         [:dispatch [:common/error-box-show 'biometricDbOpenFirstTime 'biometricDbOpenFirstTime ]]]}))
 
 ;; Called after getting the stored credentials ( a map from struct StoredCredential ) from secure enclave
 (reg-event-fx

@@ -4,9 +4,14 @@
    [camel-snake-kebab.core :as csk]
    [clojure.string :as str]
    [onekeepass.mobile.constants :as const]
+   [onekeepass.mobile.utils :as u]
    [onekeepass.mobile.events.common :as cmn-events :refer [on-ok on-error]]
    [onekeepass.mobile.background-remote-server :as bg-rs]
    [onekeepass.mobile.background :as bg]))
+
+(def BROWSE-TYPE-DB-OPEN :db-open)
+
+(def BROWSE-TYPE-DB-NEW :db-new)
 
 ;; Maps kw to enum tag 'type''s value
 (def kw-type-to-enum-tag {:sftp const/V-SFTP :webdav const/V-WEBDAV})
@@ -24,11 +29,17 @@
                         (on-error api-response
                                   #(dispatch [:common/default-error
                                               "Error in loading remote storage all connection configs " %])))))
-
+;; kw-browse-type valid values :db-open, :db-new
 (defn remote-storage-type-selected
-  "Should be called when user picks Sftp or Webdav option to create a new database or open existing databases"
-  [kw-type]
-  (dispatch [:remote-storage-type-selected kw-type]))
+  "Should be called when user picks Sftp or Webdav option to create a 
+   new database or open existing databases.
+   The arg kw-type determines whether the selected remote storage is for sftp or for webdav
+   The arg kw-browse-type determines whether we are showing the remote contents 
+   during open db call or during new db call
+   Any additional data during new db call is passed in the arg opts-m ( a map)
+   "
+  [kw-type kw-browse-type opts-m]
+  (dispatch [:remote-storage-type-selected kw-type kw-browse-type opts-m]))
 
 (defn remote-storage-rs-type-new-form-page-show []
   (dispatch [:remote-storage-rs-type-new-form-page-show]))
@@ -38,7 +49,7 @@
   [kw-type connection-id]
   (dispatch [:remote-storage-connect-by-id-start kw-type connection-id]))
 
-(defn remote-storage-sub-dir-listing-start 
+(defn remote-storage-sub-dir-listing-start
   "Gets the sub dir listing"
   [connection-id parent-dir sub-dir]
   (dispatch [:remote-storage-sub-dir-listing-start connection-id parent-dir sub-dir]))
@@ -84,7 +95,7 @@
   []
   (dispatch [:remote-storage-listing-previous]))
 
-(defn remote-storage-delete-selected-config 
+(defn remote-storage-delete-selected-config
   "Deletes the remote config found by connection-id permanently"
   [connection-id]
   (dispatch [:remote-storage-delete-selected-config connection-id]))
@@ -96,6 +107,10 @@
 
 (defn remote-storage-file-picked [connection-id parent-dir file-name]
   (dispatch [:remote-storage-file-picked connection-id parent-dir file-name]))
+
+
+(defn remote-storage-folder-picked-for-new-db-file [connection-id dir-entries]
+  (dispatch [:remote-storage-folder-picked-for-new-db-file connection-id dir-entries]))
 
 (defn remote-storage-connection-configs
   "All connection config list for the sftp or webdav"
@@ -124,6 +139,8 @@
   []
   (subscribe [:remote-storage-listing-to-show]))
 
+(defn remote-storage-browse-rs-type []
+  (subscribe [:remote-storage-browse-rs-type]))
 
 (defn- get-current-rs-type [db]
   (get-in db [:remote-storage :current-rs-type]))
@@ -168,7 +185,7 @@
         data (merge data kws)]
     (assoc-in db [:remote-storage kw-type :form-data] data)))
 
-(defn- merge-type-form-data 
+(defn- merge-type-form-data
   "Adds the edit flag and logon-type info for sftp to the passed form data"
   [kw-type {:keys [private-key-file-name] :as form-data} edit]
   (if (= kw-type :sftp)
@@ -330,7 +347,7 @@
  (fn [{:keys [_db]} [_query-id kw-type connected-status]]
    {:fx [[:dispatch [:common/message-modal-hide]]
          [:dispatch [:remote-storage-dir-listing-loaded kw-type connected-status]]
-         [:dispatch [:common/next-page const/RS_FILES_FOLDERS_PAGE_ID "dirEntries"]]]}))
+         [:dispatch [:common/next-page const/RS_FILES_FOLDERS_PAGE_ID "storageBrowser"]]]})) 
 
 (reg-event-fx
  :remote-storage-sub-dir-listing-start
@@ -372,18 +389,47 @@
          listings (-> listings drop-last vec)
          ;; Page stack previous page is called if no more listing is found
          cnt (count listings)]
-     #_(println "cnt is " cnt)
      {:db (-> db (assoc-in [:remote-storage kw-type :listings] listings))
       :fx [(when (= cnt 0)
              [:dispatch [:common/previous-page]])]})))
+
+(defn- form-new-db-file-name
+  "Forms the db file name. A suffixed is added to the name if there is any file with 
+   the same name in the selected folder"
+  [database-name files]
+  (let [files (mapv #(str/lower-case %) files)]
+    (loop [name (str database-name ".kdbx") cnt 1]
+      ;; ensure that the 'name' is not found in the existing 'files' list
+      (if (not (u/contains-val? files (str/lower-case name))) name 
+          (let [n (str database-name "(" cnt ")" ".kdbx")]
+            (recur n (inc cnt)))))))
+
+;; Called when user selects a folder while browsing the remote storage 
+;; to store the new database file
+(reg-event-fx
+ :remote-storage-folder-picked-for-new-db-file
+ (fn [{:keys [db]} [_query-id connection-id {:keys [parent-dir files]}]]
+   (let [kw-type (get-current-rs-type db)
+         {:keys [database-name]} (get-in db [:remote-storage :new-db-data])
+         file-name (form-new-db-file-name database-name files)
+         db-key (form-db-key kw-type connection-id parent-dir file-name)
+         new-db-file-data {:file-name file-name :full-file-name-uri db-key}]
+     {:db (-> db (assoc-in [:remote-storage kw-type :listings] nil))
+      :fx [;; first call goes to the configs page
+           [:dispatch [:common/previous-page]]
+           ;; one more call to go the start page
+           [:dispatch [:common/previous-page]]
+           [:dispatch [:new-database/document-to-create-picked new-db-file-data]]]})))
 
 ;; Sets the type selected during the Open Database or New Database call
 ;; and loads the list of configs for the type
 (reg-event-fx
  :remote-storage-type-selected
- (fn [{:keys [db]} [_query-id kw-type]]
+ (fn [{:keys [db]} [_query-id kw-type kw-browse-type {:keys [new-db-data] :as _opts}]] 
    {;; should we dispatch :remote-storage-current-rs-type-set instead of db update?
-    :db (-> db (assoc-in [:remote-storage :current-rs-type] kw-type))
+    :db (-> db (assoc-in [:remote-storage :current-rs-type] kw-type)
+            (assoc-in [:remote-storage :browse-rs-type] kw-browse-type)
+            (assoc-in [:remote-storage :new-db-data] new-db-data))
     :fx [[:bg-rs-remote-storage-configs-for-type [kw-type]]]}))
 
 ;; Calls the backend api and gets a vec of stored connection config infos for Sftp or Webdav
@@ -415,9 +461,9 @@
          [:bg-rs-remote-storage-configs-for-type [kw-type]]]}))
 
 #_(reg-sub
- :remote-storage-read-no-connection-confirm-dialog-data
- (fn [db [_query-id]]
-   (get-in db [:remote-storage :read-no-connection-confirm-dialog])))
+   :remote-storage-read-no-connection-confirm-dialog-data
+   (fn [db [_query-id]]
+     (get-in db [:remote-storage :read-no-connection-confirm-dialog])))
 
 ;; Gets the last dir entries data to show on the page
 (reg-sub
@@ -427,9 +473,9 @@
      (-> db (get-in [:remote-storage kw-type :listings]) last))))
 
 #_(reg-sub
- :remote-storage-listings
- (fn [db [_query-id kw-type]]
-   (-> db (get-in [:remote-storage kw-type :listings]))))
+   :remote-storage-listings
+   (fn [db [_query-id kw-type]]
+     (-> db (get-in [:remote-storage kw-type :listings]))))
 
 ;; TODO Use this for current-form-type
 ;; Valid values are :sftp or :webdav for now
@@ -437,6 +483,13 @@
  :remote-storage-current-rs-type
  (fn [db [_query-id]]
    (-> db (get-in [:remote-storage :current-rs-type]))))
+
+;; :db-open or :db-new
+;; This will determine how to show the remote browse listing data
+(reg-sub
+ :remote-storage-browse-rs-type
+ (fn [db [_query-id]]
+   (-> db (get-in [:remote-storage :browse-rs-type]))))
 
 (reg-sub
  :remote-storage-connection-configs

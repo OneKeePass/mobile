@@ -213,9 +213,7 @@
          [:dispatch [:common/load-entry-type-headers]]
 
          (when (boolean (:no-connection rs-additional-info))
-           [:dispatch [:common/message-box-show
-                       "Read Only"
-                       "Database is opened in read only mode as there is no connection to the server"]])
+           [:dispatch [:common/message-box-show 'dbReadOnly 'dbReadOnly]])
          ;; Loads the updated recent dbs info
          [:bg-app-preference]
          [:dispatch [:common/message-modal-hide]]

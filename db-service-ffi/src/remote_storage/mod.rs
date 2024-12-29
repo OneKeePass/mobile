@@ -38,6 +38,68 @@ use onekeepass_core::db_service::{KdbxLoaded, KdbxSaved};
 use onekeepass_core::{db_service, error, service_util};
 use serde::Serialize;
 
+
+/// -------   All public functions   -------
+
+
+pub(crate) fn uri_to_file_info(db_key: &str) -> Option<FileInfo> {
+    let Ok((remaining, parsed)) = parse_db_key(db_key) else {
+        return None;
+    };
+    if !remaining.is_empty() {
+        return None;
+    }
+
+    let mut file_info = FileInfo::default();
+    // We use the backup file to form this instead of making remote call
+    let file_info_opt = backup::latest_backup_file_path(db_key)
+        .and_then(|p| p.as_path().metadata().ok())
+        .map(|md| {
+            //debug!("RS Bk modified Metadata is {:?} ", &md);
+            file_info.file_size = Some(md.len() as i64);
+            file_info.last_modified = md.modified().ok().map(|t| {
+                //debug!(" RS file_info.last_modified (SystemTime) {:?} ",&t);
+                let mut r = service_util::system_time_to_seconds(t) as i64;
+                // Need to be in milliseconds
+                r = r * 1000;
+                //debug!(" RS file_info.last_modified since epoch {} ",&r);
+                r
+            });
+            file_info.location = Some(parsed.rs_type_name.to_string());
+            file_info
+        });
+
+    file_info_opt
+}
+
+pub(crate) fn uri_to_file_name(db_key: &str) -> Option<&str> {
+    let Ok((remaining, parsed)) = parse_db_key(db_key) else {
+        return None;
+    };
+    if !remaining.is_empty() {
+        return None;
+    }
+    return Some(parsed.file_name);
+}
+
+#[inline]
+pub(crate) fn rs_read_kdbx(json_args: &str) -> ResponseJson {
+    result_json_str(rs_read_file(json_args))
+}
+
+#[inline]
+pub(crate) fn rs_save_kdbx(json_args: &str) -> ResponseJson {
+    result_json_str(rs_write_file(json_args))
+}
+
+#[inline]
+pub(crate) fn rs_create_kdbx(json_args: &str) -> ResponseJson {
+    result_json_str(rs_create_file(json_args))
+}
+
+/// ----------------------------------------------------------------------
+
+
 // We need to parse the passed db_key and extracts the remote operation type, connection_id and the file path part
 
 // e.g WebDav-264226dc-be96-462a-a386-79adb6291ad7-/dav/db1/db1-1/db1-2/Test1-Sp.kdbx or
@@ -106,9 +168,6 @@ fn parse_db_key_to_rs_type_opertaion(db_key: &str) -> OkpResult<RemoteStorageOpe
     Ok(rt)
 }
 
-pub(crate) fn rs_read_kdbx(json_args: &str) -> ResponseJson {
-    result_json_str(rs_read_file(json_args))
-}
 
 #[derive(Debug, Serialize)]
 struct RsAdditionalInfo {
@@ -118,7 +177,7 @@ struct RsAdditionalInfo {
 // This adds an additional info to the existing KdbxLoaded
 // For now we set 'no_connection' field only to indicate to the UI side
 // that we have opened the db content using the backup and editing should be
-// disbaled for now
+// disabled for now
 #[derive(Debug, Serialize)]
 struct KdbxLoadedEx {
     db_key: String,
@@ -129,7 +188,7 @@ struct KdbxLoadedEx {
 }
 
 impl KdbxLoadedEx {
-    pub(crate) fn set_no_read_connection(mut self) -> Self {
+    fn set_no_read_connection(mut self) -> Self {
         self.rs_additional_info = Some(RsAdditionalInfo {
             no_connection: true,
         });
@@ -330,10 +389,6 @@ fn read_with_backup<R: Read + Seek>(
     Ok(kdbx_loaded)
 }
 
-pub(crate) fn rs_save_kdbx(json_args: &str) -> ResponseJson {
-    result_json_str(rs_write_file(json_args))
-}
-
 fn is_rs_file_modified(
     db_key: &str,
     rs_operation_type: &RemoteStorageOperationType,
@@ -393,7 +448,7 @@ fn rs_write_file(json_args: &str) -> OkpResult<KdbxSaved> {
     rs_operation_type.connect_by_id().map_err(|e| {
         info!("Remote storage connection error {}", e);
 
-        // Writes to a backup file and sets that backup file name in app state for later Svae As call
+        // Writes to a backup file and sets that backup file name in app state for later Save As call
         crate::udl_functions::write_to_backup_on_error(db_key.clone());
 
         // At this any error while making connect_by_id, we send a generic error
@@ -503,59 +558,64 @@ fn write_with_backup<R: Seek + Read + Write>(
     Ok(save_response)
 }
 
-pub(crate) fn uri_to_file_info(db_key: &str) -> Option<FileInfo> {
-    let Ok((remaining, parsed)) = parse_db_key(db_key) else {
-        return None;
+// Somewhat similar to 'rs_write_file'
+
+// Also some steps are similar to  AndroidSupportServiceExtra::create_kdbx 
+
+// TODO: Move common steps of 'rs_write_file' and 'rs_create_file' to another fn
+fn rs_create_file(json_args: &str) -> OkpResult<KdbxLoaded> {
+    let (new_db,) = parse_command_args_or_err!(json_args, NewDbArg { new_db });
+
+    let file_name = new_db.file_name.as_deref().ok_or(error::Error::DataError(
+        "Valid file name is not set in new db arg",
+    ))?;
+
+    let db_key = new_db.database_file_name.clone();
+
+    // db_key should have been formed and set in the 'new_db' struct from the frontend side
+    let rs_operation_type = parse_db_key_to_rs_type_opertaion(&db_key)?;
+
+    let backup_file_name = backup::generate_backup_history_file_name(&db_key, file_name);
+
+    let backup_file = open_backup_file(backup_file_name.as_ref());
+
+    let mut bf_writer = backup_file.ok_or(error::Error::DataError(
+        "Backup file could not be opened to write the new database backup",
+    ))?;
+
+    let kdbx_loaded = db_service::create_and_write_to_writer(&mut bf_writer, new_db)?;
+
+    let _ = bf_writer.sync_all().and(bf_writer.rewind());
+
+    // The memory buffer db_content_mem_buff provides Read+Write fns
+    let mut db_content_mem_buff = Cursor::new(Vec::<u8>::new());
+
+    // Now we copy the content of the backup to memory
+    std::io::copy(&mut bf_writer, &mut db_content_mem_buff)?;
+
+    // New checksum is calculated and set in the cached db content
+    db_service::calculate_and_set_db_file_checksum(&db_key, &mut bf_writer)?;
+
+    // We now write to the remote storage the content of db from the memory 'db_content_mem_buff'
+    let data = Arc::new(db_content_mem_buff.into_inner());
+    let meta_data = match rs_operation_type.create_file(data.clone()) {
+        Ok(v) => v,
+        Err(e) => {
+            // There is a possibility that the remote storage call may fail. In that case remove the backup file deleted
+            if let Some(ref bk) = backup_file_name {
+                let _ = fs::remove_file(bk);
+            }
+            return Err(e);
+        }
     };
-    if !remaining.is_empty() {
-        return None;
-    }
 
-    let mut file_info = FileInfo::default();
-    // We use the backup file to form this instead of making remote call
-    let file_info_opt = backup::latest_backup_file_path(db_key)
-        .and_then(|p| p.as_path().metadata().ok())
-        .map(|md| {
-            //debug!("RS Bk modified Metadata is {:?} ", &md);
-            file_info.file_size = Some(md.len() as i64);
-            file_info.last_modified = md.modified().ok().map(|t| {
-                //debug!(" RS file_info.last_modified (SystemTime) {:?} ",&t);
-                let mut r = service_util::system_time_to_seconds(t) as i64;
-                // Need to be in milliseconds
-                r = r * 1000;
-                //debug!(" RS file_info.last_modified since epoch {} ",&r);
-                r
-            });
-            file_info.location = Some(parsed.rs_type_name.to_string());
-            file_info
-        });
+    // Add this newly created db file to the recent list
+    AppState::add_recent_db_use_info(&db_key);
 
-    file_info_opt
+    let file_modified_time = meta_data.modified.map(|t| t as i64);
+
+    // We set the backup file's modified time to the same as the remote file modified time
+    set_backup_modified_time(&backup_file_name.as_ref(), &file_modified_time);
+
+    Ok(kdbx_loaded)
 }
-
-pub(crate) fn uri_to_file_name(db_key: &str) -> Option<&str> {
-    let Ok((remaining, parsed)) = parse_db_key(db_key) else {
-        return None;
-    };
-    if !remaining.is_empty() {
-        return None;
-    }
-    return Some(parsed.file_name);
-}
-
-/*
-pub(crate) fn extract_file_provider(db_key: &str) -> Option<&str> {
-    if db_key.starts_with("Sftp") {
-        Some("Sftp")
-    } else if db_key.starts_with("Webdav") {
-        Some("Webdav")
-    } else {
-        None
-    }
-}
-
-pub(crate) fn is_remote_file(db_key: &str) -> bool {
-    db_key.starts_with("Sftp") || db_key.starts_with("Webdav")
-}
-
-*/

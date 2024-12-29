@@ -14,14 +14,6 @@
    [onekeepass.mobile.translation :refer [lstr-l]]
    [reagent.core :as r]))
 
-
-(def ^:private box-style-1 {:padding-right 5
-                            :padding-left 5
-                            :margin 5
-                            :border-color @rnc/primary-color
-                            :borderWidth .20
-                            :borderRadius 4})
-
 (def db-open-id "1")
 
 (def db-unlock-id "2")
