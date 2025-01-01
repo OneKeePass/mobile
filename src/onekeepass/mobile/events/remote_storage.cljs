@@ -281,7 +281,8 @@
             ;; Need to remove any prior error msg
             (assoc-in [:remote-storage :sftp :form-errors :private-key-file-name] nil))}))
 
-;; Connects to the remote storage using the config entered
+;; Connects to the remote storage first time using the config entered
+;; The config is saved when all fields are correct
 (reg-event-fx
  :remote-storage-new-config-connect-and-save
  (fn [{:keys [db]} [_query-id kw-type]]
@@ -300,9 +301,14 @@
    (bg-rs/connect-and-retrieve-root-dir
     kw-type connection-info
     (fn [api-response]
-      (when-let [connected-status (on-ok api-response)]
+      (when-let [connected-status (on-ok api-response #(dispatch [:remote-storage-new-config-connect-and-save-error kw-type %]))]
         (dispatch [:remote-storage-connect-save-complete kw-type connected-status]))))))
 
+(reg-event-fx
+ :remote-storage-new-config-connect-and-save-error
+ (fn [{:keys [_db]} [_query-id _kw-type error]]
+   {:fx [[:dispatch [:common/message-modal-hide]]
+         [:dispatch [:common/error-box-show "Error" error]]]}))
 
 (reg-event-fx
  :remote-storage-connect-save-complete
@@ -347,7 +353,7 @@
  (fn [{:keys [_db]} [_query-id kw-type connected-status]]
    {:fx [[:dispatch [:common/message-modal-hide]]
          [:dispatch [:remote-storage-dir-listing-loaded kw-type connected-status]]
-         [:dispatch [:common/next-page const/RS_FILES_FOLDERS_PAGE_ID "storageBrowser"]]]})) 
+         [:dispatch [:common/next-page const/RS_FILES_FOLDERS_PAGE_ID "storageBrowser"]]]}))
 
 (reg-event-fx
  :remote-storage-sub-dir-listing-start
@@ -400,7 +406,7 @@
   (let [files (mapv #(str/lower-case %) files)]
     (loop [name (str database-name ".kdbx") cnt 1]
       ;; ensure that the 'name' is not found in the existing 'files' list
-      (if (not (u/contains-val? files (str/lower-case name))) name 
+      (if (not (u/contains-val? files (str/lower-case name))) name
           (let [n (str database-name "(" cnt ")" ".kdbx")]
             (recur n (inc cnt)))))))
 
@@ -425,7 +431,7 @@
 ;; and loads the list of configs for the type
 (reg-event-fx
  :remote-storage-type-selected
- (fn [{:keys [db]} [_query-id kw-type kw-browse-type {:keys [new-db-data] :as _opts}]] 
+ (fn [{:keys [db]} [_query-id kw-type kw-browse-type {:keys [new-db-data] :as _opts}]]
    {;; should we dispatch :remote-storage-current-rs-type-set instead of db update?
     :db (-> db (assoc-in [:remote-storage :current-rs-type] kw-type)
             (assoc-in [:remote-storage :browse-rs-type] kw-browse-type)

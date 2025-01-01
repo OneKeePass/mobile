@@ -21,6 +21,8 @@ use super::to_ios_file_uri;
 #[derive(uniffi::Object)]
 pub struct IosSupportService {}
 
+// TODO: Need to delete the bookmark created while loading a kdbx file and then user cancels the login 
+
 // Created in iOS side native module and then iOS specific
 // support methods are called
 #[uniffi::export]

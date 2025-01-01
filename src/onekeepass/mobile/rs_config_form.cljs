@@ -39,6 +39,9 @@
   (when-not (nil? (kw-key errors))
     [rnp-helper-text {:type "error" :visible true} (kw-key errors)]))
 
+;; Note: We need to use :defaultValue instead of :value with rnp-text-input
+;; See detail comments below and also in entry-form 
+
 (defn password-field [password password-visible tr-label errors edit]
   [:<>
    [rnp-text-input {:style {}
@@ -49,7 +52,12 @@
                     ;; Not sure only for this happens for this. May be the way reagent component 
                     ;; 'password-field' is used ?
                     :defaultValue password
-                    :vaue password
+
+                    ;; In case of Android, when we use ':vaue' and when we try 
+                    ;; insert a charater in a text, the cursor moves back and confusing
+                    ;; Using only ':defaultValue' solves the issue
+                    ;; Also using only ':defaultValue' for both Android and iOS
+                    ;;:vaue password 
                     :secureTextEntry (not password-visible)
                     :right (r/as-element
                             [rnp-text-input-icon
@@ -84,14 +92,22 @@
                        ;; Also see comment in mobile/src/onekeepass/mobile/settings.cljs 
                        ;; Except few places, generally prop defaultValue is used 
                        ;; See the use of defaultValue and comment there
-                       :value name
+                       
+                       ;; In case of Android, when we use ':vaue' and when we try 
+                       ;; insert a charater in a text, the cursor moves back and confusing
+                       ;; Using only ':defaultValue' solves the issue
+                       ;; Also using only ':defaultValue' for both Android and iOS 
+                       ;; :value name
+                       
+                       :defaultValue name
                        :onChangeText #(rs-events/remote-storage-connection-form-data-update kw-type :name %)}]
       [error-text errors :name]
       [rnp-text-input {:style {}
                        :label (lstr-l 'host)
                        :editable edit
                        ;; See fn passed in onChangeText which uses 'host' field directly instead of using % in fn
-                       :value host
+                       ;;:value host
+                       :defaultValue host
                        :onChangeText #(rs-events/remote-storage-connection-form-data-update kw-type :host %)}]
       [error-text errors :host]
 
@@ -106,7 +122,8 @@
       [rnp-text-input {:style {}
                        :label (lstr-l 'userName)
                        :editable edit
-                       :value user-name
+                       ;;:value user-name
+                       :defaultValue user-name
                        :onChangeText #(rs-events/remote-storage-connection-form-data-update kw-type :user-name %)}]
 
       [error-text errors :user-name]]
@@ -165,7 +182,8 @@
                        :autoCapitalize "none"
                        :autoCorrect false
                        :label (lstr-l 'name)
-                       :value name
+                       ;;:value name
+                       :defaultValue name
                        :onChangeText #(rs-events/remote-storage-connection-form-data-update kw-type :name %)}]
       [error-text errors :name]
 
@@ -175,7 +193,8 @@
                        :placeholder "e.g https://www.mywebdav.com:8080"
                        :autoCapitalize "none"
                        :autoCorrect false
-                       :value root-url
+                       ;;:value root-url
+                       :defaultValue root-url
                        :onChangeText #(rs-events/remote-storage-connection-form-data-update kw-type :root-url %)}]
 
       [error-text errors :root-url]
@@ -185,7 +204,8 @@
                        :editable edit
                        :autoCapitalize "none"
                        :autoCorrect false
-                       :value user-name
+                       ;;:value user-name
+                       :defaultValue user-name
                        :onChangeText #(rs-events/remote-storage-connection-form-data-update kw-type :user-name %)}]
 
       [error-text errors :user-name]
@@ -195,7 +215,8 @@
                        :editable edit
                        :autoCapitalize "none"
                        :autoCorrect false
-                       :value password
+                       ;;:value password
+                       :defaultValue password
                        :secureTextEntry (not password-visible)
                        :right (r/as-element
                                [rnp-text-input-icon

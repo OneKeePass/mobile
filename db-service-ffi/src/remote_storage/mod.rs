@@ -568,14 +568,14 @@ fn rs_create_file(json_args: &str) -> OkpResult<KdbxLoaded> {
 
     let file_name = new_db.file_name.as_deref().ok_or(error::Error::DataError(
         "Valid file name is not set in new db arg",
-    ))?;
+    ))?.to_string();
 
     let db_key = new_db.database_file_name.clone();
 
     // db_key should have been formed and set in the 'new_db' struct from the frontend side
     let rs_operation_type = parse_db_key_to_rs_type_opertaion(&db_key)?;
 
-    let backup_file_name = backup::generate_backup_history_file_name(&db_key, file_name);
+    let backup_file_name = backup::generate_backup_history_file_name(&db_key, &file_name);
 
     let backup_file = open_backup_file(backup_file_name.as_ref());
 
@@ -610,7 +610,7 @@ fn rs_create_file(json_args: &str) -> OkpResult<KdbxLoaded> {
     };
 
     // Add this newly created db file to the recent list
-    AppState::add_recent_db_use_info(&db_key);
+    AppState::add_recent_db_use_info2(&db_key, &file_name);
 
     let file_modified_time = meta_data.modified.map(|t| t as i64);
 

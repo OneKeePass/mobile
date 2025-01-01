@@ -36,4 +36,7 @@
    (bg/export-kdbx exported-data-full-file-name
                    (fn [api-response]
                      (when-not (on-error api-response)
+                       ;; (println "exported-data-full-file-name is " exported-data-full-file-name)
+                       ;; TODO: Need to delete the temporarily created data file from "export_data" folder
+                       ;; on device. For now whole folder content is deleted while preparing export data
                        (dispatch [:common/message-snackbar-open  'actionCompleted]))))))

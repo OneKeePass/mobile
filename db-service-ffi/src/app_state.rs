@@ -104,9 +104,7 @@ impl AppState {
 
         // debug!("app_dir {}, cache_dir {}, temp_dir {}, app_group_home_dir {:?},prefrence_home_dir {:?}",&app_dir, &cache_dir, &temp_dir, &app_group_home_dir,&preference_home_dir,);
 
-        // let preference = Preference::read(&app_dir);
-
-        // IMPORTANT: preference_home_dir should have a valid path
+        // IMPORTANT: 'preference_home_dir' should have a valid path
         let preference = Preference::read(&preference_home_dir);
 
         let export_data_dir_path = util::create_sub_dir(&app_dir, "export_data");
@@ -121,6 +119,10 @@ impl AppState {
         // All remote storage related dirs
         let remote_storage_path = util::create_sub_dir(&app_dir, "remote_storage");
         util::create_sub_dir_path(&remote_storage_path, "sftp");
+
+        // As we started storing backup files to the folder 'backups/history' since 0.15.0 rlease
+        // we rmove the old backup files 
+        remove_old_0140v_backup_files(&app_dir);
 
         let app_state = AppState {
             app_home_dir: app_dir.into(),
@@ -406,6 +408,9 @@ impl AppState {
             .get_recently_used(db_key)
     }
 
+    // Should be used only for the Local device files
+    // See add_recent_db_use_info2 below
+    // TODO: Combine these two functions
     pub fn add_recent_db_use_info(db_key: &str) {
         let file_name = Self::shared()
             .common_device_service
@@ -438,36 +443,16 @@ impl AppState {
     pub fn recent_dbs_info() -> Vec<RecentlyUsed> {
         Self::shared().preference.lock().unwrap().recent_dbs_info()
     }
-
-    ///////////
-
-    // pub fn set_db_open_biometric(&self, db_key: &str, enabled: bool) {
-    //     let mut pref = self.preference.lock().unwrap();
-    //     pref.set_db_open_biometric(db_key, enabled);
-    // }
-
-    // pub fn db_open_biometeric_enabled(&self, db_key: &str) -> bool {
-    //     self.preference
-    //         .lock()
-    //         .unwrap()
-    //         .db_open_biometeric_enabled(db_key)
-    // }
-
-    // pub fn add_recent_db_use_info(&self, db_key: &str) {
-    //     let file_name = self
-    //         .common_device_service
-    //         .uri_to_file_name(db_key.into())
-    //         .map_or_else(|| "".into(), |s| s);
-
-    //     let recently_used = RecentlyUsed {
-    //         file_name,
-    //         db_file_path: db_key.into(),
-    //     };
-
-    //     let mut pref = self.preference.lock().unwrap();
-    //     pref.add_recent_db_use_info(&self.app_home_dir, recently_used);
-    // }
 }
+// Added in 0.15.0 version as we changed backups creation and location
+// Should be removed in later release
+fn remove_old_0140v_backup_files(app_dir: &str,) {
+    let bk_dir_path = Path::new(app_dir).join("backups");
+    if bk_dir_path.exists() {
+        let _ = util::remove_files(bk_dir_path);
+    }
+}
+
 
 // iOS specific idea to move all internal dirs and files from the current app_home dir to app_group home dir
 // Also see comments in Swift impl 'CommonDeviceServiceImpl appHoemDir'

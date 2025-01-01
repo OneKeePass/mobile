@@ -34,8 +34,7 @@
   "Called to show an error or a general message
   The value of key 'category' determines whether it is error or message
    "
-  ([{:keys [dialog-show title category message]}]
-   (println "title category message " title category message)
+  ([{:keys [dialog-show title category message]}] 
    (let [error? (= category :error)
          title-txt (if error? (lstr-error-dlg-title title) (lstr-msg-dlg-title title))
          msg-txt (if error? (lstr-error-dlg-text message) (lstr-msg-dlg-text message))]

@@ -739,6 +739,11 @@ impl Commands {
 
     fn prepare_export_kdbx_data(args: &str) -> String {
         if let Ok(CommandArg::DbKey { db_key }) = serde_json::from_str(args) {
+
+            // For now we remove all previous files of export_data dir
+            // TDOO: We need to add 'delete call' of specific exported files in cljs when 'bg/export-kdbx' returns
+            let _ = util::clean_export_data_dir();
+
             // Check whether the db is opened now
             let found = db_service::all_kdbx_cache_keys().map_or(false, |v| v.contains(&db_key));
             let recent_opt = AppState::get_recently_used(&db_key);
@@ -978,6 +983,12 @@ pub fn remove_app_files(db_key: &str) {
     // Need to remove any stored crdentials
     // TODO: Should we make this call only when this db_key is found with flag 'db_open_biometric_enabled' true
     let _ = biometric_auth::StoredCredential::remove_credentials(db_key);
+
+
+    // For now we remove all files in the export_data dir when 
+    // this db link remove is called
+    // TDOO: We need to delete the temp exported file for this db if any
+    let _ = util::clean_export_data_dir();
 
     // Removes this db related info from recent db info list and also removes this db preference 
     AppState::remove_recent_db_use_info(&db_key,true);

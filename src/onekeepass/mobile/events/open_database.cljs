@@ -77,6 +77,11 @@
                             (assoc :password "A valid password is required"))]
     error-fields))
 
+;; TODO: 
+;; iOS specific
+;; Need to delete bookmark file created while loading a kdbx file and then user 
+;; cancels the login. We should delete only the bookmark file if it is not for
+;; any existing db-key
 (reg-event-db
  :open-database-dialog-hide
  (fn [db [_event-id]]

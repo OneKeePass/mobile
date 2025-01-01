@@ -1,6 +1,7 @@
 use log::debug;
 use onekeepass_core::db_service::service_util::{self, string_to_simple_hash};
 use onekeepass_core::error::Result;
+use serde_json::de;
 use std::fs::{self, File};
 use std::os::unix::io::FromRawFd;
 use std::path::{Path, PathBuf};
@@ -143,6 +144,27 @@ pub fn list_dir_entries(path: &Path) -> Vec<String> {
 //     }
 // }
 
+// Called to delete only files found in a dir path
+// The arg 'dir_path' is expected to be an existing directory path
+// No sub dir is removed and also we do not recursively visit the sub dirs and remove files of the sub dirs
+pub fn remove_files<P: AsRef<Path>>(dir_path: P) -> Result<()> {
+    match fs::read_dir(dir_path) {
+        Ok(contents) => {
+            for entry in contents {
+                if let Ok(dir_entry) = entry {
+                    if dir_entry.file_type().map_or(false, |v| v.is_file()) {
+                        let _ = fs::remove_file(dir_entry.path());
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            log::error!("Error in remove_files {}", &e);
+        }
+    }
+    Ok(())
+}
+
 // Recursively removes only the content of a dir including sub dir
 pub fn remove_dir_contents<P: AsRef<Path>>(path: P) -> Result<()> {
     for entry in fs::read_dir(path)? {
@@ -160,7 +182,8 @@ pub fn remove_dir_contents<P: AsRef<Path>>(path: P) -> Result<()> {
 }
 
 pub fn clean_export_data_dir() -> Result<()> {
-    remove_dir_contents(AppState::export_data_dir_path())
+    remove_files(AppState::export_data_dir_path())
+    //remove_dir_contents(AppState::export_data_dir_path())
 }
 
 // TODO: Merge create_sub_dir,create_sub_dirs,create_sub_dir_path
