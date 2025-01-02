@@ -6,7 +6,6 @@
 //
 
 class SecureEnclaveServiceSupport: SecureEnclaveCbService {
-  
   static var okpAccessGroup = getOkpKeychainAccessGroup()
   
   let logger = OkpLogger(tag: "SecureEnclaveServiceSupport")
@@ -174,51 +173,13 @@ class SecureEnclaveServiceSupport: SecureEnclaveCbService {
     return query
   }
   
-  
   static func getOkpKeychainAccessGroup() -> String {
-    
     let v = XcodeConfiguration.developmentTeam
     // Prefixes the Team ID
     // See https://developer.apple.com/documentation/security/sharing-access-to-keychain-items-among-a-collection-of-apps
     // keychain-access-groups has the value $(AppIdentifierPrefix)com.onekeepass.SharedItems in 'OneKeePassMobile.entitlements'
     // and in 'OneKeePassAutoFill.entitlements'
     let fullAccssGroupName = "\(v).com.onekeepass.SharedItems"
-    return  fullAccssGroupName
+    return fullAccssGroupName
   }
-  
 }
-
-/*
- private func isEncryptionKeyAvailable(_ identifier: String) -> Bool {
-   let query = prepareQueryAttributes(identifier)
-   
-   // SecItemCopyMatching will attempt to copy the item
-   // identified by query to the reference itemCopy
-   
-   var itemCopy: CFTypeRef? // AnyObject? can also be used
-   let status = SecItemCopyMatching(
-     query,
-     &itemCopy
-   )
-   
-   // https://developer.apple.com/documentation/security/errsecduplicateitem
-   
-   logger.debug("OSStatus after SecItemCopyMatching is \(status)")
-   
-   if status == errSecSuccess {
-     // Matching key found
-     logger.debug("OSStatus is errSecSuccess")
-     return true
-   } else if status == errSecItemNotFound {
-     logger.debug("OSStatus is errSecItemNotFound")
-     return false
-   } else {
-     // Need to throw some error?
-     if let error = status.error {
-       logger.error("SecItemCopyMatching Get key error is \(error)")
-     }
-     return false
-   }
- }
- 
- */

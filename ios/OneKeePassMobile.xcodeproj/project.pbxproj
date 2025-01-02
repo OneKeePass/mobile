@@ -17,14 +17,10 @@
 		F92CB0FF28FDCABF00A79F60 /* OkpDocumentPickerServiceBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = F92CB0FE28FDCABF00A79F60 /* OkpDocumentPickerServiceBridge.m */; };
 		F92CB10128FDCBC400A79F60 /* OkpDocumentPickerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F92CB10028FDCBC400A79F60 /* OkpDocumentPickerService.swift */; };
 		F92CB10328FF7A7500A79F60 /* DbServiceAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = F92CB10228FF7A7500A79F60 /* DbServiceAPI.swift */; };
-		F944B9E52CDE94CC00AC010E /* SecureStoreService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F944B9E42CDE94C100AC010E /* SecureStoreService.swift */; };
-		F944B9E72CDE99DC00AC010E /* SecureStoreService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F944B9E42CDE94C100AC010E /* SecureStoreService.swift */; };
 		F944B9EB2CE135D100AC010E /* SecureEnclaveServiceSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = F944B9EA2CE135B600AC010E /* SecureEnclaveServiceSupport.swift */; };
 		F944B9EC2CE2964A00AC010E /* SecureEnclaveServiceSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = F944B9EA2CE135B600AC010E /* SecureEnclaveServiceSupport.swift */; };
-		F955AC022C1A6C5A00D0DFB6 /* AutoFillMessageHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = F955AC012C1A6C5A00D0DFB6 /* AutoFillMessageHandler.swift */; };
 		F955AC0B2C1C978A00D0DFB6 /* BackendEventDispatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = F955AC082C1C978A00D0DFB6 /* BackendEventDispatcher.swift */; };
 		F955AC0C2C1C978A00D0DFB6 /* AutoFillDbServiceApi.swift in Sources */ = {isa = PBXBuildFile; fileRef = F955AC092C1C978A00D0DFB6 /* AutoFillDbServiceApi.swift */; };
-		F955AC0D2C1C978A00D0DFB6 /* MessageHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = F955AC0A2C1C978A00D0DFB6 /* MessageHandler.swift */; };
 		F955AC102C1C983300D0DFB6 /* OkpDbService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F955AC0F2C1C983300D0DFB6 /* OkpDbService.swift */; };
 		F955AC122C1C9B2500D0DFB6 /* OkpDbServiceBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = F955AC112C1C9B2500D0DFB6 /* OkpDbServiceBridge.m */; };
 		F955AC152C1E31CC00D0DFB6 /* MaterialCommunityIcons.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F9CD349D28E2AABC00B6C59C /* MaterialCommunityIcons.ttf */; };
@@ -134,13 +130,10 @@
 		F92CB0FE28FDCABF00A79F60 /* OkpDocumentPickerServiceBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OkpDocumentPickerServiceBridge.m; sourceTree = "<group>"; };
 		F92CB10028FDCBC400A79F60 /* OkpDocumentPickerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OkpDocumentPickerService.swift; sourceTree = "<group>"; };
 		F92CB10228FF7A7500A79F60 /* DbServiceAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DbServiceAPI.swift; sourceTree = "<group>"; };
-		F944B9E42CDE94C100AC010E /* SecureStoreService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecureStoreService.swift; sourceTree = "<group>"; };
 		F944B9EA2CE135B600AC010E /* SecureEnclaveServiceSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecureEnclaveServiceSupport.swift; sourceTree = "<group>"; };
 		F94CD9A82AE7360B00649D28 /* libbotan-3.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libbotan-3.a"; path = "OneKeePassMobile/DbServiceFFILib/libbotan-3.a"; sourceTree = "<group>"; };
-		F955AC012C1A6C5A00D0DFB6 /* AutoFillMessageHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoFillMessageHandler.swift; sourceTree = "<group>"; };
 		F955AC082C1C978A00D0DFB6 /* BackendEventDispatcher.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BackendEventDispatcher.swift; sourceTree = "<group>"; };
 		F955AC092C1C978A00D0DFB6 /* AutoFillDbServiceApi.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AutoFillDbServiceApi.swift; sourceTree = "<group>"; };
-		F955AC0A2C1C978A00D0DFB6 /* MessageHandler.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MessageHandler.swift; sourceTree = "<group>"; };
 		F955AC0F2C1C983300D0DFB6 /* OkpDbService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OkpDbService.swift; sourceTree = "<group>"; };
 		F955AC112C1C9B2500D0DFB6 /* OkpDbServiceBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OkpDbServiceBridge.m; sourceTree = "<group>"; };
 		F955AC182C20C42700D0DFB6 /* AutoFillEvents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoFillEvents.swift; sourceTree = "<group>"; };
@@ -332,7 +325,6 @@
 			children = (
 				F955AC082C1C978A00D0DFB6 /* BackendEventDispatcher.swift */,
 				F955AC092C1C978A00D0DFB6 /* AutoFillDbServiceApi.swift */,
-				F955AC0A2C1C978A00D0DFB6 /* MessageHandler.swift */,
 			);
 			path = Utils;
 			sourceTree = "<group>";
@@ -370,13 +362,11 @@
 			children = (
 				F9A5C9B82D1E2F72001BC9B2 /* XcodeConfiguration.swift */,
 				F944B9EA2CE135B600AC010E /* SecureEnclaveServiceSupport.swift */,
-				F944B9E42CDE94C100AC010E /* SecureStoreService.swift */,
 				F92CB10228FF7A7500A79F60 /* DbServiceAPI.swift */,
 				F9AE2F3E290440380013D9AB /* OkpLogger.swift */,
 				F9AE2F3F290440380013D9AB /* FileUtils.swift */,
 				F90DF3742A466FF00041F9F5 /* SecureKeyService.swift */,
 				F9B3CE612BAF307C006BDCFA /* BackendEventDispatcher.swift */,
-				F955AC012C1A6C5A00D0DFB6 /* AutoFillMessageHandler.swift */,
 				F955AC1C2C2DF41B00D0DFB6 /* ClipboardHelper.swift */,
 				F955AC1F2C2E377600D0DFB6 /* ApiCallBackService.swift */,
 			);
@@ -830,12 +820,10 @@
 				F955AC202C2E377600D0DFB6 /* ApiCallBackService.swift in Sources */,
 				F969C3F128D4C8D90020FA62 /* OkpDbService.swift in Sources */,
 				F944B9EB2CE135D100AC010E /* SecureEnclaveServiceSupport.swift in Sources */,
-				F944B9E52CDE94CC00AC010E /* SecureStoreService.swift in Sources */,
 				F9B3CE622BAF307C006BDCFA /* BackendEventDispatcher.swift in Sources */,
 				F9D88149291430B500467986 /* OkpError.swift in Sources */,
 				F9AD1B6B29B78F1200BED32A /* AppDelegate.swift in Sources */,
 				F92CB10328FF7A7500A79F60 /* DbServiceAPI.swift in Sources */,
-				F955AC022C1A6C5A00D0DFB6 /* AutoFillMessageHandler.swift in Sources */,
 				F9C4D29729AFE1CE00B83DEB /* OkpEvents.swift in Sources */,
 				F955AC1D2C2DF41B00D0DFB6 /* ClipboardHelper.swift in Sources */,
 				F9C4D29929AFEC8A00B83DEB /* OkpEventsBridge.m in Sources */,
@@ -850,10 +838,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F944B9E72CDE99DC00AC010E /* SecureStoreService.swift in Sources */,
 				F9F81C502C1382A400E1FE8C /* OkpLogger.swift in Sources */,
 				F955AC1E2C2DF41B00D0DFB6 /* ClipboardHelper.swift in Sources */,
-				F955AC0D2C1C978A00D0DFB6 /* MessageHandler.swift in Sources */,
 				F955AC212C2E377600D0DFB6 /* ApiCallBackService.swift in Sources */,
 				F9F81C592C138DCE00E1FE8C /* SecureKeyService.swift in Sources */,
 				F955AC1B2C20C51F00D0DFB6 /* AutoFillEventsBridge.m in Sources */,

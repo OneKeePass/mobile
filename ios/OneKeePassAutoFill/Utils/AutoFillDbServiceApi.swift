@@ -41,15 +41,7 @@ class AutoFillDbServiceAPI {
       let securEnclaveService = SecureEnclaveServiceSupport()
       
       dbServiceInitialize(cmnService, secKeyOps, eventDispatcher,apiCallBackService,securEnclaveService)
-      
-//      dbServiceInitialize(cmnService, secKeyOps, eventDispatcher)
-//      
-//      let apiCallBackService = ApiCallBackService()
-//      iosCallbackServiceInitialize(apiCallBackService)
-//      //commonDeviceServiceExInitialize(apiCallBackService)
-//      
-//      initializeCallbackServices(apiCallBackService, SecureEnclaveServiceSupport())
-      
+            
       initialized = true
       Swift.debugPrint("API initialize is done")
     } else {

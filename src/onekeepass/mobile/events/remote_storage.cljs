@@ -233,10 +233,15 @@
 (reg-event-db
  :remote-storage-connection-form-data-update
  (fn [db [_event-id kw-type field-name-kw value]]
-   (-> db
-       (merge-data kw-type field-name-kw value)
-       ;; Just remove the error for this field
-       (assoc-in [:remote-storage kw-type :form-errors field-name-kw] nil))))
+   ;; There is possibility of space being added in the end of a field value 
+   ;; when user enters data in user name or host information field
+   ;; For now all strings values (except password) are trimed in the UI itself
+   ;; Need to move this to the backend ?
+   (let [val (if (and (string? value) (not= field-name-kw :password)) (str/trim value) value)]
+     (-> db
+         (merge-data kw-type field-name-kw val)
+         ;; Just remove the error for this field
+         (assoc-in [:remote-storage kw-type :form-errors field-name-kw] nil)))))
 
 ;; Called when a list of connection configs for either :sftp or :webdav are loaded in a backend call
 ;; Calls the next page displaying the connection names for this type

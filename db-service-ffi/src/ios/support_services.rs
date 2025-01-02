@@ -215,7 +215,7 @@ impl IosSupportService {
 impl IosSupportService {
 
     fn test_call(&self, _json_args: &str) -> OkpResult<()> {
-
+        /*
         use crate::biometric_auth::StoredCredential;
 
         let sc = StoredCredential {password:Some("MyPassword".to_string()), key_file_name:Some("key_file_name1".to_string())};
@@ -231,7 +231,7 @@ impl IosSupportService {
         let r = StoredCredential::remove_credentials(test_db_key);
 
         debug!("Remove credentials result {:?}",r);
-        
+         */
 
         Ok(())
     }

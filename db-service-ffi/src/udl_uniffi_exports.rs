@@ -67,7 +67,7 @@ pub trait SecureEnclaveCbService: Send + Sync {
 pub trait CommonDeviceServiceEx: Send + Sync {
     fn clipboard_copy_string(&self, clip_data: AppClipboardCopyData) -> ApiCallbackResult<()>;
 
-    fn test_secure_store(&self) -> ApiCallbackResult<()>;
+    // fn test_secure_store(&self) -> ApiCallbackResult<()>;
 }
 
 // A singleton that holds Android or ios specific api callbacks services implemented in Kotlin/Swift

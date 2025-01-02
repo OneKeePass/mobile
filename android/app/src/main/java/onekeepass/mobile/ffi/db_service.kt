@@ -702,9 +702,6 @@ internal interface UniffiCallbackInterfaceAndroidApiServiceMethod2 : com.sun.jna
 internal interface UniffiCallbackInterfaceCommonDeviceServiceExMethod0 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`clipData`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
 }
-internal interface UniffiCallbackInterfaceCommonDeviceServiceExMethod1 : com.sun.jna.Callback {
-    fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
-}
 internal interface UniffiCallbackInterfaceSecureEnclaveCbServiceMethod0 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`identifier`: RustBuffer.ByValue,`plainData`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
 }
@@ -811,21 +808,18 @@ internal open class UniffiVTableCallbackInterfaceAndroidApiService(
     }
 
 }
-@Structure.FieldOrder("clipboardCopyString", "testSecureStore", "uniffiFree")
+@Structure.FieldOrder("clipboardCopyString", "uniffiFree")
 internal open class UniffiVTableCallbackInterfaceCommonDeviceServiceEx(
     @JvmField internal var `clipboardCopyString`: UniffiCallbackInterfaceCommonDeviceServiceExMethod0? = null,
-    @JvmField internal var `testSecureStore`: UniffiCallbackInterfaceCommonDeviceServiceExMethod1? = null,
     @JvmField internal var `uniffiFree`: UniffiCallbackInterfaceFree? = null,
 ) : Structure() {
     class UniffiByValue(
         `clipboardCopyString`: UniffiCallbackInterfaceCommonDeviceServiceExMethod0? = null,
-        `testSecureStore`: UniffiCallbackInterfaceCommonDeviceServiceExMethod1? = null,
         `uniffiFree`: UniffiCallbackInterfaceFree? = null,
-    ): UniffiVTableCallbackInterfaceCommonDeviceServiceEx(`clipboardCopyString`,`testSecureStore`,`uniffiFree`,), Structure.ByValue
+    ): UniffiVTableCallbackInterfaceCommonDeviceServiceEx(`clipboardCopyString`,`uniffiFree`,), Structure.ByValue
 
    internal fun uniffiSetValue(other: UniffiVTableCallbackInterfaceCommonDeviceServiceEx) {
         `clipboardCopyString` = other.`clipboardCopyString`
-        `testSecureStore` = other.`testSecureStore`
         `uniffiFree` = other.`uniffiFree`
     }
 
@@ -852,8 +846,6 @@ internal open class UniffiVTableCallbackInterfaceSecureEnclaveCbService(
     }
 
 }
-
-
 
 
 
@@ -1087,8 +1079,6 @@ internal interface UniffiLib : Library {
     ): Unit
     fun uniffi_db_service_ffi_fn_method_commondeviceserviceex_clipboard_copy_string(`ptr`: Pointer,`clipData`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): Unit
-    fun uniffi_db_service_ffi_fn_method_commondeviceserviceex_test_secure_store(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
-    ): Unit
     fun uniffi_db_service_ffi_fn_clone_secureenclavecbservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
     ): Pointer
     fun uniffi_db_service_ffi_fn_free_secureenclavecbservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
@@ -1297,8 +1287,6 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_db_service_ffi_checksum_method_commondeviceserviceex_clipboard_copy_string(
     ): Short
-    fun uniffi_db_service_ffi_checksum_method_commondeviceserviceex_test_secure_store(
-    ): Short
     fun uniffi_db_service_ffi_checksum_method_secureenclavecbservice_encrypt_bytes(
     ): Short
     fun uniffi_db_service_ffi_checksum_method_secureenclavecbservice_decrypt_bytes(
@@ -1425,9 +1413,6 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_ffi_checksum_method_commondeviceserviceex_clipboard_copy_string() != 45908.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
-    if (lib.uniffi_db_service_ffi_checksum_method_commondeviceserviceex_test_secure_store() != 63040.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_ffi_checksum_method_secureenclavecbservice_encrypt_bytes() != 4689.toShort()) {
@@ -2531,8 +2516,6 @@ public interface CommonDeviceServiceEx {
     
     fun `clipboardCopyString`(`clipData`: AppClipboardCopyData)
     
-    fun `testSecureStore`()
-    
     companion object
 }
 open class CommonDeviceServiceExImpl: Disposable, AutoCloseable, CommonDeviceServiceEx {
@@ -2629,18 +2612,6 @@ open class CommonDeviceServiceExImpl: Disposable, AutoCloseable, CommonDeviceSer
     
 
     
-    @Throws(ApiCallbackException::class)override fun `testSecureStore`()
-        = 
-    callWithPointer {
-    uniffiRustCallWithError(ApiCallbackException) { _status ->
-    UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_method_commondeviceserviceex_test_secure_store(
-        it, _status)
-}
-    }
-    
-    
-
-    
 
     
     
@@ -2668,22 +2639,6 @@ internal object uniffiCallbackInterfaceCommonDeviceServiceEx {
             )
         }
     }
-    internal object `testSecureStore`: UniffiCallbackInterfaceCommonDeviceServiceExMethod1 {
-        override fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
-            val uniffiObj = FfiConverterTypeCommonDeviceServiceEx.handleMap.get(uniffiHandle)
-            val makeCall = { ->
-                uniffiObj.`testSecureStore`(
-                )
-            }
-            val writeReturn = { _: Unit -> Unit }
-            uniffiTraitInterfaceCallWithError(
-                uniffiCallStatus,
-                makeCall,
-                writeReturn,
-                { e: ApiCallbackException -> FfiConverterTypeApiCallbackError.lower(e) }
-            )
-        }
-    }
 
     internal object uniffiFree: UniffiCallbackInterfaceFree {
         override fun callback(handle: Long) {
@@ -2693,7 +2648,6 @@ internal object uniffiCallbackInterfaceCommonDeviceServiceEx {
 
     internal var vtable = UniffiVTableCallbackInterfaceCommonDeviceServiceEx.UniffiByValue(
         `clipboardCopyString`,
-        `testSecureStore`,
         uniffiFree,
     )
 

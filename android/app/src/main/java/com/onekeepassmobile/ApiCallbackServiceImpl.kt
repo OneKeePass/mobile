@@ -26,10 +26,6 @@ class ApiCallbackServiceImpl():AndroidApiService,CommonDeviceServiceEx {
         OkpClipboardManager.setText(clipData )
     }
 
-    override fun testSecureStore() {
-        TODO("Not yet implemented")
-    }
-
     // Gets the uri of an app that has requested autofill
     override fun autofillClientAppUrlInfo(): Map<String, String> {
         val uri = OkpFillResponseBuilder.callingAppUri()
