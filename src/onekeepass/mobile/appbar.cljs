@@ -2,14 +2,22 @@
   (:require [onekeepass.mobile.about :as about :refer [about-content
                                                        privacy-policy-content]]
             [onekeepass.mobile.app-settings :as app-settings]
+            [onekeepass.mobile.app-database-settings :as app-db-settings]
             [onekeepass.mobile.autofill :as af-settings]
             [onekeepass.mobile.common-components :as cc :refer [menu-action-factory]]
-            [onekeepass.mobile.constants :refer [AUTOFILL_SETTINGS_PAGE_ID
-                                                 CAMERA_SCANNER_PAGE_ID]]
+            [onekeepass.mobile.constants  :refer [AUTOFILL_SETTINGS_PAGE_ID
+                                                  CAMERA_SCANNER_PAGE_ID
+                                                  ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID
+                                                  RS_CONNECTION_CONFIG_PAGE_ID
+                                                  RS_CONNECTIONS_LIST_PAGE_ID
+                                                  RS_FILES_FOLDERS_PAGE_ID]]
             [onekeepass.mobile.entry-category :refer [entry-category-content]]
             [onekeepass.mobile.entry-form :as entry-form]
             [onekeepass.mobile.entry-history-list :as entry-history-list]
             [onekeepass.mobile.entry-list :as entry-list :refer [entry-list-content]]
+            [onekeepass.mobile.rs-configs :as rs-configs]
+            [onekeepass.mobile.rs-config-form :as rs-form]
+            [onekeepass.mobile.rs-files-folders :as rs-files-folders]
             [onekeepass.mobile.events.app-settings :as as-events]
             [onekeepass.mobile.events.common :as cmn-events]
             [onekeepass.mobile.events.entry-form :as ef-events]
@@ -17,6 +25,8 @@
             [onekeepass.mobile.events.password-generator :as pg-events]
             [onekeepass.mobile.events.search :as search-events]
             [onekeepass.mobile.events.settings :as stgs-events]
+            [onekeepass.mobile.events.remote-storage :as rs-events]
+            [onekeepass.mobile.events.app-database-settings :as ads-settings]
             [onekeepass.mobile.group-form :as group-form]
             [onekeepass.mobile.icons-list :as icons-list]
             [onekeepass.mobile.key-file-form :as kf-form]
@@ -62,6 +72,10 @@
       (elist-events/entry-list-back-action)
       true)
 
+    (= page RS_FILES_FOLDERS_PAGE_ID)
+    (do (rs-events/remote-storage-listing-previous)
+        true)
+
     (or
      (= page :entry-category)
      (= page :entry-form)
@@ -76,7 +90,10 @@
      (= page :key-file-form)
      (= page CAMERA_SCANNER_PAGE_ID)
      (= page :about)
-     (= page :privacy-policy))
+     (= page :privacy-policy)
+     (= page RS_CONNECTION_CONFIG_PAGE_ID)
+     (= page RS_CONNECTIONS_LIST_PAGE_ID)
+     (= page ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID))
     (do
       (cmn-events/to-previous-page)
       true)
@@ -146,13 +163,16 @@
      (= page :entry-history-list)
      [:<>
       [rnp-menu-item {:title (lstr-ml "deleteAll")
+                      :disabled  @(cmn-events/current-db-disable-edit)
                       :onPress (header-menu-action ef-events/show-history-entry-delete-all-confirm-dialog)}]]
 
      (and (= page :entry-form) @(ef-events/history-entry-form?))
      [:<>
       [rnp-menu-item {:title (lstr-ml "restore")
+                      :disabled  @(cmn-events/current-db-disable-edit)
                       :onPress (header-menu-action ef-events/show-history-entry-restore-confirm-dialog)}]
       [rnp-menu-item {:title (lstr-ml "delete")
+                      :disabled  @(cmn-events/current-db-disable-edit)
                       :onPress (header-menu-action ef-events/show-history-entry-delete-confirm-dialog)}]]
 
      (= page :entry-form)
@@ -160,6 +180,7 @@
            entry-uuid @(ef-events/entry-form-uuid)]
        [:<>
         [rnp-menu-item {:title (lstr-ml "favorite") :trailingIcon (if fav "check" nil)
+                        :disabled (not @(ef-events/history-available))
                         :onPress (header-menu-action ef-events/favorite-menu-checked (not fav))}]
         [rnp-menu-item {:title "History"
                         :disabled (not @(ef-events/history-available))
@@ -168,6 +189,7 @@
         ;; [rnp-menu-item {:title "Password Generator" :onPress #()}]
         [cust-rnp-divider]
         [rnp-menu-item {:title (lstr-ml "delete")
+                        :disabled  @(cmn-events/current-db-disable-edit)
                         :onPress (header-menu-action cc/show-entry-delete-confirm-dialog entry-uuid)}]]))])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -210,6 +232,9 @@
                                  (is-settings-page page)
                                  (r/as-element [settings/appbar-title page])
 
+                                 (= page RS_CONNECTIONS_LIST_PAGE_ID)
+                                 (r/as-element [rs-configs/appbar-title])
+
                                  ;;TODO 
                                  ;; Need to add translation of titles for Entry types and General cat types
                                  ;; Something similar one used in entry category page
@@ -230,6 +255,7 @@
                                  "No Title")}]])
 
 (defn- appbar-title [{:keys [page title]}]
+  ;; title is required
   (cond
     (or (= page :home)
         (= page :about)
@@ -241,7 +267,10 @@
         (= page :app-settings)
         (= page AUTOFILL_SETTINGS_PAGE_ID)
         (= page :key-file-form)
-        (= page CAMERA_SCANNER_PAGE_ID))
+        (= page CAMERA_SCANNER_PAGE_ID)
+        (= page ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID)
+        (= page RS_CONNECTION_CONFIG_PAGE_ID)
+        (= page RS_FILES_FOLDERS_PAGE_ID))
     [positioned-title :title title]
 
     (= page :entry-list)
@@ -250,19 +279,18 @@
     (= page :entry-category)
     [positioned-title :page page :title @(cmn-events/current-database-name) :titleStyle {:max-width "50%"}]
 
-    (is-settings-page page)
-    [positioned-title :page page]
-    
     (= page :group-form)
-    [positioned-title :page page :title title] 
+    [positioned-title :page page :title title]
 
-    (= page :entry-form)
-    [positioned-title :page page]
-
-    (= page :password-generator)
+    ;; page id is required
+    (or
+     (= page :entry-form)
+     (is-settings-page page)
+     (= page :password-generator)
+     (= page RS_CONNECTIONS_LIST_PAGE_ID))
     [positioned-title :page page]))
 
-(defn appbar-header-content [page-info] 
+(defn appbar-header-content [page-info]
   (let [{:keys [page]} page-info]
 
     (reset! current-page-info page-info)
@@ -277,6 +305,10 @@
                                 :color @background-color
                                 :onPress (fn [] (elist-events/entry-list-back-action))}]
 
+       (= page RS_FILES_FOLDERS_PAGE_ID)
+       [rnp-appbar-back-action {:color @background-color
+                                :onPress rs-events/remote-storage-listing-previous}]
+
        (or
         (= page :about)
         (= page :privacy-policy)
@@ -287,7 +319,9 @@
         (= page :settings)
         (= page :app-settings)
         (= page AUTOFILL_SETTINGS_PAGE_ID)
+        (= page ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID)
         (= page CAMERA_SCANNER_PAGE_ID)
+        (= page RS_CONNECTION_CONFIG_PAGE_ID)
         (= page :key-file-form))
        [rnp-appbar-back-action {:color @background-color
                                 :onPress cmn-events/to-previous-page}])
@@ -320,9 +354,9 @@
 
 (defn appbar-body-content
   "The page body content based on the page info set"
-  [{:keys [page]}] 
-  (cond 
-    
+  [{:keys [page]}]
+  (cond
+
     (= page :home)
     [open-page-content]
 
@@ -355,7 +389,7 @@
 
     (= page :app-settings)
     [app-settings/content]
-    
+
     (= page AUTOFILL_SETTINGS_PAGE_ID)
     [af-settings/content]
 
@@ -374,12 +408,23 @@
 
     (= page CAMERA_SCANNER_PAGE_ID)
     (scan-otp-qr/content)
+
+    (= page RS_CONNECTIONS_LIST_PAGE_ID)
+    [rs-configs/remote-connections-list-page-content]
+
+    (= page RS_CONNECTION_CONFIG_PAGE_ID)
+    [rs-form/connection-config-form]
+
+    (= page RS_FILES_FOLDERS_PAGE_ID)
+    [rs-files-folders/dir-entries-content]
     
+    (= page ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID)
+    [app-db-settings/content]
+
     ;; For now, this page is shown after loading the newly selected language translation
     ;; Other attempts to refresh the app settings page itself did not work
     (= page :blank)
     (app-settings/language-update-feedback)
-    
 
     ;; (= page :qr-scanner)
     ;; [totp/content]

@@ -8,12 +8,14 @@
 import Foundation
 import LocalAuthentication
 
+// Only few of the funcs implemented for AutoFill calls
+
 @objc(OkpDbService)
 class OkpDbService: NSObject {
   private let logger = OkpLogger(tag: "OkpDbService")
   
   override init() {
-    logger.debug("Going to call initialize from ")
+    logger.debug("Going to call initialize from autofill OkpDbService class using AutoFillDbServiceAPI.initialize")
     AutoFillDbServiceAPI.initialize()
   }
 
@@ -73,7 +75,67 @@ class OkpDbService: NSObject {
     CredentialProviderViewController.credentialSelected(user, password)
   }
   
-  //read_kdbx_from_app_group
+  
+  
+  /// TDODO: Need to move authenticateWithBiometric and getAuthenticationErrorDescription to a common class and share between app and autofill
+
+  
+  @objc
+  func authenticateWithBiometric(_ resolve: @escaping RCTPromiseResolveBlock,
+                                 reject _: @escaping RCTPromiseRejectBlock)
+  {
+    DispatchQueue.global(qos: .userInteractive).async { [unowned self] in
+      let localAuthenticationContext = LAContext()
+      let reason = "Authentication is required to unlock database"
+      
+      localAuthenticationContext.evaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, localizedReason: reason) { success, evaluationError in
+        if success {
+          // authenticated = success
+          resolve(AutoFillDbServiceAPI.jsonService().okJsonString("AuthenticationSucceeded"))
+        } else {
+          self.logger.error("Error \(evaluationError!)")
+          if let errorObj = evaluationError {
+            let messageToDisplay = self.getAuthenticationErrorDescription(errorCode: errorObj._code)
+            self.logger.error(messageToDisplay)
+          }
+          // For now, we use "AuthenticationFailed" whether user cancels the bio auth or any error in bio api call
+          resolve(AutoFillDbServiceAPI.jsonService().okJsonString("AuthenticationFailed"))
+        }
+      }
+    }
+  }
+  
+  func getAuthenticationErrorDescription(errorCode: Int) -> String {
+    switch errorCode {
+    case LAError.authenticationFailed.rawValue:
+      return "Authentication was not successful, because user failed to provide valid credentials."
+      
+    case LAError.appCancel.rawValue:
+      return "Authentication was canceled by application (e.g. invalidate was called while authentication was in progress)."
+      
+    case LAError.invalidContext.rawValue:
+      return "LAContext passed to this call has been previously invalidated."
+      
+    case LAError.notInteractive.rawValue:
+      return "Authentication failed, because it would require showing UI which has been forbidden by using interactionNotAllowed property."
+      
+    case LAError.passcodeNotSet.rawValue:
+      return "Authentication could not start, because passcode is not set on the device."
+      
+    case LAError.systemCancel.rawValue:
+      return "Authentication was canceled by system (e.g. another application went to foreground)."
+      
+    case LAError.userCancel.rawValue:
+      return "Authentication was canceled by user (e.g. tapped Cancel button)."
+      
+    case LAError.userFallback.rawValue:
+      return "Authentication was canceled, because the user tapped the fallback button (Enter Password)."
+      
+    default:
+      return "Error code \(errorCode) not found"
+    }
+  }
+  
   
   func availableBiometricType() -> Int {
     let localAuthenticationContext = LAContext()

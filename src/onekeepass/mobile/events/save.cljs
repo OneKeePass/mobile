@@ -1,18 +1,15 @@
 (ns onekeepass.mobile.events.save
-  (:require
+  (:require 
+   [clojure.string :as str]
+   [onekeepass.mobile.background :as bg]
    [onekeepass.mobile.events.common :refer [active-db-key
-                                            current-database-file-name
                                             assoc-in-key-db
-                                            get-in-key-db
-                                            on-ok
-                                            on-error]]
-   [re-frame.core :refer [reg-event-db
-                          reg-event-fx
-                          reg-sub
-                          dispatch
-                          reg-fx
-                          subscribe]]
-   [onekeepass.mobile.background :as bg]))
+                                            current-database-file-name
+                                            current-db-disable-edit
+                                            get-in-key-db on-error
+                                            on-ok]]
+   [re-frame.core :refer [dispatch reg-event-db reg-event-fx reg-fx
+                          reg-sub subscribe]]))
 
 (defn save-as-on-error []
   (if (bg/is-iOS)
@@ -31,13 +28,18 @@
   The arg error may be a string or a map with keys: code,message
   "
   [error error-title]
+  (println "Error " error error-title)
   (cond
     (= error "DbFileContentChangeDetected")
     (dispatch [:save-error-modal-show {:error-type :content-change-detected
                                        :error-title error-title}]) ;;title error-type message
+    
+    (= error "NoRemoteStorageConnection")
+    (dispatch [:save-error-modal-show {:error-type :no-remote-storage-connection
+                                       :error-title error-title}])
 
     ;; This happens when the file is removed or cloud service changes the reference after 
-    ;; syncing from remote source. This invalidates the reference help by okp
+    ;; syncing from remote source. This invalidates the reference held by the app internally
     (= "FILE_NOT_FOUND" (:code error))
     (dispatch [:save-error-modal-show {:error-type :file-not-found
                                        :message (:message error)
@@ -68,6 +70,9 @@
                                          :message "Internal error"
                                          :error-title error-title}])
 
+    (str/starts-with? error "UnRecoverableError")
+    (dispatch [:common/error-box-show "Error" error])
+
     :else
     (dispatch [:save-error-modal-show {:error-type :unnown-error
                                        :message (:message error)
@@ -87,16 +92,23 @@
     (dispatch [:common/message-modal-hide])
     (when on-save-ok (on-save-ok))))
 
+;; Called from entry-form, group,settings page events to save any db specific changes
 (reg-event-fx
  :save/save-current-kdbx
  (fn [{:keys [db]} [_event-id {:keys [save-message] :as m-data}]]
-   (let [handler-fn (partial save-api-response-handler m-data)]
-     ;; We need to hold on to the 'handler-fn' in :save-api-response-handler
-     ;; as we may need to use when we need to call overwrite after 'Save error' resolution by user
-     ;; See event ':overwrite-on-save-error' how this handler-fn is used
-     {:db (-> db (assoc-in-key-db  [:save-api-response-handler] handler-fn))
-      :fx [[:dispatch [:common/message-modal-show nil (if-not (nil? save-message) save-message 'saving)]]
-           [:bg-save-kdbx [(active-db-key db) false handler-fn]]]})))
+   (let [save-enabled (not (current-db-disable-edit db))]
+     (if save-enabled
+       ;; m-data is a map with keys :save-message and :error-title
+       (let [handler-fn (partial save-api-response-handler m-data)]
+                   ;; We need to hold on to the 'handler-fn' in :save-api-response-handler
+                   ;; as we may need to use when we need to call overwrite after 'Save error' resolution by user
+                   ;; See event ':overwrite-on-save-error' how this handler-fn is used
+         {:db (-> db (assoc-in-key-db  [:save-api-response-handler] handler-fn))
+          :fx [[:dispatch [:common/message-modal-show nil (if-not (nil? save-message) save-message 'saving)]]
+               [:bg-save-kdbx [(active-db-key db) false handler-fn]]]})
+       {:fx [[:dispatch [:common/message-modal-hide]]
+             [:dispatch [:common/error-box-show "Read Only"
+                         "Editing is diabled as the database is opened in read only mode"]]]}))))
 
 ;; Calls the background save kdbx api
 (reg-fx
@@ -113,7 +125,7 @@
 (reg-event-fx
  :ios-save-as-on-error
  (fn [{:keys [db]} [_event-id]]
-   {:fx [[:bg-ios-save-as-on-error [(current-database-file-name db)(active-db-key db)]]]}))
+   {:fx [[:bg-ios-save-as-on-error [(current-database-file-name db) (active-db-key db)]]]}))
 
 (defn- save-as-api-response-handler [api-reponse]
   (when-let [result (on-ok api-reponse #(dispatch [:pick-save-as-on-error-not-completed %]))]
@@ -121,7 +133,7 @@
 
 (reg-fx
  :bg-ios-save-as-on-error
- (fn [[ kdbx-file-name db-key]]
+ (fn [[kdbx-file-name db-key]]
    (bg/ios-pick-on-save-error-save-as kdbx-file-name db-key save-as-api-response-handler)))
 
 (reg-event-fx
@@ -129,15 +141,15 @@
  (fn [{:keys [db]} [_event-id {:keys [file-name full-file-name-uri]}]]
    ;; kdbx-info is a map  with keys :file-name,:full-file-name-uri
    ;;(println "kdbx-info is " kdbx-info)
-   {:fx [[:bg-ios-complete-save-as-on-error [(active-db-key db) full-file-name-uri]]]}))
+   {:fx [[:bg-ios-complete-save-as-on-error [(active-db-key db) full-file-name-uri file-name]]]}))
 
 (reg-fx
  :bg-ios-complete-save-as-on-error
- (fn [[db-key new-db-key]]
-   ;;(println "db-key new-db-key are " db-key new-db-key)
-   (bg/ios-complete-save-as-on-error db-key new-db-key (fn [api-reponse]
-                                                     (when-let [kdbx-loaded (on-ok api-reponse)]
-                                                       (dispatch [:save-as-on-error-finished kdbx-loaded]))))))
+ (fn [[db-key new-db-key file-name]]
+   (println "db-key new-db-key file-name are " db-key new-db-key file-name)
+   (bg/ios-complete-save-as-on-error db-key new-db-key file-name (fn [api-reponse]
+                                                         (when-let [kdbx-loaded (on-ok api-reponse)]
+                                                           (dispatch [:save-as-on-error-finished kdbx-loaded]))))))
 
 ;; Used for both  iOS and Abdroid
 (reg-event-fx
@@ -178,13 +190,13 @@
 (reg-event-fx
  :android-pick-save-as-on-error-completed
  (fn [{:keys [db]} [_event-id {:keys [file-name full-file-name-uri]}]]
-   {:fx [[:bg-android-complete-save-as-on-error [(active-db-key db) full-file-name-uri]]]}))
+   {:fx [[:bg-android-complete-save-as-on-error [(active-db-key db) full-file-name-uri file-name]]]}))
 
 (reg-fx
  :bg-android-complete-save-as-on-error
- (fn [[db-key new-db-key]]
+ (fn [[db-key new-db-key file-name]]
    ;;(println "db-key new-db-key are " db-key new-db-key)
-   (bg/android-complete-save-as-on-error db-key new-db-key (fn [api-reponse]
+   (bg/android-complete-save-as-on-error db-key new-db-key file-name (fn [api-reponse]
                                                              (when-let [kdbx-loaded (on-ok api-reponse)]
                                                                (dispatch [:save-as-on-error-finished kdbx-loaded]))))))
 
@@ -205,14 +217,18 @@
 ;;;; Discard and close
 (reg-event-fx
  :discard-on-save-error
- (fn [{:keys [_db]} [_event-id]]
+ (fn [{:keys [db]} [_event-id]]
    {:fx [[:dispatch [:save-error-modal-hide]]
-         [:dispatch [:common/close-current-kdbx-db]]]}))
+         [:dispatch [:common/close-current-kdbx-db]]
+         [:bg-save-conflict-resolution-cancel [(active-db-key db)]]]}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;; Save error modal ;;;;;;;;;;;;;;;;
 
-(defn save-error-modal-hide []
+#_(defn save-error-modal-hide []
   (dispatch [:save-error-modal-hide]))
+
+(defn save-error-modal-cancel []
+  (dispatch [:save-error-modal-cancel]))
 
 (defn save-error-modal-data []
   (subscribe [:save-error-modal]))
@@ -230,6 +246,17 @@
               (assoc-in [:save-error-modal :file-name] file-name))
 
       :fx [[:dispatch [:common/message-modal-hide]]]})))
+
+(reg-event-fx
+ :save-error-modal-cancel
+ (fn [{:keys [db]} [_event-id]]
+   {:fx [[:bg-save-conflict-resolution-cancel [(active-db-key db)]]
+         [:dispatch [:save-error-modal-hide]]]}))
+
+(reg-fx
+ :bg-save-conflict-resolution-cancel
+ (fn [[db-key]]
+   (bg/save-conflict-resolution-cancel db-key #())))
 
 (reg-event-db
  :save-error-modal-hide

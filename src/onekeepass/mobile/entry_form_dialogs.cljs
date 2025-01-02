@@ -38,10 +38,10 @@
               {:label "no"
                :on-press dlg-events/confirm-delete-otp-field-dialog-close}]}))
 
-
+;; Called to create a dialog and the dialog is shown if the 'show' is true in 
+;; the dialog data
 (defn setup-otp-action-dialog []
   [confirm-dialog-with-lstr @(dlg-events/setup-otp-action-dialog-data)])
-
 
 (declare otp-settings-dialog-show)
 
@@ -50,6 +50,7 @@
     (scan-qr-events/initiate-scan-qr otp-field-m)
     (otp-settings-dialog-show section-name field-name standard-field :scan-qr)))
 
+;; Called to show the dialog created in setup-otp-action-dialog fn above
 (defn setup-otp-action-dialog-show [section-name field-name standard-field]
   ;; We pass translation keys for title, confirm-text and for button labels
   (dlg-events/setup-otp-action-dialog-show-with-state

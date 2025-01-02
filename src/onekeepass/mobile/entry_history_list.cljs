@@ -37,6 +37,7 @@
 (defn entry-long-press-menu [{:keys [show x y]}]
   [rnp-menu {:visible show :onDismiss hide-entry-long-press-menu :anchor (clj->js {:x x :y y})}
    [rnp-menu-item {:title (lstr-ml "delete")
+                   :disabled  @(cmn-events/current-db-disable-edit)
                    :onPress (fn [_e]
                               (hide-entry-long-press-menu)
                               (form-events/show-history-entry-delete-confirm-dialog))}]])

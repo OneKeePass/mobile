@@ -317,7 +317,7 @@ class DocumentPickerServiceModule(reactContext: ReactApplicationContext) : React
                 // if we use fd.detachFd(), then writing did not work for some cases (Gdrive ?)
                 // If the rust side fails to transfer the ownership of this fd, the app may crash
                 // See comments in creat_kdbx, save_key_file methods accordingly
-                val response = DbServiceAPI.androidSupportService().saveKeyFile(fd.fd.toULong(),localKeyFileFullName)
+                val response = DbServiceAPI.androidSupportServiceExtra().saveKeyFile(fd.fd.toULong(),localKeyFileFullName)
                 promise.resolve(response)
 
                 // IMPORTANT:

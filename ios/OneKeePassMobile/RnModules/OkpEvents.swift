@@ -13,6 +13,8 @@ public class OkpEvents: RCTEventEmitter {
   private let logger = OkpLogger(tag: "OkpEvents")
   private static var instance: OkpEvents?
   
+  // See onekeepass/mobile/events/native_events.cljs how these events are received and handled
+  
   static let EVENT_ON_APPLICATION_URL = "onApplicationOpenURL"
   
   static let EVENT_ON_TIME_TICK = "onTimerTick"
@@ -61,10 +63,12 @@ public class OkpEvents: RCTEventEmitter {
     // logger.debug("Bookmarking cll  ret val \(r))")
   }
   
+  // Called from rust async fn through BackendEventDispatcher class
   public static func sendTickUpdate(_ jsonString:String) {
     instance?.sendEvent(withName: EVENT_ON_TIME_TICK, body: jsonString)
   }
   
+  // Called from rust async fn through BackendEventDispatcher class
   public static func sendEntryOtpUpdate(_ jsonString:String) {
     instance?.sendEvent(withName: EVENT_ENTRY_OTP_UPDATE, body: jsonString)
   }

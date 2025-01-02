@@ -14,6 +14,13 @@
 
 (def trans-defaults {})
 
+;; We may need to use additional 'interpolation' as per 
+;; https://www.i18next.com/translation-function/interpolation#all-interpolation-options
+;; Here is an example to use an option to escape the use of "/"
+;; (lstr-mt 'settings 'additionalDbAccessExplain {:biometricType "FaceID/TouchID" :interpolation {:escapeValue false}})
+;; Instead of passing this option with interpolation-args in 'lstr', we set this option in the 'init' 
+;; call in 'setup-i18n-with-backend' below
+
 (defn lstr
   "Gets the translation text for the given key and applying the interpolation if passed
   Arg interpolation-args is a map that provides value for any variable names used in text
@@ -148,7 +155,7 @@
 (defn lstr-pt
   "Adds 'pageTitles' prefix to the key and gets the translated text."
   [txt-key]
-  (lstr (str "pageTitles." txt-key)))
+  (lstr (str "pageTitles." (convert txt-key))))
 
 (defn lstr-entry-type-title
   "Adds 'entryTypeTitles' prefix to the key and gets the translated text."
@@ -306,6 +313,9 @@
   (let [m  {:lng language
             :fallbackLng "en"
             :compatibilityJSON "v4"
+            ;; See https://www.i18next.com/translation-function/interpolation#all-interpolation-options
+            ;; This prevents escaping the value passed in interpolation args
+            :interpolation {:escapeValue false}
             ;; set debug true to see some i18n package debug prints in console (xcode debug/log console) 
             :debug false}
         ^js/i18nObj instance (.createInstance i18n-obj)]

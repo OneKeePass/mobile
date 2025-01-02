@@ -257,7 +257,7 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
     }
 
     @ReactMethod
-    fun completeSaveAsOnError(oldFullFileNameUri: String,newFullFileNameUri: String,promise: Promise) {
+    fun completeSaveAsOnError(oldFullFileNameUri: String,newFullFileNameUri: String,fileName: String,promise: Promise) {
         executorService.execute {
             Log.i(TAG, "Received fullFileName is $newFullFileNameUri")
             val uri = Uri.parse(newFullFileNameUri);
@@ -269,7 +269,7 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
                 if (fd != null) {
                     // Rust side the file should not be closed. So fd.detachFd() is not used.
                     // if we use fd.detachFd(), then 'create db file' for google drive did not work
-                    val response = DbServiceAPI.completeSaveAsOnError(fd.fd.toULong(), oldFullFileNameUri,newFullFileNameUri);
+                    val response = DbServiceAPI.completeSaveAsOnError(fd.fd.toULong(), oldFullFileNameUri,newFullFileNameUri,fileName);
                     resolveResponse(response, promise)
                     // IMPORTANT:
                     // The caller is responsible for closing the file using its file descriptor
@@ -314,6 +314,8 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
          // biometricService.showPrompt(currentActivity as FragmentActivity, executor,promise)
     }
 
+    // This is a follow up method that is called after user picks a file using document picker service
+    // To be replaced by the generic handlePickedFile
     @ReactMethod
     fun copyKeyFile(fullKeyFileNameUri: String, promise: Promise) {
         Log.d(TAG, "copyKeyFile is called with fullFileNameUri $fullKeyFileNameUri  ")
@@ -350,6 +352,8 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
         }
     }
 
+    // This is a follow up method that is called after user picks a file using document picker service
+    // To be replaced by the generic handlePickedFile
     @ReactMethod
     fun uploadAttachment(fullKeyFileNameUri: String, jsonArgs:String,promise: Promise) {
         Log.d(TAG, "uploadAttachment is called with fullFileNameUri $fullKeyFileNameUri and jsonArgs $jsonArgs ")
@@ -362,6 +366,44 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
                 if (fd != null) {
                     // detachFd call should be used so that the file is closed in the rust code automatically
                     promise.resolve(DbServiceAPI.uploadAttachment(fd.detachFd().toULong(),fullKeyFileNameUri,fileName,jsonArgs))
+                } else {
+                    promise.reject(E_READ_FIE_DESCRIPTOR_ERROR, "Invalid file descriptor")
+                }
+
+            } catch (e: SecurityException) {
+                // UI layer needs to handle this with appropriate message to the user
+                // This will happen, if we try to read the kdbx file without proper permissions
+                // We need to obtain while selecting the file.
+                // See 'pickKdbxFileToOpen'
+                Log.e(TAG, "SecurityException due to in sufficient permission")
+                promise.reject(E_PERMISSION_REQUIRED_TO_READ, e)
+            } catch (e: FileNotFoundException) {
+                // Need to add logic in UI layer to handle this
+                // e.printStackTrace()
+                Log.e(TAG, "Error in uploadAttachment ${e}")
+                promise.reject(E_FILE_NOT_FOUND, e)
+            } catch (e: Exception) {
+                // e.printStackTrace()
+                Log.e(TAG, "Error in uploadAttachment ${e}")
+                promise.reject(E_READ_CALL_FAILED, e)
+            }
+        }
+    }
+
+    // This is a follow up method that is called after user picks a file using document picker service
+    // TODO: Replace copyKeyFile,uploadAttachment to use this common fn after making required changes in rust side
+    @ReactMethod
+    fun handlePickedFile(fullKeyFileNameUri: String, jsonArgs:String,promise: Promise) {
+        Log.d(TAG, "The handlePickedFile is called with fullFileNameUri $fullKeyFileNameUri and jsonArgs $jsonArgs ")
+        executorService.execute {
+            val uri = Uri.parse(fullKeyFileNameUri);
+            try {
+                val fd: ParcelFileDescriptor? = contentResolver.openFileDescriptor(uri, "r");
+                val fileName = FileUtils.getMetaInfo(contentResolver, uri)?.filename ?: ""
+                //fd will be null if the provider recently crashed
+                if (fd != null) {
+                    // detachFd call should be used so that the file is closed in the rust code automatically
+                    promise.resolve(DbServiceAPI.handlePickedFile(fd.detachFd().toULong(),fullKeyFileNameUri,fileName,jsonArgs))
                 } else {
                     promise.reject(E_READ_FIE_DESCRIPTOR_ERROR, "Invalid file descriptor")
                 }

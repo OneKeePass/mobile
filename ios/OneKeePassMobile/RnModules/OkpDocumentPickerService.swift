@@ -17,8 +17,6 @@ class OkpDocumentPickerService: NSObject {
   var keyFilePickDelegate: KeyFilePickDelegate?
   var dummyDocumentPickDelegate:DummyDocumentPickDelegate?
   
-  
-  
   @objc static func requiresMainQueueSetup() -> Bool {
     return false
   }
@@ -105,7 +103,7 @@ class OkpDocumentPickerService: NSObject {
       // self.keyFilePickDelegate = KeyFilePickDelegate(resolve, reject)
       // documentPicker.delegate = self.keyFilePickDelegate
       
-      // We can use DummyDocumentPickDelegate instead of KeyFilePickDelegate as we need not bookmark the url
+      // We can use DummyDocumentPickDelegate instead of KeyFilePickDelegate as we need not to bookmark the url
       self.dummyDocumentPickDelegate = DummyDocumentPickDelegate(resolve, reject)
       documentPicker.delegate = self.dummyDocumentPickDelegate
     
@@ -209,7 +207,7 @@ class OkpDocumentPickerService: NSObject {
     }
   }
   
-  // Called when user opts to use 'Save as' when there unsolvable save time error
+  // Called when user opts to use 'Save as' when there is an unsolvable save time error
   // fileName is the suggested kdbx file name to use and user can change the name in the document picker
   @objc
   func pickOnSaveErrorSaveAs(_ fileName: String,existingFullFileNameUri: String,
@@ -221,12 +219,14 @@ class OkpDocumentPickerService: NSObject {
       
       let tempFileName =  DbServiceAPI.iosSupportService().copyLastBackupToTempFile(fileName,existingFullFileNameUri)
       guard tempFileName != nil else {
-        reject("NO_BACK_FILE_IS_FOUND", "Temp file name is nil", nil)
+        self.logger.error("No backup file is found to complete this save call. Temp file name is nil")
+        reject("NO_BACK_FILE_IS_FOUND", "No backup file is found to complete this save call ", nil)
         return
       }
       
       guard let tempFileUrl = URL(string:tempFileName!) else {
-        reject("NO_BACK_FILE_IS_FOUND", "Temp file url is nil", nil)
+        self.logger.error("No backup file is found to complete this save call. Temp file url is nil")
+        reject("NO_BACK_FILE_IS_FOUND", "No backup file is found to complete this save call ", nil)
         return
       }
       
@@ -314,9 +314,9 @@ class ReadFilePickDelegate: NSObject, UIDocumentPickerDelegate {
       do {
         // Secured access to url should be available before bookmarking
         let bookmarkData = try saved_file_url.bookmarkData(options: .minimalBookmark, includingResourceValuesForKeys: nil, relativeTo: nil)
-        let byteArray: [UInt8] = .init(bookmarkData)
-        logger.debug("Calling rust api to save bookmark data with size \(byteArray.count)")
-        let b = DbServiceAPI.iosSupportService().saveBookMarkData(saved_file_url.absoluteString, byteArray)
+        // let byteArray: [UInt8] = .init(bookmarkData)
+        // logger.debug("Calling rust api to save bookmark data with size \(byteArray.count)")
+        let b = DbServiceAPI.iosSupportService().saveBookMarkData(saved_file_url.absoluteString, bookmarkData)
         logger.debug("Bookmark save rust api call result is \(b)")
       
         // After bookmarking just the uri is returned to the UI to use
@@ -367,9 +367,9 @@ class KeyFilePickDelegate: NSObject, UIDocumentPickerDelegate {
     let intent = NSFileAccessIntent.readingIntent(with: pickedFileUrl, options: [.withoutChanges, .resolvesSymbolicLink])
     
     // IMPORTANT:
-    // Any file picked by the user is outside the app's sandbox and to openning and reading any
+    // Any file picked by the user is outside the app's sandbox. The opening and reading of any
     // such file can only be done after a successful 'startAccessingSecurityScopedResource'
-    // Instead of openning and reading the file here, we keep a bookmark and that
+    // Instead of opening and reading the file here, we keep a bookmark and that
     // bookmark is read in 'copyKeyFile' fun from OkpDbService. Without the bookmark, we cannot read the file
       
     fc.coordinate(with: [intent], queue: .main) { [unowned self] err in
@@ -392,10 +392,10 @@ class KeyFilePickDelegate: NSObject, UIDocumentPickerDelegate {
       do {
         // Secured access to url should be available before bookmarking
         let bookmarkData = try pickedFileUrl.bookmarkData(options: .minimalBookmark, includingResourceValuesForKeys: nil, relativeTo: nil)
-        let byteArray: [UInt8] = .init(bookmarkData)
+        // let byteArray: [UInt8] = .init(bookmarkData)
         
         // Note: At this time both kdbx and the key file uri bookmarking use the same way
-        let b = DbServiceAPI.iosSupportService().saveBookMarkData(pickedFileUrl.absoluteString, byteArray)
+        let b = DbServiceAPI.iosSupportService().saveBookMarkData(pickedFileUrl.absoluteString, bookmarkData)
         logger.debug("Bookmark save rust api call result is \(b)")
       
         // After bookmarking just the uri is returned to the UI to use

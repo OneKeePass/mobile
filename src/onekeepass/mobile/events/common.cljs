@@ -1,11 +1,12 @@
 (ns onekeepass.mobile.events.common
   "All common events that are used across many pages"
-  (:require [cljs.core.async :refer [<! go timeout]]
-            [clojure.string :as str]
-            [onekeepass.mobile.background :as bg :refer [is-Android]]
-            [onekeepass.mobile.utils :as u :refer [str->int tags->vec]]
-            [re-frame.core :refer [dispatch dispatch-sync reg-event-db
-                                   reg-event-fx reg-fx reg-sub subscribe]]))
+  (:require
+   [cljs.core.async :refer [<! go timeout]]
+   [clojure.string :as str]
+   [onekeepass.mobile.background :as bg :refer [is-Android]]
+   [onekeepass.mobile.utils :as u :refer [contains-val? str->int tags->vec]]
+   [re-frame.core :refer [dispatch dispatch-sync reg-event-db reg-event-fx
+                          reg-fx reg-sub subscribe]]))
 
 (def home-page-title "home")
 
@@ -104,7 +105,8 @@
   The args are the re-frame 'app-db' and KdbxLoaded struct returned by backend API.
   Returns the updated app-db
   "
-  [app-db {:keys [db-key database-name file-name key-file-name]}] ;;kdbx-loaded 
+  ;; Receives kdbx-loaded-ex in case of Sftp/Webdav calls
+  [app-db {:keys [db-key database-name file-name _key-file-name rs-additional-info]}] ;;kdbx-loaded  
   (let [app-db  (if (nil? (:opened-db-list app-db)) (assoc app-db :opened-db-list []) app-db)
         ;; Existing db-key is removed first to maintain unique db-key
         dbs (filterv (fn [m] (not= db-key (:db-key m))) (:opened-db-list app-db))
@@ -118,6 +120,8 @@
         (update-in [:opened-db-list] conj {:db-key db-key
                                            :database-name database-name
                                            :file-name file-name
+                                           ;; Sftp/Webdav
+                                           :rs-additional-info rs-additional-info
                                            ;; user-action-time is used for db timeout
                                            ;; See onekeepass.mobile.events.app-settings
                                            :user-action-time (js/Date.now)
@@ -137,12 +141,27 @@
      (-> (filter (fn [m] (= curr-dbkey (:db-key m))) (:opened-db-list app-db))
          first :database-name))))
 
+(declare recently-used)
+
 (defn current-database-file-name
   "Gets the database kdbx file name"
   [app-db]
   (let [curr-dbkey  (:current-db-file-name app-db)
-        recent-dbs-info (-> app-db :app-preference :data :recent-dbs-info)]
+        recent-dbs-info (recently-used app-db) #_(-> app-db :app-preference :data :recent-dbs-info)]
     (-> (filter (fn [{:keys [db-file-path]}] (= curr-dbkey db-file-path)) recent-dbs-info) first :file-name)))
+
+(defn current-kdbx-loaded-info
+  [app-db]
+  (let [curr-dbkey  (:current-db-file-name app-db)]
+    (-> (filter (fn [m] (= curr-dbkey (:db-key m))) (:opened-db-list app-db))
+        first)))
+
+(defn current-db-disable-edit
+  ([app-db]
+   (let [{:keys [rs-additional-info]} (current-kdbx-loaded-info app-db)]
+     (boolean (:no-connection rs-additional-info))))
+  ([]
+   (subscribe [:current-db-disable-edit])))
 
 ;;;;;;;;;;;;;;;;;;;;  Common Events ;;;;;;;;;;;;;;;;;;;;;
 
@@ -180,17 +199,26 @@
     :page-info {:page :home
                 :title home-page-title}}))
 
+;; When the db is loaded from a remote storage connection, the ok response
+;; will have a map 'kdbx-loaded-ex' (struct KdbxLoadedEx)
 (reg-event-fx
  :common/kdbx-database-opened
- (fn [{:keys [db]} [_event-id {:keys [database-name] :as kdbx-loaded}]]
-   {:db (db-opened db kdbx-loaded) ;; current-db-file-name is set in db-opened
+ (fn [{:keys [db]} [_event-id {:keys [database-name rs-additional-info] :as kdbx-loaded-ex}]]
+   ;;(println "kdbx-loaded-ex is " kdbx-loaded-ex)
+   {:db (db-opened db kdbx-loaded-ex) ;; current-db-file-name is set in db-opened
     :fx [[:dispatch [:entry-category/load-categories-to-show]]
          [:dispatch [:common/next-page :entry-category database-name]]
          [:dispatch [:load-all-tags]]
          [:dispatch [:groups/load]]
          [:dispatch [:common/load-entry-type-headers]]
+
+         (when (boolean (:no-connection rs-additional-info))
+           [:dispatch [:common/message-box-show 'dbReadOnly 'dbReadOnly]])
          ;; Loads the updated recent dbs info
-         [:bg-app-preference]]}))
+         [:bg-app-preference]
+         [:dispatch [:common/message-modal-hide]]
+         [:dispatch [:common/message-snackbar-open 'databaseOpened]]
+         ]}))
 
 (reg-event-fx
  :close-kdbx-db
@@ -345,20 +373,114 @@
  (fn [db _query-vec]
    (mapv (fn [m] (:db-key m)) (:opened-db-list db))))
 
+;; Editing should be disabled in case of remote connection is not availble and db content is 
+;; read from backup 
+(reg-sub
+ :current-db-disable-edit
+ (fn [db _query-vec]
+   (current-db-disable-edit db)))
+
 ;;;;;;;;;;;;;;;;;;  App preference, Recent dbs etc ;;;;;;;;;;;;;;;;;;;;
 
 (defn app-preference-status-loaded []
   (subscribe [:app-preference-status-loaded]))
 
 (defn recently-used
-  "Returns a vec of maps (from struct RecentlyUsed) with keys :file-name and :db-file-path 
+  "Returns a vec of maps (from struct RecentlyUsed) 
+   with keys :file-name, :db-file-path 
    The kdbx file name is found here for each db-key
  "
-  []
-  (subscribe [:recently-used]))
+  ([app-db]
+   (let [r (get-in app-db [:app-preference :data :recent-dbs-info])]
+     (if (nil? r) [] r)))
+  ([]
+   (subscribe [:recently-used])))
+
+(defn database-preferences
+  "Returns a vec of maps  (the map is from struct DatabasePreference) or an empty vec
+ "
+  ([app-db]
+   (let [r (get-in app-db [:app-preference :data :database-preferences])]
+     (if (nil? r) [] r)))
+  ([]
+   (subscribe [:database-preferences])))
 
 (defn biometric-available []
   (subscribe [:biometric-available]))
+
+#_(defn biometric-enabled-to-open-db
+    "Called to check whether a db can be opened with biometric authentication or not"
+    ([app-db db-key]
+     (let [db-infos (get-in app-db [:app-preference :data :recent-dbs-info])
+           ;; r is a single member list
+           r (filter (fn [{:keys [db-file-path]}] (= db-file-path db-key)) db-infos)]
+
+       (boolean (-> r first :biometric-enabled-db-open))))
+    ([db-key]
+     (subscribe [:biometric-enabled-to-open-db db-key])))
+
+#_(defn biometric-enabled-to-open-db
+    "Called to check whether a db can be opened with biometric authentication or not"
+    ([app-db db-key]
+     (let [db-infos (get-in app-db [:app-preference :data :biometric-enabled-dbs])]
+       (contains-val? db-infos db-key)))
+    ([db-key]
+     (subscribe [:biometric-enabled-to-open-db db-key])))
+
+
+(defn database-preference-by-db-key
+  "Gets the database preference ( a map ) for a given db-key from the vec or the default DatabasePreference"
+  [app-db db-key]
+  (let [db-prefs (database-preferences app-db)
+        db-p (first (filter (fn [db-pref] (= (:db-key db-pref) db-key)) db-prefs))]
+    (if (empty? db-p) {:db-key db-key
+                       :db-open-biometric-enabled false
+                       :db-unlock-biometric-enabled true}  db-p)))
+
+
+(defn update-database-preference-list 
+  "Adds the passed database preference by removing the existing one from the list and then 
+   add back the updated one at the end.
+   The arg in-db-pref is a map.
+   Returns the updated app-db
+   "
+  [app-db in-db-pref]
+  (let [;; Remove the existing db-pref if any from the vec
+        db-prefs (filterv (fn [m] (not= (:db-key in-db-pref) (:db-key m))) (database-preferences app-db))
+        ;; Add back the incoming updated db-pref to the end 
+        ;; At this time the order of db-pref does not matter
+        db-prefs (conj db-prefs in-db-pref)] 
+    (assoc-in app-db [:app-preference :data :database-preferences] db-prefs)))
+
+(defn biometric-enabled-to-open-db
+  "Called to check whether a db can be opened with biometric authentication or not"
+  ([app-db db-key]
+   (boolean (-> (database-preference-by-db-key app-db db-key) :db-open-biometric-enabled)))
+  ([db-key]
+   (subscribe [:biometric-enabled-to-open-db db-key])))
+
+(defn biometric-enabled-to-unlock-db
+  "Called to check whether a db can be opened with biometric authentication or not"
+  ([app-db db-key]
+   (boolean (-> (database-preference-by-db-key app-db db-key) :db-unlock-biometric-enabled)))
+  ([db-key]
+   (subscribe [:biometric-enabled-to-unlock-db db-key])))
+
+;; field-kw should be one of 
+;; [:database-preferences :backup-history-count :theme :
+;; db-session-timeout :recent-dbs-info :language :version :clipboard-timeout :default-entry-category-groupings]
+;; This is from struct Preference
+(defn preference-field-data [app-db field-kw default-value]
+  (let [r (get-in app-db [:app-preference :data field-kw])
+        r (if-not (nil? r) r default-value)]
+    r))
+
+(defn update-preference-field-data
+  "Update the field of app preference map with the given value
+  Returns the updated app-db 
+  "
+  [app-db field-kw value]
+  (assoc-in app-db [:app-preference :data field-kw] value))
 
 (reg-event-fx
  :load-app-preference
@@ -393,7 +515,7 @@
    ;; pref is a map - {:version \"0.0.1\" :recent-dbs-info [{},{}..]}
    ;; based on Preference struct 
    {:db (-> db
-            ;; Set the biometric availablity info in db so that we can use it in a subscription
+            ;; Set the biometric availablity info in db so that we can use it in a reg-sub subscription
             (assoc :biometric-available (bg/is-biometric-available))
             (assoc-in [:app-preference :status] :loaded)
             (assoc-in [:app-preference :data] pref))
@@ -402,8 +524,24 @@
 (reg-sub
  :recently-used
  (fn [db [_event-id]]
-   (let [r (get-in db [:app-preference :data :recent-dbs-info])]
-     (if (nil? r) [] r))))
+   (recently-used db)
+   #_(let [r (get-in db [:app-preference :data :recent-dbs-info])]
+       (if (nil? r) [] r))))
+
+(reg-sub
+ :database-preferences
+ (fn [db [_event-id]]
+   (database-preferences db)))
+
+(reg-sub
+ :biometric-enabled-to-open-db
+ (fn [db [_event-id db-key]]
+   (biometric-enabled-to-open-db db db-key)))
+
+(reg-sub
+ :biometric-enabled-to-unlock-db
+ (fn [db [_event-id db-key]]
+   (biometric-enabled-to-unlock-db db db-key)))
 
 (reg-sub
  :biometric-available
@@ -566,6 +704,16 @@
          ;; otherwise we add the page to the begining of the list - conj adds to the front of list
          pages-stack (if (= (:page page-data) page) pages-stack  (conj pages-stack page-info))]
      (assoc-in db [:pages-stack] pages-stack))))
+
+;; Replaces the previous page with the next page 
+(reg-event-fx
+ :common/replace-previous-page
+ (fn [{:keys [db]} [_event-id page title]]
+   (let [pages-stack (get-in db [:pages-stack])
+         rest-page-data (rest pages-stack)
+         page-info {:page page :title title}
+         pages-stack (conj rest-page-data page-info)]
+     {:db (assoc-in db [:pages-stack] pages-stack)})))
 
 ;; Called when user navigates to the previous page
 (reg-event-db
@@ -775,7 +923,9 @@
 (defn close-message-dialog []
   (dispatch [:message-box-hide]))
 
-(defn message-dialog-data []
+(defn message-dialog-data
+  "Data for the message-dialog component found in common-component package"
+  []
   (subscribe [:message-box]))
 
 (reg-event-db
@@ -947,21 +1097,20 @@
       (<! (timeout @clipboard-session-timeout))
       (when @field-in-clip (bg/write-string-to-clipboard nil)))))
 
-(defn write-string-to-clipboard 
+(defn write-string-to-clipboard
   "Calls the backend api to copy the passsed field value to the ios or android clipboard"
   [{:keys [field-name value protected]}]
   ;;(println "write-string-to-clipboard called field-name value... " field-name value)
   #_(bg/write-string-to-clipboard value)
   #_(clear-clipboard protected)
   ;;clipboard-session-timeout is in milliseconds
-  (let [cb-timeout_secs (if-not (= @clipboard-session-timeout -1) (/ @clipboard-session-timeout 1000) 0)] 
+  (let [cb-timeout_secs (if-not (= @clipboard-session-timeout -1) (/ @clipboard-session-timeout 1000) 0)]
     (bg/copy-to-clipboard {:field-name field-name
                            :field-value value
                            :protected protected
                            :cleanup-after cb-timeout_secs}
-                          #())
-    )
-  
+                          #()))
+
   (when field-name
     (dispatch [:common/message-snackbar-open (str field-name " " "copied")])))
 

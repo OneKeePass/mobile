@@ -100,14 +100,20 @@ android {
             include "armeabi-v7a", "arm64-v8a"
         }
     }
+    // This ensures that './gradlew build' works even if lint check failed
+    // However we need to verify for any errors in the 'Task :app:lintReportDebug' output in the file
+    // android/app/build/reports/lint-results-debug.html and decide it is ok or not
+    lintOptions {
+        abortOnError false
+    }
     //
     namespace "com.onekeepassmobile"
     defaultConfig {
         applicationId "com.onekeepassmobile"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 11
-        versionName "0.14.0"
+        versionCode 12
+        versionName "0.15.0"
     }
 
     signingConfigs {
@@ -117,6 +123,8 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+
+
         //TODO: (Custom-Jey) Added for release time upload key
         /*
         release {
@@ -127,7 +135,8 @@ android {
                 keyPassword OKP_APP_UPLOAD_KEY_PASSWORD
             }
         }
-        */
+         */
+
 
         //TODO: (Custom-Jey) Added for release time APK build key
         // Uncomment this release only for APK build
@@ -144,9 +153,11 @@ android {
 
     }
     buildTypes {
+
         debug {
             signingConfig signingConfigs.debug
         }
+
         /*
         release {
             // Caution! In production, you need to generate your own keystore file.
@@ -164,7 +175,7 @@ android {
 dependencies {
     // TODO:(Custom-Jey)
     // Important: Required to use rust built libs through JNA
-    implementation "net.java.dev.jna:jna:5.13.0@aar"
+    implementation "net.java.dev.jna:jna:5.16.0@aar"
     def work_version = "2.8.0"
     implementation "androidx.work:work-runtime-ktx:$work_version"
     // For BootSplash screen
@@ -179,8 +190,7 @@ dependencies {
     
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
-    implementation("com.facebook.react:flipper-integration")
-
+    
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {

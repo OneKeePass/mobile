@@ -2,7 +2,7 @@
  onekeepass.mobile.start-page
   (:require [onekeepass.mobile.background :refer [is-iOS]]
             [onekeepass.mobile.common-components :as cc  :refer [menu-action-factory
-                                                                 message-dialog]]
+                                                                 message-dialog confirm-dialog-with-lstr]]
             [onekeepass.mobile.constants :as const]
             [onekeepass.mobile.date-utils :refer [utc-to-local-datetime-str]]
             [onekeepass.mobile.events.common :as cmn-events]
@@ -10,6 +10,8 @@
             [onekeepass.mobile.events.new-database :as ndb-events]
             [onekeepass.mobile.events.open-database :as opndb-events]
             [onekeepass.mobile.events.settings :as stgs-events]
+            [onekeepass.mobile.events.dialogs :as dlg-events]
+            [onekeepass.mobile.events.remote-storage :as rs-events :refer [BROWSE-TYPE-DB-NEW BROWSE-TYPE-DB-OPEN]]
             [onekeepass.mobile.rn-components
              :as rnc
              :refer [cust-dialog cust-rnp-divider divider-color-1
@@ -26,6 +28,43 @@
             [reagent.core :as r]))
 
 ;;(set! *warn-on-infer* true)
+
+;; For now we will use a simple dialog using generic confirm type dialog
+;; Called to create a dialog and the dialog is shown if the 'show' is true in 
+;; the dialog data
+(defn start-page-storage-selection-dialog []
+  [confirm-dialog-with-lstr @(dlg-events/start-page-storage-selection-dialog-data)])
+
+;; 
+(defn start-page-storage-selection-dialog-show 
+  "Called to show the dialog showing storage locations
+   The arg 'kw-browse-type' determines we are showing the dialog during open database or new database time
+   We pass additional new db data in the arg 'opts-m'  
+   "
+  [kw-browse-type & {:as opts-m}]
+  ;; We pass translation keys for title, confirm-text and for button labels
+  (dlg-events/start-page-storage-selection-dialog-show-with-state
+   {:title "dbStorage"
+    :confirm-text "dbStorage"
+    :show-action-as-vertical true
+    :actions [{:label "localDevice"
+               :on-press (fn []
+                           (if (= BROWSE-TYPE-DB-OPEN kw-browse-type)
+                             (opndb-events/open-database-on-press)
+                             (ndb-events/done-on-click))
+                           (dlg-events/start-page-storage-selection-dialog-close))}
+              {:label "sftp"
+               :on-press (fn []
+                           (rs-events/remote-storage-type-selected :sftp kw-browse-type opts-m)
+                           (dlg-events/start-page-storage-selection-dialog-close))}
+              {:label "webdav"
+               :on-press (fn []
+                           (rs-events/remote-storage-type-selected :webdav kw-browse-type opts-m)
+                           (dlg-events/start-page-storage-selection-dialog-close))}
+              {:label "cancel"
+               :on-press dlg-events/start-page-storage-selection-dialog-close}]}))
+
+;;;;;;;;;;;;;;
 
 (defn new-db-dialog [{:keys [dialog-show
                              database-name
@@ -106,20 +145,20 @@
                    :onPress  ndb-events/cancel-on-click}
        (lstr-bl "cancel")]
       [rnp-button {:mode "text" :disabled in-progress?
-                   :onPress ndb-events/done-on-click}
+                   :onPress (fn [] (start-page-storage-selection-dialog-show BROWSE-TYPE-DB-NEW :new-db-data {:database-name database-name}))}
        (lstr-bl "create")]]]))
 
 ;; open-db-dialog is called after user pick a database file open 
 ;; or the database is locked and user needs to use password and keyfile based authentication
 
-(defn open-db-dialog  [{:keys [dialog-show
-                               database-file-name
-                               database-full-file-name
-                               password
-                               password-visible
-                               key-file-name-part
-                               error-fields
-                               status]}]
+(defn- open-db-dialog-1  [{:keys [dialog-show
+                                  database-file-name
+                                  database-full-file-name
+                                  password
+                                  password-visible
+                                  key-file-name-part
+                                  error-fields
+                                  status]}]
 
   (let [locked? @(cmn-events/locked? database-full-file-name)
         in-progress? (= :in-progress status)
@@ -190,7 +229,13 @@
                                 (opndb-events/open-database-read-db-file)))}
        (lstr-bl "continue")]]]))
 
-(defn file-info-dialog [{:keys [dialog-show file-size location last-modified]}]
+(defn open-db-dialog
+  ([data]
+   (open-db-dialog-1 data))
+  ([]
+   (open-db-dialog @(opndb-events/dialog-data))))
+
+(defn file-info-dialog [{:keys [dialog-show file-size location last-modified] :as _data}]
   [cust-dialog {:style {}
                 :visible dialog-show :onDismiss #(cmn-events/close-file-info-dialog)}
    [rnp-dialog-title "File Info"]
@@ -407,10 +452,11 @@
     [rn-safe-area-view {:style {:flex 1 :background-color @rnc/page-background-color}}
      [rn-view {:style {:flex 1 :justify-content "center" :align-items "center" :margin-top "10%"}}
       [rn-view {:style {:flex .1 :justify-content "center" :width "90%"}}
-       [rnp-button {:mode "contained" :onPress ndb-events/new-database-dialog-show}
+       [rnp-button {:mode "contained" :onPress (fn [] (ndb-events/new-database-dialog-show))}
         (lstr-bl "newdb")]] ;;
       [rn-view {:style {:flex .1 :justify-content "center" :width "90%"}}
-       [rnp-button {:mode "contained" :onPress #(opndb-events/open-database-on-press)}
+       [rnp-button {:mode "contained"
+                    :onPress (fn [] (start-page-storage-selection-dialog-show BROWSE-TYPE-DB-OPEN))}
         (lstr-bl "opendb")]]
 
       [rn-view {:style {:margin-top 20}}
@@ -430,10 +476,8 @@
       (:dialog remove-confirm-dialog-info)
       [new-db-dialog @(ndb-events/dialog-data)]
       [open-db-dialog @(opndb-events/dialog-data)]
-      #_[open-db-dialog]
+      [start-page-storage-selection-dialog] 
       [file-info-dialog @(cmn-events/file-info-dialog-data)]
       [message-repick-database-file-dialog @(opndb-events/repick-confirm-data)]
       [authenticate-biometric-confirm-dialog @(opndb-events/authenticate-biometric-confirm-dialog-data)]
       [message-dialog @(cmn-events/message-dialog-data)]]]))
-
-;;;;;;;;;;;;;;;;;;;;;

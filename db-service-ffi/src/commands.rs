@@ -1,12 +1,17 @@
-use crate::app_state::{AppState, PreferenceData, RecentlyUsed};
-use crate::udl_uniffi_exports::ApiCallbacksStore;
-use crate::{android, as_api_response, ios, KeyFileInfo};
-use crate::{open_backup_file, util, OkpError, OkpResult};
+use crate::app_preference::{PreferenceData, RecentlyUsed};
+use crate::app_state::AppState;
+use crate::file_util::PickedFileHandler;
+use crate::{android, file_util::KeyFileInfo, ios};
+use crate::{backup, biometric_auth, util, OkpError, OkpResult};
 use onekeepass_core::async_service::{self, OtpTokenTtlInfoByField, TimerID};
 use onekeepass_core::db_content::AttachmentHashValue;
 use onekeepass_core::db_service::{
     self, DbSettings, EntryCategory, EntryCategoryGrouping, EntryFormData, Group, KdbxLoaded,
     NewDatabase, OtpSettings, PasswordGenerationOptions,
+};
+
+use onekeepass_core::db_service::storage::{
+    read_configs, RemoteStorageOperation, RemoteStorageOperationType,
 };
 
 use std::fmt::format;
@@ -50,7 +55,7 @@ pub struct TranslationResource {
 // most specific variants first and so on
 
 // The deserializer does the following:
-// 1. pick a variant in the order decalred here
+// 1. pick a variant in the order declared here
 // 2. Checks whether all its fields are available (order of fields does not matter) in the deserialized data
 // 3. If the previous check is success, returns the variant. Otherwise continue to the next variant
 
@@ -76,16 +81,18 @@ pub enum CommandArg {
     PrefefenceUpdateArg {
         preference_data: PreferenceData,
     },
-    OpenDbArgWithFileName {
-        file_name: String,
-        db_file_name: String,
-        password: String,
-        key_file_name: Option<String>,
-    },
+    // Not used
+    // OpenDbArgWithFileName {
+    //     file_name: String,
+    //     db_file_name: String,
+    //     password: String,
+    //     key_file_name: Option<String>,
+    // },
     OpenDbArg {
         db_file_name: String,
         password: Option<String>,
         key_file_name: Option<String>,
+        biometric_auth_used: bool,
     },
     NewDbArgWithFileName {
         file_name: String,
@@ -123,6 +130,7 @@ pub enum CommandArg {
     SaveAsArg {
         db_key: String,
         new_db_key: String,
+        file_name: String,
     },
     GroupArg {
         db_key: String,
@@ -149,6 +157,16 @@ pub enum CommandArg {
         db_key: String,
         name: String,
         data_hash_str: String,
+    },
+
+    SaveDbArg {
+        db_key: String,
+        overwrite: bool,
+    },
+
+    DbOpenBiomerticArg {
+        db_key: String,
+        db_open_enabled: bool,
     },
 
     OtpSettingsArg {
@@ -183,6 +201,14 @@ pub enum CommandArg {
         language_ids: Vec<String>,
     },
 
+    RemoteServerOperationArg {
+        rs_operation_type: RemoteStorageOperationType,
+    },
+
+    PickedFileHandlerArg {
+        picked_file_handler: PickedFileHandler,
+    },
+
     // This variant needs to come last so that other variants starting with db_key is matched before this
     // and this will be matched only if db_key is passed. A kind of descending order with the same field names
     // in diffrent variant. If this variant put before any other variant with db_key field,
@@ -206,6 +232,8 @@ pub enum CommandArg {
 
 pub type ResponseJson = String;
 
+// Parses the CommandArg enum variants and calls a fn with those args values. This fn is expected to return OkpResult<T>
+// This OkpResult is converted to a json str
 macro_rules! service_call  {
     ($args:expr,$enum_name:tt {$($enum_vals:tt)*} => $path:ident $fn_name:tt ($($fn_args:expr),*) ) => {
 
@@ -224,7 +252,9 @@ macro_rules! service_call  {
     };
 }
 
-// Wraps a fn that returns a value in a OkpResult<T>
+// Parses the CommandArg enum variants and calls a fn with those args values. This fn is expected to return any value other than
+// OkpResult<T>. The return value is then as Ok value
+
 // How to combine service_ok_call with service_call?
 macro_rules! service_ok_call  {
     ($args:expr,$enum_name:tt {$($enum_vals:tt)*} => $path:ident $fn_name:tt ($($fn_args:expr),*) ) => {
@@ -244,6 +274,20 @@ macro_rules! service_ok_call  {
     };
 }
 
+macro_rules! service_call_closure {
+    ($args:expr,$enum_name:tt {$($enum_vals:tt)*} =>  $closure_fn:expr ) => {
+        if let Ok(CommandArg::$enum_name{$($enum_vals)*}) = serde_json::from_str(&$args) {
+            let r = $closure_fn();
+            return  r;
+        } else  {
+            let ename = stringify!($enum_name);
+            let error_msg = format!("Invalid command args received {} for the api call. Expected a valid CommandArg::{}",
+                                    &$args.clone(), &ename);
+            return InvokeResult::<()>::with_error(&error_msg.clone()).json_str();
+        }
+    };
+}
+
 macro_rules! db_service_call  {
     ($args:expr,$enum_name:tt {$($enum_vals:tt)*} => $fn_name:tt ($($fn_args:expr),*) ) => {
         service_call!($args,$enum_name {$($enum_vals)*} => db_service $fn_name ($($fn_args),*))
@@ -258,6 +302,9 @@ macro_rules! wrap_no_arg_ok_call {
     }};
 }
 
+// Parses the passed json string to a matched CommandArg enum
+// Returns the field values of the matched enum member as tuple or error json string
+// TODO: Need to merge this with the macro 'parse_command_args_or_err' as a single macro
 #[macro_export]
 macro_rules! parse_command_args_or_json_error {
     ($json_args:expr,$enum_name:tt {$($enum_vals:tt)*}) => {
@@ -309,7 +356,7 @@ impl Commands {
             }
 
             "unlock_kdbx" => {
-                service_call!(args, OpenDbArg{db_file_name,password,key_file_name} =>
+                service_call!(args, OpenDbArg{db_file_name,password,key_file_name,biometric_auth_used: _} =>
                     Self unlock_kdbx(&db_file_name,password.as_deref(),key_file_name.as_deref()))
             }
 
@@ -486,18 +533,85 @@ impl Commands {
 
             "all_kdbx_cache_keys" => result_json_str(db_service::all_kdbx_cache_keys()),
 
-            "list_backup_files" => ok_json_str(util::list_backup_files()),
-
             "list_bookmark_files" => ok_json_str(ios::list_bookmark_files()),
 
             "list_key_files" => ok_json_str(util::list_key_files()),
 
-            // "delete_key_file" => Self::delete_key_file(&args),
             "clean_export_data_dir" => result_json_str(util::clean_export_data_dir()),
 
             "clipboard_copy_string" => Self::clipboard_copy_string(&args),
 
-            // "test_call" => Self::test_call(),
+            "save_conflict_resolution_cancel" => {
+                service_call!(args, DbKey {db_key} => Self save_conflict_resolution_cancel(&db_key))
+            }
+
+            // "set_db_open_biometric" => {
+            //     service_call_closure!(args,DbOpenBiomerticArg {db_key,db_open_enabled}  => move || {
+            //         result_json_str(biometric_auth::set_db_open_biometric(&db_key,db_open_enabled))
+            //     })
+            // }
+            "stored_db_credentials" => {
+                service_call_closure!(args,DbKey {db_key}  => move || {
+                    ok_json_str(biometric_auth::StoredCredential::get_credentials(&db_key))
+                })
+            }
+
+            //// All remote storage related
+            "rs_connect_and_retrieve_root_dir" => {
+                service_call_closure!(args,RemoteServerOperationArg {rs_operation_type} => move || {
+                    result_json_str(rs_operation_type.connect_and_retrieve_root_dir())
+                })
+            }
+
+            "rs_connect_by_id_and_retrieve_root_dir" => {
+                service_call_closure!(args,RemoteServerOperationArg {rs_operation_type} => move || {
+                    result_json_str(rs_operation_type.connect_by_id_and_retrieve_root_dir())
+                })
+            }
+
+            "rs_connect_by_id" => {
+                service_call_closure!(args,RemoteServerOperationArg {rs_operation_type} => move || {
+                    result_json_str(rs_operation_type.connect_by_id())
+                })
+            }
+
+            "rs_remote_storage_configs" => {
+                service_call_closure!(args,RemoteServerOperationArg {rs_operation_type} => move || {
+                    result_json_str(rs_operation_type.remote_storage_configs())
+                })
+            }
+
+            "rs_list_sub_dir" => {
+                service_call_closure!(args,RemoteServerOperationArg {rs_operation_type} => move || {
+                    result_json_str(rs_operation_type.list_sub_dir())
+                })
+            }
+
+            "rs_list_dir" => {
+                service_call_closure!(args,RemoteServerOperationArg {rs_operation_type} => move || {
+                    result_json_str(rs_operation_type.list_dir())
+                })
+            }
+
+            "rs_read_kdbx" => crate::remote_storage::rs_read_kdbx(&args),
+
+            "rs_save_kdbx" => crate::remote_storage::rs_save_kdbx(&args),
+
+            "rs_create_kdbx" => crate::remote_storage::rs_create_kdbx(&args),
+
+            "rs_read_configs" => result_json_str(read_configs()),
+
+            "rs_delete_config" => {
+                service_call_closure!(args,RemoteServerOperationArg {rs_operation_type} => move || {
+                    result_json_str(rs_operation_type.delete_config())
+                })
+            }
+            ////
+
+            // "list_backup_files" => ok_json_str(util::list_backup_files()),
+            // "delete_key_file" => Self::delete_key_file(&args),
+            "test_call" => Self::test_call(&args),
+
             x => error_json_str(&format!("Invalid command name {} is passed", x)),
         };
         r
@@ -522,8 +636,8 @@ impl Commands {
 
     fn get_file_info(args: &str) -> ResponseJson {
         if let Ok(CommandArg::DbKey { db_key }) = serde_json::from_str(args) {
-            let info = AppState::global().uri_to_file_info(&db_key);
-            log::debug!("FileInfo is {:?}", info);
+            let info = AppState::uri_to_file_info(&db_key);
+            // log::debug!("FileInfo is {:?}", info);
             ok_json_str(info)
         } else {
             error_json_str(&format!(
@@ -541,18 +655,14 @@ impl Commands {
         let mut kdbx_loaded = db_service::unlock_kdbx(db_key, password, key_file_name)?;
         // For now, we are replacing any file_name formed in db_service::unlock_kdbx as that is desktop file system specific
         // In case of mobile, the file uri is just some handle and need to get the file name using mobile api
-        kdbx_loaded.file_name = AppState::global()
-            .common_device_service
-            .uri_to_file_name(db_key.into());
+        kdbx_loaded.file_name = AppState::common_device_service().uri_to_file_name(db_key.into());
 
         Ok(kdbx_loaded)
     }
 
     fn unlock_kdbx_on_biometric_authentication(db_key: &str) -> OkpResult<KdbxLoaded> {
         let mut kdbx_loaded = db_service::unlock_kdbx_on_biometric_authentication(db_key)?;
-        kdbx_loaded.file_name = AppState::global()
-            .common_device_service
-            .uri_to_file_name(db_key.into());
+        kdbx_loaded.file_name = AppState::common_device_service().uri_to_file_name(db_key.into());
         Ok(kdbx_loaded)
     }
 
@@ -563,9 +673,7 @@ impl Commands {
             ));
         };
 
-        let path = &AppState::global()
-            .key_files_dir_path
-            .join(key_file_name_component.trim());
+        let path = AppState::key_files_dir_path().join(key_file_name_component.trim());
 
         debug!(
             "Key file Path is {:?} and exists check {}",
@@ -608,7 +716,7 @@ impl Commands {
         name: &str,
         data_hash_str: &str,
     ) -> OkpResult<String> {
-        let data_hash = db_service::parse_attachment_hash(data_hash_str)?;
+        let data_hash = db_service::service_util::parse_attachment_hash(data_hash_str)?;
 
         if cfg!(target_os = "android") {
             android::save_attachment_as_temp_file(db_key, name, &data_hash)
@@ -617,32 +725,28 @@ impl Commands {
         }
     }
 
+    // TODO: Need to change UI side to use 'update_preference' and then deprecate this method
     fn update_session_timeout(
         db_session_timeout: Option<i64>,
         clipboard_timeout: Option<i64>,
     ) -> OkpResult<()> {
-        // TODO: Move this to a fn in AppState
-        let mut pref = AppState::global().preference.lock().unwrap();
-        if let Some(t) = db_session_timeout {
-            pref.db_session_timeout = t;
-        }
-        if let Some(t) = clipboard_timeout {
-            pref.clipboard_timeout = t;
-        }
-
-        pref.write_to_app_dir();
-        Ok(())
+        AppState::update_session_timeout(db_session_timeout, clipboard_timeout)
     }
 
     fn update_preference(preference_data: PreferenceData) -> OkpResult<()> {
-        Ok(AppState::global().update_preference(preference_data))
+        AppState::update_preference(preference_data)
     }
 
     fn prepare_export_kdbx_data(args: &str) -> String {
         if let Ok(CommandArg::DbKey { db_key }) = serde_json::from_str(args) {
+
+            // For now we remove all previous files of export_data dir
+            // TDOO: We need to add 'delete call' of specific exported files in cljs when 'bg/export-kdbx' returns
+            let _ = util::clean_export_data_dir();
+
             // Check whether the db is opened now
             let found = db_service::all_kdbx_cache_keys().map_or(false, |v| v.contains(&db_key));
-            let recent_opt = AppState::global().get_recently_used(&db_key);
+            let recent_opt = AppState::get_recently_used(&db_key);
             // Form the export data file first by finding the kdbx file name from recent list
             let export_file_path_opt = &recent_opt
                 .as_ref()
@@ -678,8 +782,12 @@ impl Commands {
                 return r;
             } else {
                 // The db is not yet opened and we will form the export data from the backup
-                let backup_file_name_opt = &recent_opt
-                    .and_then(|r| util::generate_backup_file_name(&r.db_file_path, &r.file_name));
+                let backup_file_name_opt = &recent_opt.and_then(|r| {
+                    backup::latest_or_generate_backup_history_file_name(
+                        &r.db_file_path,
+                        &r.file_name,
+                    )
+                });
 
                 debug!(
                     "creating export_file from backup_file_name {:?}",
@@ -730,20 +838,28 @@ impl Commands {
 
     // Gets the recent files list
     fn recently_used_dbs_info() -> ResponseJson {
-        let pref = AppState::global().preference.lock().unwrap();
-        ok_json_str(pref.recent_dbs_info.clone())
+        ok_json_str(AppState::recent_dbs_info())
+    }
+
+    // Called to remove any backup files created during save kdbx call that resulted in some
+    // saving conflict or some save error. This is called when user opts to cancel the resolutions provided
+    fn save_conflict_resolution_cancel(db_key: &str) -> OkpResult<()> {
+        if let Some(ref full_backup_file_name) = AppState::remove_last_backup_name_on_error(db_key)
+        {
+            backup::remove_backup_history_file(db_key, full_backup_file_name);
+        }
+        Ok(())
     }
 
     fn app_preference() -> ResponseJson {
-        let pref = AppState::global().preference.lock().unwrap();
-        ok_json_str(pref.clone())
+        ok_json_str(AppState::preference_clone())
     }
 
     fn load_language_translations(language_ids: Vec<String>) -> OkpResult<TranslationResource> {
         let current_locale_language = util::current_locale_language();
         debug!("current_locale is {}", &current_locale_language);
 
-        let prefered_language = AppState::global().language(); //current_locale_language.clone();
+        let prefered_language = AppState::language(); //current_locale_language.clone();
         debug!("prefered_language is {}", &prefered_language);
 
         let language_ids_to_load = if !language_ids.is_empty() {
@@ -770,9 +886,8 @@ impl Commands {
         // }
 
         for lng in language_ids_to_load {
-            if let Some(data) = AppState::global()
-                .common_device_service
-                .load_language_translation(lng.clone())
+            if let Some(data) =
+                AppState::common_device_service().load_language_translation(lng.clone())
             {
                 debug!(
                     "Got translations json from resources for language id {}",
@@ -812,22 +927,47 @@ impl Commands {
                 protected,
                 cleanup_after,
             };
-            ApiCallbacksStore::global()
-                .common_device_service_ex()
-                .clipboard_copy_string(cd)?;
+            AppState::common_device_service_ex().clipboard_copy_string(cd)?;
 
-            debug!("clipboard_copy_string is called ");
+            // debug!("clipboard_copy_string is called ");
 
             Ok(())
         };
         result_json_str(inner_fn())
     }
-
-    // fn test_call() -> ResponseJson {
-    //     onekeepass_core::async_service::start();
-    //     ok_json_str("Done".to_string())
-    // }
 }
+
+// Just for some testing. Comment out when testing is done
+impl Commands {
+    fn test_call(json_args: &str) -> ResponseJson {
+        //let r = ApiCallbacksStore::common_device_service_ex().test_secure_store();
+        //debug!("Fn test_secure_store called and r is {:?}",&r);
+
+        let inner_fn = || -> OkpResult<()> {
+            let (key_vals,) = parse_command_args_or_err!(json_args, GenericArg { key_vals });
+            let (Some(id), Some(test_data)) =
+                (key_vals.get("identifier"), key_vals.get("test_data"))
+            else {
+                return Err(OkpError::DataError("Valid key is not found in args"));
+            };
+
+            let encrypted_data = AppState::secure_enclave_cb_service()
+                .encrypt_bytes(id.clone(), test_data.as_bytes().to_vec())?;
+            let dd =
+                AppState::secure_enclave_cb_service().decrypt_bytes(id.clone(), encrypted_data)?;
+
+            debug!("Decrypted text is {}", String::from_utf8_lossy(&dd));
+
+            Ok(())
+        };
+
+        result_json_str(inner_fn())
+        //ok_json_str("Done".to_string())
+    }
+}
+
+// Called when user initiates a "Remove" call from UI
+// Also this is used when user calls "Save As" while resolving save time error
 
 pub fn remove_app_files(db_key: &str) {
     // Using uri_to_file_name may fail if the uri is stale or no more available
@@ -835,20 +975,30 @@ pub fn remove_app_files(db_key: &str) {
     // let file_name = AppState::global().uri_to_file_name(&db_key);
     // util::delete_backup_file(&db_key, &file_name);
 
-    if let Some(ru) = AppState::global().get_recently_used(&db_key) {
-        util::delete_backup_file(&db_key, &ru.file_name);
-        debug!("Backup file {} is deleted", &ru.file_name)
+    if let Some(_ru) = AppState::get_recently_used(&db_key) {
+        backup::delete_backup_history_dir(&db_key);
+        // debug!("Backup file {} is deleted", &ru.file_name)
     }
 
-    AppState::global().remove_recent_db_use_info(&db_key);
-    log::debug!("Removed db file info from recent list");
+    // Need to remove any stored crdentials
+    // TODO: Should we make this call only when this db_key is found with flag 'db_open_biometric_enabled' true
+    let _ = biometric_auth::StoredCredential::remove_credentials(db_key);
 
+
+    // For now we remove all files in the export_data dir when 
+    // this db link remove is called
+    // TDOO: We need to delete the temp exported file for this db if any
+    let _ = util::clean_export_data_dir();
+
+    // Removes this db related info from recent db info list and also removes this db preference 
+    AppState::remove_recent_db_use_info(&db_key,true);
+    
     #[cfg(target_os = "ios")]
     ios::delete_book_mark_data(&db_key);
 
     #[cfg(target_os = "ios")]
     {
-        let r = crate::ios::app_group::delete_copied_autofill_details(&db_key);
+        let r = crate::ios::autofill_app_group::delete_copied_autofill_details(&db_key);
         log::debug!("Delete of copied db data done with result {:?}", r);
     }
 }
@@ -906,7 +1056,10 @@ impl<T: Serialize> InvokeResult<T> {
     pub fn json_str(&self) -> String {
         let json_str = match serde_json::to_string_pretty(self) {
             Ok(s) => s,
-            Err(_e) => r#"{"error" : "InvokeResult conversion failed"}"#.into(), // format!("Error {:?}", e)
+            Err(e) => {
+                log::error!("InvokeResult conversion failed with error {}", &e);
+                r#"{"error" : "InvokeResult conversion failed"}"#.into() // format!("Error {:?}", e)
+            }
         };
         json_str
     }
@@ -927,6 +1080,21 @@ pub fn full_path_file_to_create(full_file_name: &str) -> db_service::Result<File
         "Creating file object for full file path  {:?} with read,write and create permissions",
         full_file_path
     );
+
+    // let p = Path::new(&full_file_path);
+    // log::debug!(".. full_file_path {:?} exists {} ",&p,p.exists());
+    // log::debug!("Deleting temp file {:?}", std::fs::remove_file(&p));
+
+    // Sometimes in iOS Simulator, the 'OpenOptions' call failed (called from create_temp_kdbx) 
+    // for some file names with the following error  
+    
+    // Io(Os { code: 17, kind: AlreadyExists, message: "File exists" })
+    
+    // e.g While checking simulator 'tmp' dir, found a file Test45.kdbx and but when full_file_name file ends in 'test45.kdbx'
+    // the error happend and not when ends in 'Test45.kdbx'
+
+    // Not sure this will happen often; Need to watch out this hapepening on devices
+    
     // IMPORTANT: We need to create a file using OpenOptions so that the file is opened for read and write
     let file = OpenOptions::new()
         .read(true)

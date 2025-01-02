@@ -16,6 +16,7 @@
                                                            TYPE_SECTION_TITLE
                                                            UUID_OF_ENTRY_TYPE_LOGIN
                                                            WIRELESS_ROUTER_TYPE_NAME]]
+            [onekeepass.mobile.events.common :as cmn-events]
             [onekeepass.mobile.events.entry-category :as ecat-events]
             [onekeepass.mobile.icons-list :refer [icon-id->name]]
             [onekeepass.mobile.rn-components :as rnc :refer [cust-rnp-divider
@@ -66,10 +67,13 @@
 (defn fab-action-menu [{:keys [show x y]} root-group]
   [rnp-menu {:visible show :onDismiss hide-fab-action-menu :anchor (clj->js {:x x :y y})}
    [rnp-menu-item {:title (lstr-ml "addEntry")
+                   :disabled @(cmn-events/current-db-disable-edit)
                    :onPress (fab-menu-action ecat-events/add-new-entry (select-keys root-group [:name :uuid]) UUID_OF_ENTRY_TYPE_LOGIN)}]
    [rnp-menu-item {:title (lstr-ml "addCategory")
+                   :disabled @(cmn-events/current-db-disable-edit)
                    :onPress (fab-menu-action ecat-events/initiate-new-blank-category-form (:uuid root-group))}]
    [rnp-menu-item {:title (lstr-ml "addGroup")
+                   :disabled @(cmn-events/current-db-disable-edit)
                    :onPress (fab-menu-action ecat-events/initiate-new-blank-group-form (:uuid root-group))}]])
 
 ;;
@@ -89,21 +93,29 @@
 (defn category-long-press-menu [{:keys [show x y category-detail category-key]}]
   [rnp-menu {:visible show :onDismiss hide-category-long-press-menu :anchor (clj->js {:x x :y y})}
    (cond
+     
+    ;;  @(cmn-events/current-db-disable-edit)
+    ;;  nil
+     
      (= category-key TYPE_SECTION_TITLE)
      [rnp-menu-item {:title (lstr-ml "addEntry")
+                     :disabled @(cmn-events/current-db-disable-edit)
                      :onPress (fn [] (ecat-events/add-new-entry nil (:entry-type-uuid category-detail)))}]
 
      (= category-key TAG_SECTION_TITLE)
      [rnp-menu-item {:title (lstr-ml "addEntry")
+                     :disabled @(cmn-events/current-db-disable-edit)
                      :onPress (fn [] (ecat-events/add-new-entry nil UUID_OF_ENTRY_TYPE_LOGIN))}]
 
      (= category-key CAT_SECTION_TITLE)
      [:<>
 
       [rnp-menu-item {:title (lstr-ml "addEntry")
+                      :disabled @(cmn-events/current-db-disable-edit)
                       :onPress (fn [] (ecat-events/add-new-entry {:name (:title category-detail) :uuid (:uuid category-detail)} UUID_OF_ENTRY_TYPE_LOGIN))}]
       [cust-rnp-divider]
       [rnp-menu-item {:title (lstr-ml "edit")
+                      :disabled @(cmn-events/current-db-disable-edit)
                       :onPress (fn [] (ecat-events/find-category-by-id (:uuid category-detail)))}]]
 
 
@@ -111,11 +123,14 @@
      [:<>
 
       [rnp-menu-item {:title (lstr-ml "addEntry")
+                      :disabled @(cmn-events/current-db-disable-edit)
                       :onPress (fn [] (ecat-events/add-new-entry {:name (:title category-detail) :uuid (:uuid category-detail)} UUID_OF_ENTRY_TYPE_LOGIN))}]
       [rnp-menu-item {:title (lstr-ml "addGroup")
+                      :disabled @(cmn-events/current-db-disable-edit)
                       :onPress #(ecat-events/initiate-new-blank-group-form (:uuid category-detail))}]
       [cust-rnp-divider]
       [rnp-menu-item {:title (lstr-ml "edit")
+                      :disabled @(cmn-events/current-db-disable-edit)
                       :onPress (fn [] (ecat-events/find-group-by-id (:uuid category-detail)))}]]
 
      :else
@@ -304,4 +319,5 @@
    [category-long-press-menu @category-long-press-menu-data]
    [group-by-menu @group-by-menu-data]
    [rnp-fab {:style {:position "absolute" :margin 16 :right 0 :bottom 0}
+             :disabled @(cmn-events/current-db-disable-edit)
              :icon ICON-PLUS :onPress (fn [e] (show-fab-action-menu e))}]])

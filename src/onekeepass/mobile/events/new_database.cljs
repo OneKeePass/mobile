@@ -37,6 +37,7 @@
                    :database-description
                    :password
                    :database-file-name
+                   :file-name
                    :cipher-id
                    :kdf
                    :key-file-name])
@@ -49,6 +50,7 @@
                     :cipher-id "Aes256"
                     :kdf {:Argon2  {:iterations 10 :memory 64 :parallelism 2}}
                     :key-file-name nil
+                    :file-name nil
 
                     ;; Extra UI related fields
                     ;; These fields will be ignored by serde while doing json deserializing to NewDatabase struct
@@ -69,7 +71,7 @@
   (let [{:keys [database-name password key-file-name]} (get-in db [:new-database])
         m1 (lstr-mt 'newDbForm 'validPasswordOrKeyFileRequired)
         m2 (lstr-mt 'newDbForm 'validPasswordRequired)
-        
+
         error-fields (cond
                        (and (= kw-field :password) (empty? password) (empty? key-file-name))
                        (assoc {} :password m1)
@@ -152,13 +154,15 @@
                                                                    #(dispatch [:new-database-dialog-hide]))]
                                                   ;; picked is a map with keys :file-name :full-file-name-uri
                                                   ;; see the use of DbServiceAPI.formJsonWithFileName
-                                                  (dispatch [:document-to-create-picked picked]))))))
+                                                  (dispatch [:new-database/document-to-create-picked picked]))))))
 
-;; Used only for android; See :document-to-create-picked-ios for iOS
+;; Used for android and for creating a new db in a remote storage location 
+;; See :document-to-create-picked-ios for iOS
 (reg-event-fx
- :document-to-create-picked
+ :new-database/document-to-create-picked
  (fn [{:keys [db]} [_event-id {:keys [file-name full-file-name-uri]}]]
-   (let [db (-> db (assoc-in [:new-database :database-file-name] full-file-name-uri))]
+   (let [db (-> db (assoc-in [:new-database :database-file-name] full-file-name-uri)
+                (assoc-in [:new-database :file-name] file-name))]
      {:db db
       :fx [[:dispatch [:new-database-field-update :status :in-progress]]
            [:bg-create-kdbx [full-file-name-uri  (:new-database db)]]]})))
@@ -191,15 +195,16 @@
                             (dispatch [:new-database-create-kdbx-error error])))]
     (dispatch [:new-database-created kdbx-loaded])))
 
+;; Used for android and for creating a new db in a remote storage location 
+;; See :document-to-create-picked-ios for iOS
 (reg-fx
  :bg-create-kdbx
- (fn [[full-file-name new-db]]
-   ;; (println "bg-create-kdbx full-file-name is... " full-file-name)
+ (fn [[full-file-name new-db]] 
    (bg/create-kdbx full-file-name (-> new-db
                                       (update-in [:kdf :Argon2 :iterations] str->int)
                                       (update-in [:kdf :Argon2 :parallelism] str->int)
                                       (update-in [:kdf :Argon2 :memory] str->int)
-                                            ;; Need to make sure memory value is in MB 
+                                      ;; Need to make sure memory value is in MB 
                                       (update-in [:kdf :Argon2 :memory] * 1048576)
                                       (select-keys newdb-fields)) on-database-creation-completed)))
 
@@ -242,8 +247,8 @@
  :bg-pick-and-save-new-kdbxFile
  (fn [[file-name new-db]]
    #_(let [sf (select-keys new-db newdb-fields)]
-     (println "(select-keys newdb-fields):  " sf)
-     (println "Password type and count is " (type (:password sf)) ", " (count (:password sf))))
+       (println "(select-keys newdb-fields):  " sf)
+       (println "Password type and count is " (type (:password sf)) ", " (count (:password sf))))
    (bg/pick-and-save-new-kdbxFile file-name
                                   (-> new-db
                                       (update-in [:kdf :Argon2 :iterations] str->int)
@@ -256,19 +261,17 @@
 (reg-event-fx
  :document-to-create-picked-ios
  (fn [{:keys [db]} [_event-id {:keys [_file-name full-file-name-uri]}]]
-   (let [db (-> db
-                (assoc-in [:new-database :database-file-name] full-file-name-uri))]
+   (let [db (-> db (assoc-in [:new-database :database-file-name] full-file-name-uri))]
      {:db db
       :fx [[:dispatch [:new-database-field-update :status :in-progress]]
            [:bg-load-new-kdbx [full-file-name-uri ;; will be the db-key
                                (get-in db [:new-database :password])
                                (get-in db [:new-database :key-file-name])]]]})))
 
-
 (reg-fx
  :bg-load-new-kdbx
  (fn [[db-file-name password key-file-name]]
-   (bg/load-kdbx db-file-name password key-file-name on-database-creation-completed)))
+   (bg/load-kdbx db-file-name password key-file-name false on-database-creation-completed)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

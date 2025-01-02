@@ -8,6 +8,11 @@
 import Foundation
 
 class SecureKeyOperationImpl: SecureKeyOperation {
+  
+  static var shared:SecureKeyOperationImpl = SecureKeyOperationImpl();
+  
+  static var okpAccessGroup = SecureEnclaveServiceSupport.getOkpKeychainAccessGroup()
+  
   func storeKey(_ dbKey: String, _ encKeyData: String) throws {
     let kv = encKeyData.data(using: String.Encoding.utf8)!
     let query: [String: AnyObject] = [
@@ -18,6 +23,8 @@ class SecureKeyOperationImpl: SecureKeyOperation {
       kSecClass as String: kSecClassGenericPassword,
 
       kSecAttrSynchronizable as String: kCFBooleanFalse,
+      // Need this for the shared keychain items
+      kSecAttrAccessGroup as String: Self.okpAccessGroup as AnyObject,
 
       // kSecValueData is the item value to save
       kSecValueData as String: kv as AnyObject
@@ -44,7 +51,9 @@ class SecureKeyOperationImpl: SecureKeyOperation {
     let query: [String: AnyObject] =
       [
         kSecAttrAccount as String: dbKey as AnyObject,
-        kSecClass as String: kSecClassGenericPassword
+        kSecClass as String: kSecClassGenericPassword,
+        // Need this for the shared keychain items
+        kSecAttrAccessGroup as String: Self.okpAccessGroup as AnyObject,
       ]
 
     let status: OSStatus = SecItemDelete(query as CFDictionary)
@@ -72,6 +81,8 @@ class SecureKeyOperationImpl: SecureKeyOperation {
       // kSecMatchLimitOne indicates keychain should read
       // only the most recent item matching this query
       kSecMatchLimit as String: kSecMatchLimitOne,
+      // Need this for the shared keychain items
+      kSecAttrAccessGroup as String: Self.okpAccessGroup as AnyObject,
 
       // kSecReturnData is set to kCFBooleanTrue in order
       // to retrieve the data for the item

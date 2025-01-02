@@ -1,11 +1,7 @@
 (ns onekeepass.mobile.core
-  (:require
-   ;; When we build iOS production main bundle, we can comment out this ns
-   ;; and this will ensure that all android autofill related code are excluded
-   
-   [onekeepass.mobile.android.autofill.core :as android-core]
-   
-   ;;;;;;; ;;;;;;; ;;;;;;; ;;;;;;;
+  (:require ;; When we build iOS production main bundle, we can comment out this ns
+ ;; and this will ensure that all android autofill related code are excluded
+   [onekeepass.mobile.android.autofill.core :as android-core] ;;;;;;; ;;;;;;; ;;;;;;; ;;;;;;;
    [onekeepass.mobile.appbar :refer [appbar-main-content
                                      hardware-back-pressed]]
    [onekeepass.mobile.background :as bg]
@@ -16,6 +12,7 @@
    [onekeepass.mobile.events.app-settings :as as-events :refer [app-theme]]
    [onekeepass.mobile.events.common :as cmn-events]
    [onekeepass.mobile.events.native-events :as native-events]
+   [onekeepass.mobile.events.remote-storage :as rs-events]
    [onekeepass.mobile.events.save :as save-events]
    [onekeepass.mobile.rn-components :as rnc :refer [react-use-effect
                                                     reset-colors
@@ -23,7 +20,6 @@
                                                     rnp-provider
                                                     use-color-scheme]]
    [onekeepass.mobile.save-error-dialog :refer [save-error-modal]]
-   [onekeepass.mobile.start-page :refer [open-db-dialog]]
    [onekeepass.mobile.translation :as t]
    [react-native :as rn]
    [reagent.core :as r]))
@@ -36,9 +32,10 @@
     [rnc/rn-view [rnc/rnp-text "Please wait."]]
     [:<>
      [appbar-main-content]
+     ;; All dialogs that may be used in more than one page are added under this portal 
      [rnp-portal
       [message-snackbar]
-      [open-db-dialog]
+      #_[open-db-dialog]
       [save-error-modal @(save-events/save-error-modal-data)]
       [message-modal @(cmn-events/message-modal-data)]
       [message-dialog @(cmn-events/message-dialog-data)]]]))
@@ -93,7 +90,7 @@
                (reset! back-handler nil))))
          ;; Empty parameter array to useEffect fn
          (clj->js [])))
-      
+
       [rnp-provider {:theme (if (= DARK-THEME theme-name) rnc/dark-theme rnc/light-theme)}
        [main-content]])))
 
@@ -104,17 +101,25 @@
   [rnc/gh-gesture-handler-root-view {:style {:flex 1}}
    [:f> main]])
 
-;; Make sure that either iOS or Android '-main' fn is available 
-
-;; Entry root for iOS
-#_(defn ^:export -main
-  [_args]
-  
+(defn init-calls []
   (native-events/register-backend-event-handlers)
   (cmn-events/sync-initialize)
   (as-events/init-session-timeout-tick)
   (t/load-language-translation)
-  (r/as-element [app-root]))
+  (rs-events/load-all-remote-connection-configs))
+
+;; Make sure that either iOS or Android '-main' fn is available 
+
+;; Entry root for iOS
+#_(defn ^:export -main
+    [_args]
+
+  ;; (native-events/register-backend-event-handlers)
+  ;; (cmn-events/sync-initialize)
+  ;; (as-events/init-session-timeout-tick)
+  ;; (t/load-language-translation)
+    (init-calls)
+    (r/as-element [app-root]))
 
 ;; Entry root for Android main and Android Autofill
 ;; Ensure we load the ns [onekeepass.mobile.android.autofill.core :as android-core] 
@@ -123,18 +128,20 @@
 ;; than required and all android-af events are registered needlessly
 
 (defn ^:export -main
-  [args] 
+  [args]
   (let [{:keys [androidAutofill] :as options} (js->clj args :keywordize-keys true)]
     (println "The options from main args are ." options)
-    
+
     ;; TODO: Add check so as to load the following only if there are not yet loaded
     ;; For now, these calls are made when main app opened and also when android autofill is called 
     ;; without checking whether the initializations are done or not
-    
-    (native-events/register-backend-event-handlers)
-    (cmn-events/sync-initialize)
-    (as-events/init-session-timeout-tick)
-    (t/load-language-translation)
+
+    ;; (native-events/register-backend-event-handlers)
+    ;; (cmn-events/sync-initialize)
+    ;; (as-events/init-session-timeout-tick)
+    ;; (t/load-language-translation)
+
+    (init-calls)
 
     (if androidAutofill
       (r/as-element [android-core/app-root])

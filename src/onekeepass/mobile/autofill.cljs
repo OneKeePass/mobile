@@ -1,18 +1,17 @@
 (ns onekeepass.mobile.autofill
-  (:require [onekeepass.mobile.constants :refer [TR-KEY-AUTOFILL]]
-            [onekeepass.mobile.events.autofill :as af-events]
-            [onekeepass.mobile.rn-components :as rnc :refer [inverse-onsurface-color
-                                                             page-background-color
-                                                             rn-safe-area-view
-                                                             rn-section-list
-                                                             rn-view
-                                                             rnp-divider
-                                                             rnp-switch
-                                                             rnp-text]]
-            [onekeepass.mobile.translation :refer [lstr-l lstr-mt]]
-            [reagent.core :as r]))
+  (:require
+   [onekeepass.mobile.common-components :refer [settings-section-header]]
+   [onekeepass.mobile.constants :refer [TR-KEY-AUTOFILL]]
+   [onekeepass.mobile.events.autofill :as af-events]
+   [onekeepass.mobile.rn-components :as rnc :refer [page-background-color
+                                                    rn-safe-area-view
+                                                    rn-section-list rn-view
+                                                    rnp-divider rnp-switch
+                                                    rnp-text]]
+   [onekeepass.mobile.translation :refer [lstr-l lstr-mt]]
+   [reagent.core :as r]))
 
-(defn section-header [title]
+#_(defn section-header [title]
   [rn-view  {:style {:flexDirection "row"
                      :width "100%"
                      :backgroundColor @inverse-onsurface-color
@@ -85,7 +84,7 @@
                        :renderSectionHeader (fn [props]
                                               (let [props (js->clj props :keywordize-keys true)
                                                     {:keys [title]} (-> props :section)]
-                                                (r/as-element [section-header title])))}]))
+                                                (r/as-element [settings-section-header title])))}]))
 
 (defn- main-content []
   [rn-view {:flex 1 :backgroundColor @page-background-color}

@@ -4,9 +4,8 @@ namespace db_service {
     void db_service_enable_logging();
 
     // Needs to be called from Swift/Kotlin side to initialize callback that can be used from rust side
-    void db_service_initialize(CommonDeviceService common_device_service,
-                               SecureKeyOperation secure_key_operation,
-                               EventDispatch event_dispatcher);
+    // This fn is now in udl_uniffi_exports.rs and uses export attribute
+    // void db_service_initialize(CommonDeviceService common_device_service,SecureKeyOperation secure_key_operation,EventDispatch event_dispatcher);
  
     ApiResponse read_kdbx(FileArgs file_args, string json_args);
     ApiResponse create_temp_kdbx(FileArgs file_args, string json_args);
@@ -90,32 +89,32 @@ dictionary KdbxCreated {
     string api_response;
 };
 
-// TODO: Move the ios platform specific services to ios/support_servicess (to be added)
+// Moved the ios platform specific services to ios/support_servicess 
 
 // iOS specific APIs. Called from Swift to Rust
 // All methods need to receive &self as first argument in Rust side implementaion
 // See similar service 'IosAppGroupSupportService' in app_group module using uniffi Procedural Macros 
-interface IosSupportService {
-    constructor();
-    boolean save_book_mark_data(string url,sequence<u8> data);
-    sequence<u8> load_book_mark_data(string url);
-    void delete_book_mark_data([ByRef] string full_file_name_uri);
-    string? copy_last_backup_to_temp_file(string kdbx_file_name,string full_file_name_uri);
-    string complete_save_as_on_error([ByRef] string json_args);
+// interface IosSupportService {
+//     constructor();
+//     boolean save_book_mark_data(string url,sequence<u8> data);
+//     sequence<u8> load_book_mark_data(string url);
+//     void delete_book_mark_data([ByRef] string full_file_name_uri);
+//     string? copy_last_backup_to_temp_file(string kdbx_file_name,string full_file_name_uri);
+//     string complete_save_as_on_error([ByRef] string json_args);
 
-};
+// };
 
-// TODO: Move the android platform specific services to AndroidSupportServiceExtra in android/support_servicess 
+//  Moveed the android platform specific services to AndroidSupportServiceExtra in android/support_servicess 
 
 // Android specific APIs. Called from Kotlin side to Rust
 // All methods need to receive &self in Rust side implementaion side except constructor 
-interface AndroidSupportService {
-    constructor();
-    ApiResponse create_kdbx(u64 file_descriptor, string json_args);
-    ApiResponse complete_save_as_on_error(u64 file_descriptor, string old_full_file_name_uri,string new_full_file_name_uri);
-    string save_key_file(u64 file_descriptor, string full_key_file_name);
-    // string save_attachment(u64 file_descriptor, string json_args);
-};
+// interface AndroidSupportService {
+//     constructor();
+//     ApiResponse create_kdbx(u64 file_descriptor, string json_args);
+//     ApiResponse complete_save_as_on_error(u64 file_descriptor, string old_full_file_name_uri,string new_full_file_name_uri, string file_name);
+//     string save_key_file(u64 file_descriptor, string full_key_file_name);
+//     // string save_attachment(u64 file_descriptor, string json_args);
+// };
 
 // Called from middle layer (Swift or Kotlin side) to form a json string and  return to UI layer
 // UI layer deserializes this to a valid json object and used accordingly

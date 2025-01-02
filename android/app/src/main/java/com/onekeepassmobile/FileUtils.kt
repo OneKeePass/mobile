@@ -5,6 +5,9 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import android.util.Log
 
+// https://developer.android.com/guide/topics/providers/document-provider
+// https://developer.android.com/reference/android/provider/DocumentsContract.html (recommended to use)
+// https://developer.android.com/reference/androidx/documentfile/provider/DocumentFile (not recommended to use)
 object FileUtils {
     private const val TAG = "FileUtils"
     fun getMetaInfo(contentResolver: ContentResolver, uri: Uri): FileResource? {
@@ -38,6 +41,10 @@ object FileUtils {
             val mimeTypeColumn =
                     it.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_MIME_TYPE)
 
+            // Timestamp when a document was last modified, in milliseconds since January 1, 1970 00:00:00.0 UTC
+            // See https://android.googlesource.com/platform/frameworks/base/+/master/core/java/android/provider/DocumentsContract.java
+            // https://developer.android.com/reference/android/provider/DocumentsContract.Document#COLUMN_LAST_MODIFIED
+            
             val lastModifiedTime = it.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_LAST_MODIFIED)
 
             val fs = FileResource(

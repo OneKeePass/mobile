@@ -3,6 +3,8 @@
 ;; This is the default Entry type to use 
 (def UUID_OF_ENTRY_TYPE_LOGIN "ffef5f51-7efc-4373-9eb5-382d5b501768")
 
+(def UUID-DEFAULT "00000000-0000-0000-0000-000000000000")
+
 ;; Standard Entry Type Names
 ;; These should match names used in 'standard_entry_types.rs'
 
@@ -68,11 +70,42 @@
 (def CAMERA_PERMISSION_RESTRICTED "restricted")
 
 
-;;; Page ids
+;;;;;;;;;;   Page ids
 (def CAMERA_SCANNER_PAGE_ID :scan-otp-qr)
 (def AUTOFILL_SETTINGS_PAGE_ID :autofill-settings)
 
+(def BIOMETRIC_SETTINGS_PAGE_ID :biometric-settings)
+
+(def ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID :additional-db-access-settings)
+
+;; All remote storage related page ids
+(def RS_CONNECTIONS_LIST_PAGE_ID :rs-connections-list)
+;; Key :sftp or :webdav will determine which form data to use on this page
+(def RS_CONNECTION_CONFIG_PAGE_ID :rs-connection-config) 
+(def RS_FILES_FOLDERS_PAGE_ID :rs-files-folders)
+
+;;;;;;;;;;
+
+
 (def TR-KEY-AUTOFILL 'autoFill)
+
+
+
+;;;;;;;;;;  Variants for the enums used in enum dispatches in rust side ;;;;;;;;;;
+
+;; from enum PickedFileHandler from file_util module in db-service-ffi crate
+(def V-SFTP-PRIVATE-KEY-FILE "SftpPrivateKeyFile")
+
+;; tag used in the enum serialization/deserialization of PickedFileHandler
+(def PICKED-FILE-HANDLER-TAG :handler)
+
+
+;; from enum RemoteStorageOperationType
+(def V-SFTP "Sftp")
+(def V-WEBDAV "Webdav")
+;; tag used in the enum serialization/deserialization of RemoteStorageOperationType
+(def REMOTE-STORAGE-OPERATION-TYPE-TAG :type)
+
 
 ;;;;;;; Icon names ;;;;;
 
@@ -91,6 +124,7 @@
 (def ICON-DATABASE-REMOVE "database-remove")
 (def ICON-DATABASE-OFF "database-off")
 (def ICON-DATABASE-OFF-OUTLINE "database-off-outline")
+(def ICON-DATABASE-ARROW-LEFT  "database-arrow-left")
 
 (def ICON-COG "cog")
 (def ICON-COG-OUTLINE "cog-outline")
@@ -107,6 +141,9 @@
 (def ICON-PLUS  "plus")
 
 (def ICON-FILE  "file")
+(def ICON-FILE-OUTLINE "file-outline")
+(def ICON-FOLDER "folder")
+(def ICON-FOLDER-OUTLINE "folder-outline")
 
 (def ICON-PDF "file-pdf-box")
 (def ICON-FILE-PNG  "file-png-box")

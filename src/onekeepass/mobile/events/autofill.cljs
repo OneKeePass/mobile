@@ -70,6 +70,7 @@
 (reg-event-fx
  :ios-autofill-db-info-loaded
  (fn [{:keys [db]} [_event-id info]]
+   ;; info is a map corresponding to the struct 'CopiedDbFileInfo'
    {:db (assoc-in-key-db db [:ios-autofill-db-info] info)
     :fx [[:dispatch [:to-autofill-settings-page]]]}))
 

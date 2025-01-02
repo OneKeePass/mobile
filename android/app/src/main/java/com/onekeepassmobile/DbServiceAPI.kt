@@ -21,7 +21,7 @@ object DbServiceAPI {
 
     // Provides apis that are called from Kotlin to rust implementations
     private var jsonService = onekeepass.mobile.ffi.JsonService();
-    private var androidSupportService = onekeepass.mobile.ffi.AndroidSupportService();
+    // private var androidSupportService = onekeepass.mobile.ffi.AndroidSupportService();
 
     // AndroidSupportService is declared in UDL file whereas AndroidSupportServiceExtra uses
     // uniffi annotations (macro attributes)
@@ -43,11 +43,6 @@ object DbServiceAPI {
 
         // See the comments above about the requirement of using the initialized flag
         if (!initialized) {
-            dbServiceInitialize(
-                    CommonDeviceServiceImpl(reactContext),
-                    SecureKeyOperationImpl(reactContext),
-                    BackendEventDispatcher(reactContext)
-            )
 
             // For now separate initializations are done for these callback implementations and may
             // be moved to the dbServiceInitialize itself
@@ -57,9 +52,18 @@ object DbServiceAPI {
             // in rust store and api then can be called by rust code
             // ApiCallbackServiceImpl implements both interfaces for now
             androidCallbackServiceInitialize(apiCallBackService)
-            commonDeviceServiceExInitialize(apiCallBackService)
+            //commonDeviceServiceExInitialize(apiCallBackService)
+
+            dbServiceInitialize(
+                CommonDeviceServiceImpl(reactContext),
+                SecureKeyOperationImpl(reactContext),
+                BackendEventDispatcher(reactContext),
+                apiCallBackService,
+                SecureEnclaveServiceSupport(reactContext),
+            )
 
             initialized = true;
+
         } else {
             Log.d(TAG, "API initialize is already done")
         }
@@ -82,25 +86,42 @@ object DbServiceAPI {
         return invokeCommand("clean_export_data_dir", "{}")
     }
 
-    fun androidSupportService(): AndroidSupportService {
-        return androidSupportService
-    }
+//    fun androidSupportService(): AndroidSupportService {
+//        return androidSupportService
+//    }
 
     fun createKdbx(fd: ULong, args: String): ApiResponse {
-        return androidSupportService.createKdbx(fd, args)
+        return androidSupportServiceExtra.createKdbx(fd, args)
     }
 
-    fun saveKdbx(fd: ULong, fullFileName: String, fileName: String, overwrite: Boolean): ApiResponse {
-        val fileArgs = onekeepass.mobile.ffi.FileArgs.FileDecriptorWithFullFileName(fd, fullFileName, fileName)
+    fun saveKdbx(
+        fd: ULong,
+        fullFileName: String,
+        fileName: String,
+        overwrite: Boolean
+    ): ApiResponse {
+        val fileArgs =
+            onekeepass.mobile.ffi.FileArgs.FileDecriptorWithFullFileName(fd, fullFileName, fileName)
         return onekeepass.mobile.ffi.saveKdbx(fileArgs, overwrite)
     }
 
-    fun completeSaveAsOnError(fileDescriptor: ULong, oldFullFileNameUri: String, newFullFileNameUri: String): ApiResponse {
-        return androidSupportService.completeSaveAsOnError(fileDescriptor, oldFullFileNameUri, newFullFileNameUri)
+    fun completeSaveAsOnError(
+        fileDescriptor: ULong,
+        oldFullFileNameUri: String,
+        newFullFileNameUri: String,
+        fileName: String
+    ): ApiResponse {
+        return androidSupportServiceExtra.completeSaveAsOnError(
+            fileDescriptor,
+            oldFullFileNameUri,
+            newFullFileNameUri,
+            fileName
+        )
     }
 
     fun verifyDbFileChecksum(fd: ULong, fullFileName: String): ApiResponse {
-        val fileArgs = onekeepass.mobile.ffi.FileArgs.FileDecriptorWithFullFileName(fd, fullFileName, "")
+        val fileArgs =
+            onekeepass.mobile.ffi.FileArgs.FileDecriptorWithFullFileName(fd, fullFileName, "")
         return onekeepass.mobile.ffi.verifyDbFileChecksum(fileArgs)
     }
 
@@ -129,13 +150,31 @@ object DbServiceAPI {
     }
 
     fun copyPickedKeyFile(fd: ULong, fullFileName: String, fileName: String): String {
-        val fileArgs = onekeepass.mobile.ffi.FileArgs.FileDecriptorWithFullFileName(fd, fullFileName, fileName)
+        val fileArgs =
+            onekeepass.mobile.ffi.FileArgs.FileDecriptorWithFullFileName(fd, fullFileName, fileName)
         return onekeepass.mobile.ffi.copyPickedKeyFile(fileArgs)
     }
 
-    fun uploadAttachment(fd: ULong, fullFileName: String, fileName: String, jsonArgs: String): String {
-        val fileArgs = onekeepass.mobile.ffi.FileArgs.FileDecriptorWithFullFileName(fd, fullFileName, fileName)
+    fun uploadAttachment(
+        fd: ULong,
+        fullFileName: String,
+        fileName: String,
+        jsonArgs: String
+    ): String {
+        val fileArgs =
+            onekeepass.mobile.ffi.FileArgs.FileDecriptorWithFullFileName(fd, fullFileName, fileName)
         return onekeepass.mobile.ffi.uploadAttachment(fileArgs, jsonArgs)
+    }
+
+    fun handlePickedFile(
+        fd: ULong,
+        fullFileName: String,
+        fileName: String,
+        jsonArgs: String
+    ): String {
+        val fileArgs =
+            onekeepass.mobile.ffi.FileArgs.FileDecriptorWithFullFileName(fd, fullFileName, fileName)
+        return onekeepass.mobile.ffi.handlePickedFile(fileArgs, jsonArgs)
     }
 
     fun formJsonWithFileName(fullFileName: String): String {
@@ -167,19 +206,19 @@ class CommonDeviceServiceImpl(val reactContext: ReactApplicationContext) : Commo
     }
 
     override fun loadLanguageTranslation(languageId: String): String? {
-        var fileContent:String? = null
+        var fileContent: String? = null
 
         val assetManager = reactContext.assets
         val builder = StringBuilder()
-        val fileName = builder.append("Translations").append("/").append(languageId).append(".json").toString()
+        val fileName =
+            builder.append("Translations").append("/").append(languageId).append(".json").toString()
         try {
             fileContent = assetManager.open(fileName).bufferedReader().use {
                 it.readText()
             }
             //Log.d(TAG, "JSon File content is ${fileContent}")
-        }
-        catch (e: Exception) {
-            Log.e(TAG,"Translation resource ${fileName} loading failed with exception ${e}")
+        } catch (e: Exception) {
+            Log.e(TAG, "Translation resource ${fileName} loading failed with exception ${e}")
         }
         return fileContent
     }
@@ -209,6 +248,7 @@ class CommonDeviceServiceImpl(val reactContext: ReactApplicationContext) : Commo
 
             info.fileName = fs?.filename
             info.fileSize = fs?.size
+            // Timestamp when a document was last modified, in milliseconds since January 1, 1970 00:00:00.0 UTC
             info.lastModified = fs?.lastModifiedTime
             info.location = location
             return info

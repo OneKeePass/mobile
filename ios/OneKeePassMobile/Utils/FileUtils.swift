@@ -18,9 +18,12 @@ class FileUtils: NSObject {
       logger.debug("Creating bookmark for the url \(url)")
       let bookmarkData = try url.bookmarkData(options: .minimalBookmark, includingResourceValuesForKeys: nil, relativeTo: nil)
       let byteArray: [UInt8] = .init(bookmarkData)
+      
+      let byteData = Data(byteArray)
 
       logger.debug("Calling rust api with data size \(byteArray.count)")
-      let b = DbServiceAPI.iosSupportService().saveBookMarkData(url.absoluteString, byteArray)
+      // let b = DbServiceAPI.iosSupportService().saveBookMarkData(url.absoluteString, byteArray)
+      let b = DbServiceAPI.iosSupportService().saveBookMarkData(url.absoluteString, byteData)
       logger.debug("Bookmark save call result is \(b)")
 
       return b
@@ -45,10 +48,9 @@ class FileUtils: NSObject {
         // Secured access to url should be available before bookmarking
         logger.debug("Creating bookmark for the saved_file_url \(url)")
         let bookmarkData = try url.bookmarkData(options: .minimalBookmark, includingResourceValuesForKeys: nil, relativeTo: nil)
-        let byteArray: [UInt8] = .init(bookmarkData)
-
-        logger.debug("Calling rust api to save bookmark data with size \(byteArray.count)")
-        let b = DbServiceAPI.iosSupportService().saveBookMarkData(url.absoluteString, byteArray)
+        // let byteArray: [UInt8] = .init(bookmarkData)
+        // logger.debug("Calling rust api to save bookmark data with size \(byteArray.count)")
+        let b = DbServiceAPI.iosSupportService().saveBookMarkData(url.absoluteString, bookmarkData)
         logger.debug("Bookmark save rust api call result is \(b)")
         
         success = true
@@ -91,10 +93,11 @@ class FileUtils: NSObject {
         // Secured access to url should be available before bookmarking
         logger.debug("Creating bookmark for the saved_file_url \(url)")
         let bookmarkData = try url.bookmarkData(options: .minimalBookmark, includingResourceValuesForKeys: nil, relativeTo: nil)
-        let byteArray: [UInt8] = .init(bookmarkData)
-
-        logger.debug("Calling rust api to save bookmark data with size \(byteArray.count)")
-        let b = DbServiceAPI.iosSupportService().saveBookMarkData(url.absoluteString, byteArray)
+        
+        // let byteArray: [UInt8] = .init(bookmarkData)
+        // logger.debug("Calling rust api to save bookmark data with size \(byteArray.count)")
+        
+        let b = DbServiceAPI.iosSupportService().saveBookMarkData(url.absoluteString, bookmarkData)
         logger.debug("Bookmark save rust api call result is \(b)")
       
         // logger.debug("Json with file name \(DbServiceAPI.formJsonWithFileName(saved_file_url.absoluteString))")

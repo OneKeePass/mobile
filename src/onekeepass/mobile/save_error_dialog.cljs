@@ -53,9 +53,19 @@
       [rnp-text {:style {:color @tertiary-color} :variant "titleSmall"} file-name]]
 
      [rn-view {:style {:flex .2  :min-height 50 :justify-content "center" :align-items "center"}}
-      (if (= error-type :content-change-detected)
+
+      (condp =  error-type
+        :content-change-detected
         [rnp-text {:style {:textAlign "justify"}} "The database content has changed since you have loaded"]
-        [rnp-text {:style {:textAlign "justify"}} error-message])]
+
+        :no-remote-storage-connection
+        [rnp-text {:style {:textAlign "justify"}} "The remote server connection is not available at this time"]
+
+        [rnp-text {:style {:textAlign "justify"}} error-message])
+
+      #_(if (= error-type :content-change-detected)
+          [rnp-text {:style {:textAlign "justify"}} "The database content has changed since you have loaded"]
+          [rnp-text {:style {:textAlign "justify"}} error-message])]
 
      [rnp-divider]
      [rn-view {:style {:flex .7}}
@@ -93,7 +103,7 @@
        [rnp-button {:style {:width "70%"}
                     :labelStyle {:fontWeight "bold"}
                     :mode "text"
-                    :on-press save-events/save-error-modal-hide} "Cancel"]
+                    :on-press save-events/save-error-modal-cancel} "Cancel"]
        [rnp-text {:style {:textAlign "justify"}} ""]]]]]
 
    ;; Anchoring the overwrite confirm dialog to this modal 

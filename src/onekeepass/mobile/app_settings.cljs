@@ -1,25 +1,22 @@
 (ns onekeepass.mobile.app-settings
-  (:require [onekeepass.mobile.constants :as const :refer [DARK-THEME
-                                                           DEFAULT-SYSTEM-THEME
-                                                           LIGHT-THEME]]
-            [onekeepass.mobile.events.app-settings :as as-events]
-            [onekeepass.mobile.events.common :as cmn-events]
-            [onekeepass.mobile.rn-components :as rnc :refer [inverse-onsurface-color
-                                                             modal-selector-colors
-                                                             page-background-color
-                                                             rn-safe-area-view
-                                                             rn-section-list
-                                                             rn-view
-                                                             rnms-modal-selector
-                                                             rnp-divider
-                                                             rnp-list-icon
-                                                             rnp-list-item
-                                                             rnp-text]]
-            [onekeepass.mobile.translation :as t :refer [lstr-bl lstr-cv
-                                                         lstr-l lstr-mt]]
-            [reagent.core :as r]))
+  (:require
+   [onekeepass.mobile.common-components :refer [settings-section-header]]
+   [onekeepass.mobile.constants :as const :refer [DARK-THEME
+                                                  DEFAULT-SYSTEM-THEME
+                                                  LIGHT-THEME]]
+   [onekeepass.mobile.events.app-settings :as as-events]
+   [onekeepass.mobile.events.common :as cmn-events]
+   [onekeepass.mobile.rn-components :as rnc :refer [modal-selector-colors
+                                                    page-background-color
+                                                    rn-safe-area-view
+                                                    rn-section-list rn-view
+                                                    rnms-modal-selector
+                                                    rnp-divider rnp-list-icon
+                                                    rnp-list-item rnp-text]]
+   [onekeepass.mobile.translation :as t :refer [lstr-bl lstr-cv lstr-l lstr-mt]]
+   [reagent.core :as r]))
 
-(defn section-header [title]
+#_(defn section-header [title]
   [rn-view  {:style {:flexDirection "row"
                      :width "100%"
                      :backgroundColor @inverse-onsurface-color
@@ -96,7 +93,7 @@
      [rnp-text {:style {:margin-left 15}}
       (lstr-mt 'appSettings 'inactiveDbLocked {:dbTimeoutTime label})]]))
 
-(defn clipboard-timeout-explain [{:keys [key label]}]
+(defn clipboard-timeout-explain [{:keys [key label]}] 
   (if (= key -1)
     [rn-view {:style {:margin-top 5} :flexDirection "row" :flexWrap "wrap"}
      [rnp-text {:style {:margin-left 15}} (lstr-mt 'appSettings 'clipboardCleard1)]]
@@ -112,13 +109,14 @@
   [rn-view {:style {:margin-top 1} :flexDirection "row" :flexWrap "wrap"}
    [rnp-text {:style {:margin-left 15}} label]])
 
-(defn find-match [options value]
+(defn find-match 
+  "Gets the option map from the selected value"
+  [options value]
   (first
    (filter
-    (fn [m]
+    (fn [m] 
       (= value (:key m)))
     options)))
-
 
 (defn field-explain [title option]
   (cond
@@ -138,11 +136,13 @@
     nil))
 
 (defn row-item-with-select
-  [title options current-selection update-fn]
+  [title options current-selection-value update-fn]
   ;; title is used as key to the i18n map to get the transalated text
   ;; title - may be dbTimeout or clipboardTimeout or theme ... 
+  ;; options is a vec of maps ( see db-session-timeout-options, clipboard-session-timeout-options ...)
+  ;; current-selection-value is the option value selected ( a value - from :key of a option map)
 
-  (let [{:keys [label] :as selected-option} (find-match options current-selection)
+  (let [{:keys [label] :as selected-option} (find-match options current-selection-value)
         ;; Need to use label extraction fn to use lstr calls
         label-extractor-fn (when (= title "theme") (fn [^js/RnModal d] (lstr-cv (.-label d))))]
     [rn-view {:style {:margin-bottom 15}}
@@ -209,7 +209,7 @@
                        :renderSectionHeader (fn [props]
                                               (let [props (js->clj props :keywordize-keys true)
                                                     {:keys [title]} (-> props :section)]
-                                                (r/as-element [section-header title])))}]))
+                                                (r/as-element [settings-section-header title])))}]))
 
 (defn language-update-feedback []
   [rnc/rn-view {:style {:flex 1 :justify-content "center" :backgroundColor @page-background-color}}

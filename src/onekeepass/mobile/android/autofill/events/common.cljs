@@ -115,7 +115,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Open db related ;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn open-selected-database
-  "Called to open a datanase when user presses a row item of the datanases list on the home page"
+  "Called to open a database when user presses a row item of the datanases list on the home page"
   [file-name full-file-name-uri already-opened?]
   #_(dispatch [:android-af/database-file-picked {:file-name file-name :full-file-name-uri full-file-name-uri}])
   (if already-opened?
@@ -240,12 +240,14 @@
        {:db (-> db (assoc-in [:android-af :open-database :status] :in-progress))
         :fx [[:android-af/bg-load-kdbx [(get-in db [:android-af  :open-database :database-full-file-name])
                                         (get-in db [:android-af :open-database :password])
-                                        (get-in db [:android-af :open-database :key-file-name])]]]}))))
+                                        (get-in db [:android-af :open-database :key-file-name])
+                                        false
+                                        ]]]}))))
 
 (reg-fx
  :android-af/bg-load-kdbx
- (fn [[db-file-name password key-file-name]]
-   (bg/load-kdbx db-file-name password key-file-name
+ (fn [[db-file-name password key-file-name biometric-auth-used]]
+   (bg/load-kdbx db-file-name password key-file-name biometric-auth-used
                  (fn [api-response]
                    (when-let [kdbx-loaded
                               (on-ok

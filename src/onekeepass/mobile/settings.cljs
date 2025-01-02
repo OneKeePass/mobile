@@ -19,14 +19,15 @@
                                                     rnp-list-icon
                                                     rnp-portal
                                                     rnp-text]]
-   [onekeepass.mobile.translation :refer [lstr-bl lstr-l lstr-mt]]
+   [onekeepass.mobile.translation :refer [lstr-bl lstr-l lstr-mt lstr-pt]]
    [onekeepass.mobile.background :refer [is-iOS]]
    [onekeepass.mobile.utils  :refer [str->int]]
-   [onekeepass.mobile.common-components :as cc :refer [select-field confirm-dialog]]
+   [onekeepass.mobile.common-components :as cc :refer [select-field confirm-dialog settings-section-header]]
    [onekeepass.mobile.events.settings :as stgs-events :refer [cancel-db-settings-form]]
    [onekeepass.mobile.events.password-generator :as pg-events]
    [onekeepass.mobile.events.common :as cmn-events]
    [onekeepass.mobile.events.app-settings :as as-events]
+   [onekeepass.mobile.events.app-database-settings :as ada-events]
    [onekeepass.mobile.events.autofill :as af-events]
    [onekeepass.mobile.constants :as const :refer [ICON-EYE ICON-EYE-OFF]]))
 
@@ -50,7 +51,8 @@
    "
   []
   (fn [page-id]
-    (let [modified? (not @(stgs-events/db-settings-modified))]
+    (let [not-modified? (not @(stgs-events/db-settings-modified))
+          save-diabled (or not-modified? @(cmn-events/current-db-disable-edit))]
       [rn-view {:flexDirection "row"
                 :style {:width "100%"
                         :alignItems "center"
@@ -58,23 +60,23 @@
        [rnp-button {:style {}
                     :textColor @appbar-text-color
                     :mode "text"
-                    :onPress cancel-db-settings-form} "Cancel"]
+                    :onPress cancel-db-settings-form} (lstr-bl "cancel") ]
        [rnp-text {:style {:color @appbar-text-color
                           :max-width "60%"
                           :margin-right 0 :margin-left 0}
                   :ellipsizeMode "tail"
                   :numberOfLines 1
-                  :variant page-title-text-variant} "Database Settings"]
+                  :variant page-title-text-variant} (lstr-pt 'databaseSettings)]
        [rnp-button {:style {}
                     :textColor @appbar-text-color
-                    :disabled modified?
+                    :disabled save-diabled
                     :mode "text" :onPress (fn [_e]
                                             (cond
                                               (= page-id :settings-credentials)
                                               (reset! mp-confirm-dialog-data true)
 
                                               :else
-                                              (stgs-events/save-db-settings)))} "Save"]])))
+                                              (stgs-events/save-db-settings)))} (lstr-bl 'save)]])))
 
 (defn form-header [title]
   [rn-view  {:style {:flexDirection "row"
@@ -253,42 +255,50 @@
     (= page-id :settings-security)
     [security-content]))
 
-(defn section-header [title]
-  [rn-view  {:style {:flexDirection "row"
-                     :width "100%"
-                     :backgroundColor @inverse-onsurface-color
-                     :margin-top 0
-                     :min-height 38}}
-   [rnp-text {:style {:textTransform "uppercase"
-                      :alignSelf "center"
-                      ;;:width "85%"
-                      :text-align "center"
-                      :padding-left 5} :variant "titleSmall"} (lstr-l title)]])
 
 (def ^:private ^:const SECTION-KEY-DB-SETTINGS "DbSettings")
+(def ^:private ^:const SECTION-KEY-ADDITIONAL-DB-ACCESS "AdditionalDatabaseAcccess")
 (def ^:private ^:const SECTION-KEY-APP-SETTINGS "AppSettings")
 (def ^:private ^:const SECTION-KEY-AUTOFILL "AutofillSettings")
+
+
+(defn field-explain []
+  [rn-view {:style {:margin-top 1 :margin-bottom 15} :flexDirection "row" :flexWrap "wrap"}
+   [rnp-text {:style {:margin-left 15}}
+    (lstr-mt 'settings 'additionalDbAccessExplain {:biometricType (if (is-iOS)
+                                                                    (lstr-l 'faceId)  
+                                                                    (lstr-l 'faceUnlockFingerprint))
+                                                   ;;:interpolation {:escapeValue false}
+                                                   })]])
 
 (defn row-item [_m]
   (fn [{:keys [title page-id]} section-key]
     ;; page-id is string and need to be convereted to a keyword to get the settings panel id
     ;; title is a key to i18n map
-    [rnp-list-item {:style {}
-                    :contentStyle {}
-                    :onPress (fn []
-                               (cond
-                                 (= section-key SECTION-KEY-DB-SETTINGS)
-                                 (stgs-events/select-db-settings-panel (keyword page-id))
+    [rn-view {:style {}} 
+     [rnp-list-item {:style {}
+                     :contentStyle {}
+                     :onPress (fn []
+                                (cond
+                                  (= section-key SECTION-KEY-DB-SETTINGS)
+                                  (stgs-events/select-db-settings-panel (keyword page-id))
+                                  
+                                  (= section-key SECTION-KEY-ADDITIONAL-DB-ACCESS) 
+                                  (ada-events/to-additional-db-acess-settings-page)
 
-                                 (and (= section-key SECTION-KEY-AUTOFILL) (is-iOS))
-                                 (af-events/to-autofill-settings-page)
+                                  (and (= section-key SECTION-KEY-AUTOFILL) (is-iOS))
+                                  (af-events/to-autofill-settings-page)
 
-                                 (= section-key SECTION-KEY-APP-SETTINGS)
-                                 (as-events/to-app-settings-page)))
-                    :title (r/as-element
-                            [rnp-text {:style {}
-                                       :variant "titleMedium"} (lstr-l title)])
-                    :right (fn [_props] (r/as-element [rnp-list-icon {:icon const/ICON-CHEVRON-RIGHT}]))}]))
+                                  (= section-key SECTION-KEY-APP-SETTINGS)
+                                  (as-events/to-app-settings-page)))
+                     :title (r/as-element
+                             [rnp-text {:style {}
+                                        :variant "titleMedium"} (lstr-l title)])
+                     :right (fn [_props] (r/as-element [rnp-list-icon {:icon const/ICON-CHEVRON-RIGHT}]))}]
+
+
+     (when (= section-key SECTION-KEY-ADDITIONAL-DB-ACCESS)
+       [field-explain])]))
 
 
 (defn sections-data []
@@ -297,6 +307,11 @@
     :data [{:title "general" :page-id :settings-general}
            {:title "credentials" :page-id :settings-credentials}
            {:title "security" :page-id :settings-security}]}
+
+   {:title "additionalDbAcccess"
+    :key SECTION-KEY-ADDITIONAL-DB-ACCESS
+    :data [{:title "enableDisable"}]}
+
    ;; For android this is nil and need to be filtered out
    (when (is-iOS)
      {:title "autofillSettings"
@@ -308,7 +323,7 @@
     :data [{:title "allAppSettings"}]}])
 
 (defn settings-list-content []
-  (let [sections (filterv (complement nil?) (sections-data)) ]
+  (let [sections (filterv (complement nil?) (sections-data))]
     [rn-section-list  {:style {}
                        :sections (clj->js sections)
                        :renderItem  (fn [props]
@@ -322,7 +337,7 @@
                        :renderSectionHeader (fn [props]
                                               (let [props (js->clj props :keywordize-keys true)
                                                     {:keys [title]} (-> props :section)]
-                                                (r/as-element [section-header title])))}]))
+                                                (r/as-element [settings-section-header title])))}]))
 
 (defn main-content []
   [rn-view {:style {:flex 1}}

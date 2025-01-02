@@ -17,10 +17,10 @@
 		F92CB0FF28FDCABF00A79F60 /* OkpDocumentPickerServiceBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = F92CB0FE28FDCABF00A79F60 /* OkpDocumentPickerServiceBridge.m */; };
 		F92CB10128FDCBC400A79F60 /* OkpDocumentPickerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F92CB10028FDCBC400A79F60 /* OkpDocumentPickerService.swift */; };
 		F92CB10328FF7A7500A79F60 /* DbServiceAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = F92CB10228FF7A7500A79F60 /* DbServiceAPI.swift */; };
-		F955AC022C1A6C5A00D0DFB6 /* AutoFillMessageHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = F955AC012C1A6C5A00D0DFB6 /* AutoFillMessageHandler.swift */; };
+		F944B9EB2CE135D100AC010E /* SecureEnclaveServiceSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = F944B9EA2CE135B600AC010E /* SecureEnclaveServiceSupport.swift */; };
+		F944B9EC2CE2964A00AC010E /* SecureEnclaveServiceSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = F944B9EA2CE135B600AC010E /* SecureEnclaveServiceSupport.swift */; };
 		F955AC0B2C1C978A00D0DFB6 /* BackendEventDispatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = F955AC082C1C978A00D0DFB6 /* BackendEventDispatcher.swift */; };
 		F955AC0C2C1C978A00D0DFB6 /* AutoFillDbServiceApi.swift in Sources */ = {isa = PBXBuildFile; fileRef = F955AC092C1C978A00D0DFB6 /* AutoFillDbServiceApi.swift */; };
-		F955AC0D2C1C978A00D0DFB6 /* MessageHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = F955AC0A2C1C978A00D0DFB6 /* MessageHandler.swift */; };
 		F955AC102C1C983300D0DFB6 /* OkpDbService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F955AC0F2C1C983300D0DFB6 /* OkpDbService.swift */; };
 		F955AC122C1C9B2500D0DFB6 /* OkpDbServiceBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = F955AC112C1C9B2500D0DFB6 /* OkpDbServiceBridge.m */; };
 		F955AC152C1E31CC00D0DFB6 /* MaterialCommunityIcons.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F9CD349D28E2AABC00B6C59C /* MaterialCommunityIcons.ttf */; };
@@ -33,6 +33,8 @@
 		F969C3F128D4C8D90020FA62 /* OkpDbService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F969C3EF28D4C8D90020FA62 /* OkpDbService.swift */; };
 		F969C3F228D4C8D90020FA62 /* OkpDbServiceBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = F969C3F028D4C8D90020FA62 /* OkpDbServiceBridge.m */; };
 		F98AB8C42C30E11400F334BE /* Translations in Resources */ = {isa = PBXBuildFile; fileRef = F9C4EFE72BEBFEC200B7214E /* Translations */; };
+		F9A5C9B92D1E2F77001BC9B2 /* XcodeConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9A5C9B82D1E2F72001BC9B2 /* XcodeConfiguration.swift */; };
+		F9A5C9BA2D1E3032001BC9B2 /* XcodeConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9A5C9B82D1E2F72001BC9B2 /* XcodeConfiguration.swift */; };
 		F9AD1B6729B63B6C00BED32A /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9AD1B6629B63B6C00BED32A /* SceneDelegate.swift */; };
 		F9AD1B6B29B78F1200BED32A /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9AD1B6A29B78F1100BED32A /* AppDelegate.swift */; };
 		F9AE2F40290440380013D9AB /* OkpLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9AE2F3E290440380013D9AB /* OkpLogger.swift */; };
@@ -128,11 +130,10 @@
 		F92CB0FE28FDCABF00A79F60 /* OkpDocumentPickerServiceBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OkpDocumentPickerServiceBridge.m; sourceTree = "<group>"; };
 		F92CB10028FDCBC400A79F60 /* OkpDocumentPickerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OkpDocumentPickerService.swift; sourceTree = "<group>"; };
 		F92CB10228FF7A7500A79F60 /* DbServiceAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DbServiceAPI.swift; sourceTree = "<group>"; };
+		F944B9EA2CE135B600AC010E /* SecureEnclaveServiceSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecureEnclaveServiceSupport.swift; sourceTree = "<group>"; };
 		F94CD9A82AE7360B00649D28 /* libbotan-3.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libbotan-3.a"; path = "OneKeePassMobile/DbServiceFFILib/libbotan-3.a"; sourceTree = "<group>"; };
-		F955AC012C1A6C5A00D0DFB6 /* AutoFillMessageHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoFillMessageHandler.swift; sourceTree = "<group>"; };
 		F955AC082C1C978A00D0DFB6 /* BackendEventDispatcher.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BackendEventDispatcher.swift; sourceTree = "<group>"; };
 		F955AC092C1C978A00D0DFB6 /* AutoFillDbServiceApi.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AutoFillDbServiceApi.swift; sourceTree = "<group>"; };
-		F955AC0A2C1C978A00D0DFB6 /* MessageHandler.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MessageHandler.swift; sourceTree = "<group>"; };
 		F955AC0F2C1C983300D0DFB6 /* OkpDbService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OkpDbService.swift; sourceTree = "<group>"; };
 		F955AC112C1C9B2500D0DFB6 /* OkpDbServiceBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OkpDbServiceBridge.m; sourceTree = "<group>"; };
 		F955AC182C20C42700D0DFB6 /* AutoFillEvents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoFillEvents.swift; sourceTree = "<group>"; };
@@ -142,6 +143,7 @@
 		F969C3EF28D4C8D90020FA62 /* OkpDbService.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OkpDbService.swift; sourceTree = "<group>"; };
 		F969C3F028D4C8D90020FA62 /* OkpDbServiceBridge.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OkpDbServiceBridge.m; sourceTree = "<group>"; };
 		F969C3F528D4CC570020FA62 /* OneKeePassMobile-Bridging-Header.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "OneKeePassMobile-Bridging-Header.h"; sourceTree = "<group>"; };
+		F9A5C9B82D1E2F72001BC9B2 /* XcodeConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XcodeConfiguration.swift; sourceTree = "<group>"; };
 		F9AD1B6629B63B6C00BED32A /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SceneDelegate.swift; path = OneKeePassMobile/SceneDelegate.swift; sourceTree = "<group>"; };
 		F9AD1B6A29B78F1100BED32A /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = OneKeePassMobile/AppDelegate.swift; sourceTree = "<group>"; };
 		F9AE2F3E290440380013D9AB /* OkpLogger.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OkpLogger.swift; sourceTree = "<group>"; };
@@ -323,7 +325,6 @@
 			children = (
 				F955AC082C1C978A00D0DFB6 /* BackendEventDispatcher.swift */,
 				F955AC092C1C978A00D0DFB6 /* AutoFillDbServiceApi.swift */,
-				F955AC0A2C1C978A00D0DFB6 /* MessageHandler.swift */,
 			);
 			path = Utils;
 			sourceTree = "<group>";
@@ -359,12 +360,13 @@
 		F9AE2F3D290440380013D9AB /* Utils */ = {
 			isa = PBXGroup;
 			children = (
+				F9A5C9B82D1E2F72001BC9B2 /* XcodeConfiguration.swift */,
+				F944B9EA2CE135B600AC010E /* SecureEnclaveServiceSupport.swift */,
 				F92CB10228FF7A7500A79F60 /* DbServiceAPI.swift */,
 				F9AE2F3E290440380013D9AB /* OkpLogger.swift */,
 				F9AE2F3F290440380013D9AB /* FileUtils.swift */,
 				F90DF3742A466FF00041F9F5 /* SecureKeyService.swift */,
 				F9B3CE612BAF307C006BDCFA /* BackendEventDispatcher.swift */,
-				F955AC012C1A6C5A00D0DFB6 /* AutoFillMessageHandler.swift */,
 				F955AC1C2C2DF41B00D0DFB6 /* ClipboardHelper.swift */,
 				F955AC1F2C2E377600D0DFB6 /* ApiCallBackService.swift */,
 			);
@@ -476,7 +478,6 @@
 				00E356EA1AD99517003FC87E /* Sources */,
 				00E356EB1AD99517003FC87E /* Frameworks */,
 				00E356EC1AD99517003FC87E /* Resources */,
-				C59DA0FBD6956966B86A3779 /* [CP] Embed Pods Frameworks */,
 				F6A41C54EA430FDDC6A6ED99 /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
@@ -499,7 +500,6 @@
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
-				00EEFC60759A1932668264C0 /* [CP] Embed Pods Frameworks */,
 				E235C05ADACE081382539298 /* [CP] Copy Pods Resources */,
 				F9F81C092C1227D900E1FE8C /* Embed Foundation Extensions */,
 			);
@@ -639,23 +639,6 @@
 			shellPath = /bin/sh;
 			shellScript = "set -e\n\nWITH_ENVIRONMENT=\"../node_modules/react-native/scripts/xcode/with-environment.sh\"\nREACT_NATIVE_XCODE=\"../node_modules/react-native/scripts/react-native-xcode.sh\"\n\n/bin/sh -c \"$WITH_ENVIRONMENT $REACT_NATIVE_XCODE\"\n";
 		};
-		00EEFC60759A1932668264C0 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-OneKeePassMobile/Pods-OneKeePassMobile-frameworks-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-OneKeePassMobile/Pods-OneKeePassMobile-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-OneKeePassMobile/Pods-OneKeePassMobile-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
 		0B08C31899DAFD542DE9190F /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -737,23 +720,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
-		C59DA0FBD6956966B86A3779 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-OneKeePassMobile-OneKeePassMobileTests/Pods-OneKeePassMobile-OneKeePassMobileTests-frameworks-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-OneKeePassMobile-OneKeePassMobileTests/Pods-OneKeePassMobile-OneKeePassMobileTests-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-OneKeePassMobile-OneKeePassMobileTests/Pods-OneKeePassMobile-OneKeePassMobileTests-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		E235C05ADACE081382539298 /* [CP] Copy Pods Resources */ = {
@@ -853,15 +819,16 @@
 				F9AD1B6729B63B6C00BED32A /* SceneDelegate.swift in Sources */,
 				F955AC202C2E377600D0DFB6 /* ApiCallBackService.swift in Sources */,
 				F969C3F128D4C8D90020FA62 /* OkpDbService.swift in Sources */,
+				F944B9EB2CE135D100AC010E /* SecureEnclaveServiceSupport.swift in Sources */,
 				F9B3CE622BAF307C006BDCFA /* BackendEventDispatcher.swift in Sources */,
 				F9D88149291430B500467986 /* OkpError.swift in Sources */,
 				F9AD1B6B29B78F1200BED32A /* AppDelegate.swift in Sources */,
 				F92CB10328FF7A7500A79F60 /* DbServiceAPI.swift in Sources */,
-				F955AC022C1A6C5A00D0DFB6 /* AutoFillMessageHandler.swift in Sources */,
 				F9C4D29729AFE1CE00B83DEB /* OkpEvents.swift in Sources */,
 				F955AC1D2C2DF41B00D0DFB6 /* ClipboardHelper.swift in Sources */,
 				F9C4D29929AFEC8A00B83DEB /* OkpEventsBridge.m in Sources */,
 				F9E4235929E5F45900A8F366 /* db_service.swift in Sources */,
+				F9A5C9B92D1E2F77001BC9B2 /* XcodeConfiguration.swift in Sources */,
 				F92CB10128FDCBC400A79F60 /* OkpDocumentPickerService.swift in Sources */,
 				F9AE2F41290440380013D9AB /* FileUtils.swift in Sources */,
 			);
@@ -873,16 +840,17 @@
 			files = (
 				F9F81C502C1382A400E1FE8C /* OkpLogger.swift in Sources */,
 				F955AC1E2C2DF41B00D0DFB6 /* ClipboardHelper.swift in Sources */,
-				F955AC0D2C1C978A00D0DFB6 /* MessageHandler.swift in Sources */,
 				F955AC212C2E377600D0DFB6 /* ApiCallBackService.swift in Sources */,
 				F9F81C592C138DCE00E1FE8C /* SecureKeyService.swift in Sources */,
 				F955AC1B2C20C51F00D0DFB6 /* AutoFillEventsBridge.m in Sources */,
 				F955AC0B2C1C978A00D0DFB6 /* BackendEventDispatcher.swift in Sources */,
 				F955AC102C1C983300D0DFB6 /* OkpDbService.swift in Sources */,
 				F9F81C402C1380A200E1FE8C /* db_service.swift in Sources */,
+				F9A5C9BA2D1E3032001BC9B2 /* XcodeConfiguration.swift in Sources */,
 				F955AC122C1C9B2500D0DFB6 /* OkpDbServiceBridge.m in Sources */,
 				F955AC192C20C42700D0DFB6 /* AutoFillEvents.swift in Sources */,
 				F9F81C5E2C138E6300E1FE8C /* OkpError.swift in Sources */,
+				F944B9EC2CE2964A00AC010E /* SecureEnclaveServiceSupport.swift in Sources */,
 				F9F81C002C1227D900E1FE8C /* CredentialProviderViewController.swift in Sources */,
 				F955AC0C2C1C978A00D0DFB6 /* AutoFillDbServiceApi.swift in Sources */,
 			);
@@ -996,7 +964,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/OneKeePassMobile/DbServiceFFILib",
 				);
-				MARKETING_VERSION = 0.14.0;
+				MARKETING_VERSION = 0.15.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lc++",
@@ -1042,7 +1010,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/OneKeePassMobile/DbServiceFFILib",
 				);
-				MARKETING_VERSION = 0.14.0;
+				MARKETING_VERSION = 0.15.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -1065,6 +1033,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				CC = "";
 				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
 				CLANG_CXX_LIBRARY = "libc++";
@@ -1092,6 +1061,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				COPY_PHASE_STRIP = NO;
+				CXX = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				"EXCLUDED_ARCHS[sdk=*]" = "";
@@ -1111,6 +1081,8 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				LD = "";
+				LDPLUSPLUS = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					/usr/lib/swift,
 					"$(inherited)",
@@ -1141,6 +1113,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				CC = "";
 				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_CXX_LANGUAGE_STANDARD = "c++20";
 				CLANG_CXX_LIBRARY = "libc++";
@@ -1168,6 +1141,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				COPY_PHASE_STRIP = YES;
+				CXX = "";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				"EXCLUDED_ARCHS[sdk=*]" = "";
@@ -1180,6 +1154,8 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				LD = "";
+				LDPLUSPLUS = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					/usr/lib/swift,
 					"$(inherited)",

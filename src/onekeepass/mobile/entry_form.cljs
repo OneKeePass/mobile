@@ -42,8 +42,7 @@
                      rnp-helper-text rnp-icon-button rnp-list-icon
                      rnp-list-item rnp-portal rnp-text rnp-text-input
                      rnp-text-input-icon]]
-            [onekeepass.mobile.translation :refer [lstr-bl 
-                                                   lstr-l lstr-pt
+            [onekeepass.mobile.translation :refer [lstr-bl lstr-l lstr-pt
                                                    lstr-section-name]]
             [onekeepass.mobile.utils :as u]
             [reagent.core :as r]))
@@ -84,7 +83,7 @@
         (lstr-pt "entry")]
        [rnp-button {:style {}
                     :textColor @appbar-text-color
-                    :disabled (not @(form-events/form-modified))
+                    :disabled (or (not @(form-events/form-modified)) @(cmn-events/current-db-disable-edit))
                     :mode "text"
                     :onPress (fn []
                                (.dismiss rn-keyboard)
@@ -113,7 +112,8 @@
        [rnp-button {:style {}
                     :textColor @on-primary-color
                     :disabled (or @(form-events/deleted-category-showing)
-                                  is-history-entry)
+                                  is-history-entry
+                                  @(cmn-events/current-db-disable-edit))
                     :mode "text" :onPress form-events/edit-mode-on-press}
         (lstr-bl "edit")]])))
 
@@ -367,14 +367,14 @@
 (defn tags [edit]
   (let [entry-tags @(form-events/entry-form-data-fields :tags)
         tags-availble (boolean (seq entry-tags))]
-    
+
     (when (or edit tags-availble)
-      [rn-view {:style {:flexDirection "column" :justify-content "center"  
+      [rn-view {:style {:flexDirection "column" :justify-content "center"
                         :min-height 50  :margin-top 5 :padding 5 :borderWidth .20 :borderRadius 4}}
        [rn-view {:style {:flexDirection "row" :backgroundColor  @primary-container-color :min-height 25}}
-        [rnp-text {:style {:alignSelf "center" :width "85%" :padding-left 15} :variant "titleMedium"} 
+        [rnp-text {:style {:alignSelf "center" :width "85%" :padding-left 15} :variant "titleMedium"}
          (lstr-section-name 'tags)]
-        
+
         (when edit
           [rnp-icon-button {:icon const/ICON-PLUS :style {:height 35 :margin-right 0 :backgroundColor @on-primary-color}
                             :onPress (fn [] (cmn-events/tags-dialog-init-selected-tags entry-tags))}])]
@@ -391,11 +391,11 @@
 (defn uuid-times-content []
   (let [{:keys [uuid last-modification-time creation-time]} @(form-events/entry-form-data-fields
                                                               [:uuid :last-modification-time :creation-time])]
-    [rn-view {:style {:margin-top 25 
+    [rn-view {:style {:margin-top 25
                       ;;:background-color @rnc/custom-color0
-                      :padding-right 5 
-                      :padding-left 5 
-                      :borderWidth .20 
+                      :padding-right 5
+                      :padding-left 5
+                      :borderWidth .20
                       :borderRadius 4}}
      [rn-view {:style {:justify-content "space-between"} :flexDirection "row"}
       [rnp-text "Uuid"]

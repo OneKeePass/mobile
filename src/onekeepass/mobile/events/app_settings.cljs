@@ -1,13 +1,15 @@
 (ns onekeepass.mobile.events.app-settings
   (:require
-   [cljs.core.async :refer [go-loop timeout <!]]
-   [re-frame.core :refer [reg-event-fx reg-fx reg-sub dispatch subscribe]]
+   [cljs.core.async :refer [<! go-loop timeout]]
+   [onekeepass.mobile.background :as bg]
    [onekeepass.mobile.constants :refer [DEFAULT-SYSTEM-THEME]]
-   [onekeepass.mobile.events.common :as cmn-events :refer [on-error
+   [onekeepass.mobile.events.common :as cmn-events :refer [active-db-key
+                                                           on-error
+                                                           preference-field-data
                                                            set-clipboard-session-timeout
-                                                           active-db-key]]
+                                                           update-preference-field-data]]
    [onekeepass.mobile.utils  :refer [str->int]]
-   [onekeepass.mobile.background :as bg]))
+   [re-frame.core :refer [dispatch reg-event-fx reg-fx reg-sub subscribe]]))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  Session timeout ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -162,41 +164,38 @@
                                                       ;; Just show error message if any
                                                     (on-error api-response)))))
 
-#_(defn- on-success [m]
-  #_(when (= kw :language)
-    (dispatch [:common/reset-load-language-translation-status])
-    (dispatch [])
-    )
-  #_(println "Preference field kw " kw " is updated"))
-
+;; Called to update a single field found in the app preference map
 (reg-event-fx
  :app-preference-update-data
  (fn [{:keys [db]} [_event-id kw value call-on-success]] 
-   {:db (assoc-in db [:app-preference :data kw] value)
-    ;; This event is called in on-change handler of 'list-item-modal-selector'
-    ;; and as a result calling any modal window (:common/message-modal-show) in this event did not work
+   ;; First we update the UI side app prefence. 
+   {:db  (update-preference-field-data db kw value) #_(assoc-in db [:app-preference :data kw] value)
+    ;; When this event is called in on-change handler of a 'list-item-modal-selector', 
+    ;; calling any modal window (:common/message-modal-show) in this event did not work
     ;; Need to complete on-change call and then call any messaging then
-    :fx [[:bg-update-preference [kw value call-on-success]]]}))
+    :fx [[:app-settings/bg-update-preference [{kw value} call-on-success]]]}))
 
+;; Updates the backend
+;; pref-update-m is a map (struct PreferenceData)
+;; At this time it appears we are using any one field from struct PreferenceData
 (reg-fx
- :bg-update-preference
- (fn [[kw value call-on-success]]
-   (bg/update-preference {kw value} (fn [api-response] 
-                                      (when-not (on-error api-response)
-                                        (when-not (nil? call-on-success) 
-                                          (call-on-success {kw value})))))))
+ :app-settings/bg-update-preference
+ (fn [[pref-update-m  call-on-success]] 
+   (bg/update-preference pref-update-m 
+                         (fn [api-response] 
+                           (when-not (on-error api-response)
+                             (when-not (nil? call-on-success) 
+                               (call-on-success pref-update-m)))))))
 
 (reg-sub
  :db-session-timeout
  (fn [db [_event-id]]
-   (let [r (get-in db [:app-preference :data :db-session-timeout])]
-     (if (nil? r) 15000 r))))
+   (preference-field-data db :db-session-timeout 15000)))
 
 (reg-sub
  :clipboard-timeout
  (fn [db [_event-id]]
-   (let [r (get-in db [:app-preference :data :clipboard-timeout])]
-     (if (nil? r) 10000 r))))
+   (preference-field-data db :clipboard-timeout 10000)))
 
 #_(reg-sub
    :app-theme
@@ -206,11 +205,8 @@
 
 (reg-sub
  :app-preference-data
- (fn [db [_event-id kw default-value]]
-   ;;(println "kw default-value are " kw default-value)
-   (let [r (get-in db [:app-preference :data kw])
-         r (if-not (nil? r) r default-value)]
-     r)))
+ (fn [db [_event-id kw default-value]] 
+   (preference-field-data db kw default-value)))
 
 ;;;;;;;;;
 

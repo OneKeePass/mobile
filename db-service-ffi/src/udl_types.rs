@@ -8,7 +8,7 @@ use crate::{
     commands::{self, InvokeResult},
 };
 
-// Most of types decalred in db_service.udl follows here
+// Most of types declared in db_service.udl follows here
 // except few like  'IosSupportService' and 'AndroidSupportService' and functions from 'namespace db_service'.
 // The implementation of the =top level functions from 'namespace db_service' can be found in crate root lib.rs
 
@@ -18,10 +18,14 @@ pub(crate) struct KdbxCreated {
     pub(crate) api_response: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct FileInfo {
     pub file_name: Option<String>,
     pub file_size: Option<i64>,
+    // In milliseconds sice 00:00:00 UTC on 1 January 1970
+    // The UI side it is expected in milliseconds - see onekeepass/mobile/date_utils.cljs
+    // In case of remote storage file, we need to convert modified time from seconds to milli seconds
+    //
     pub last_modified: Option<i64>,
     pub location: Option<String>,
 }
@@ -38,6 +42,7 @@ pub enum ApiResponse {
 // Combine ApiCallbackError and SecureKeyOperationError as one general callback error
 pub type ApiCallbackResult<T> = std::result::Result<T, ApiCallbackError>;
 
+// This is an udl enum 'ApiCallbackError' declared in 'db_service.udl' file
 #[derive(Debug, thiserror::Error)]
 pub enum ApiCallbackError {
     #[error("InternalCallbackError")]
@@ -77,6 +82,7 @@ pub trait CommonDeviceService: Send + Sync {
     fn uri_to_file_info(&self, full_file_name_uri: String) -> Option<FileInfo>;
 }
 
+// This is an udl enum 'SecureKeyOperationError' declared in 'db_service.udl' file
 // TODO: Combine ApiCallbackError and SecureKeyOperationError as one general callback error
 #[derive(Debug, thiserror::Error)]
 pub enum SecureKeyOperationError {
@@ -151,8 +157,7 @@ impl JsonService {
 
     // Forms and returns a parseable (by cljs) json string with "ok"
     pub fn form_with_file_name(&self, full_file_name_uri: String) -> String {
-        let file_name = AppState::global()
-            .common_device_service
+        let file_name = AppState::common_device_service()
             .uri_to_file_name(full_file_name_uri.clone())
             .map_or_else(|| "".into(), |s| s);
 

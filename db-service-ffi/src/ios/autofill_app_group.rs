@@ -4,15 +4,17 @@ use std::{
 };
 
 use log::debug;
-use onekeepass_core::db_service::{
-    self, copy_and_write_autofill_ready_db, string_to_simple_hash, EntrySummary,
-};
+use onekeepass_core::db_service::{self, service_util::string_to_simple_hash, EntrySummary};
 use serde::{Deserialize, Serialize};
 use url::Url;
 
+use onekeepass_core::error;
+
 use crate::{
     app_state::AppState,
-    commands::{error_json_str, result_json_str, CommandArg, InvokeResult, ResponseJson},
+    commands::{
+        error_json_str, ok_json_str, result_json_str, CommandArg, InvokeResult, ResponseJson,
+    },
     parse_command_args_or_err, util, OkpError, OkpResult,
 };
 
@@ -75,39 +77,16 @@ pub(crate) fn copy_files_to_app_group_on_save_or_read(db_key: &str) {
 
 /////////////////////////////////////////////
 
-fn temp_delete_old_af_files() {
-    let Some(app_group_home_dir) = &AppState::global().app_group_home_dir else {
-        return;
-    };
-    let pref_file_name = Path::new(app_group_home_dir).join(META_JSON_FILE_NAME);
-
-    // if !pref_file_name.exists() {
-    //     return;
-    // }
-
-    let _r = fs::remove_file(&pref_file_name);
-
-    debug!("Removed old AutoFillMeta file {:?}  ", &pref_file_name);
-
-    let db_file_root = Path::new(&app_group_home_dir).join(AG_DATA_FILES);
-    let _r = fs::remove_dir_all(&db_file_root);
-    debug!("Removed old data file dir {:?}  ", &db_file_root);
-
-    let app_group_key_file_dir = Path::new(&app_group_home_dir).join(AG_KEY_FILES);
-    let _r = fs::remove_dir_all(&app_group_key_file_dir);
-    debug!("Removed old key file dir {:?}  ", &app_group_key_file_dir);
-}
-
 fn app_extension_root() -> OkpResult<PathBuf> {
-    let Some(app_group_home_dir) = &AppState::global().app_group_home_dir else {
+    let Some(app_group_home_dir) = AppState::app_group_home_dir() else {
         return Err(OkpError::UnexpectedError(
             "No app group home dir is found".into(),
         ));
     };
 
-    temp_delete_old_af_files(); // Need to be removed
+    //temp_delete_old_af_files(); // Need to be removed
 
-    let full_path_dir = Path::new(&app_group_home_dir).join("okp");
+    let full_path_dir = Path::new(app_group_home_dir).join("okp");
     Ok(full_path_dir.to_path_buf())
 }
 
@@ -117,6 +96,7 @@ fn app_group_root_sub_dir(sub_dir_name: &str) -> OkpResult<PathBuf> {
     Ok(p)
 }
 
+// Gets the full path of the autofill specific meta data json file
 fn autofill_meta_json_file() -> Option<PathBuf> {
     // let Some(app_group_home_dir) = &AppState::global().app_group_home_dir else {
     //     return None;
@@ -132,8 +112,9 @@ fn autofill_meta_json_file() -> Option<PathBuf> {
     Some(pref_file_name)
 }
 
+// This is called to copy the selected db's data content and all key file used to the shared location for the extension to use
 fn copy_files_to_app_group(db_key: &str) -> OkpResult<CopiedDbFileInfo> {
-    let file_name = AppState::global().uri_to_file_name(&db_key);
+    let file_name = AppState::uri_to_file_name(&db_key);
     debug!("File name from db_file_name  is {} ", &file_name);
 
     let db_file_root = app_group_root_sub_dir(AG_DATA_FILES)?;
@@ -146,7 +127,10 @@ fn copy_files_to_app_group(db_key: &str) -> OkpResult<CopiedDbFileInfo> {
 
     debug!("group_db_file_name is {:?} ", &group_db_file_name);
 
-    copy_and_write_autofill_ready_db(&db_key, &group_db_file_name.as_os_str().to_string_lossy())?;
+    db_service::copy_and_write_autofill_ready_db(
+        &db_key,
+        &group_db_file_name.as_os_str().to_string_lossy(),
+    )?;
 
     // Add and persist the copied file info
     let db_file_path = group_db_file_name.as_os_str().to_string_lossy().to_string();
@@ -156,10 +140,7 @@ fn copy_files_to_app_group(db_key: &str) -> OkpResult<CopiedDbFileInfo> {
     let app_group_key_file_dir = app_group_root_sub_dir(AG_KEY_FILES)?;
 
     // Copies all the key files available
-    util::copy_files(
-        &AppState::global().key_files_dir_path,
-        &app_group_key_file_dir,
-    );
+    util::copy_files(&AppState::key_files_dir_path(), &app_group_key_file_dir);
 
     Ok(copied_db_info)
 }
@@ -189,6 +170,7 @@ impl CopiedDbFileInfo {
     }
 }
 
+// Used for the auto fill meta data persistence
 #[derive(Clone, Serialize, Deserialize)]
 pub struct AutoFillMeta {
     pub version: String,
@@ -343,28 +325,38 @@ impl IosAppGroupSupportService {
         result_json_str(inner_fn())
     }
 
-    // Gets the list of all entries in a database that is openned in autofill extension
+    // Gets the list of all entries in a database that is opened in autofill extension
     fn all_entries_on_db_open(&self, json_args: &str) -> ResponseJson {
         let inner_fn = || -> OkpResult<Vec<EntrySummary>> {
-            let (db_file_name, password, key_file_name) = parse_command_args_or_err!(
+            let (db_file_name, password, key_file_name, biometric_auth_used) = parse_command_args_or_err!(
                 json_args,
                 OpenDbArg {
                     db_file_name,
                     password,
-                    key_file_name
+                    key_file_name,
+                    biometric_auth_used
                 }
             );
 
             let mut file = File::open(&util::url_to_unix_file_name(&db_file_name))?;
-            let file_name = AppState::global().uri_to_file_name(&db_file_name);
+            let file_name = AppState::uri_to_file_name(&db_file_name);
 
+            // First we read the db file
             let kdbx_loaded = db_service::read_kdbx(
                 &mut file,
                 &db_file_name,
                 password.as_deref(),
                 key_file_name.as_deref(),
                 Some(&file_name),
-            )?;
+            )
+            .map_err(|e| match e {
+                // Need this when db login fails while using the previously stored credentials
+                // and the UI will then popup the usual dialog
+                error::Error::HeaderHmacHashCheckFailed if biometric_auth_used => {
+                    error::Error::BiometricCredentialsAuthenticationFailed
+                }
+                _ => e,
+            })?;
 
             let r = db_service::entry_summary_data(
                 &kdbx_loaded.db_key,
@@ -389,7 +381,8 @@ impl IosAppGroupSupportService {
                 domain.into()
             } else if let Some(url) = identifiers.get("url") {
                 if let Ok(u) = Url::parse(url) {
-                    u.host_str().map_or_else(|| String::default(), |s| s.to_string())
+                    u.host_str()
+                        .map_or_else(|| String::default(), |s| s.to_string())
                 } else {
                     url.to_string()
                 }
@@ -450,6 +443,7 @@ impl IosAppGroupSupportService {
 
             // Used in extension
             "list_of_autofill_db_infos" => self.list_of_autofill_db_infos(),
+            "database_preferences" => ok_json_str(AppState::database_preferences()),
             "list_of_key_files" => self.list_of_key_files(),
             "all_entries_on_db_open" => self.all_entries_on_db_open(json_args),
             "credential_service_identifier_filtering" => {
@@ -468,47 +462,3 @@ impl IosAppGroupSupportService {
     }
 }
 
-/*
-fn internal_read_kdbx_from_app_group(
-        &self,
-        json_args: &str,
-    ) -> OkpResult<db_service::KdbxLoaded> {
-        let CommandArg::OpenDbArg {
-            db_file_name,
-            password,
-            key_file_name,
-        } = serde_json::from_str(&json_args)?
-        else {
-            return Err(OkpError::UnexpectedError(format!(
-                "Argument 'json_args' {:?} parsing failed for readkdbx api call",
-                json_args
-            )));
-        };
-        let mut file = File::open(&util::url_to_unix_file_name(&db_file_name))?;
-        let file_name = AppState::global().uri_to_file_name(&db_file_name);
-
-        let kdbx_loaded = db_service::read_kdbx(
-            &mut file,
-            &db_file_name,
-            password.as_deref(),
-            key_file_name.as_deref(),
-            Some(&file_name),
-        )?;
-
-        Ok(kdbx_loaded)
-    }
-
-    pub fn all_entries_on_db_open(&self, json_args: &str) -> ResponseJson {
-        let Ok(kdbx_loaded) = self.internal_read_kdbx_from_app_group(json_args) else {
-            return error_json_str(&format!(
-                "Opening databse failed from the app group location"
-            ));
-        };
-        let r = db_service::entry_summary_data(
-            &kdbx_loaded.db_key,
-            db_service::EntryCategory::AllEntries,
-        );
-        result_json_str(r)
-    }
-
-*/

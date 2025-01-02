@@ -12,7 +12,7 @@ object EventEmitter {
     private lateinit var reactApplicationContext: ReactApplicationContext
     var intentOfOnCreate: Intent? = null
 
-
+    // See onekeepass/mobile/events/native_events.cljs how these events are received and handled
     private const val EVENT_ON_TIME_TICK = "onTimerTick"
     private const val  EVENT_ENTRY_OTP_UPDATE = "onEntryOtpUpdate"
 

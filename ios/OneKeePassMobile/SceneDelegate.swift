@@ -15,6 +15,9 @@ import UIKit
 // https://gist.github.com/Zamerot/f5df698e11f1bd8033eb9172cb9406a2,https://gist.github.com/Zamerot?page=3
 // https://samwize.com/2019/08/05/setup-scenedelegate-without-storyboard/
 
+// This class needs to be referred in Info.plist
+// See Info.plist - UIApplicationSceneManifest -> UISceneConfigurations -> UISceneDelegateClassName
+
 @available(iOS 13, *)
 class SceneDelegate: NSObject, UIWindowSceneDelegate {
   private let logger = OkpLogger(tag: "SceneDelegate")
@@ -42,7 +45,7 @@ class SceneDelegate: NSObject, UIWindowSceneDelegate {
     if let windowScene = scene as? UIWindowScene {
       let window = UIWindow(windowScene: windowScene)
       window.rootViewController = rootViewController
-      self.window = window // any use ?
+      self.window = window // any use ? - It may be required because of UIWindowSceneDelegate
       window.makeKeyAndVisible()
       RNBootSplash.initWithStoryboard("BootSplash", rootView: AppDelegate.rctRootView!)
     }

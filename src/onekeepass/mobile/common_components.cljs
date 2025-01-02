@@ -3,14 +3,18 @@
             [onekeepass.mobile.events.common :as cmn-events]
             [onekeepass.mobile.rn-components
              :as rnc
-             :refer [cust-dialog message-modal-background-color
+             :refer [primary-container-color
+                     inverse-onsurface-color
+                     cust-dialog message-modal-background-color
                      modal-selector-colors on-background-color rn-scroll-view
                      rn-view rnms-modal-selector rnp-button rnp-chip
                      rnp-dialog rnp-dialog-actions rnp-dialog-content
                      rnp-dialog-icon rnp-dialog-title rnp-divider rnp-modal rn-pressable
                      rnp-snackbar rnp-text rnp-text-input rnp-text-input-icon
                      tertiary-color]]
-            [onekeepass.mobile.translation :refer [lstr-bl lstr-dlg-text
+            [onekeepass.mobile.translation :refer [lstr-bl
+                                                   lstr-cv
+                                                   lstr-dlg-text
                                                    lstr-dlg-title
                                                    lstr-error-dlg-text
                                                    lstr-error-dlg-title lstr-l
@@ -30,26 +34,29 @@
   "Called to show an error or a general message
   The value of key 'category' determines whether it is error or message
    "
-  [{:keys [dialog-show title category message]}]
-  (let [error? (= category :error)
-        title-txt (if error? (lstr-error-dlg-title title) (lstr-msg-dlg-title title))
-        msg-txt (if error? (lstr-error-dlg-text message) (lstr-msg-dlg-text message))]
-    [rnp-dialog {:style {}
-                 :dismissable false
-                 :visible dialog-show
-                 :onDismiss #()}
-     [rnp-dialog-icon {:icon (if error? "alert" "information")
-                       :color (if error?
-                                @rnc/error-color
-                                @rnc/outline-color)}]
-     [rnp-dialog-title {:style {:color (if error?
-                                         @rnc/error-color
-                                         @rnc/tertiary-color)}} title-txt]
-     [rnp-dialog-content
-      [rn-view {:style {:flexDirection "column" :justify-content "center"}}
-       [rnp-text msg-txt]]]
-     [rnp-dialog-actions
-      [rnp-button {:mode "text" :onPress cmn-events/close-message-dialog} (lstr-bl "close")]]]))
+  ([{:keys [dialog-show title category message]}] 
+   (let [error? (= category :error)
+         title-txt (if error? (lstr-error-dlg-title title) (lstr-msg-dlg-title title))
+         msg-txt (if error? (lstr-error-dlg-text message) (lstr-msg-dlg-text message))]
+     [rnp-dialog {:style {}
+                  :dismissable false
+                  :visible dialog-show
+                  :onDismiss #()}
+      [rnp-dialog-icon {:icon (if error? "alert" "information")
+                        :color (if error?
+                                 @rnc/error-color
+                                 @rnc/outline-color)}]
+      [rnp-dialog-title {:style {:color (if error?
+                                          @rnc/error-color
+                                          @rnc/tertiary-color)}} title-txt]
+      [rnp-dialog-content
+       [rn-view {:style {:flexDirection "column" :justify-content "center"}}
+        [rnp-text msg-txt]]]
+      [rnp-dialog-actions
+       [rnp-button {:mode "text" :onPress cmn-events/close-message-dialog} (lstr-bl "close")]]]))
+
+  ([]
+   (message-dialog  @(cmn-events/message-dialog-data))))
 
 (defn select-tags-dialog [{:keys [show all-tags new-tags-str selected-tags]}
                           selected-tags-receiver-fn]
@@ -83,7 +90,7 @@
                           :value new-tags-str
                           :onChangeText #(cmn-events/tags-dialog-update-new-tags-str %)
                           :right (r/as-element [rnp-text-input-icon {:icon const/ICON-PLUS :onPress cmn-events/tags-dialog-add-tags}])}]
-        [rnp-text {:style {:color @tertiary-color}} 
+        [rnp-text {:style {:color @tertiary-color}}
          (lstr-dlg-text 'allTagsAddHint)]]]]
      [rnp-dialog-actions
       [rnp-button {:mode "text" :onPress  (fn []
@@ -91,47 +98,96 @@
                                             (selected-tags-receiver-fn selected-tags)
                                             (cmn-events/tags-dialog-done))} (lstr-bl 'close)]]]))
 
+(defn settings-section-header 
+  "The arg title is expected to be the translation key"
+  [title]
+  [rn-view  {:style {:flexDirection "row"
+                     :width "100%"
+                     :backgroundColor @inverse-onsurface-color
+                     :margin-top 0
+                     :min-height 38}}
+   [rnp-text {:style {:textTransform "uppercase"
+                      :alignSelf "center"
+                      ;;:width "85%"
+                      :text-align "center"
+                      :padding-left 5} :variant "titleSmall"} (lstr-l title)]])
+
+(defn list-section-header 
+  "The arg title is expected to be the translation key"
+  [title]
+  [rn-view  {:style {:flexDirection "row"
+                     :width "100%"
+                     :backgroundColor @primary-container-color
+                     :justify-content "space-around"
+                     :margin-top 5
+                     :min-height 38}}
+   [rnp-text {:style {:alignSelf "center"
+                      :width "85%"
+                      :text-align "center"
+                      :padding-left 0} :variant "titleLarge"} (lstr-l title)]])
+
+(defn select-field-label-extractor
+  "Default label extractor for the modal based selector"
+  [^js/RnModalDataItem d]
+  (.-label d))
+
+(defn select-field-tr-label-extractor
+  "Uses label found data item as translation key and gets the translated value
+   as label for the modal based selector 
+  "
+  [^js/RnModalDataItem d]
+  (lstr-cv (.-label d)))
+
+(defn select-field-tr-key-label-extractor
+  "Uses key found data item as translation key and gets the translated value
+   as label for the modal based selector 
+  "
+  [^js/RnModalDataItem d]
+  (lstr-cv (.-key d)))
+
 ;;; Uses react-native-modal-selector based selector
 ;; Refer https://github.com/peacechen/react-native-modal-selector#props for all supported props
 ;; that can be used with 'rnms-modal-selector'
 
-(defn select-field [{:keys [text-label options value on-change disabled] :or [disabled false]}]
+(defn select-field [{:keys [text-label options value on-change disabled label-extractor-fn text-input-style]
+                     :or {label-extractor-fn select-field-label-extractor
+                          disabled false
+                          text-input-style {}}}]
   [rnms-modal-selector {;; data can also include additional custom keys which are passed to the onChange callback
                         ;; in addition to required ones - key, label
                         ;; For example uuid can also be passed
-                        ;;:optionStyle {:background-color "red"}
+                        ;; :optionStyle {:background-color "red"}
                         :optionContainerStyle {:background-color @(:background-color modal-selector-colors)}
                         :data options
                         :initValue value
+                        ;; Extracts the label to show
+                        :labelExtractor label-extractor-fn
                         ;;:selectedKey (get options value)
                         :disabled disabled
                         :selectedItemTextStyle {:color @(:selected-text-color modal-selector-colors) :fontWeight "bold"}
                         :onChange on-change}
-   [rnp-text-input {:style {:width "100%"} :editable false :label text-label :value value}]])
+   [rnp-text-input {:style (merge {:width "100%"} text-input-style) :editable false :label text-label :value value}]])
 
 ;; Note:
 ;; As we wrap the rnms-modal-selector in Pressable component, all press events are handled by rn-pressable
 ;; and no event is passed to rnms-modal-selector
 (defn select-field-view [{:keys [text-label options value on-change disabled pressable-on-press] :or [disabled false]}]
   [rn-pressable {:on-press (if-not (nil? pressable-on-press) pressable-on-press #()) #_#(println "Pressed value.. " value)}
-     [rnms-modal-selector {;; data can also include additional custom keys which are passed to the onChange callback
+   [rnms-modal-selector {;; data can also include additional custom keys which are passed to the onChange callback
                            ;; in addition to required ones - key, label
                            ;; For example uuid can also be passed
                            ;;:optionStyle {:background-color "red"}
-                           :optionContainerStyle {:background-color @(:background-color modal-selector-colors)}
-                           :data options
-                           :initValue value
+                         :optionContainerStyle {:background-color @(:background-color modal-selector-colors)}
+                         :data options
+                         :initValue value
                            ;;:selectedKey (get options value)
-                           :disabled disabled
+                         :disabled disabled
                            ;;:supportedOrientations (clj->js ["portrait" ])
-                           :selectedItemTextStyle {:color @(:selected-text-color modal-selector-colors) :fontWeight "bold"}
-                           :onChange on-change}
-      [rnp-text-input {:style {:width "100%"} :editable false :label text-label :value value}]]])
+                         :selectedItemTextStyle {:color @(:selected-text-color modal-selector-colors) :fontWeight "bold"}
+                         :onChange on-change}
+    [rnp-text-input {:style {:width "100%"} :editable false :label text-label :value value}]]])
 
-
-
-
-(defn confirm-dialog 
+(defn confirm-dialog
   "A Generic confirm dialog. It is expected all texts should have been translated by caller"
   [{:keys [dialog-show title confirm-text actions]}]
   [cust-dialog {:style {} :dismissable true :visible dialog-show}
@@ -147,6 +203,7 @@
   [rn-view {:style {}}
    (for [{:keys [label disabled on-press]} actions]
      ^{:key label} [rnp-button {:mode "text"
+                                ;;:labelStyle {:fontWeight 700}
                                 :disabled (if (nil? disabled) false disabled)
                                 :on-press on-press} (lstr-bl label)])])
 
@@ -157,7 +214,7 @@
            title
            confirm-text
            show-action-as-vertical
-           actions]}] 
+           actions]}]
   [cust-dialog {:style {} :dismissable true :visible dialog-show}
    [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1} (lstr-dlg-title title)]
    [rnp-dialog-content
@@ -188,10 +245,10 @@
   ([]
    [message-snackbar @(cmn-events/message-snackbar-data)]))
 
-(defn message-modal 
+(defn message-modal
   "Called to show the passed message (mostly translation key as symbol) temporarily while 
    background work is going on without any title"
-  [{:keys [dialog-show message]}] 
+  [{:keys [dialog-show message]}]
   [rnp-modal {:visible dialog-show
               :dismissable false
               ;;:onDismiss #() 
@@ -200,8 +257,8 @@
     [rnp-text (lstr-modal-dlg-text message)]]])
 
 (defn menu-action-factory
-  "Wraps the hide-menu-action and returns a factory which itself returns another factory
-  This inner factory can be used in menu items' onPress call
+  "Wraps the hide-menu-action and returns a fn factory which itself when called returns another inner fn.
+  This inner fn can be used in menu items' onPress call
  "
   [hide-menu-action]
   (fn [action & action-args]

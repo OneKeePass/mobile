@@ -140,7 +140,9 @@ android-db-service-src-dir  := "../android/app/src/main/java"
 android-db-service-lib-dir  := "../android/app/src/main"
 android-lib-output-dir := "target/jniLibs"
 
-ndk_botan_build_home := env_var('ANDROID_NDK_HOME') + "/../26.1.10909125"
+# ndk_botan_build_home := env_var('ANDROID_NDK_HOME') + "/../26.1.10909125"
+## 26.1.10909125 is the latest ndk version used after RN 0.74.5 upgrade
+ndk_botan_build_home := env_var('ANDROID_NDK_HOME')
 ndk_ar := ndk_botan_build_home + "/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ar"
 ndk_cxx := ndk_botan_build_home + "/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android31-clang++"
 
