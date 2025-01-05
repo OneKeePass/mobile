@@ -1,7 +1,9 @@
 (ns onekeepass.mobile.core
-  (:require ;; When we build iOS production main bundle, we can comment out this ns
- ;; and this will ensure that all android autofill related code are excluded
-   [onekeepass.mobile.android.autofill.core :as android-core] ;;;;;;; ;;;;;;; ;;;;;;; ;;;;;;;
+  (:require 
+   ;; When we build iOS production main bundle, we can comment out this ns
+   ;; and this will ensure that all android autofill related code are excluded
+   [onekeepass.mobile.android.autofill.core :as android-core] 
+   ;;;;;;; ;;;;;;; ;;;;;;; ;;;;;;;
    [onekeepass.mobile.appbar :refer [appbar-main-content
                                      hardware-back-pressed]]
    [onekeepass.mobile.background :as bg]

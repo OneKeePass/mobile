@@ -42,9 +42,6 @@
 
 (def OTP_KEY_DECODE_ERROR "OtpKeyDecodeError")
 
-(def BIOMETRIC-AUTHENTICATION-SUCCESS "AuthenticationSucceeded")
-(def BIOMETRIC-AUTHENTICATION-FAILED "AuthenticationFailed")
-
 (def THEME "theme")
 (def DARK-THEME "dark")
 (def LIGHT-THEME "light")
