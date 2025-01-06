@@ -29,12 +29,13 @@ OneKeePass is also available for **Windows, macOS and Linux desktops** can be do
 - Any number of databases can be created and used
 - Fully offline (you decide the location where the password database files are stored)
 - Optional additional security by using a key file with or without a master password
-- Database quick unlock using biometrics (fingerprint)
+- Database quick open or unlock using biometrics - FaceID (iOS) or Fingerprint/Face unlock (Android)
 - Upload attachments to an entry
 - Time based One-Time Passwords (TOTP) can added and used
 - Supports Light or Dark Theme
 - Multi-language support
 - AutoFill supported
+- Native direct connection support to SFTP or WebDAV server
 
 
 
