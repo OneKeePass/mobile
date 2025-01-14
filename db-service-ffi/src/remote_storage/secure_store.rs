@@ -3,18 +3,19 @@ use std::{fs, path::Path, sync::Arc};
 use log::debug;
 use onekeepass_core::db_service::{
     self as kp_service,
-    storage::{self,ConnectionConfigReaderWriter},
 };
 
-use crate::app_state::AppState;
+use crate::{app_state::AppState, remote_storage::storage_service};
+
+use super::storage_service::ConnectionConfigReaderWriter;
 
 // Should be called on app startup (see db_service_initialize fn and called from middle layer)
 // so that services are availble for the db_service layer.
 // Without this initialization, the encrypted remote storage connection configs can not be read or written
 pub fn init_rs_connection_configs_store() {
     let reader_writer = Arc::new(ConnectionConfigReaderWriterImpl::default());
-    // // In case, we need to hold any reference at this module, then we need to Arc::clone and use it
-    storage::set_config_reader_writer(reader_writer);
+    //  In case, we need to hold any reference at this module, then we need to Arc::clone and use it
+    storage_service::set_config_reader_writer(reader_writer);
     debug!("Remote storage connection config_reader_writer is initialized in init_rs_connection_configs_store ");
 }
 

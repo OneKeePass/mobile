@@ -4,7 +4,6 @@ mod app_preference;
 mod app_state;
 mod backup;
 mod biometric_auth;
-mod callback_service_provider;
 mod commands;
 mod event_dispatcher;
 mod file_util;

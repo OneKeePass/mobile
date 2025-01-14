@@ -1,4 +1,9 @@
+mod storage_service;
+mod callback_service;
+pub(crate) mod callback_service_provider;
 pub(crate) mod secure_store;
+
+pub use storage_service::{RemoteStorageType,read_configs,RemoteStorageOperationType, RemoteStorageOperation};
 
 use std::fs;
 use std::io::{Cursor, Read, Seek, Write};
@@ -14,9 +19,7 @@ use crate::udl_types::FileInfo;
 use crate::{biometric_auth, open_backup_file, parse_command_args_or_err};
 use crate::{OkpError, OkpResult};
 use nom::Err;
-use onekeepass_core::db_service::storage::{
-    ParsedDbKey, RemoteStorageOperation, RemoteStorageOperationType,
-};
+
 
 use log::{debug, error, info};
 use nom::{
@@ -37,6 +40,7 @@ use nom::{
 use onekeepass_core::db_service::{KdbxLoaded, KdbxSaved};
 use onekeepass_core::{db_service, error, service_util};
 use serde::Serialize;
+use storage_service::ParsedDbKey;
 
 
 /// -------   All public functions   -------

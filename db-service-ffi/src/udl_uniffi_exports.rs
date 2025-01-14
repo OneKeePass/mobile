@@ -13,7 +13,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use crate::{
     app_state::AppState,
-    callback_service_provider,
+    remote_storage::callback_service_provider,
     commands::{self, CommandArg, ResponseJson},
     event_dispatcher,
     file_util::KeyFileInfo,

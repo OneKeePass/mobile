@@ -39,13 +39,33 @@ nom = "7.1.3"
 sys-locale = "0.3.1"
 filetime = "0.2.25"
 
+tokio = { version = "1", features = [ "time" ,"rt", "rt-multi-thread","sync"] }
+
 enum_dispatch = "0.3.13"
+
+## SFTP
+russh-sftp = "2.0.5"
+russh = "0.45"
+russh-keys = "0.45"
+async-trait = "0.1"
+
+## WebDav 
+## reqwest_dav = "0.1.13"  - This did not build for android because of Openssl dependency
+
+## The following two together works for ios and android build 
+## Openssl is used for android and rustls for ios
+#reqwest = { version = "0.12", default-features = false, features = ["native-tls-vendored"] }
+#reqwest_dav = {version = "0.1.13", default-features = false }
+
+
+## This works for ios and android as it uses rustls 
+reqwest_dav = {version = "0.1.13", default-features = false,features = ["rustls-tls"]}
 
 
 ## using from the local crate 
-## onekeepass-core = {path = "../../onekeepass-core", version = "0.16.0"}
+onekeepass-core = {path = "../../onekeepass-core", version = "0.17.0"}
 
-onekeepass-core = {git = "https://github.com/OneKeePass/onekeepass-core.git" , tag="v0.16.0" }
+## onekeepass-core = {git = "https://github.com/OneKeePass/onekeepass-core.git" , tag="v0.16.0" }
 
 [target.'cfg(target_os = "android")'.dependencies]
 android_logger = "0.13.1"

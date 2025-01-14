@@ -3,6 +3,7 @@ use crate::app_state::AppState;
 use crate::file_util::PickedFileHandler;
 use crate::{android, file_util::KeyFileInfo, ios};
 use crate::{backup, biometric_auth, util, OkpError, OkpResult};
+use crate::remote_storage::{self,RemoteStorageOperation};
 use onekeepass_core::async_service::{self, OtpTokenTtlInfoByField, TimerID};
 use onekeepass_core::db_content::AttachmentHashValue;
 use onekeepass_core::db_service::{
@@ -10,9 +11,6 @@ use onekeepass_core::db_service::{
     NewDatabase, OtpSettings, PasswordGenerationOptions,
 };
 
-use onekeepass_core::db_service::storage::{
-    read_configs, RemoteStorageOperation, RemoteStorageOperationType,
-};
 
 use std::fmt::format;
 use std::{
@@ -202,7 +200,7 @@ pub enum CommandArg {
     },
 
     RemoteServerOperationArg {
-        rs_operation_type: RemoteStorageOperationType,
+        rs_operation_type: remote_storage::RemoteStorageOperationType,
     },
 
     PickedFileHandlerArg {
@@ -470,8 +468,13 @@ impl Commands {
                 db_service_call! (args, SearchArg{db_key,term} => search_term(&db_key,&term))
             }
 
+            // "analyzed_password" => {
+            //     db_service_call! (args, PasswordGeneratorArg{password_options} => analyzed_password(password_options))
+            // }
             "analyzed_password" => {
-                db_service_call! (args, PasswordGeneratorArg{password_options} => analyzed_password(password_options))
+                service_call_closure!(args,PasswordGeneratorArg {password_options}  => move || {
+                    result_json_str(password_options.analyzed_password())
+                })
             }
 
             "save_attachment_as_temp_file" => {
@@ -599,7 +602,7 @@ impl Commands {
 
             "rs_create_kdbx" => crate::remote_storage::rs_create_kdbx(&args),
 
-            "rs_read_configs" => result_json_str(read_configs()),
+            "rs_read_configs" => result_json_str(remote_storage::read_configs()),
 
             "rs_delete_config" => {
                 service_call_closure!(args,RemoteServerOperationArg {rs_operation_type} => move || {
@@ -739,7 +742,6 @@ impl Commands {
 
     fn prepare_export_kdbx_data(args: &str) -> String {
         if let Ok(CommandArg::DbKey { db_key }) = serde_json::from_str(args) {
-
             // For now we remove all previous files of export_data dir
             // TDOO: We need to add 'delete call' of specific exported files in cljs when 'bg/export-kdbx' returns
             let _ = util::clean_export_data_dir();
@@ -984,15 +986,14 @@ pub fn remove_app_files(db_key: &str) {
     // TODO: Should we make this call only when this db_key is found with flag 'db_open_biometric_enabled' true
     let _ = biometric_auth::StoredCredential::remove_credentials(db_key);
 
-
-    // For now we remove all files in the export_data dir when 
+    // For now we remove all files in the export_data dir when
     // this db link remove is called
     // TDOO: We need to delete the temp exported file for this db if any
     let _ = util::clean_export_data_dir();
 
-    // Removes this db related info from recent db info list and also removes this db preference 
-    AppState::remove_recent_db_use_info(&db_key,true);
-    
+    // Removes this db related info from recent db info list and also removes this db preference
+    AppState::remove_recent_db_use_info(&db_key, true);
+
     #[cfg(target_os = "ios")]
     ios::delete_book_mark_data(&db_key);
 
@@ -1085,16 +1086,16 @@ pub fn full_path_file_to_create(full_file_name: &str) -> db_service::Result<File
     // log::debug!(".. full_file_path {:?} exists {} ",&p,p.exists());
     // log::debug!("Deleting temp file {:?}", std::fs::remove_file(&p));
 
-    // Sometimes in iOS Simulator, the 'OpenOptions' call failed (called from create_temp_kdbx) 
-    // for some file names with the following error  
-    
+    // Sometimes in iOS Simulator, the 'OpenOptions' call failed (called from create_temp_kdbx)
+    // for some file names with the following error
+
     // Io(Os { code: 17, kind: AlreadyExists, message: "File exists" })
-    
+
     // e.g While checking simulator 'tmp' dir, found a file Test45.kdbx and but when full_file_name file ends in 'test45.kdbx'
     // the error happend and not when ends in 'Test45.kdbx'
 
     // Not sure this will happen often; Need to watch out this hapepening on devices
-    
+
     // IMPORTANT: We need to create a file using OpenOptions so that the file is opened for read and write
     let file = OpenOptions::new()
         .read(true)
