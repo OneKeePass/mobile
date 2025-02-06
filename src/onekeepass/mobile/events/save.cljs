@@ -162,7 +162,7 @@
           []
           [[:dispatch [:common/error-box-show "Save as Error" error]]])}))
 
-;; Used for both  iOS and Abdroid
+;; Used for both  iOS and Android
 (reg-event-fx
  :save-as-on-error-finished
  (fn [{:keys [_db]} [_event-id kdbx-loaded]]

@@ -61,7 +61,6 @@ async-trait = "0.1"
 ## This works for ios and android as it uses rustls 
 reqwest_dav = {version = "0.1.13", default-features = false,features = ["rustls-tls"]}
 
-
 ## using from the local crate 
 onekeepass-core = {path = "../../onekeepass-core", version = "0.17.0"}
 

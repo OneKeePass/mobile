@@ -8,7 +8,7 @@ use onekeepass_core::async_service::{self, OtpTokenTtlInfoByField, TimerID};
 use onekeepass_core::db_content::AttachmentHashValue;
 use onekeepass_core::db_service::{
     self, DbSettings, EntryCategory, EntryCategoryGrouping, EntryFormData, Group, KdbxLoaded,
-    NewDatabase, OtpSettings, PasswordGenerationOptions,
+    NewDatabase, OtpSettings, PasswordGenerationOptions,PassphraseGenerationOptions,
 };
 
 
@@ -68,6 +68,9 @@ pub struct TranslationResource {
 pub enum CommandArg {
     PasswordGeneratorArg {
         password_options: PasswordGenerationOptions,
+    },
+    PassPhraseGeneratorArg {
+        pass_phrase_options:PassphraseGenerationOptions,
     },
     SessionTimeoutArg {
         // timeout_type is a dummy field so that SessionTimeoutArg is matched only we have this
@@ -468,12 +471,15 @@ impl Commands {
                 db_service_call! (args, SearchArg{db_key,term} => search_term(&db_key,&term))
             }
 
-            // "analyzed_password" => {
-            //     db_service_call! (args, PasswordGeneratorArg{password_options} => analyzed_password(password_options))
-            // }
             "analyzed_password" => {
                 service_call_closure!(args,PasswordGeneratorArg {password_options}  => move || {
                     result_json_str(password_options.analyzed_password())
+                })
+            }
+
+            "generate_password_phrase" => {
+                service_call_closure!(args,PassPhraseGeneratorArg {pass_phrase_options}  => move || {
+                    result_json_str(pass_phrase_options.generate())
                 })
             }
 

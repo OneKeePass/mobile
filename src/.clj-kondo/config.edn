@@ -58,6 +58,7 @@
                                 ProgressBar
                                 Snackbar
                                 Searchbar
+                                SegmentedButtons
                                 Switch
                                 TextInput
                                 Text

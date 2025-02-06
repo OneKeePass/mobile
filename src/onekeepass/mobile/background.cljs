@@ -603,6 +603,9 @@
 (defn analyzed-password [password-options dispatch-fn]
   (invoke-api "analyzed_password" {:password-options password-options} dispatch-fn))
 
+(defn generate-password-phrase [pass-phrase-options dispatch-fn]
+  (invoke-api "generate_password_phrase" {:pass-phrase-options pass-phrase-options} dispatch-fn))
+
 ;; Not used for now; Kept for later use
 #_(defn recently-used-dbs-info [dispatch-fn]
     (invoke-api "recently_used_dbs_info" {} dispatch-fn))

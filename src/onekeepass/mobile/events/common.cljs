@@ -691,6 +691,8 @@
    {:fx [[:dispatch [:common/next-page :privacy-policy "privacyPolicy"]]]}))
 
 ;; Called when user navigates to the next page
+;; Calling multiple times with the same page id will remain in that page - that it is an idempotent action
+
 ;; For most of the cases, the title is expected to be a key to get the translated page title text
 ;; See positioned-title component in appbar.cljs 
 (reg-event-db
