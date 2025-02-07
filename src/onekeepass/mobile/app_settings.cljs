@@ -57,9 +57,13 @@
                     {:key DARK-THEME :label "Dark"}
                     {:key DEFAULT-SYSTEM-THEME :label "System Default"}])
 
+;; Here we list all lanaguages that we support. 
+;; We need to have the corresponding translation json files in the resource dir Translations for both iOS and Android
+;; See translation.rs for the backend loading of these json files
 (def language-options [{:key "en" :label "en - English"}
                        {:key "es" :label "es - Español"}
-                       {:key "fr" :label "fr - Français"}])
+                       {:key "fr" :label "fr - Français"}
+                       {:key "de" :label "de - Deutsch"}])
 
 (defn list-item-modal-selector
   [{:keys [options value on-change label-extractor-fn list-title]}]
@@ -217,7 +221,7 @@
      [rnc/rnp-text {:style {:text-align "center"}} "Please wait..."]
      [rnc/rn-view
       [rnc/rnp-text {:style {:text-align "center"}} (lstr-mt 'appSettings 'languageTransLoaded)]
-      [rnc/rnp-button {:style {:margin-top "10px"}
+      [rnc/rnp-button {:style {:margin-top 10}
                        :mode "text"
                        :onPress cmn-events/to-previous-page} (lstr-bl 'refresh)]])])
 

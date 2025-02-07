@@ -73,13 +73,17 @@ pub trait EventDispatch: Send + Sync {
 // This trait represents a callback declared in 'db_service.udl'
 // We need to implement this interface in Swift and Kotlin for the rust side use
 pub trait CommonDeviceService: Send + Sync {
+
     fn app_home_dir(&self) -> String;
     fn cache_dir(&self) -> String;
     fn temp_dir(&self) -> String;
     fn app_group_home_dir(&self) -> Option<String>;
-    fn load_language_translation(&self, language_id: String) -> Option<String>;
     fn uri_to_file_name(&self, full_file_name_uri: String) -> Option<String>;
     fn uri_to_file_info(&self, full_file_name_uri: String) -> Option<FileInfo>;
+
+    // Resources loading fns
+    fn load_language_translation(&self, language_id: String) -> Option<String>;
+    fn load_resource_wordlist(&self, wordlist_file_name:String) -> ApiCallbackResult<String>;
 }
 
 // This is an udl enum 'SecureKeyOperationError' declared in 'db_service.udl' file

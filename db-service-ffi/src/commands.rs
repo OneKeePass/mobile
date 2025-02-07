@@ -1,16 +1,15 @@
 use crate::app_preference::{PreferenceData, RecentlyUsed};
 use crate::app_state::AppState;
 use crate::file_util::PickedFileHandler;
+use crate::remote_storage::{self, RemoteStorageOperation};
 use crate::{android, file_util::KeyFileInfo, ios};
 use crate::{backup, biometric_auth, util, OkpError, OkpResult};
-use crate::remote_storage::{self,RemoteStorageOperation};
 use onekeepass_core::async_service::{self, OtpTokenTtlInfoByField, TimerID};
 use onekeepass_core::db_content::AttachmentHashValue;
 use onekeepass_core::db_service::{
     self, DbSettings, EntryCategory, EntryCategoryGrouping, EntryFormData, Group, KdbxLoaded,
-    NewDatabase, OtpSettings, PasswordGenerationOptions,PassphraseGenerationOptions,
+    NewDatabase, OtpSettings, PassphraseGenerationOptions, PasswordGenerationOptions,
 };
-
 
 use std::fmt::format;
 use std::{
@@ -70,7 +69,7 @@ pub enum CommandArg {
         password_options: PasswordGenerationOptions,
     },
     PassPhraseGeneratorArg {
-        pass_phrase_options:PassphraseGenerationOptions,
+        pass_phrase_options: PassphraseGenerationOptions,
     },
     SessionTimeoutArg {
         // timeout_type is a dummy field so that SessionTimeoutArg is matched only we have this
@@ -234,7 +233,7 @@ pub enum CommandArg {
 pub type ResponseJson = String;
 
 // Parses the CommandArg enum variants and calls a fn with those args values. This fn is expected to return OkpResult<T>
-// This OkpResult is converted to a json str
+// This OkpResult is then converted to a json str
 macro_rules! service_call  {
     ($args:expr,$enum_name:tt {$($enum_vals:tt)*} => $path:ident $fn_name:tt ($($fn_args:expr),*) ) => {
 
@@ -478,9 +477,7 @@ impl Commands {
             }
 
             "generate_password_phrase" => {
-                service_call_closure!(args,PassPhraseGeneratorArg {pass_phrase_options}  => move || {
-                    result_json_str(pass_phrase_options.generate())
-                })
+                service_call!(args, PassPhraseGeneratorArg {pass_phrase_options} => Self generate_pass_phrase(pass_phrase_options))
             }
 
             "save_attachment_as_temp_file" => {
@@ -942,6 +939,25 @@ impl Commands {
             Ok(())
         };
         result_json_str(inner_fn())
+    }
+
+    fn generate_pass_phrase(
+        pass_phrase_options: PassphraseGenerationOptions,
+    ) -> OkpResult<db_service::GeneratedPassPhrase> {
+        struct Loader {}
+        impl db_service::WordListLoader for Loader {
+            fn load_from_resource(&self, word_list_file_name: &str) -> db_service::Result<String> {
+                // We pass the file name part of the passed 'word_list_file_name' removing .txt
+                // This is requied for iOS
+                let file_name_part = word_list_file_name
+                    .split_once(".")
+                    .map_or("InvalidWordlistFile".to_string(), |c| c.0.to_string());
+
+                Ok(AppState::common_device_service().load_resource_wordlist(file_name_part)?)
+            }
+        }
+        let loader = Loader {};
+        pass_phrase_options.generate(&loader)
     }
 }
 

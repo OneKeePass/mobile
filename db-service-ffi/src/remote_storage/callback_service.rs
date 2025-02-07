@@ -2,11 +2,13 @@ use std::{path::PathBuf, sync::{Arc, OnceLock}};
 use onekeepass_core::error::Result;
 use super::storage_service::RemoteStorageType;
 
-// TODO:
-// Moved this module along with 'storage' module from onekeepass_core crate. 
+// TODO: 
+// Moved this module along with 'storage' module from onekeepass_core crate as it is not yet used for desktop app. 
 // We will continue to use  this callback feature for now even after the move. 
 // Later we can directly use the 'CommonCallbackServiceImpl' by merging the modules 
 // callback_service and callback_service_provider
+
+// However if we plan to use sftp/webdav in desktop also, then these modules are to be moved back to onekeepass_core
 
 // Original comment for the using the callback mechanism
 // This module is used by fns in this crate to use any callback servcices

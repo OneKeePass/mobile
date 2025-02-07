@@ -32,6 +32,8 @@
 		F955AC212C2E377600D0DFB6 /* ApiCallBackService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F955AC1F2C2E377600D0DFB6 /* ApiCallBackService.swift */; };
 		F969C3F128D4C8D90020FA62 /* OkpDbService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F969C3EF28D4C8D90020FA62 /* OkpDbService.swift */; };
 		F969C3F228D4C8D90020FA62 /* OkpDbServiceBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = F969C3F028D4C8D90020FA62 /* OkpDbServiceBridge.m */; };
+		F9713CE62D54495A002E3A92 /* wordlists in Resources */ = {isa = PBXBuildFile; fileRef = F9713CE52D544953002E3A92 /* wordlists */; };
+		F9713CE72D54495A002E3A92 /* wordlists in Resources */ = {isa = PBXBuildFile; fileRef = F9713CE52D544953002E3A92 /* wordlists */; };
 		F98AB8C42C30E11400F334BE /* Translations in Resources */ = {isa = PBXBuildFile; fileRef = F9C4EFE72BEBFEC200B7214E /* Translations */; };
 		F9A5C9B92D1E2F77001BC9B2 /* XcodeConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9A5C9B82D1E2F72001BC9B2 /* XcodeConfiguration.swift */; };
 		F9A5C9BA2D1E3032001BC9B2 /* XcodeConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9A5C9B82D1E2F72001BC9B2 /* XcodeConfiguration.swift */; };
@@ -143,6 +145,7 @@
 		F969C3EF28D4C8D90020FA62 /* OkpDbService.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OkpDbService.swift; sourceTree = "<group>"; };
 		F969C3F028D4C8D90020FA62 /* OkpDbServiceBridge.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = OkpDbServiceBridge.m; sourceTree = "<group>"; };
 		F969C3F528D4CC570020FA62 /* OneKeePassMobile-Bridging-Header.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "OneKeePassMobile-Bridging-Header.h"; sourceTree = "<group>"; };
+		F9713CE52D544953002E3A92 /* wordlists */ = {isa = PBXFileReference; lastKnownFileType = folder; name = wordlists; path = OneKeePassMobile/wordlists; sourceTree = "<group>"; };
 		F9A5C9B82D1E2F72001BC9B2 /* XcodeConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = XcodeConfiguration.swift; sourceTree = "<group>"; };
 		F9AD1B6629B63B6C00BED32A /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SceneDelegate.swift; path = OneKeePassMobile/SceneDelegate.swift; sourceTree = "<group>"; };
 		F9AD1B6A29B78F1100BED32A /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = OneKeePassMobile/AppDelegate.swift; sourceTree = "<group>"; };
@@ -257,6 +260,7 @@
 				F9AD1B6629B63B6C00BED32A /* SceneDelegate.swift */,
 				F9AD1B6A29B78F1100BED32A /* AppDelegate.swift */,
 				F9C4EFE92BF6CFB500B7214E /* PrivacyInfo.xcprivacy */,
+				F9713CE52D544953002E3A92 /* wordlists */,
 			);
 			name = OneKeePassMobile;
 			sourceTree = "<group>";
@@ -596,6 +600,7 @@
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				F9CD34B528E2AABC00B6C59C /* Zocial.ttf in Resources */,
 				F9CD34AB28E2AABC00B6C59C /* Feather.ttf in Resources */,
+				F9713CE62D54495A002E3A92 /* wordlists in Resources */,
 				F9CD34B628E2AABC00B6C59C /* FontAwesome5_Brands.ttf in Resources */,
 				F9CD34AF28E2AABC00B6C59C /* SimpleLineIcons.ttf in Resources */,
 				F9CD34B328E2AABC00B6C59C /* Fontisto.ttf in Resources */,
@@ -614,6 +619,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F9713CE72D54495A002E3A92 /* wordlists in Resources */,
 				F98AB8C42C30E11400F334BE /* Translations in Resources */,
 				F955AC152C1E31CC00D0DFB6 /* MaterialCommunityIcons.ttf in Resources */,
 				F9F81C032C1227D900E1FE8C /* MainInterface.storyboard in Resources */,

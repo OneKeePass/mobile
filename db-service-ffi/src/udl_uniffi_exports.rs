@@ -13,7 +13,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use crate::{
     app_state::AppState,
-    remote_storage::callback_service_provider,
+    remote_storage,
     commands::{self, CommandArg, ResponseJson},
     event_dispatcher,
     file_util::KeyFileInfo,
@@ -185,8 +185,8 @@ pub(crate) fn db_service_initialize(
     secure_store::init_rs_connection_configs_store();
     log::info!("secure_store::init_rs_connection_configs_store call done after callback setup in initialize_callback_services");
 
-    callback_service_provider::init_callback_service_provider();
-    log::info!("callback_service_provider::init_callback_service_provider call completed");
+    remote_storage::callback_service_provider::init_callback_service_provider();
+    log::info!("remote_storage callback_service_provider::init_callback_service_provider call completed");
 }
 
 // Called from Swift or Kotlin
