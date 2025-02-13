@@ -15,6 +15,22 @@
 
 (def Favorites "Favorites")
 
+(defn place-holder-resolved-value
+  "Gets the any place holder resolved value for a given field name
+   We can pass a 'default-value' value to use if 'parsed-fields' returns nil for this field
+   "
+  ([parsed-fields field-name default-value]
+   #_(println "place-holder-resolved-value is called")
+   (let [v (get parsed-fields (-> field-name name str/upper-case))]
+     (if-not (nil? v) v default-value)))
+  ([parsed-fields field-name]
+   (get parsed-fields (-> field-name name str/upper-case))))
+
+(defn get-form-data
+  "Gets the current form data of a currently opened db from the app-db"
+  [app-db]
+  (get-in-key-db app-db [entry-form-key :data]))
+
 (defn is-field-exist
   "Checks that a given field name exists in the entry form or not "
   [app-db field-name]
@@ -70,7 +86,6 @@
         names-values (into {} (for [{:keys [key current-opt-token]} otp-fields] [key current-opt-token]))]
     names-values))
 
-
 (defn validate-entry-form-data
   "Verifies that the user has entered valid values in some of the required fields of the entry form
   Returns a map of fileds with errors and error-fields will be {} in case no error is found
@@ -85,3 +100,36 @@
                        (str/blank? title)
                        (assoc :title (lstr-mt 'entryForm 'enterTitleName)))]
     error-fields))
+
+(defn form-data-kvd-fields
+  "Gets the vec of all Kvd map found in an entry"
+  [form-data]
+  (-> form-data :section-fields vals flatten))
+
+(defn extract-form-field-names-values
+  "Returns a map with field name as key (a string type) and field value as value"
+  [form-data]
+  ;; :section-fields returns a map with section name as keys
+  ;; vals fn return 'values' ( a vec of field info map) for all sections. Once vec for each section. 
+  ;; And need to use flatten to combine all section values
+  ;; For example if two sections, vals call will return a two member ( 2 vec)
+  ;; sequence. Flatten combines both vecs and returns a single sequence of field info maps
+  (let [fields  (form-data-kvd-fields form-data) #_(-> form-data :section-fields vals flatten)
+        names-values (into {} (for [{:keys [key value]} fields] [key value]))]
+    names-values))
+
+(defn field-key-value-data
+  "Checks whether the arg 'field-maps-vec' (a vec of kvd maps) has a map 
+   with kvd field map  (struct KeyValueData) for the key 'field-name'
+
+  The arg 'field-name' is a string value like 'URL' 'Password' or 'UserName'
+  Reurns the kvd map if the passed vec of maps has a map with :key = field-name 
+  "
+  ([field-maps-vec field-name]
+   (->> field-maps-vec (filter
+                        (fn [kvd] (= (:key kvd) field-name))) first)))
+
+(defn form-data-kv-data
+  "Gets the kvd map for this 'field-name' from all kvds found for an entry in form-data map"
+  [form-data field-name]
+  (field-key-value-data (form-data-kvd-fields form-data) field-name))

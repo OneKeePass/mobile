@@ -3,6 +3,9 @@
 ;; This is the default Entry type to use 
 (def UUID_OF_ENTRY_TYPE_LOGIN "ffef5f51-7efc-4373-9eb5-382d5b501768")
 
+;; This is the entry type id for Auto Open entry type
+(def UUID_OF_ENTRY_TYPE_AUTO_OPEN "389368a9-73a9-4256-8247-321a2e60b2c7")
+
 (def UUID-DEFAULT "00000000-0000-0000-0000-000000000000")
 
 ;; Standard Entry Type Names
@@ -13,12 +16,13 @@
 (def WIRELESS_ROUTER_TYPE_NAME "Wireless Router")
 (def PASSPORT_TYPE_NAME "Passport")
 (def BANK_ACCOUNT_TYPE_NAME "Bank Account")
+(def AUTO_DB_OPEN_TYPE_NAME "Auto Database Open")
 
-(def STANDARD_ENTRY_TYPES [LOGIN_TYPE_NAME 
-                           CREDIT_DEBIT_CARD_TYPE_NAME 
+(def STANDARD_ENTRY_TYPES [LOGIN_TYPE_NAME
+                           CREDIT_DEBIT_CARD_TYPE_NAME
                            WIRELESS_ROUTER_TYPE_NAME
                            BANK_ACCOUNT_TYPE_NAME
-                           ])
+                           AUTO_DB_OPEN_TYPE_NAME])
 
 ;; Based on the enum 'EntryCategory'
 (def CATEGORY_ALL_ENTRIES "AllEntries")
@@ -53,6 +57,8 @@
 (def CREATED_TIME "Created Time")
 (def PASSWORD "Password")
 (def USERNAME "UserName")
+(def URL "URL")
+(def IFDEVICE "IfDevice")
 
 (def ASCENDING "Ascending")
 (def DESCENDING "Descending")
@@ -81,7 +87,7 @@
 ;; All remote storage related page ids
 (def RS_CONNECTIONS_LIST_PAGE_ID :rs-connections-list)
 ;; Key :sftp or :webdav will determine which form data to use on this page
-(def RS_CONNECTION_CONFIG_PAGE_ID :rs-connection-config) 
+(def RS_CONNECTION_CONFIG_PAGE_ID :rs-connection-config)
 (def RS_FILES_FOLDERS_PAGE_ID :rs-files-folders)
 
 ;;;;;;;;;;
@@ -107,7 +113,7 @@
 (def REMOTE-STORAGE-OPERATION-TYPE-TAG :type)
 
 
-;;;;;;; Icon names ;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Icon names ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; react-native-vector-icons is used to display the icons
 ;; We need to get the name of icons from https://materialdesignicons.com/ ( new url https://pictogrammers.com/library/mdi/)
@@ -168,6 +174,8 @@
 (def ICON-ROUTER-WIRELESS  "router-wireless")
 (def ICON-CREDIT-CARD-OUTLINE  "credit-card-outline")
 
+(def ICON-LAUNCH "launch")
+
 ;;"checkbox-outline" "checkbox-blank-outline"
 
 (def ICON-CHECKBOX-OUTLINE  "checkbox-outline")
@@ -178,3 +186,5 @@
 ;; (def ICON-  "")
 
 ;;(def ICON-  "")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

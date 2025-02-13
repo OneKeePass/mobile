@@ -84,8 +84,7 @@
 (defn pass-phrase-panel [{:keys [word-list-source separator capitalize-first capitalize-words]}]
   (let [wl-source (:type-name word-list-source)
         cap-first (:type-name capitalize-first)
-        cap-words (:type-name capitalize-words)]
-    (println  "slider val in in PP " @(pg-events/password-length-slider-value))
+        cap-words (:type-name capitalize-words)] 
     [rn-view
      [rn-view {:style (get-form-style)}
       [rn-view {:style {}}

@@ -119,34 +119,66 @@ pub fn extract_file_provider(full_file_name_uri: &str) -> String {
     parse_bookmark_data(data)
 }
 
+const IOS_FP_SIZE: usize = 20;
+
 #[cfg(target_os = "ios")]
-const FILE_PROVIDER_IDS: [&str; 11] = [
+const FILE_PROVIDER_IDS: [&str; IOS_FP_SIZE] = [
     r"com.apple.FileProvider.LocalStorage",
     r"com.apple.CloudDocs.iCloudDriveFileProvider",
     r"com.apple.CloudDocs.MobileDocumentsFileProvider", // legacy one
+    //
     r"com.getdropbox.Dropbox.FileProvider",
     r"com.microsoft.skydrive.onedrivefileprovider",
     r"com.google.Drive.FileProviderExtension",
+    //
     r"com.pcloud.pcloud.FileProvider",
     r"net.box.BoxNet.documentPickerFileProvider",
     r"com.pcloud.pcloud.FileProvider",
+    //
+    r"it.twsweb.Nextcloud.File-Provider-Extension",
     r"com.owncloud.ios-app.ownCloud-File-Provider",
     r"com.apple.filesystems.UserFS.FileProvider",
+    //
+    r"mega.ios.MEGAPickerFileProvider",
+    r"org.cryptomator.ios.fileprovider",
+    r"com.synology.DSdrive.FileProvider",
+    //
+    r"ch.protonmail.drive.fileprovider",
+    r"com.sync.mobileapp.NewFileProvider",
+    r"ru.yandex.disk.filesext",
+    //
+    r"idrive",
+    r"IDrive",
 ];
 
 #[cfg(target_os = "ios")]
-const FILE_PROVIDER_NAMES: [&str; 11] = [
+const FILE_PROVIDER_NAMES: [&str; IOS_FP_SIZE] = [
     "On My Device",
     "iCloud Drive",
     "iCloud Drive",
+    //
     "Dropbox",
     "OneDrive",
     "Google Drive",
+    //
     "pCloud",
     "Box",
     "pCloud",
+    //
+    "Next Cloud",
     "Own Cloud",
     "USB drive",
+    //
+    "MEGA",
+    "Cryptomator",
+    "Synology Drive",
+    //
+    "Proton Drive",
+    "Sync.com",
+    "Yandex Disk",
+    //
+    "IDrive",
+    "IDrive",
 ];
 
 #[cfg(target_os = "ios")]

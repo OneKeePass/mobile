@@ -177,8 +177,16 @@
 #_(defn load-language-translation-completed []
     (dispatch [:common/load-language-translation-complete]))
 
+(defn opened-db-keys 
+  "Gets a vec of all opened db-keys from the opened database list
+   This fn is also used in subscriber event :common/opened-database-file-names 
+   TODO: Combine these two to a single name fn
+   "
+  [app-db]
+  (mapv (fn [m] (:db-key m)) (:opened-db-list app-db)))
+
 (defn opened-database-file-names
-  "Gets db info map with keys [db-key database-name file-name key-file-name] from the opened database list"
+  "Gets just the db-keys from the opened database list"
   []
   (subscribe [:common/opened-database-file-names]))
 
@@ -238,7 +246,7 @@
  :common/close-current-kdbx-db
  (fn [{:keys [db]}  [_event-id]]
    {:fx [[:bg-close-kdbx [(active-db-key db)]]
-         [:dispatch [:to-home-page]]]}))
+         [:dispatch [:common/to-home-page]]]}))
 
 ;; A common refresh all forms after an entry form changes - delete, put back , delete permanent
 (reg-event-fx
@@ -371,7 +379,8 @@
 (reg-sub
  :common/opened-database-file-names
  (fn [db _query-vec]
-   (mapv (fn [m] (:db-key m)) (:opened-db-list db))))
+   (opened-db-keys db)
+   #_(mapv (fn [m] (:db-key m)) (:opened-db-list db))))
 
 ;; Editing should be disabled in case of remote connection is not availble and db content is 
 ;; read from backup 
@@ -566,6 +575,9 @@
 
 ;; All DB unlock call events are in open-databse ns
 
+(defn is-db-locked [app-db db-key]
+  (boolean (get-in-selected-db app-db db-key [:locked])))
+
 (defn locked? [db-key]
   (if (nil? db-key)
     (subscribe [:current-db-locked])
@@ -588,7 +600,7 @@
  :lock-current-kdbx
  (fn [{:keys [db]} [_event-id]]
    {:db (assoc-in-key-db db [:locked] true)
-    :fx [[:dispatch [:to-home-page]]
+    :fx [[:dispatch [:common/to-home-page]]
          [:dispatch [:common/message-snackbar-open 'databaseLocked]]]}))
 
 ;; Called to lock any opened database using the passed db-key - used from home page
@@ -597,7 +609,7 @@
  (fn [{:keys [db]} [_event-id db-key]]
    {:db (assoc-in-selected-db db db-key [:locked] true)
     :fx [#_[:bg-lock-kdbx [(active-db-key db)]]
-         [:dispatch [:to-home-page]]
+         [:dispatch [:common/to-home-page]]
          [:dispatch [:common/message-snackbar-open 'databaseLocked]]]}))
 
 (reg-event-fx
@@ -606,7 +618,7 @@
    (let [curr-dbkey  (:current-db-file-name db)]
      {:db (assoc-in-selected-db db db-key [:locked] true)
       :fx [(when (= curr-dbkey db-key)
-             [:dispatch [:to-home-page]])]})))
+             [:dispatch [:common/to-home-page]])]})))
 
 ;; Need to make use of API call in case we want to do something for lock call
 ;; Currently nothing is done on the backend
@@ -633,7 +645,8 @@
 (reg-sub
  :selected-db-locked
  (fn [db [_query-id db-key]]
-   (boolean (get-in-selected-db db db-key [:locked]))))
+   (is-db-locked db db-key)
+   #_(boolean (get-in-selected-db db db-key [:locked]))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  Page Navigation ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -644,7 +657,7 @@
 (defn to-home-page
   "Called to navigate to the home page"
   []
-  (dispatch [:to-home-page]))
+  (dispatch [:common/to-home-page]))
 
 (defn to-about-page
   "Called to navigate to the about page"
@@ -671,7 +684,7 @@
     (-> page-data  :page)))
 
 (reg-event-fx
- :to-home-page
+ :common/to-home-page
  (fn [{:keys [db]} [_event-id]]
    {;;pages-stack is a list and need to be set to empty when navigated to home page
     :db (assoc-in db [:pages-stack] nil)

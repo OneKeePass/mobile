@@ -21,12 +21,16 @@ pub(crate) struct KdbxCreated {
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct FileInfo {
     pub file_name: Option<String>,
+
     pub file_size: Option<i64>,
+
     // In milliseconds sice 00:00:00 UTC on 1 January 1970
     // The UI side it is expected in milliseconds - see onekeepass/mobile/date_utils.cljs
     // In case of remote storage file, we need to convert modified time from seconds to milli seconds
     //
     pub last_modified: Option<i64>,
+
+    // See extract povider fn
     pub location: Option<String>,
 }
 
@@ -73,7 +77,6 @@ pub trait EventDispatch: Send + Sync {
 // This trait represents a callback declared in 'db_service.udl'
 // We need to implement this interface in Swift and Kotlin for the rust side use
 pub trait CommonDeviceService: Send + Sync {
-
     fn app_home_dir(&self) -> String;
     fn cache_dir(&self) -> String;
     fn temp_dir(&self) -> String;
@@ -83,7 +86,7 @@ pub trait CommonDeviceService: Send + Sync {
 
     // Resources loading fns
     fn load_language_translation(&self, language_id: String) -> Option<String>;
-    fn load_resource_wordlist(&self, wordlist_file_name:String) -> ApiCallbackResult<String>;
+    fn load_resource_wordlist(&self, wordlist_file_name: String) -> ApiCallbackResult<String>;
 }
 
 // This is an udl enum 'SecureKeyOperationError' declared in 'db_service.udl' file

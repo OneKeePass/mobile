@@ -262,8 +262,7 @@
 
 (reg-event-fx
  :pass-phrase-options-select-field-update
- (fn [{:keys [db]} [_event-id field-name-kw value]]
-   (println "field-name-kw value " field-name-kw value)
+ (fn [{:keys [db]} [_event-id field-name-kw value]] 
    (let [db (-> db (assoc-in [:generator :data PASS-PHRASE-OPTIONS field-name-kw :type-name] value))
          ;; For now, we set probability value of 50% as content. That is half the time
          db (if (or (= field-name-kw :capitalize-first) (= field-name-kw :capitalize-words))

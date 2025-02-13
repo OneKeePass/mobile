@@ -4,7 +4,8 @@
             [onekeepass.mobile.background :refer [is-Android is-iOS]]
             [onekeepass.mobile.common-components :as cc :refer [select-field
                                                                 select-tags-dialog]]
-            [onekeepass.mobile.constants :as const :refer [ADDITIONAL_ONE_TIME_PASSWORDS
+            [onekeepass.mobile.constants :as const :refer [URL USERNAME PASSWORD IFDEVICE
+                                                           ADDITIONAL_ONE_TIME_PASSWORDS
                                                            ONE_TIME_PASSWORD_TYPE]]
             [onekeepass.mobile.date-utils :refer [utc-str-to-local-datetime-str]]
             [onekeepass.mobile.entry-form-dialogs :refer [add-modify-section-field-dialog
@@ -30,7 +31,7 @@
                                                         show-attachment-long-press-menu]]
             [onekeepass.mobile.events.common :as cmn-events]
             [onekeepass.mobile.events.dialogs :as dlg-events]
-            [onekeepass.mobile.events.entry-form :as form-events]
+            [onekeepass.mobile.events.entry-form :as form-events :refer [place-holder-resolved-value]]
             [onekeepass.mobile.icons-list :as icons-list]
             [onekeepass.mobile.rn-components
              :as rnc
@@ -42,7 +43,7 @@
                      rnp-helper-text rnp-icon-button rnp-list-icon
                      rnp-list-item rnp-portal rnp-text rnp-text-input
                      rnp-text-input-icon]]
-            [onekeepass.mobile.translation :refer [lstr-bl lstr-l lstr-pt
+            [onekeepass.mobile.translation :refer [lstr-bl lstr-l lstr-pt lstr-field-name
                                                    lstr-section-name]]
             [onekeepass.mobile.utils :as u]
             [reagent.core :as r]))
@@ -287,7 +288,46 @@
                            :onPress (fn [] (form-events/show-form-fields-validation-error-or-call
                                             #(setup-otp-action-dialog-show section-name nil false)))}]))]))
 
-(defn section-content [edit section-name section-data]
+(defn get-section-data
+  "Called to set up any entry type specific data in kv
+   Returns an vec of kvd map for a section
+   "
+  [entry-type-uuid section-name section-fields parsed-fields]
+  (let [section-data (get section-fields section-name)
+
+        adjusted-section-data (mapv
+                               (fn [{:keys [key] :as m}]
+                                 (assoc m :read-value (place-holder-resolved-value parsed-fields key)))
+                               section-data)
+
+        adjusted-section-data  (if (not= entry-type-uuid const/UUID_OF_ENTRY_TYPE_AUTO_OPEN)
+                                 adjusted-section-data
+                                 (mapv
+                                  (fn [{:keys [key] :as m}]
+                                    ;; Note the use of lstr-field-name vs tr-entry-field-name-cv
+                                    ;; lstr-field-name is fn and tr-entry-field-name-cv is a macro 
+                                    (cond
+                                      (= key URL)
+                                      ;; for now read-value is not used 
+                                      ;;:read-value (:url-field-value m)
+                                      (assoc m :field-name (lstr-field-name "autoOpenKdbxFileOpen"))
+
+                                      (= key USERNAME)
+                                      (assoc m :field-name (lstr-field-name 'autoOpenKeyFile)
+                                             :read-value (place-holder-resolved-value parsed-fields key)) ;; :read-value (:key-file-path m)
+
+                                      (= key PASSWORD)
+                                      (assoc m  :read-value (place-holder-resolved-value parsed-fields key))
+
+                                      (= key IFDEVICE)
+                                      (assoc m :field-name (lstr-field-name "autoOpenIfDevice"))
+
+                                      :else
+                                      m))
+                                  adjusted-section-data))]
+    adjusted-section-data))
+
+(defn section-content [{:keys [edit section-name section-data]}]
   (let [errors @(form-events/entry-form-field :error-fields)]
     ;; Show a section in edit mode irrespective of its contents; 
     ;; In non edit mode a section is shown only 
@@ -335,7 +375,8 @@
 
 (defn all-sections-content []
   (let [{:keys [edit showing]
-         {:keys [section-names section-fields]} :data} @(form-events/entry-form)
+         {:keys [entry-type-uuid section-names section-fields]} :data} @(form-events/entry-form)
+        parsed-fields @(form-events/entry-form-data-fields :parsed-fields)
         in-deleted-category @(form-events/deleted-category-showing)]
     (rnc/react-use-effect
      (fn []
@@ -358,7 +399,9 @@
     [rn-view {:style box-style-2}
      (doall
       (for [section-name section-names]
-        ^{:key section-name} [section-content edit section-name (get section-fields section-name)]))]))
+        ^{:key section-name} [section-content {:edit edit 
+                                               :section-name section-name 
+                                               :section-data (get-section-data  entry-type-uuid section-name section-fields parsed-fields )}]))]))
 
 (defn add-section-btn []
   [rn-view {:style {:padding-top 5 :padding-bottom 5}  :justify-content "center"}

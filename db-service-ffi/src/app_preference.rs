@@ -13,16 +13,6 @@ use crate::{
     util, OkpError, OkpResult,
 };
 
-#[derive(Clone, Serialize, Deserialize, Default)]
-pub struct RecentlyUsed {
-    pub(crate) file_name: String,
-    // This is full file url str.
-    // It will start with "content://" for android, "file://" in case of ios
-    // or "Sftp" or "Webdav"
-    // This is also db_key
-    pub(crate) db_file_path: String,
-}
-
 // Used for the update of preferences from the app settings page
 #[derive(Debug, Deserialize)]
 pub struct PreferenceData {
@@ -34,31 +24,26 @@ pub struct PreferenceData {
     database_preference: Option<DatabasePreference>,
 }
 
-// This struct matches any previous verion (0.0.2) of preference.json
-#[derive(Clone, Serialize, Deserialize)]
-pub struct Preference1 {
-    pub version: String,
-    pub recent_dbs_info: Vec<RecentlyUsed>,
-    pub db_session_timeout: i64,
-    pub clipboard_timeout: i64,
-}
+#[derive(Clone, Serialize, Deserialize, Default, Debug)]
+pub struct RecentlyUsed {
+    // Just the file name part
+    pub(crate) file_name: String,
 
-// This struct matches any previous verion (0.0.3) of preference.json
-// This uses the old struct 'RecentlyUsed1'
-#[derive(Clone, Serialize, Deserialize)]
-pub struct Preference2 {
-    pub version: String,
-    pub recent_dbs_info: Vec<RecentlyUsed>,
-    // Session will time out in these milli seconds
-    pub db_session_timeout: i64,
-    // clipboard will be cleared in these milli seconds
-    pub clipboard_timeout: i64,
-    // Determines the theme colors etc
-    pub theme: String,
-    // Should be a two letters language id
-    pub language: String,
-    // Valid values one of Types,Categories,Groups,Tags
-    pub default_entry_category_groupings: String,
+    // This is full file url str.
+    // It will start with "content://" for android, "file://" in case of ios
+    // or "Sftp" or "Webdav"
+    // This is also db_key
+    pub(crate) db_file_path: String,
+
+    // In milli seconds
+    pub last_modified: Option<i64>,
+
+    // In milli seconds
+    pub last_accessed: Option<i64>,
+
+    pub location: Option<String>,
+
+    pub file_size: Option<i64>,
 }
 
 // Database specific preferences
@@ -75,11 +60,11 @@ pub(crate) struct DatabasePreference {
 
 pub(crate) const PREFERENCE_JSON_FILE_NAME: &str = "preference.json";
 
-const PREFERENCE_JSON_FILE_VERSION: &str = "4.0.0"; // started using 4.0.0 instead of 0.0.4
+const PREFERENCE_JSON_FILE_VERSION: &str = "5.0.0"; // started using 4.0.0 instead of 0.0.4
 
 // This struct matches current verion of preference.json
 // The struct RecentlyUsed changed
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub(crate) struct Preference {
     version: String,
 
@@ -136,40 +121,60 @@ impl Preference {
         info!("pref_file_name is {:?} ", &pref_file_name);
         let json_str = fs::read_to_string(pref_file_name).unwrap_or("".into());
         debug!("Pref json_str is {}", &json_str);
-        if json_str.is_empty() {
+
+        let mut pref = if json_str.is_empty() {
             info!("Preference is empty and default used ");
             Self::default()
         } else {
+            // If the new field added are Option<.> type, then  
+            // the parsing will be successful with None set for all Option fields. 
+            // In that case, we need to ensure version number is correct
+            // See at the end before returning 'final_pref'
             serde_json::from_str(&json_str).unwrap_or_else(|_| {
-                let mut pref_new = Self::default();
-                // Need to use serde_json::from_str::<Preference1>(&json_str) if we do not use @ Bindings
+                // Json parsing failed as the file loaded may be from a previous version
+
+                // Need to use serde_json::from_str::<PreferenceV400>(&json_str) if we do not use @ Bindings
                 // See https://doc.rust-lang.org/book/ch18-03-pattern-syntax.html#-bindings
+
                 match serde_json::from_str(&json_str) {
-                    Ok(p @ Preference2 { .. }) => {
-                        debug!("Returning the new pref with old pref values from Preference2");
-                        Self::from_prev_version_to_recent(&mut pref_new, &p);
+                    // Prior version
+                    Ok(prev_pref @ PreferenceV400 { .. }) => {
+                        debug!("Returning the new pref with old pref values from PreferenceV400");
+                        // Self::from_prev_version_v400_to_recent(&mut pref_new, &p);
+
+                        let pref_new: Self = prev_pref.into();
+
                         // Update the preference json with the copied values from old preference
                         pref_new.write(preference_home_dir.as_ref());
                     }
                     Err(_) => {
+                        // We could not parse the existing json file even to the prior version.
+                        // This may happen if the 'preference.json' found is older than the previous version.
+                        // Returns the latest default pref
+                        // Should we write this default one?
                         debug!("Returning the default pref");
                     }
                 }
-                pref_new
+                Self::default()
             })
-        }
-    }
+        };
 
-    fn from_prev_version_to_recent(new_pref: &mut Preference, old_pref: &Preference2) {
-        let info: Vec<RecentlyUsed> = old_pref
-            .recent_dbs_info
-            .iter()
-            .map(|p| RecentlyUsed {
-                file_name: p.file_name.clone(),
-                db_file_path: p.db_file_path.clone(),
-            })
-            .collect();
-        new_pref.recent_dbs_info = info;
+        // Ensure that version is updated
+        let final_pref = if pref.version == PREFERENCE_JSON_FILE_VERSION {
+            debug!("Returning the current pref as version is the latest");
+            pref
+        } else {
+            // If the new field added are only Option<> type in Preference, 
+            // then parsing goes through with new Preference itself, but the version will be old 
+            pref.version = PREFERENCE_JSON_FILE_VERSION.into();
+            pref.write(preference_home_dir.as_ref());
+            debug!("Returning the current pref after conversion from old pref as versions are not the same");
+            pref
+        };
+
+        // debug!("Returning pref obj in read {:?}", &final_pref);
+
+        final_pref
     }
 
     fn write<P: AsRef<Path>>(&self, preference_home_dir: P) {
@@ -296,7 +301,7 @@ impl Preference {
 
         if delete_db_pref {
             self.remove_database_preference(full_file_name_uri)
-        } 
+        }
 
         // Write the preference to the file system immediately
         self.write(&AppState::preference_home_dir());
@@ -327,7 +332,7 @@ impl Preference {
             .map_or(false, |d| d.db_open_biometric_enabled)
     }
 
-    pub fn database_preferences(&self,) -> &Vec<DatabasePreference> {
+    pub fn database_preferences(&self) -> &Vec<DatabasePreference> {
         &self.database_preferences
     }
 
@@ -346,8 +351,26 @@ impl Preference {
         self.recent_dbs_info.clone()
     }
 
+    pub(crate) fn recent_dbs_info_ref(&self) -> &Vec<RecentlyUsed> {
+        &self.recent_dbs_info
+    }
+
+    pub(crate) fn recent_dbs_info_mut_ref(&mut self) -> &mut Vec<RecentlyUsed> {
+        &mut self.recent_dbs_info
+    }
+
     pub(crate) fn language(&self) -> &str {
         self.language.as_str()
+    }
+
+    pub(crate) fn find_db_key(&self, file_name: &str) -> Option<String> {
+        self.recent_dbs_info.iter().find_map(|r| {
+            if r.file_name == file_name {
+                Some(r.db_file_path.clone())
+            } else {
+                None
+            }
+        })
     }
 
     fn find_db_info(&self, db_key: &str) -> Option<&RecentlyUsed> {
@@ -362,3 +385,153 @@ impl Preference {
                                             //self
     }
 }
+
+////////////   Previous version ////////////
+///
+#[derive(Clone, Serialize, Deserialize, Default)]
+pub struct RecentlyUsedV400 {
+    // Just the file name part
+    pub(crate) file_name: String,
+
+    // This is full file url str.
+    // It will start with "content://" for android, "file://" in case of ios
+    // or "Sftp" or "Webdav"
+    // This is also db_key
+    pub(crate) db_file_path: String,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub(crate) struct PreferenceV400 {
+    version: String,
+
+    recent_dbs_info: Vec<RecentlyUsedV400>,
+
+    // Session will time out in these milli seconds
+    db_session_timeout: i64,
+
+    // clipboard will be cleared in these milli seconds
+    clipboard_timeout: i64,
+
+    // Determines the theme colors etc
+    theme: String,
+
+    // Should be a two letters language id
+    language: String,
+
+    // Valid values one of Types,Categories,Groups,Tags
+    default_entry_category_groupings: String,
+
+    // All dbs that can be opened using biometric
+    // biometric_enabled_dbs: Vec<String>,
+
+    // Number of backs to keep for all databases
+    backup_history_count: u8,
+
+    // All databases specific preferences
+    database_preferences: Vec<DatabasePreference>,
+}
+
+impl From<PreferenceV400> for Preference {
+    fn from(old_pref: PreferenceV400) -> Self {
+        // Destructuring of old struct
+        let PreferenceV400 {
+            version: _,
+            recent_dbs_info,
+            db_session_timeout,
+            clipboard_timeout,
+            theme,
+            backup_history_count,
+            language,
+            database_preferences,
+            default_entry_category_groupings,
+        } = old_pref;
+
+        let mut current_pref = Preference {
+            version: PREFERENCE_JSON_FILE_VERSION.into(),
+            recent_dbs_info: vec![],
+            db_session_timeout,
+            clipboard_timeout,
+            theme,
+            language,
+            default_entry_category_groupings,
+            backup_history_count,
+            database_preferences,
+        };
+
+        // RecentlyUsed is changed in the new Preference struct
+        let info: Vec<RecentlyUsed> = recent_dbs_info
+            .iter()
+            .map(|p: &RecentlyUsedV400| {
+                let mut dbs = RecentlyUsed::default();
+                dbs.file_name = p.file_name.clone();
+                dbs.db_file_path = p.db_file_path.clone();
+                dbs
+            })
+            .collect();
+        current_pref.recent_dbs_info = info;
+
+        current_pref
+    }
+}
+
+////////////
+
+/*
+fn from_prev_version_v400_to_recent(new_pref: &mut Preference, old_pref: &PreferenceV400) {
+
+        // old_pref uses RecentlyUsedV400
+        let info: Vec<RecentlyUsed> = old_pref
+            .recent_dbs_info
+            .iter()
+            .map(|p: &RecentlyUsedV400| {
+                let mut dbs = RecentlyUsed::default();
+                dbs.file_name = p.file_name.clone();
+                dbs.db_file_path = p.db_file_path.clone();
+                dbs
+            })
+            .collect();
+        new_pref.recent_dbs_info = info;
+
+        new_pref.default_entry_category_groupings = old_pref.default_entry_category_groupings
+    }
+fn from_prev_version_to_recent(new_pref: &mut Preference, old_pref: &Preference2) {
+        let info: Vec<RecentlyUsed> = old_pref
+            .recent_dbs_info
+            .iter()
+            .map(|p| RecentlyUsed {
+                file_name: p.file_name.clone(),
+                db_file_path: p.db_file_path.clone(),
+            })
+            .collect();
+        new_pref.recent_dbs_info = info;
+    }
+
+// This struct matches any previous verion (0.0.3) of preference.json
+// This uses the old struct 'RecentlyUsed1'
+#[derive(Clone, Serialize, Deserialize)]
+pub struct Preference2 {
+    pub version: String,
+    pub recent_dbs_info: Vec<RecentlyUsed>,
+    // Session will time out in these milli seconds
+    pub db_session_timeout: i64,
+    // clipboard will be cleared in these milli seconds
+    pub clipboard_timeout: i64,
+    // Determines the theme colors etc
+    pub theme: String,
+    // Should be a two letters language id
+    pub language: String,
+    // Valid values one of Types,Categories,Groups,Tags
+    pub default_entry_category_groupings: String,
+}
+*/
+
+/*
+// This struct matches any previous verion (0.0.2) of preference.json
+#[derive(Clone, Serialize, Deserialize)]
+pub struct Preference1 {
+    pub version: String,
+    pub recent_dbs_info: Vec<RecentlyUsed>,
+    pub db_session_timeout: i64,
+    pub clipboard_timeout: i64,
+}
+*/

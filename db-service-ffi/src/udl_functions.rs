@@ -104,6 +104,8 @@ pub(crate) fn db_service_enable_logging() {
     }
 }
 
+// This is used for all "Document Picker" calls
+
 pub(crate) fn read_kdbx(file_args: FileArgs, json_args: String) -> ApiResponse {
     log::debug!("file_args received is {:?}", file_args);
 
@@ -158,7 +160,7 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
     )
     .map_err(|e| match e {
         // Need this when db login fails while using the previously stored credentials
-        // and the UI will then popup the usual dialog 
+        // and the UI will then popup the usual dialog
         error::Error::HeaderHmacHashCheckFailed if biometric_auth_used => {
             error::Error::BiometricCredentialsAuthenticationFailed
         }
@@ -189,18 +191,18 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
             .and(backup_file.sync_all())
             .and(backup_file.rewind())?;
 
-        if let Some(mtime) = info.map(|f| f.last_modified).flatten() {
-            let mtime = mtime / 1000; // milli to seconds
-                                      // backup_file_name unwrap will not fail as we have used this path in the previous call
-                                      // in open_backup_file
-            let bp = backup_file_name.unwrap();
+        if let Some(mtime) = info.as_ref().map(|f| f.last_modified).flatten() {
+            // milli to seconds
+            let mtime = mtime / 1000;
 
-            debug!("Before setting mtime {:?}", Path::new(&bp).metadata());
+            let bp = backup_file_name.ok_or(OkpError::DataError("Invalid backup file"))?;
 
-            let r = filetime::set_file_mtime(&bp, filetime::FileTime::from_unix_time(mtime, 0));
+            // debug!("Before setting mtime {:?}", Path::new(&bp).metadata());
 
-            debug!("Setting modified time of backup file status is {:?}", r);
-            debug!("After setting mtime {:?}", Path::new(&bp).metadata());
+            let _r = filetime::set_file_mtime(&bp, filetime::FileTime::from_unix_time(mtime, 0));
+
+            // debug!("Setting modified time of backup file status is {:?}", r);
+            // debug!("After setting mtime {:?}", Path::new(&bp).metadata());
         }
     } else {
         debug!("Backup file already exists for this db");
@@ -208,7 +210,8 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
 
     backup::prune_backup_history_files(&db_file_name);
 
-    AppState::add_recent_db_use_info(&db_file_name);
+    // AppState::add_recent_db_use_info(&db_file_name);
+    AppState::add_recently_used_with_file_info(&db_file_name, &info);
 
     #[cfg(target_os = "ios")]
     {
@@ -261,10 +264,10 @@ pub(crate) fn save_kdbx(file_args: FileArgs, overwrite: bool) -> ApiResponse {
     };
 
     let backup_file = open_backup_file(backup_file_name.as_ref());
-    let response = match backup_file {
+    let kdbx_saved = match backup_file {
         Some(mut bf_writer) => {
-            let r = match db_service::save_kdbx_to_writer(&mut bf_writer, &db_key) {
-                Ok(r) => {
+            match db_service::save_kdbx_to_writer(&mut bf_writer, &db_key) {
+                Ok(kdbx_saved) => {
                     let rewind_r = bf_writer.sync_all().and(bf_writer.rewind());
                     log::debug!("Syncing and rewinding of backup file result {:?}", rewind_r);
                     if let Err(e) = rewind_r {
@@ -311,12 +314,10 @@ pub(crate) fn save_kdbx(file_args: FileArgs, overwrite: bool) -> ApiResponse {
                             &db_key,
                         );
                     }
-
-                    r
+                    kdbx_saved
                 }
                 Err(e) => return_api_response_failure!(e),
-            };
-            r
+            }
         }
         None => {
             // This is not used. Will this ever happen?. Need to find use case where we do not have backup file
@@ -336,10 +337,21 @@ pub(crate) fn save_kdbx(file_args: FileArgs, overwrite: bool) -> ApiResponse {
         let _fd = writer.into_raw_fd();
     }
 
-    let api_response = match serde_json::to_string_pretty(&InvokeResult::with_ok(response)) {
+    let api_response = match serde_json::to_string_pretty(&InvokeResult::with_ok(kdbx_saved)) {
         Ok(s) => s,
         Err(e) => InvokeResult::<()>::with_error(format!("{:?}", e).as_str()).json_str(),
     };
+
+    backup::prune_backup_history_files(&db_key);
+
+    // Call file info to get modified time and update recent modified time
+    // Should we update the backup file also with the modified time as done in 'remote_storage::set_backup_modified_time'
+    
+    // let info = AppState::uri_to_file_info(&db_key);
+    // let md = info.map(|f| f.last_modified).flatten();
+    // AppState::update_recent_db_modified_time(&db_key, &md);
+
+    AppState::update_recent_db_file_info(&db_key);
 
     ApiResponse::Success {
         result: api_response,
@@ -355,11 +367,12 @@ pub(crate) fn write_to_backup_on_error(full_file_name_uri: String) -> ApiRespons
     let f = || {
         // We will get the file name from the recently used list
         // instead of using AppState uri_to_file_name method as that call may fail in case of Android
-        let file_name = AppState::file_name_in_recently_used(&full_file_name_uri)
-            .ok_or(OkpError::UnexpectedError(format!(
+        let file_name = AppState::file_name_in_recently_used(&full_file_name_uri).ok_or(
+            OkpError::UnexpectedError(format!(
                 "There is no file name found for the uri {} in the recently used list",
                 &full_file_name_uri
-            )))?;
+            )),
+        )?;
         let backup_file_name =
             backup::generate_backup_history_file_name(&full_file_name_uri, &file_name);
         debug!(
@@ -449,6 +462,7 @@ pub(crate) fn copy_picked_key_file(file_args: FileArgs) -> String {
         //     _ => return Err(OkpError::UnexpectedError("Unsupported file args passed".into())),
         // };
 
+        // We open the incoming user picked file which is copied to the key file path
         let OpenedFile {
             mut file,
             file_name,
@@ -467,8 +481,10 @@ pub(crate) fn copy_picked_key_file(file_args: FileArgs) -> String {
             )));
         }
 
+        // Copy the user picked file to the app's key file path
         let mut target_file = File::create(&key_file_full_path)?;
         std::io::copy(&mut file, &mut target_file).and(target_file.sync_all())?;
+
         debug!("Copied the key file {} locally", &file_name);
 
         let full_file_name = key_file_full_path.as_os_str().to_string_lossy().to_string();

@@ -36,7 +36,7 @@
   [confirm-dialog-with-lstr @(dlg-events/start-page-storage-selection-dialog-data)])
 
 ;; 
-(defn start-page-storage-selection-dialog-show 
+(defn start-page-storage-selection-dialog-show
   "Called to show the dialog showing storage locations
    The arg 'kw-browse-type' determines we are showing the dialog during open database or new database time
    We pass additional new db data in the arg 'opts-m'  
@@ -225,7 +225,7 @@
       [rnp-button {:mode "text" :disabled in-progress?
                    :onPress (fn [] ^js/RNKeyboard (.dismiss rn-keyboard)
                               (if locked?
-                                (opndb-events/authenticate-with-credential)
+                                (opndb-events/authenticate-with-credential-to-unlock)
                                 (opndb-events/open-database-read-db-file)))}
        (lstr-bl "continue")]]]))
 
@@ -355,9 +355,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn message-repick-database-file-dialog [{:keys [dialog-show file-name reason-code]}]
+  ;; reason-code may be 'PERMISSION_REQUIRED_TO_READ' or 'FILE_NOT_FOUND'
+  ;; See dispatch event ':repick-confirm-show'
   (let [[title text] (if (= reason-code const/PERMISSION_REQUIRED_TO_READ)
                        [(str (lstr-dlg-title 'reopen) " " file-name),
                         (str (lstr-dlg-text 'reopenReadPermissionrequired) ". " (lstr-dlg-text 'reopenAgain {:file-name file-name}))]
+                       ;; The else condition is :const/FILE_NOT_FOUND
                        ;; in iOS, seen this happening when we try to open (pressing on the home page dabase list) a database 
                        ;; file stored in iCloud and file is not synched to the mobile yet  
                        [(lstr-dlg-title 'reopen)
@@ -403,8 +406,11 @@
     :else
     (opndb-events/open-selected-database file-name db-file-path found)))
 
-(defn row-item []
-  (fn [{:keys [file-name db-file-path]} opened-databases-files]
+(defn row-item
+  "The first arg is map from recently-used and the second arg is a vec of db keys of the opened databases 
+   Returns a row item component"
+  []
+  (fn [{:keys [file-name db-file-path] :as _recently-used} opened-databases-files]
     (let [found (u/contains-val? opened-databases-files db-file-path)
           locked? @(cmn-events/locked? db-file-path)
           [icon-name color] (icon-name-color found locked?)]
@@ -428,12 +434,12 @@
                                                                  e file-name db-file-path found locked?))}]]))}])))
 
 (defn databases-list-content []
-  (fn [recent-uses]
+  (fn [recently-used]
     (let [opened-databases-files @(cmn-events/opened-database-file-names)
           sections  [{:title (lstr-l "databases")
                       :key "Databases"
                       ;; Recently used db info forms the data for this list
-                      :data recent-uses}]]
+                      :data recently-used}]]
       [rn-section-list
        {:style {}
         :sections (clj->js sections)
@@ -476,8 +482,8 @@
       (:dialog remove-confirm-dialog-info)
       [new-db-dialog @(ndb-events/dialog-data)]
       [open-db-dialog @(opndb-events/dialog-data)]
-      [start-page-storage-selection-dialog] 
+      [start-page-storage-selection-dialog]
       [file-info-dialog @(cmn-events/file-info-dialog-data)]
       [message-repick-database-file-dialog @(opndb-events/repick-confirm-data)]
-      [authenticate-biometric-confirm-dialog @(opndb-events/authenticate-biometric-confirm-dialog-data)]
+      #_[authenticate-biometric-confirm-dialog @(opndb-events/authenticate-biometric-confirm-dialog-data)]
       [message-dialog @(cmn-events/message-dialog-data)]]]))

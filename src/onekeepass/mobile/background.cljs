@@ -124,9 +124,10 @@
                   :error-transform true))
 
 ;; This is used specifically in iOS. Here the call sequence - pickAndSaveNewKdbxFile,readKdbx - is used
-;; This works for Local,iCloud. But the cases of GDrive, OneDrive, the new database files are created
+;; This works for Local,iCloud. But in the cases of GDrive, OneDrive, the new database files are created
 ;; But we get 'COORDINATOR_CALL_FAILED' error 'Couldn’t communicate with a helper application'
-;; As the kdbx is file is created succesully, we can open the database
+;
+; However the kdbx is file is created succesully and we can open the database (by picking the db again from File App ?)
 ;;
 ;; May need to explore the use of UIActivityViewController based export support. Using this the newly crated temp db file
 ;; may be saved to another app and then open from that. Someting similar to 'ACTION_SEND'
@@ -464,22 +465,26 @@
 (defn groups-summary-data [db-key dispatch-fn]
   (invoke-api  "groups_summary_data" {:db-key db-key} dispatch-fn :convert-response-fn transform-response-groups-summary))
 
-(defn- transform-response-entry-keys
+#_(defn- transform-response-entry-keys
   "All keys in the incoming raw entry map from backend will be transformed
   using custom key tramsformer
    "
   [response]
-  (let [keys_exclude (-> response (get "ok") (get "section_fields") keys vec)
+  (let [entry (-> response (get "ok"))
+        keys-exclude (-> entry (get "section_fields") keys vec)
+        keys-exclude (into keys-exclude (->  entry (get "parsed_fields") keys vec))
         t-fn (fn [k]
-               (if (contains-val? keys_exclude k)
+               (if (contains-val? keys-exclude k)
                  k
                  (csk/->kebab-case-keyword k)))]
     (cske/transform-keys t-fn response)))
 
+(declare transform-response-entry-form-data)
+
 (defn new-entry-form-data [db-key entry-type-uuid dispatch-fn]
   (invoke-api "new_entry_form_data" {:db-key db-key
                                      :entry-type-uuid entry-type-uuid
-                                     :parent-group-uuid nil} dispatch-fn :convert-response-fn transform-response-entry-keys))
+                                     :parent-group-uuid nil} dispatch-fn :convert-response-fn transform-response-entry-form-data))
 
 
 (defn- transform-resquest-entry-form-data
@@ -512,9 +517,10 @@
   [response]
   (let [;; Get the entry data from "ok" key of the response
         entry-form-data (get response "ok")
-        keys_exclude (->  entry-form-data (get "section_fields") keys vec)
+        keys-exclude (->  entry-form-data (get "section_fields") keys vec)
+        keys-exclude (into keys-exclude (->  entry-form-data (get "parsed_fields") keys vec))
         t-fn (fn [k]
-               (if (contains-val? keys_exclude k)
+               (if (contains-val? keys-exclude k)
                  k
                  (csk/->kebab-case-keyword k)))]
     (cske/transform-keys t-fn response)))
@@ -660,6 +666,17 @@
 
 (defn load-language-translations [language-ids dispatch-fn]
   (invoke-api "load_language_translations" {:language-ids language-ids} dispatch-fn))
+
+;;;;;;;;;;; Auto open ;;;;;;;;;
+
+(defn resolve-auto-open-properties 
+  "Called to resolve the auto open properties before opening the child database
+   The arg auto-open-properties is a map from struct AutoOpenProperties
+
+   The reolved props is returned as a map (struct AutoOpenPropertiesResolved) in the dispatch-fn 
+  "
+  [auto-open-properties dispatch-fn]
+  (invoke-api "resolve_auto_open_properties" {:auto-open-properties auto-open-properties} dispatch-fn))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;; OTP, Timer etc ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

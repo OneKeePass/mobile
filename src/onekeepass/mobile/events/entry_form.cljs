@@ -13,11 +13,11 @@
                           dispatch
                           reg-fx
                           subscribe]]
-   [onekeepass.mobile.events.entry-form-common :refer [add-section-field
-                                                       is-field-exist
-                                                       extract-form-otp-fields
-                                                       entry-form-key Favorites
-                                                       validate-entry-form-data]]
+   [onekeepass.mobile.events.entry-form-common :as ef-events-cmn :refer [add-section-field
+                                                                         is-field-exist
+                                                                         extract-form-otp-fields
+                                                                         entry-form-key Favorites
+                                                                         validate-entry-form-data]] 
    [clojure.string :as str]
    [onekeepass.mobile.utils :as u :refer [contains-val?]]
    [onekeepass.mobile.background :as bg]
@@ -25,6 +25,8 @@
    ;; Should it be moved to core.cljs ? 
    #_{:clj-kondo/ignore [:unused-namespace]}
    [onekeepass.mobile.events.entry-form-otp :as ef-otp-events]))
+
+(def place-holder-resolved-value ef-events-cmn/place-holder-resolved-value)
 
 (defn update-section-value-on-change
   "Updates a section's KeyValue map with the given key and value"
@@ -1272,7 +1274,7 @@
   ;; => (:data :undo-data :otp-fields :showing :edit)
 
   (-> (get @re-frame.db/app-db db-key) :entry-form :data keys)
-  ;; => :tags :icon-id :binary-key-values :section-fields :title :expiry-time :history-count 
+  ;; => :tags :icon-id :parsed-fields :binary-key-values :section-fields :title :expiry-time :history-count 
   ;;     :expires :standard-section-names :last-modification-time :entry-type-name :auto-type :notes 
   ;;     :section-names :entry-type-icon-name :last-access-time :uuid :entry-type-uuid :group-uuid :creation-time
 

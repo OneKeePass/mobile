@@ -1,9 +1,11 @@
-mod storage_service;
 mod callback_service;
 pub(crate) mod callback_service_provider;
 pub(crate) mod secure_store;
+mod storage_service;
 
-pub use storage_service::{RemoteStorageType,read_configs,RemoteStorageOperationType, RemoteStorageOperation};
+pub use storage_service::{
+    read_configs, RemoteStorageOperation, RemoteStorageOperationType, RemoteStorageType,
+};
 
 use std::fs;
 use std::io::{Cursor, Read, Seek, Write};
@@ -19,7 +21,6 @@ use crate::udl_types::FileInfo;
 use crate::{biometric_auth, open_backup_file, parse_command_args_or_err};
 use crate::{OkpError, OkpResult};
 use nom::Err;
-
 
 use log::{debug, error, info};
 use nom::{
@@ -42,14 +43,14 @@ use onekeepass_core::{db_service, error, service_util};
 use serde::Serialize;
 use storage_service::ParsedDbKey;
 
-
 /// -------   All public functions   -------
-
 
 pub(crate) fn uri_to_file_info(db_key: &str) -> Option<FileInfo> {
     let Ok((remaining, parsed)) = parse_db_key(db_key) else {
+        // Parsing of db_key (remote url) failed
         return None;
     };
+    // Also 'remaining' should be empty when remote url is parsed successfully
     if !remaining.is_empty() {
         return None;
     }
@@ -103,7 +104,6 @@ pub(crate) fn rs_create_kdbx(json_args: &str) -> ResponseJson {
 
 /// ----------------------------------------------------------------------
 
-
 // We need to parse the passed db_key and extracts the remote operation type, connection_id and the file path part
 
 // e.g WebDav-264226dc-be96-462a-a386-79adb6291ad7-/dav/db1/db1-1/db1-2/Test1-Sp.kdbx or
@@ -145,15 +145,23 @@ fn parse_db_key(db_key: &str) -> IResult<&str, ParsedDbKey> {
 
 fn parse_db_key_to_rs_type_opertaion(db_key: &str) -> OkpResult<RemoteStorageOperationType> {
     let pasrsed_result = parse_db_key(db_key);
-    if let Err(e) = pasrsed_result {
+
+    // if let Err(e) = pasrsed_result {
+    //     error!("Db key string parsing error {}", e);
+    //     return Err(error::Error::UnexpectedError(format!(
+    //         "Remote storage db key parsing failed with error: {}",
+    //         e
+    //     )));
+    // }
+    // let (remaining, parsed_db_key) = pasrsed_result.unwrap();
+
+    let (remaining, parsed_db_key) = pasrsed_result.map_err(|e| {
         error!("Db key string parsing error {}", e);
-        return Err(error::Error::UnexpectedError(format!(
+        error::Error::UnexpectedError(format!(
             "Remote storage db key parsing failed with error: {}",
             e
-        )));
-    }
-
-    let (remaining, parsed_db_key) = pasrsed_result.unwrap();
+        ))
+    })?;
 
     if !remaining.is_empty() {
         return Err(error::Error::UnexpectedError(format!(
@@ -171,7 +179,6 @@ fn parse_db_key_to_rs_type_opertaion(db_key: &str) -> OkpResult<RemoteStorageOpe
 
     Ok(rt)
 }
-
 
 #[derive(Debug, Serialize)]
 struct RsAdditionalInfo {
@@ -374,7 +381,8 @@ fn read_with_backup<R: Read + Seek>(
 
     backup::prune_backup_history_files(&db_key);
 
-    AppState::add_recent_db_use_info2(db_key, file_name);
+    // AppState::add_recent_db_use_info2(db_key, file_name);
+    AppState::add_recently_used_with_file_info(db_key, &None);
 
     #[cfg(target_os = "ios")]
     {
@@ -498,6 +506,14 @@ fn rs_write_file(json_args: &str) -> OkpResult<KdbxSaved> {
     // Any previous ref stored meant for error resolution is not required
     AppState::remove_last_backup_name_on_error(&db_key);
 
+    backup::prune_backup_history_files(&db_key);
+
+    // Call file info to get modified time and update recent info
+    // let md_in_milli = file_modified_time.map(|t| t*1000);
+    // AppState::update_recent_db_modified_time(&db_key, &md_in_milli);
+
+    AppState::update_recent_db_file_info(&db_key);
+
     Ok(kdbx_saved)
 }
 
@@ -564,15 +580,19 @@ fn write_with_backup<R: Seek + Read + Write>(
 
 // Somewhat similar to 'rs_write_file'
 
-// Also some steps are similar to  AndroidSupportServiceExtra::create_kdbx 
+// Also some steps are similar to  AndroidSupportServiceExtra::create_kdbx
 
 // TODO: Move common steps of 'rs_write_file' and 'rs_create_file' to another fn
 fn rs_create_file(json_args: &str) -> OkpResult<KdbxLoaded> {
     let (new_db,) = parse_command_args_or_err!(json_args, NewDbArg { new_db });
 
-    let file_name = new_db.file_name.as_deref().ok_or(error::Error::DataError(
-        "Valid file name is not set in new db arg",
-    ))?.to_string();
+    let file_name = new_db
+        .file_name
+        .as_deref()
+        .ok_or(error::Error::DataError(
+            "Valid file name is not set in new db arg",
+        ))?
+        .to_string();
 
     let db_key = new_db.database_file_name.clone();
 
@@ -614,12 +634,16 @@ fn rs_create_file(json_args: &str) -> OkpResult<KdbxLoaded> {
     };
 
     // Add this newly created db file to the recent list
-    AppState::add_recent_db_use_info2(&db_key, &file_name);
+    // AppState::add_recent_db_use_info2(&db_key, &file_name);
 
     let file_modified_time = meta_data.modified.map(|t| t as i64);
 
     // We set the backup file's modified time to the same as the remote file modified time
     set_backup_modified_time(&backup_file_name.as_ref(), &file_modified_time);
+
+    // Add this newly created db file to the recent list
+    // This uses 'uri_to_file_info'
+    AppState::add_recently_used_with_file_info(&db_key, &None);
 
     Ok(kdbx_loaded)
 }

@@ -1,5 +1,6 @@
-use crate::app_preference::{PreferenceData, RecentlyUsed};
+use crate::app_preference::PreferenceData;
 use crate::app_state::AppState;
+use crate::auto_open::AutoOpenProperties;
 use crate::file_util::PickedFileHandler;
 use crate::remote_storage::{self, RemoteStorageOperation};
 use crate::{android, file_util::KeyFileInfo, ios};
@@ -207,6 +208,10 @@ pub enum CommandArg {
 
     PickedFileHandlerArg {
         picked_file_handler: PickedFileHandler,
+    },
+
+    AutoOpenPropsResolveArg {
+        auto_open_properties: AutoOpenProperties,
     },
 
     // This variant needs to come last so that other variants starting with db_key is matched before this
@@ -523,7 +528,6 @@ impl Commands {
             "shutdown_async_services" => {
                 wrap_no_arg_ok_call! (async_service shutdown_async_services)
             }
-
             //////
             "remove_from_recently_used" => Self::remove_from_recently_used(&args),
 
@@ -532,6 +536,13 @@ impl Commands {
             "get_file_info" => Self::get_file_info(&args),
 
             "prepare_export_kdbx_data" => Self::prepare_export_kdbx_data(&args),
+
+            "resolve_auto_open_properties" => {
+                service_call_closure!(args,AutoOpenPropsResolveArg {auto_open_properties}  => move || {
+                    result_json_str(auto_open_properties.resolve())
+                })
+            }
+
             ///////
             "app_preference" => Self::app_preference(),
 
