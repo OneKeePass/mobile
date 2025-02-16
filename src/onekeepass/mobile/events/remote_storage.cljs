@@ -9,9 +9,8 @@
    [onekeepass.mobile.background-remote-server :as bg-rs]
    [onekeepass.mobile.background :as bg]))
 
-(def BROWSE-TYPE-DB-OPEN :db-open)
-
-(def BROWSE-TYPE-DB-NEW :db-new)
+;; (def BROWSE-TYPE-DB-OPEN :db-open)
+;; (def BROWSE-TYPE-DB-NEW :db-new)
 
 ;; Maps kw to enum tag 'type''s value
 (def kw-type-to-enum-tag {:sftp const/V-SFTP :webdav const/V-WEBDAV})

@@ -59,7 +59,7 @@
 ;; though in the backend db it is blank or nil
 (defn android-form-text-input [{:keys [key
                                        value
-                                       
+
                                        protected
                                        visible
                                        edit
@@ -67,7 +67,7 @@
                                        icon-space-required
                                        _non-edit-kdbx-url] :as kv}]
   (let [label (to-field-label kv)
-        val (to-field-value kv)] 
+        val (to-field-value kv)]
     ^{:key (str key protected)} [rnp-text-input {:label label
                                                  :defaultValue val
                                                  ;; :value val
@@ -112,7 +112,7 @@
                                    icon-space-required
                                    _non-edit-kdbx-url] :as kv}]
   (let [label (to-field-label kv)
-        val (to-field-value kv)] 
+        val (to-field-value kv)]
     [rnp-text-input {:label label
                      ;; In 0.16.0, while using multiline = true, edit did not work with :value val and need to use :defaultValue
                      ;; :value val 
@@ -139,7 +139,7 @@
                      ;; Sometimes when kdbx url is long, the full text is not shown
                      ;; When the field is focused, we are able to see full text by scrolling
                      ;; :autoFocus non-edit-kdbx-url
-                     
+
                      ;; multiline needs to be for password's secureTextEntry to work
                      :multiline (not protected)
                     ;;  :ref (fn [^js/Ref ref]
@@ -201,7 +201,7 @@
                                       edit
                                       (= (:field-name @field-focused) key)
                                       (not standard-field)))
-        icon-space-required (or is-password-edit? custom-field-edit-focused?)] 
+        icon-space-required (or is-password-edit? custom-field-edit-focused?)]
     [rn-view {:flexDirection "column"}
      ;; text input field and optional icon button in the same row
      [rn-view {:flexDirection "row" :style {:flex 1}}
@@ -232,7 +232,10 @@
         [rn-view {:style {:margin-left -5 :backgroundColor cust-color :position "absolute" :right 0}}
          [rnp-icon-button {:style {:margin-right 0}
                            :icon const/ICON-LAUNCH
-                           :onPress #(ef-ao/entry-form-open-kdbx-url value)}]])]
+                           :onPress (fn []
+                                      #_(ef-dlg/auto-open-key-file-pick-required-info-dialog-init
+                                       (fn [] (ef-ao/show-key-file-form)))
+                                      (ef-ao/entry-form-open-kdbx-url value))}]])]
 
      ;; Any error text below the field
      (when (and edit (not (nil? error-text)))

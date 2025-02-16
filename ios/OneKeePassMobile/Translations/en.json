@@ -335,6 +335,7 @@
         "create": "Create",
         "edit": "Edit",
         "enterManually": "Enter Manually",
+        "filePicker":"File Picker",
         "generate": "Generate",
         "keyFile": "Key File",
         "localDevice":"Local Device",

@@ -19,7 +19,11 @@
                                                           rename-attachment-name-dialog
                                                           rename-attachment-name-dialog-data
                                                           setup-otp-action-dialog
-                                                          setup-otp-action-dialog-show]]
+                                                          setup-otp-action-dialog-show
+                                                          ;;auto-open-key-file-required-dialog
+                                                          auto-open-key-file-pick-required-info-dialog
+                                                          auto-open-db-file-required-info-dialog
+                                                          ]]
             [onekeepass.mobile.entry-form-fields :refer [otp-field text-field]]
             [onekeepass.mobile.entry-form-menus :refer [attachment-long-press-menu
                                                         attachment-long-press-menu-data
@@ -46,7 +50,8 @@
             [onekeepass.mobile.translation :refer [lstr-bl lstr-l lstr-pt lstr-field-name
                                                    lstr-section-name]]
             [onekeepass.mobile.utils :as u]
-            [reagent.core :as r]))
+            [reagent.core :as r]
+            [onekeepass.mobile.events.entry-form-auto-open :as ef-ao]))
 
 ;;(set! *warn-on-infer* true)
 
@@ -562,7 +567,12 @@
       [otp-settings-dialog @(dlg-events/otp-settings-dialog-data)]
       (:dialog delete-attachment-dialog-info)
       [rename-attachment-name-dialog @rename-attachment-name-dialog-data]
-      [cc/entry-delete-confirm-dialog form-events/delete-entry]]]))
+      [cc/entry-delete-confirm-dialog form-events/delete-entry]
+      #_[auto-open-key-file-required-dialog @(ef-ao/entry-form-auto-open-key-file-required-dialog-data)]
+      [auto-open-db-file-required-info-dialog]
+      [auto-open-key-file-pick-required-info-dialog]
+      #_[auto-open-key-file-pick-required-info-dialog]
+      ]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
 

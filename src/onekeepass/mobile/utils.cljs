@@ -126,6 +126,28 @@
     :else
     (str (.toFixed (/ number GB) 2) " GiB")))
 
+;; From an article https://dnaeon.github.io/recursively-merging-maps-in-clojure/
+(defn deep-merge
+  "Recursively merges maps."
+  [& maps]
+  (letfn [(m [& xs]
+            (if (some #(and (map? %) (not (record? %))) xs)
+              (apply merge-with m xs)
+              (last xs)))]
+    (reduce m maps)))
+
+(defn deep-merge-with
+  "Recursively merges maps. Applies function f when we have duplicate keys.
+  The fn 'f' should take two args
+  "
+  [f & maps]
+  (letfn [(m [& xs]
+             ;;(println "xs is " xs)
+             (if (some #(and (map? %) (not (record? %))) xs)
+               (apply merge-with m xs)
+               (apply f xs)))]
+    (reduce m maps)))
+
 (comment
   (in-ns 'onekeepass.mobile.utils)
   ;; daf114d0-a518-4e13-b75b-fbe893e69a9d 8bd81fe1-f786-46c3-b0e4-d215f8247a10
@@ -140,4 +162,29 @@
   
   (utc-to-local-datetime-str 1676337120434 "LLL dd,yyyy hh:mm:ss aaa")
   ;; => "Feb 13,2023 05:12:00 pm"
+  
+  (def a {:data {:field1 3} :dialog-show false})
+  (deep-merge a {:data {:field2 4}})
+  ;; => {:data {:field1 3, :field2 4}, :dialog-show false}
+  
+  (deep-merge a {:data {:field1 4} :dialog-show true})
+  ;; => {:data {:field1 4}, :dialog-show true}
+  
+  (deep-merge a {:data {:field1 4 :field2 22} :dialog-show true :error-text "sometext"})
+  
+  ;; => {:data {:field1 4, :field2 22}, :dialog-show true, :error-text "sometext"}
+  
+  (deep-merge {} nil) ;; => {}
+  
+  (deep-merge) or (deep-merge nil) ;; => nil
+  
+  (deep-merge-with first {:foo "foo" :bar {:baz "baz"}} {:foo "another-foo" :bar {:qux "qux"}})
+  ;; => {:foo "f", :bar {:baz "baz", :qux "qux"}}
+  ;; expected as per atricle {:foo "foo", :bar {:baz "baz", :qux "qux"}}
+  ;; using first did not work 
+  
+  (deep-merge-with (fn [a b] a)  {:foo "foo" :bar {:baz "baz"}} {:foo "another-foo" :bar {:qux "qux"}})
+  ;; => {:foo "foo", :bar {:baz "baz", :qux "qux"}}
+  
+  
   )

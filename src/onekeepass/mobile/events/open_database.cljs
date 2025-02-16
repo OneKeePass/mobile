@@ -12,10 +12,14 @@
    [re-frame.core :refer [dispatch reg-event-db reg-event-fx reg-fx reg-sub
                           subscribe]]))
 
-(defn cancel-on-press []
-  (dispatch [:open-database-dialog-hide]))
+(defn cancel-on-press
+  "Called to close the dialog and resets all fields in ':open-database' "
+  []
+  (dispatch [:open-database-dialog-close]))
 
-(defn open-database-on-press []
+(defn open-database-on-press
+  "Called to launch the platform specific file picker"
+  []
   (dispatch [:pick-database-file]))
 
 (defn open-selected-database
@@ -68,7 +72,10 @@
                      :database-full-file-name nil
                      :password nil
                      ;; This is the full key file path. See event :open-database-key-file-selected where it is set
-                     :key-file-name nil})
+                     :key-file-name nil
+                     ;; This is set and used when user tries to open a child database and the db is not found in the 
+                     ;; recently used list
+                     :auto-open-props {}})
 
 (defn- init-open-database-data
   "Initializes all open db related values in the incoming main app db 
@@ -92,7 +99,15 @@
 (reg-event-db
  :open-database-dialog-hide
  (fn [db [_event-id]]
+   ;; only :dialog-show is set to false leaving all fields with previous values
+   ;; These prvious values are used when user repicks the database
    (assoc-in  db [:open-database :dialog-show] false)))
+
+(reg-event-db
+ :open-database-dialog-close
+ (fn [db [_event-id]]
+   (-> db init-open-database-data)
+   #_(assoc-in  db [:open-database :dialog-show] false)))
 
 ;; An event to be called (from key file related page) after user selects a key file 
 (reg-event-fx
@@ -112,11 +127,13 @@
        ;; Hide any previous api-error-text
        #_(assoc-in [:open-database :api-error-text] nil))))
 
+;; Called to launch the platform specific file picker
 (reg-event-fx
  :pick-database-file
  (fn [{:keys [_db]} [_event-id]]
    {:fx [[:bg-pick-database-file]]}))
 
+;; Calls the backend api to launch the platform specific file picker
 (reg-fx
  :bg-pick-database-file
  (fn []
@@ -139,17 +156,36 @@
                                   #(dispatch [:database-file-pick-error %]))]
         (dispatch [:database-file-repicked picked-response]))))))
 
-;; A database file is already picked in the previous event. 
+;; A database file is already picked in the previous event (Storage selection dialog). 
 ;; This will make dialog open status true and login dialog is shown
 (reg-event-fx
  :open-database/database-file-picked
  (fn [{:keys [db]} [_event-id {:keys [file-name full-file-name-uri]}]]
-   {:db (-> db init-open-database-data
+   (let [{:keys [db-file-name] :as auto-open-props} (get-in db [:open-database :auto-open-props])]
+     ;; auto-open-props is set when child database open is launched but the db file name is not found
+     ;; in the recently used db list
+     (if (or (empty? auto-open-props) (not= db-file-name file-name))
+       {:db (-> db init-open-database-data
+                ;; database-file-name is just the 'file name' part derived from full uri 'database-full-file-name'
+                ;; to show in the dialog
+                (assoc-in [:open-database :database-file-name] file-name)
+                (assoc-in [:open-database :database-full-file-name] full-file-name-uri)
+                (assoc-in [:open-database :dialog-show] true))}
+       ;; Call auto open 
+       {:fx [[:dispatch [:open-database/database-file-picked-in-auto-open
+                         ;; Note: the db-key in 'auto-open-props' is nil and that is the reason we asked user to pick a file
+                         ;; and that is set to the picked full file url 'full-file-name-uri'
+                         (assoc auto-open-props :db-key full-file-name-uri)]]]}))))
+
+#_(reg-event-fx
+   :open-database/database-file-picked
+   (fn [{:keys [db]} [_event-id {:keys [file-name full-file-name-uri]}]]
+     {:db (-> db init-open-database-data
             ;; database-file-name is just the 'file name' part derived from full uri 'database-full-file-name'
             ;; to show in the dialog
-            (assoc-in [:open-database :database-file-name] file-name)
-            (assoc-in [:open-database :database-full-file-name] full-file-name-uri)
-            (assoc-in [:open-database :dialog-show] true))}))
+              (assoc-in [:open-database :database-file-name] file-name)
+              (assoc-in [:open-database :database-full-file-name] full-file-name-uri)
+              (assoc-in [:open-database :dialog-show] true))}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;  DB open using biometric  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -170,19 +206,19 @@
   "A dispatch fn handler that is called when the backend api 
    stored-db-credentials-on-biometric-authentication for db open returns"
   [kdbx-file-info-m api-response]
-  (let [stored-crdentials (on-ok api-response
-                                 (fn [error]
-                                   (println "The bg/stored-db-credentials-on-biometric-authentication call returned error " error)
+  (let [stored-credentials (on-ok api-response
+                                  (fn [error]
+                                    (println "The bg/stored-db-credentials-on-biometric-authentication call returned error " error)
                                    ;; When Backend api 'stored-db-credentials-on-biometric-authentication' results in error 
                                    ;; for whatever reason. Ideally should not happen!
-                                   (dispatch [:open-database/database-file-picked kdbx-file-info-m])))]
-    (if (nil? stored-crdentials)
-      ;; Handles the situation the stored-crdentials returned from backend api is None
+                                    (dispatch [:open-database/database-file-picked kdbx-file-info-m])))]
+    (if (nil? stored-credentials)
+      ;; Handles the situation the stored-credentials returned from backend api is None
       ;; This happens when user presses the db on db list first time after enabling Biometric in the settings
       #_(dispatch [:open-database/database-file-picked kdbx-file-info-m])
       (dispatch [:open-database-db-open-with-credentials kdbx-file-info-m])
       ;; Found some stored-crdentials value
-      (dispatch [:open-database-db-open-credentials-retrieved stored-crdentials kdbx-file-info-m]))))
+      (dispatch [:open-database-db-open-credentials-retrieved stored-credentials kdbx-file-info-m]))))
 
 ;; Call this when both flags 'biometric-available' and 'biometric-enabled-db?' are true
 (reg-fx
@@ -200,10 +236,11 @@
                                    (println "The bg/authenticate-with-biometric call returned error " error)
                                    (dispatch [:open-database/database-file-picked kdbx-file-info-m])))]
 
-             ;; The variable 'result' will have some valid when biometric call works 
+          ;; The variable 'result' will have some valid value when biometric call works 
           (if (= result const/BIOMETRIC-AUTHENTICATION-SUCCESS)
+            ;; Retrieve the auth info for furthur use
             (bg/stored-db-credentials-on-biometric-authentication full-file-name-uri cr-response-handler)
-               ;; As biometric matching failed, we need to use credential based one
+            ;; As biometric matching failed, we need to use credential based one
             (dispatch [:open-database/database-file-picked kdbx-file-info-m]))))))))
 
 ;; Called when biometric auth fails. 
@@ -218,10 +255,18 @@
 ;; Called after getting the stored credentials ( a map from struct StoredCredential ) from secure enclave
 (reg-event-fx
  :open-database-db-open-credentials-retrieved
- (fn [{:keys [_db]} [_event-id {:keys [password key-file-name]} {:keys [full-file-name-uri] :as kdbx-file-info-m}]]
-   ;; load-kdbx as we have credentials
-   ;; Show dialog when db load fails with authentication fails for the user to enter credentials
-   {:fx [[:dispatch [:common/message-modal-show nil 'loading]]
+ ;; The args are stored-credentials , kdbx-file-info-m
+ (fn [{:keys [db]} [_event-id {:keys [password key-file-name]} {:keys [full-file-name-uri] :as kdbx-file-info-m}]]
+   ;; Set the credentials fields in :open-database fields so that we can reuse the credentisals if repick is used
+   ;; This repick may be asked if 'bg-load-kdbx' call response comes back with error 'FILE_NOT_FOUND' or 'PERMISSION_REQUIRED_TO_READ'
+   ;; Particularly we see 'FILE_NOT_FOUND' error code when iCloud file sync is not yet happened 
+   {:db (-> db 
+            (assoc-in [:open-database :password] password)
+            (assoc-in [:open-database :key-file-name] key-file-name)
+            (assoc-in [:open-database :database-full-file-name] full-file-name-uri)
+            (assoc-in [:open-database  :dialog-show] false))
+    :fx [[:dispatch [:common/message-modal-show nil 'loading]] 
+         ;; load-kdbx as we have credentials 
          [:bg-load-kdbx  [{:db-file-name full-file-name-uri
                            :password password
                            :key-file-name key-file-name
@@ -299,14 +344,17 @@
             (assoc-in [:open-database :status] :completed))
 
     ;; We get error code PERMISSION_REQUIRED_TO_READ or FILE_NOT_FOUND from middle layer readKdbx 
-
+    
     ;; PERMISSION_REQUIRED_TO_READ may happen if the File Manager decides 
     ;; that the existing uri should be refreshed by asking user to pick the database again 
-
+    
     ;; FILE_NOT_FOUND happens when the uri we have no more points to a valid file as that file 
     ;; might have been changed by other program.
-
+    
     ;; In iOS, typically the error is "NSFileProviderErrorDomain Code=-1005 "The file doesn’t exist."
+    
+    ;; In iOS FILE_NOT_FOUND is triggered when the iCloud file url remains the same but the iCloud sync has not
+    ;; yet completed. In that we ask the user to repick the same file
     :fx (cond
 
           (= (:code error) const/PERMISSION_REQUIRED_TO_READ)
@@ -338,7 +386,7 @@
  (fn [{:keys [db]} [_event-id kdbx-loaded]]
    {:db (-> db (assoc-in [:open-database :error-fields] {})
             (assoc-in [:open-database :status] :completed))
-    :fx [[:dispatch [:open-database-dialog-hide]]
+    :fx [[:dispatch [:open-database-dialog-close]]
          [:dispatch [:common/kdbx-database-opened kdbx-loaded]]]}))
 
 (reg-event-db
@@ -522,7 +570,7 @@
  (fn [{:keys [db]} [_event-id {:keys [db-key] :as auto-open-data-m}]]
 
    (let [already-opened? (u/contains-val? (opened-db-keys db) db-key)
-         locked? (is-db-locked db db-key)] 
+         locked? (is-db-locked db db-key)]
      (cond
        ;; We do not use biometric auth for unlock during auto open
        locked?
@@ -536,8 +584,24 @@
        {:db (init-auto-open db auto-open-data-m)
         :fx [[:dispatch [:open-database-read-db-file]]]}))))
 
+;; This event first navigates to the home page and then shows the dialog 'start-page-storage-selection-dialog'
+;; Also auto-open-props is set here in [:open-database :auto-open-props]
+;; so that open-database is opened with credentials to load the database when user picks a file
+(reg-event-fx
+ :open-database/auto-open-show-select-storage
+ (fn [{:keys [db]} [_event_id auto-open-props]]
+   {:db (-> db (assoc-in [:open-database :auto-open-props] auto-open-props))
+    :fx [[:dispatch [:common/to-home-page]]
+         ;; Shows the dialog 'start-page-storage-selection-dialog'
+         [:dispatch [:generic-dialog-show-with-state
+                     :start-page-storage-selection-dialog
+                     {:kw-browse-type const/BROWSE-TYPE-DB-OPEN}]]]}))
+
+
 (comment
   (in-ns 'onekeepass.mobile.events.open-database)
+  (-> @re-frame.db/app-db :open-database)
+
   (def db-key (-> @re-frame.db/app-db :current-db-file-name))
   (-> @re-frame.db/app-db (get db-key) keys))
 

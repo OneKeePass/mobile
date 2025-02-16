@@ -5,6 +5,10 @@
                                 setup-otp-action-dialog
                                 otp-settings-dialog
                                 start-page-storage-selection-dialog
+                                auto-open-key-file-pick-required-info-dialog
+                                auto-open-db-file-required-info-dialog
+                                update-and-show
+                                dispatch-on-ok
                                 show-with-state
                                 show
                                 close 
@@ -12,7 +16,7 @@
                                 data 
                                 state-m 
                                 fields-value
-                                
+                                init
                                 
                                 ActivityIndicator
                                 Button

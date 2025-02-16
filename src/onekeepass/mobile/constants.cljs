@@ -112,6 +112,11 @@
 ;; tag used in the enum serialization/deserialization of RemoteStorageOperationType
 (def REMOTE-STORAGE-OPERATION-TYPE-TAG :type)
 
+;;;;;;;; 
+
+(def BROWSE-TYPE-DB-OPEN :db-open)
+(def BROWSE-TYPE-DB-NEW :db-new)
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Icon names ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
