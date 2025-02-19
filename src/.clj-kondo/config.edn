@@ -7,6 +7,7 @@
                                 start-page-storage-selection-dialog
                                 auto-open-key-file-pick-required-info-dialog
                                 auto-open-db-file-required-info-dialog
+                                before-storage-selection-info-dialog
                                 update-and-show
                                 dispatch-on-ok
                                 show-with-state

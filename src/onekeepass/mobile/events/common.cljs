@@ -141,13 +141,13 @@
      (-> (filter (fn [m] (= curr-dbkey (:db-key m))) (:opened-db-list app-db))
          first :database-name))))
 
-(declare recently-used)
+(declare recently-used-dbs)
 
 (defn current-database-file-name
   "Gets the database kdbx file name"
   [app-db]
   (let [curr-dbkey  (:current-db-file-name app-db)
-        recent-dbs-info (recently-used app-db) #_(-> app-db :app-preference :data :recent-dbs-info)]
+        recent-dbs-info (recently-used-dbs app-db) #_(-> app-db :app-preference :data :recent-dbs-info)]
     (-> (filter (fn [{:keys [db-file-path]}] (= curr-dbkey db-file-path)) recent-dbs-info) first :file-name)))
 
 (defn current-kdbx-loaded-info
@@ -177,7 +177,7 @@
 #_(defn load-language-translation-completed []
     (dispatch [:common/load-language-translation-complete]))
 
-(defn opened-db-keys 
+(defn opened-db-keys
   "Gets a vec of all opened db-keys from the opened database list
    This fn is also used in subscriber event :common/opened-database-file-names 
    TODO: Combine these two to a single name fn
@@ -225,8 +225,7 @@
          ;; Loads the updated recent dbs info
          [:bg-app-preference]
          [:dispatch [:common/message-modal-hide]]
-         [:dispatch [:common/message-snackbar-open 'databaseOpened]]
-         ]}))
+         [:dispatch [:common/message-snackbar-open 'databaseOpened]]]}))
 
 (reg-event-fx
  :close-kdbx-db
@@ -394,7 +393,7 @@
 (defn app-preference-status-loaded []
   (subscribe [:app-preference-status-loaded]))
 
-(defn recently-used
+(defn recently-used-dbs
   "Returns a vec of maps (from struct RecentlyUsed) 
    with keys :file-name, :db-file-path 
    The kdbx file name is found here for each db-key
@@ -404,6 +403,21 @@
      (if (nil? r) [] r)))
   ([]
    (subscribe [:recently-used])))
+
+(defn recently-used-db-info-by-db-key
+  "Gets the 'db info map' including FileInfo for a given db-key
+  Returns a map if found or nil is returned if not found
+  "
+  ([app-db db-key]
+   (let [db-info-v (recently-used-dbs app-db)
+         db-info (first (filter (fn [db-info] (= (:db-file-path db-info) db-key)) db-info-v))]
+     db-info))
+  ([db-key]
+   (subscribe [:recently-used-db-info-by-db-key db-key])))
+
+
+(defn is-db-key-found-in-recently-used-dbs [app-db db-key]
+  (boolean (recently-used-db-info-by-db-key app-db db-key)))
 
 (defn database-preferences
   "Returns a vec of maps  (the map is from struct DatabasePreference) or an empty vec
@@ -447,7 +461,7 @@
                        :db-unlock-biometric-enabled true}  db-p)))
 
 
-(defn update-database-preference-list 
+(defn update-database-preference-list
   "Adds the passed database preference by removing the existing one from the list and then 
    add back the updated one at the end.
    The arg in-db-pref is a map.
@@ -458,7 +472,7 @@
         db-prefs (filterv (fn [m] (not= (:db-key in-db-pref) (:db-key m))) (database-preferences app-db))
         ;; Add back the incoming updated db-pref to the end 
         ;; At this time the order of db-pref does not matter
-        db-prefs (conj db-prefs in-db-pref)] 
+        db-prefs (conj db-prefs in-db-pref)]
     (assoc-in app-db [:app-preference :data :database-preferences] db-prefs)))
 
 (defn biometric-enabled-to-open-db
@@ -533,9 +547,12 @@
 (reg-sub
  :recently-used
  (fn [db [_event-id]]
-   (recently-used db)
-   #_(let [r (get-in db [:app-preference :data :recent-dbs-info])]
-       (if (nil? r) [] r))))
+   (recently-used-dbs db)))
+
+(reg-sub
+ :recently-used-db-info-by-db-key
+ (fn [db  [_event-id db-key]]
+   (recently-used-db-info-by-db-key db db-key)))
 
 (reg-sub
  :database-preferences
@@ -1054,7 +1071,8 @@
 ;;;;;;;;;;;;;;;  Get File Info ;;;;;;;;;;;;;;;;;;;;;
 
 (defn load-file-info [full-file-name-uri]
-  (dispatch [:load-file-info full-file-name-uri]))
+  (dispatch [:load-file-info-from-recntly-used-dbs full-file-name-uri])
+  #_(dispatch [:load-file-info full-file-name-uri]))
 
 (defn close-file-info-dialog []
   (dispatch [:close-file-info-dialog]))
@@ -1078,6 +1096,12 @@
  :load-file-info-complete
  (fn [{:keys [db]} [_event-id file-info]]
    {:db (assoc db :file-info-dialog-data (merge {:dialog-show true} file-info))}))
+
+(reg-event-fx
+ :load-file-info-from-recntly-used-dbs
+ (fn [{:keys [db]} [_event-id full-file-name-uri]] 
+   {:db (assoc db :file-info-dialog-data 
+               (merge {:dialog-show true} (recently-used-db-info-by-db-key db full-file-name-uri)))}))
 
 (reg-event-db
  :close-file-info-dialog

@@ -249,6 +249,9 @@
 ;; Need to call explcitly clear-notes in entry-type-selection on-change event
 ;; Still Soft KB hides the notes field and we need to manually scroll to the field.
 
+;; When using multiline text input (rnp component) in iOS, the label is not shown when we have some value in input
+;; See https://github.com/callstack/react-native-paper/issues/4482
+
 (def notes-ref (atom nil))
 
 (defn clear-notes []
@@ -258,8 +261,13 @@
   (let [value @(form-events/entry-form-data-fields :notes)]
     (when (or edit (not (str/blank? value)))
       [rn-view {:style {:padding-right 5 :padding-left 5 :borderWidth .20 :borderRadius 4}}
-       [rnp-text-input {:style {:width "100%"} :multiline true :label (lstr-l "notes")
+       [rnp-text-input {:style {:width "100%"} 
+                        :multiline true 
+                        :label  (lstr-l "notes")
+                        ;; :label (r/as-element [rnp-text {:style {:color "red"}} "My Notes"])
                         :defaultValue value
+                        :placeholder ""
+                        ;; :mode "outlined"
                         :ref (fn [^js/Ref ref]
                                (reset! notes-ref ref)
                                (when (and (is-Android) (not (nil? ref)) (str/blank? value)) (.clear ref)))

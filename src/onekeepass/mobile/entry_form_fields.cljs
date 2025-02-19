@@ -85,23 +85,35 @@
                                                  :onBlur #(field-focus-action key false)
                                                  :onChangeText (if edit on-change-text nil)
                                                  :onPressOut (if-not edit
-                                                               #(cmn-events/write-string-to-clipboard {:field-name key
-                                                                                                       :protected protected
-                                                                                                       :value val})
+                                                               #(cmn-events/write-string-to-clipboard
+                                                                 {:field-name key
+                                                                  :protected protected
+                                                                  :value val})
                                                                nil)
                                                  :secureTextEntry (if (or (not protected) visible) false true)
                                                  ;; It looks like we can have only one icon
                                                  :right (when protected
                                                           (if visible
-                                                            (r/as-element [rnp-text-input-icon {:icon "eye"
-                                                                                                :onPress #(form-events/entry-form-field-visibility-toggle key)}])
-                                                            (r/as-element [rnp-text-input-icon {:icon "eye-off"
-                                                                                                :onPress #(form-events/entry-form-field-visibility-toggle key)}])))}]))
+                                                            (r/as-element [rnp-text-input-icon
+                                                                           {:icon "eye"
+                                                                            :onPress #(form-events/entry-form-field-visibility-toggle key)}])
+                                                            (r/as-element [rnp-text-input-icon
+                                                                           {:icon "eye-off"
+                                                                            :onPress #(form-events/entry-form-field-visibility-toggle key)}])))}]))
+
+
+;; For "react-native-paper": "^5.12.3"
+
+;; There are somes issues seen while using multiline in iOS and added comments below on these observations
+
+;; When using multiline text input (rnp component) in iOS, the label is not shown when we have some value in input
+;; See https://github.com/callstack/react-native-paper/issues/4482
 
 ;; In iOS, we do not see the same issue as seen with the use of text input in android 
 ;; However while using :multiline prop, 
 ;; the editing was not working properly -not showing field value while changing to read from edit
 ;; See the comments of using :defaultValue
+
 (defn ios-form-text-input [{:keys [key
                                    value
                                    _read-value
@@ -115,20 +127,23 @@
         val (to-field-value kv)]
     [rnp-text-input {:label label
                      ;; In 0.16.0, while using multiline = true, edit did not work with :value val and need to use :defaultValue
-                     ;; :value val 
-                     :defaultValue val
-                    ;;  :ref (fn [^js/Ref ref]
-                    ;;         #_(println "key value is " key value)
-                    ;;         (when (and (not (nil? ref)) (str/blank? value)) (.clear ref)))
+                     :value val
+                     ;;:defaultValue val
+
                      :showSoftInputOnFocus edit
                      :autoCapitalize "none"
+
                      ;; Using the 'keyboardType email-address' will not show ":" in the keyboard (0.16.0)
                      ;; :keyboardType "email-address" 
+
                      :autoCorrect false
+
                      ;; :contextMenuHidden true
+
                      :selectTextOnFocus false
                      :spellCheck false ;;ios
                      :textContentType "none"
+
                        ;; Sometime in iOS when a text input has its secureTextEntry with true value
                        ;; Strong Password prompt comes up and hides the actual input box preventing any entry
                        ;; Particularly it happened with Simulator. For now, we can disable the Password AutoFill feature
@@ -136,23 +151,27 @@
                        ;; On device, this behaviour is not seen
                        ;; :textContentType (if (or (not protected) visible) nil "newPassword")
                      :style {:width (if icon-space-required  "90%" "100%")}
+
                      ;; Sometimes when kdbx url is long, the full text is not shown
                      ;; When the field is focused, we are able to see full text by scrolling
                      ;; :autoFocus non-edit-kdbx-url
 
-                     ;; multiline needs to be for password's secureTextEntry to work
-                     :multiline (not protected)
+                    ;; multiline needs to be for password's secureTextEntry to work
+                    ;; :multiline (not protected)
+
                     ;;  :ref (fn [^js/Ref ref]
                     ;;         (when-not (nil? ref)
                     ;;           (when-not non-edit-kdbx-url
                     ;;             (.blur ref))))
+
                      :onFocus #(field-focus-action key true)
                      :onBlur #(field-focus-action key false)
                      :onChangeText (if edit on-change-text nil)
                      :onPressOut (if-not edit
-                                   #(cmn-events/write-string-to-clipboard {:field-name key
-                                                                           :protected protected
-                                                                           :value val})
+                                   #(cmn-events/write-string-to-clipboard 
+                                     {:field-name key
+                                      :protected protected
+                                      :value val})
                                    nil)
                      :secureTextEntry (if (or (not protected) visible) false true)
                      ;; It looks like we can have only one icon
@@ -227,14 +246,13 @@
                            :icon dots-icon-name
                            :onPress #(custom-field-menu-show % section-name key protected required)}]])
 
-      ;; We are using 'absolute' position and it works in iOS (needs checking in android)
+      ;; We are using 'absolute' position to add this icon button instead of setting to "right" prop of textinput field 
+      ;; and it works in iOS (needs checking in android)
       (when non-edit-kdbx-url
         [rn-view {:style {:margin-left -5 :backgroundColor cust-color :position "absolute" :right 0}}
          [rnp-icon-button {:style {:margin-right 0}
                            :icon const/ICON-LAUNCH
-                           :onPress (fn []
-                                      #_(ef-dlg/auto-open-key-file-pick-required-info-dialog-init
-                                       (fn [] (ef-ao/show-key-file-form)))
+                           :onPress (fn [] 
                                       (ef-ao/entry-form-open-kdbx-url value))}]])]
 
      ;; Any error text below the field

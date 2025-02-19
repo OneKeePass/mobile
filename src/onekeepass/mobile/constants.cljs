@@ -117,6 +117,29 @@
 (def BROWSE-TYPE-DB-OPEN :db-open)
 (def BROWSE-TYPE-DB-NEW :db-new)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def CLOUD-DRIVE-APPS-SET-1 ["Dropbox",
+                             "OneDrive",
+                             "Google Drive",
+                             "pCloud",
+                             "Box",
+                             "pCloud",
+                             "Next Cloud",
+                             "Own Cloud",
+                             "USB drive",
+
+                             "MEGA",
+                             "Cryptomator",
+                             "Synology Drive",
+
+                             "Proton Drive",
+                             "Sync.com",
+                             "Yandex Disk",
+
+                             "IDrive",
+                             "Cloud storage / Another app"])
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Icon names ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

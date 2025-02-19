@@ -58,6 +58,31 @@ pub(crate) struct DatabasePreference {
     // Flag to indicate whether to use biometric during autofill (iOS specific?)
 }
 
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub(crate) struct AppLockPreference {
+    // app will be locked in these milli seconds. None means no delay
+    lock_timeout: Option<i64>,
+
+    // When this is enabled, the app will be reset when there are failures > attempts_allowed  
+    reset_on_lock_failures:bool,
+
+    // Number of attempts allowed after which app is reset
+    attempts_allowed: usize,
+
+    // When this is true, user can access the 'App Settings' only after reentering the PIN again
+    lock_app_settings:bool,
+}
+
+impl Default for AppLockPreference {
+    fn default() -> Self {
+        Self { lock_timeout: Default::default(), 
+                reset_on_lock_failures: true,
+                attempts_allowed: 10, 
+                lock_app_settings: Default::default() }
+    }
+}
+
+
 pub(crate) const PREFERENCE_JSON_FILE_NAME: &str = "preference.json";
 
 const PREFERENCE_JSON_FILE_VERSION: &str = "5.0.0"; // started using 4.0.0 instead of 0.0.4

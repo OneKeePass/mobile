@@ -127,7 +127,7 @@
 ;; This works for Local,iCloud. But in the cases of GDrive, OneDrive, the new database files are created
 ;; But we get 'COORDINATOR_CALL_FAILED' error 'Couldn’t communicate with a helper application'
 ;
-; However the kdbx is file is created succesully and we can open the database (by picking the db again from File App ?)
+; However the kdbx is file is created successfully and we can open the database (by picking the db again from File App ?)
 ;;
 ;; May need to explore the use of UIActivityViewController based export support. Using this the newly crated temp db file
 ;; may be saved to another app and then open from that. Someting similar to 'ACTION_SEND'

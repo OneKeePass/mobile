@@ -1,5 +1,6 @@
 #![allow(dead_code, unused_imports)]
 mod android;
+mod app_lock;
 mod app_preference;
 mod auto_open;
 mod app_state;

@@ -47,12 +47,19 @@ pub struct AppClipboardCopyData {
 
 #[uniffi::export(with_foreign)]
 pub trait SecureEnclaveCbService: Send + Sync {
+    // A enc key is obtained or created for the given 'identifier' and the data is then encrypted
+    // This enc key with the 'identifier' is created once and reused as we do remove the enc key
     fn encrypt_bytes(&self, identifier: String, plain_data: Vec<u8>) -> ApiCallbackResult<Vec<u8>>;
+
+    // The decryption key is obtained from the secure enclave using the 'identifier' and then the data is decrypted
     fn decrypt_bytes(
         &self,
         identifier: String,
         encrypted_data: Vec<u8>,
     ) -> ApiCallbackResult<Vec<u8>>;
+
+    // Removes the enc key from the enclave
+    // Note: Not yet used
     fn remove_key(&self, identifier: String) -> ApiCallbackResult<bool>;
 }
 

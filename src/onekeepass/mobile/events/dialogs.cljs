@@ -51,10 +51,10 @@
 
 ;; dialog-identifier-kw start-page-storage-selection-dialog
 
-(def-generic-dialog-events start-page-storage-selection-dialog  [#_[init state-m] 
-                                                                 #_[update-and-show state-m] 
-                                                                 #_[show nil] 
-                                                                 [close nil] 
+(def-generic-dialog-events start-page-storage-selection-dialog  [#_[init state-m]
+                                                                 #_[update-and-show state-m]
+                                                                 #_[show nil]
+                                                                 [close nil]
                                                                  [show-with-state state-m]] false)
 
 ;; a subscribe event wrapper
@@ -79,6 +79,12 @@
 
 ;; a subscribe event wrapper
 (def-generic-dialog-events auto-open-db-file-required-info-dialog [[data nil]] true)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   before-storage-selection-info-dialog   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def-generic-dialog-events before-storage-selection-info-dialog [[close nil] [show-with-state state-m]] false)
+
+(def-generic-dialog-events before-storage-selection-info-dialog [[data nil]] true)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
