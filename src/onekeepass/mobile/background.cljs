@@ -667,7 +667,7 @@
 (defn load-language-translations [language-ids dispatch-fn]
   (invoke-api "load_language_translations" {:language-ids language-ids} dispatch-fn))
 
-;;;;;;;;;;; Auto open ;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  Auto open ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn resolve-auto-open-properties 
   "Called to resolve the auto open properties before opening the child database
@@ -678,7 +678,18 @@
   [auto-open-properties dispatch-fn]
   (invoke-api "resolve_auto_open_properties" {:auto-open-properties auto-open-properties} dispatch-fn))
 
-;;;;;;;;;;;;;;;;;;;;;;;;; OTP, Timer etc ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  App lock    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn pin-entered [pin dispatch-fn]
+  (invoke-api "pin_entered" {:pin pin} dispatch-fn))
+
+(defn pin-verify [pin dispatch-fn]
+  (invoke-api "pin_verify" {:pin pin} dispatch-fn))
+
+(defn pin-removed [dispatch-fn]
+  (invoke-api "pin_removed" {} dispatch-fn))
+
+;;;;;;;;;;;;;;;;;;;;;;;;; OTP, Timer etc  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn set-timeout [period-in-milli-seconds timer-id dispatch-fn]
   (invoke-api "set_timeout" {:period-in-milli-seconds period-in-milli-seconds :timer-id timer-id} dispatch-fn))

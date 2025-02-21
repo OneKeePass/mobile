@@ -4,7 +4,7 @@ use crate::auto_open::AutoOpenProperties;
 use crate::file_util::PickedFileHandler;
 use crate::remote_storage::{self, RemoteStorageOperation};
 use crate::{android, file_util::KeyFileInfo, ios};
-use crate::{backup, biometric_auth, util, OkpError, OkpResult};
+use crate::{app_lock, backup, biometric_auth, util, OkpError, OkpResult};
 use onekeepass_core::async_service::{self, OtpTokenTtlInfoByField, TimerID};
 use onekeepass_core::db_content::AttachmentHashValue;
 use onekeepass_core::db_service::{
@@ -82,6 +82,10 @@ pub enum CommandArg {
     PrefefenceUpdateArg {
         preference_data: PreferenceData,
     },
+    AppLockCredentialArg {
+        pin:usize,
+    },
+
     // Not used
     // OpenDbArgWithFileName {
     //     file_name: String,
@@ -573,6 +577,20 @@ impl Commands {
                 })
             }
 
+            "pin_entered" => {
+                service_call_closure!(args,AppLockCredentialArg {pin}  => move || {
+                    result_json_str(app_lock::pin_entered(pin))
+                })
+            }
+
+            "pin_verify" => {
+                service_call_closure!(args,AppLockCredentialArg {pin}  => move || {
+                    result_json_str(app_lock::pin_verify(pin))
+                })
+            }
+
+            "pin_removed" => result_json_str(app_lock::pin_removed()),
+            
             //// All remote storage related
             "rs_connect_and_retrieve_root_dir" => {
                 service_call_closure!(args,RemoteServerOperationArg {rs_operation_type} => move || {

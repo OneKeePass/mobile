@@ -180,7 +180,7 @@
 ;; At this time it appears we are using any one field from struct PreferenceData
 (reg-fx
  :app-settings/bg-update-preference
- (fn [[pref-update-m  call-on-success]] 
+ (fn [[pref-update-m call-on-success]] 
    (bg/update-preference pref-update-m 
                          (fn [api-response] 
                            (when-not (on-error api-response)

@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use onekeepass_core::db_service as kp_service;
 
 use crate::{
+    app_lock,
     app_state::AppState,
     biometric_auth,
     udl_types::{CommonDeviceService, EventDispatch, FileInfo},
@@ -22,6 +23,11 @@ pub struct PreferenceData {
     theme: Option<String>,
     language: Option<String>,
     database_preference: Option<DatabasePreference>,
+
+    app_lock_timeout: Option<i64>,
+    app_lock_attempts_allowed: Option<usize>,
+    app_lock_lock_app_settings: Option<bool>,
+    //app_lock_preference: Option<AppLockPreference>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Default, Debug)]
@@ -60,28 +66,34 @@ pub(crate) struct DatabasePreference {
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub(crate) struct AppLockPreference {
-    // app will be locked in these milli seconds. None means no delay
-    lock_timeout: Option<i64>,
+    // PIN based app lock is enabled or disabled
+    pin_lock_enabled: bool,
 
-    // When this is enabled, the app will be reset when there are failures > attempts_allowed  
-    reset_on_lock_failures:bool,
+    // app will be locked on timeout expiry after these milli seconds.
+    // Value of 0 means immedeiatley whenever app is goes background
+    lock_timeout: i64,
 
-    // Number of attempts allowed after which app is reset
+    // Number of attempts allowed after which app will be reset
     attempts_allowed: usize,
 
-    // When this is true, user can access the 'App Settings' only after reentering the PIN again
-    lock_app_settings:bool,
+    // When this is true and pin_lock_enabled is true, user can access the 'App Settings' only
+    // after reentering the PIN again
+    lock_app_settings: bool,
+    // May be used in the future
+    // When this is enabled, the app will be reset when the no of pin auth failures > attempts_allowed
+    // reset_on_lock_failures:bool,
 }
 
 impl Default for AppLockPreference {
     fn default() -> Self {
-        Self { lock_timeout: Default::default(), 
-                reset_on_lock_failures: true,
-                attempts_allowed: 10, 
-                lock_app_settings: Default::default() }
+        Self {
+            pin_lock_enabled: false,
+            lock_timeout: Default::default(),
+            attempts_allowed: 10,
+            lock_app_settings: Default::default(),
+        }
     }
 }
-
 
 pub(crate) const PREFERENCE_JSON_FILE_NAME: &str = "preference.json";
 
@@ -118,6 +130,8 @@ pub(crate) struct Preference {
 
     // All databases specific preferences
     database_preferences: Vec<DatabasePreference>,
+
+    app_lock_preference: AppLockPreference,
 }
 
 impl Default for Preference {
@@ -135,7 +149,86 @@ impl Default for Preference {
             backup_history_count: 3,
             // biometric_enabled_dbs: vec![],
             database_preferences: vec![],
+            app_lock_preference: AppLockPreference::default(),
         }
+    }
+}
+
+// https://stackoverflow.com/questions/65451484/passing-nested-struct-field-path-as-macro-parameter
+// See the use of $($field_path:ident).+, for the field path use
+
+macro_rules! pref_update {
+    ($self:expr,$($pref_field_path:ident).+, $($field_path:ident).+, $updated:expr) => {
+        if let Some(v) = $($pref_field_path).+ {
+            $self.$($field_path).+ = v;
+            $updated = true;
+        }
+    };
+}
+
+// Just the update of preference implementation 
+
+impl Preference {
+    // Update the preference with any non null values
+    pub(crate) fn update(&mut self, preference_data: PreferenceData) -> OkpResult<()> {
+        let mut updated = false;
+
+        pref_update!(self, preference_data.language, language, updated);
+
+        pref_update!(self, preference_data.theme, theme, updated);
+
+        pref_update!(
+            self,
+            preference_data.default_entry_category_groupings,
+            default_entry_category_groupings,
+            updated
+        );
+
+        pref_update!(
+            self,
+            preference_data.db_session_timeout,
+            db_session_timeout,
+            updated
+        );
+
+        pref_update!(
+            self,
+            preference_data.clipboard_timeout,
+            clipboard_timeout,
+            updated
+        );
+
+        pref_update!(
+            self,
+            preference_data.app_lock_timeout,
+            app_lock_preference.lock_timeout,
+            updated
+        );
+
+        pref_update!(
+            self,
+            preference_data.app_lock_attempts_allowed,
+            app_lock_preference.attempts_allowed,
+            updated
+        );
+
+        pref_update!(
+            self,
+            preference_data.app_lock_lock_app_settings,
+            app_lock_preference.lock_app_settings,
+            updated
+        );
+
+        if let Some(db_pref) = preference_data.database_preference {
+            self.upate_or_insert_database_preference(db_pref);
+            updated = true;
+        }
+
+        if updated {
+            self.write_to_app_dir();
+        }
+
+        Ok(())
     }
 }
 
@@ -143,16 +236,19 @@ impl Preference {
     pub(crate) fn read<P: AsRef<Path>>(preference_home_dir: P) -> Self {
         let pref_file_name =
             Path::new(preference_home_dir.as_ref()).join(PREFERENCE_JSON_FILE_NAME);
+
         info!("pref_file_name is {:?} ", &pref_file_name);
+
         let json_str = fs::read_to_string(pref_file_name).unwrap_or("".into());
+
         debug!("Pref json_str is {}", &json_str);
 
         let mut pref = if json_str.is_empty() {
             info!("Preference is empty and default used ");
             Self::default()
         } else {
-            // If the new field added are Option<.> type, then  
-            // the parsing will be successful with None set for all Option fields. 
+            // If the new field added are Option<.> type, then
+            // the parsing will be successful with None set for all Option fields.
             // In that case, we need to ensure version number is correct
             // See at the end before returning 'final_pref'
             serde_json::from_str(&json_str).unwrap_or_else(|_| {
@@ -169,28 +265,34 @@ impl Preference {
 
                         let pref_new: Self = prev_pref.into();
 
+                        debug!("Converted pref_new is {:?}", &pref_new);
+
                         // Update the preference json with the copied values from old preference
                         pref_new.write(preference_home_dir.as_ref());
+                        pref_new
                     }
-                    Err(_) => {
+                    Err(e) => {
                         // We could not parse the existing json file even to the prior version.
                         // This may happen if the 'preference.json' found is older than the previous version.
                         // Returns the latest default pref
                         // Should we write this default one?
-                        debug!("Returning the default pref");
+                        debug!(
+                            "Returning the default pref because of json parsing error {}",
+                            e
+                        );
+                        Self::default()
                     }
                 }
-                Self::default()
             })
         };
 
-        // Ensure that version is updated
+        // Ensure that version is updated if required
         let final_pref = if pref.version == PREFERENCE_JSON_FILE_VERSION {
-            debug!("Returning the current pref as version is the latest");
+            debug!("Version Checked: Returning the current pref as version is the latest");
             pref
         } else {
-            // If the new field added are only Option<> type in Preference, 
-            // then parsing goes through with new Preference itself, but the version will be old 
+            // If the new field added are only Option<> type in Preference,
+            // then parsing goes through with new Preference itself, but the version will be old
             pref.version = PREFERENCE_JSON_FILE_VERSION.into();
             pref.write(preference_home_dir.as_ref());
             debug!("Returning the current pref after conversion from old pref as versions are not the same");
@@ -205,9 +307,14 @@ impl Preference {
     fn write<P: AsRef<Path>>(&self, preference_home_dir: P) {
         // Remove old file names from the list before writing
         //self.remove_old_db_use_info();
+
         let json_str_result = serde_json::to_string_pretty(self);
+
         let pref_file_name =
             Path::new(preference_home_dir.as_ref()).join(PREFERENCE_JSON_FILE_NAME);
+
+        // debug!("Writing preference file to {:?}  and content is {:?}", &pref_file_name, &json_str_result);
+
         if let Ok(json_str) = json_str_result {
             if let Err(err) = fs::write(pref_file_name, json_str.as_bytes()) {
                 error!(
@@ -220,46 +327,6 @@ impl Preference {
 
     pub(crate) fn write_to_app_dir(&self) {
         self.write(AppState::preference_home_dir());
-    }
-
-    // Update the preference with any non null values
-    pub(crate) fn update(&mut self, preference_data: PreferenceData) -> OkpResult<()> {
-        let mut updated = false;
-        if let Some(v) = preference_data.language {
-            self.language = v;
-            updated = true;
-        }
-
-        if let Some(v) = preference_data.theme {
-            self.theme = v;
-            updated = true;
-        }
-
-        if let Some(v) = preference_data.default_entry_category_groupings {
-            self.default_entry_category_groupings = v;
-            updated = true;
-        }
-
-        if let Some(v) = preference_data.db_session_timeout {
-            self.db_session_timeout = v;
-            updated = true;
-        }
-
-        if let Some(v) = preference_data.clipboard_timeout {
-            self.clipboard_timeout = v;
-            updated = true;
-        }
-
-        if let Some(db_pref) = preference_data.database_preference {
-            self.upate_or_insert_database_preference(db_pref);
-            updated = true;
-        }
-
-        if updated {
-            self.write_to_app_dir();
-        }
-
-        Ok(())
     }
 
     fn upate_or_insert_database_preference(&mut self, db_pref: DatabasePreference) {
@@ -295,6 +362,11 @@ impl Preference {
 
         self.write_to_app_dir();
         Ok(())
+    }
+
+    pub(crate) fn update_app_lock_with_pin_enabled(&mut self, pin_lock_enabled: bool) {
+        self.app_lock_preference.pin_lock_enabled = pin_lock_enabled;
+        self.write_to_app_dir();
     }
 
     pub(crate) fn remove_database_preference(&mut self, db_key: &str) {
@@ -481,6 +553,7 @@ impl From<PreferenceV400> for Preference {
             default_entry_category_groupings,
             backup_history_count,
             database_preferences,
+            app_lock_preference: AppLockPreference::default(),
         };
 
         // RecentlyUsed is changed in the new Preference struct
@@ -500,6 +573,82 @@ impl From<PreferenceV400> for Preference {
 }
 
 ////////////
+
+/*
+// Just the update of preference
+impl Preference {
+    // Update the preference with any non null values
+    pub(crate) fn update(&mut self, preference_data: PreferenceData) -> OkpResult<()> {
+        let mut updated = false;
+
+        pref_update!(self,preference_data.language,language,updated);
+
+        pref_update!(self,preference_data.app_lock_timeout,app_lock_preference.lock_timeout,updated);
+
+        // if let Some(v) = preference_data.language {
+        //     self.language = v;
+        //     updated = true;
+        // }
+
+        if let Some(v) = preference_data.theme {
+            self.theme = v;
+            updated = true;
+        }
+
+        if let Some(v) = preference_data.default_entry_category_groupings {
+            self.default_entry_category_groupings = v;
+            updated = true;
+        }
+
+        if let Some(v) = preference_data.db_session_timeout {
+            self.db_session_timeout = v;
+            updated = true;
+        }
+
+        if let Some(v) = preference_data.clipboard_timeout {
+            self.clipboard_timeout = v;
+            updated = true;
+        }
+
+        if let Some(db_pref) = preference_data.database_preference {
+            self.upate_or_insert_database_preference(db_pref);
+            updated = true;
+        }
+
+
+
+        // if let Some(lock_timeot) = preference_data.app_lock_timeout {
+        //     self.app_lock_preference.lock_timeout = lock_timeot;
+        //     updated = true;
+        // }
+
+        if let Some(attempts) = preference_data.app_lock_attempts_allowed {
+            self.app_lock_preference.attempts_allowed = attempts;
+            updated = true;
+        }
+
+        if let Some(lock_settings) = preference_data.app_lock_lock_app_settings {
+            self.app_lock_preference.lock_app_settings = lock_settings;
+            updated = true;
+        }
+
+
+        // if let Some(app_lock_pref) = preference_data.app_lock_preference {
+        //     self.app_lock_preference = app_lock_pref;
+        //     updated = true;
+        // }
+
+        if updated {
+            self.write_to_app_dir();
+        }
+
+        Ok(())
+    }
+
+}
+
+
+*/
 
 /*
 fn from_prev_version_v400_to_recent(new_pref: &mut Preference, old_pref: &PreferenceV400) {

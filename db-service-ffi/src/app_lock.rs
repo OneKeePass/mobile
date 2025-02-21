@@ -4,6 +4,34 @@ use serde::{Deserialize, Serialize};
 
 use crate::{app_state::AppState, udl_types::SecureKeyOperationError, OkpResult};
 
+
+//////////  
+
+// Stores the encrypted pin for later authentication
+pub fn pin_entered(pin:usize)  -> OkpResult<()> {
+    let app_lock_credential = AppLockCredential{pin};
+    let r = app_lock_credential.encrypt_and_store();
+
+    // Need to ensure that the preference is enabled and persisted accordingly
+    AppState::update_app_lock_with_pin_enabled(true);
+    r
+}
+
+pub fn pin_removed()  -> OkpResult<()> {
+    let r = AppLockCredential::remove_app_lock_credential();
+    // Need to ensure that the preference is disabled and persisted accordingly
+    AppState::update_app_lock_with_pin_enabled(false);
+    r
+}
+
+pub fn pin_verify(pin:usize)  -> OkpResult<bool> {
+    let app_lock_credential = AppLockCredential{pin};
+    let r = app_lock_credential.verify();
+    r
+}
+
+////////
+
 // The encrypted data is stored under this key
 const APP_LOCK_PIN_TAG: &str = "OKP_APP_LOCK_PIN_KEY";
 
@@ -14,7 +42,7 @@ pub(crate) struct AppLockCredential {
 
 impl AppLockCredential {
 
-    pub(crate) fn encrypt_and_store(&self) -> OkpResult<()> {
+    fn encrypt_and_store(&self) -> OkpResult<()> {
         // Note: We are using APP_LOCK_PIN_TAG in both secure_enclave_cb_service calls and key store calls
 
         // Serialize to string
@@ -32,7 +60,7 @@ impl AppLockCredential {
         Ok(())
     }
 
-    pub(crate) fn verify(&self) -> OkpResult<bool> {
+    fn verify(&self) -> OkpResult<bool> {
 
         // First we need to get the previously stored encrypted data from key store
         let decoded_enc_data = keystore_get_value(APP_LOCK_PIN_TAG).ok_or_else(|| {
@@ -53,7 +81,7 @@ impl AppLockCredential {
     }
 
     // Called to remove any encrypted app lock crdentials from key store
-    pub(crate) fn remove_app_lock_credential() -> OkpResult<()> {
+    fn remove_app_lock_credential() -> OkpResult<()> {
         let _r = AppState::secure_key_operation().delete_key(APP_LOCK_PIN_TAG.to_string());
         log::debug!("App lock enc data from key store is deleted..");
         Ok(())
@@ -112,26 +140,3 @@ fn keystore_get_value(data_key: &str) -> Option<Vec<u8>> {
     val
 }
 
-/*
-pub(crate) fn store_credentials(&self, db_key: &str) -> OkpResult<()> {
-        let plain_data = serde_json::to_string(&self)?;
-
-        let ks_key = key_store_formatted_key(db_key);
-
-        let encrypted_data = AppState::secure_enclave_cb_service()
-            .encrypt_bytes(OKP_DB_OPEN_TAG.to_string(), plain_data.as_bytes().to_vec())?;
-
-        log::debug!(
-            "Encrypted and size is {} and will write this data",
-            &encrypted_data.len()
-        );
-
-        KeyStoreServiceImpl {}.store_key(&ks_key, encrypted_data)?;
-
-        log::debug!(
-            "The credentials are stored in the key store after encryption for the db_key {db_key}"
-        );
-
-        Ok(())
-    }
-*/

@@ -8,7 +8,9 @@
                                 auto-open-key-file-pick-required-info-dialog
                                 auto-open-db-file-required-info-dialog
                                 before-storage-selection-info-dialog
+                                app-pin-lock-settings-dialog
                                 update-and-show
+                                update-with-map
                                 dispatch-on-ok
                                 show-with-state
                                 show
@@ -17,6 +19,7 @@
                                 data 
                                 state-m 
                                 fields-value
+                                fields-value-vec
                                 init
                                 
                                 ActivityIndicator

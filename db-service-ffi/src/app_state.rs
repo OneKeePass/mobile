@@ -354,6 +354,12 @@ impl AppState {
         pref.update_session_timeout(db_session_timeout, clipboard_timeout)
     }
 
+    // Updates PIN lock enable / disbale flag and also writes the pref file
+    pub(crate) fn update_app_lock_with_pin_enabled(pin_lock_enabled:bool) {
+        let mut pref = Self::shared().preference.lock().unwrap();
+        pref.update_app_lock_with_pin_enabled(pin_lock_enabled);
+    }
+
     #[inline]
     pub fn backup_history_count() -> u8 {
         Self::shared()

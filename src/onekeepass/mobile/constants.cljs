@@ -76,21 +76,25 @@
 (def CAMERA_PERMISSION_RESTRICTED "restricted")
 
 
-;;;;;;;;;;   Page ids
+;;;;;;;;;;;;;;;;;;;;   Page ids ;;;;;;;;;;;;;;;;;;;;
+
 (def CAMERA_SCANNER_PAGE_ID :scan-otp-qr)
 (def AUTOFILL_SETTINGS_PAGE_ID :autofill-settings)
 
-(def BIOMETRIC_SETTINGS_PAGE_ID :biometric-settings)
+#_(def BIOMETRIC_SETTINGS_PAGE_ID :biometric-settings)
 
 (def ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID :additional-db-access-settings)
 
+(def APP_LOCK_SETTINGS_PAGE_ID :app-lock-settings)
+
 ;; All remote storage related page ids
 (def RS_CONNECTIONS_LIST_PAGE_ID :rs-connections-list)
+
 ;; Key :sftp or :webdav will determine which form data to use on this page
 (def RS_CONNECTION_CONFIG_PAGE_ID :rs-connection-config)
 (def RS_FILES_FOLDERS_PAGE_ID :rs-files-folders)
 
-;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 (def TR-KEY-AUTOFILL 'autoFill)

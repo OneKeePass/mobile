@@ -416,8 +416,8 @@
    (subscribe [:recently-used-db-info-by-db-key db-key])))
 
 
-(defn is-db-key-found-in-recently-used-dbs [app-db db-key]
-  (boolean (recently-used-db-info-by-db-key app-db db-key)))
+#_(defn is-db-key-found-in-recently-used-dbs [app-db db-key]
+    (boolean (recently-used-db-info-by-db-key app-db db-key)))
 
 (defn database-preferences
   "Returns a vec of maps  (the map is from struct DatabasePreference) or an empty vec
@@ -505,6 +505,25 @@
   [app-db field-kw value]
   (assoc-in app-db [:app-preference :data field-kw] value))
 
+(defn app-lock-preference
+  "Gets the app lock preference map (struct AppLockPreference)"
+  ([app-db]
+   (get-in app-db [:app-preference :data :app-lock-preference]))
+  ([]
+   (subscribe [:app-lock-preference])))
+
+#_(defn app-lock-preference-field-data
+  "Gets a specific field value"
+  [app-db field-kw]
+  (get-in app-db [:app-preference :data :app-lock-preference field-kw]))
+
+(defn update-app-lock-preference-field-data
+  "Called to update a specific field of app lock preference
+   Returns the updated app-db
+   "
+  [app-db field-kw value]
+  (assoc-in app-db [:app-preference :data :app-lock-preference field-kw] value))
+
 (reg-event-fx
  :load-app-preference
  (fn [{:keys [db]} [_event-id]]
@@ -558,6 +577,11 @@
  :database-preferences
  (fn [db [_event-id]]
    (database-preferences db)))
+
+(reg-sub
+ :app-lock-preference
+ (fn [db [_event-id]]
+   (app-lock-preference db)))
 
 (reg-sub
  :biometric-enabled-to-open-db
@@ -1099,8 +1123,8 @@
 
 (reg-event-fx
  :load-file-info-from-recntly-used-dbs
- (fn [{:keys [db]} [_event-id full-file-name-uri]] 
-   {:db (assoc db :file-info-dialog-data 
+ (fn [{:keys [db]} [_event-id full-file-name-uri]]
+   {:db (assoc db :file-info-dialog-data
                (merge {:dialog-show true} (recently-used-db-info-by-db-key db full-file-name-uri)))}))
 
 (reg-event-db
@@ -1163,6 +1187,8 @@
 
 (comment
   (in-ns 'onekeepass.mobile.events.common)
+
+  (-> @re-frame.db/app-db keys)
 
   ;; Sometime subscrition changes are reflected after save. In that case the following clears old subs
   (re-frame.core/clear-subscription-cache!)

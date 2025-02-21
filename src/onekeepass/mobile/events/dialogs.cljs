@@ -40,7 +40,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  otp-settings-dialog    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; fields-value is a vector of [kws-v value] [[:data :some-field] value] or [:some-field value]
-(def-generic-dialog-events otp-settings-dialog  [[show nil] [close nil] [show-with-state state-m] [update fields-value]] false)
+(def-generic-dialog-events otp-settings-dialog  [[show nil]
+                                                 [show-with-state state-m]
+                                                 ;; e.g fields-value =  [kws-v value]
+                                                 ;; kws-v is a vec or kw
+                                                 ;; See :generic-dialog-update
+                                                 [update fields-value]
+                                                 [close nil]] false)
 
 (def-generic-dialog-events otp-settings-dialog [[data nil]] true)
 
@@ -85,6 +91,18 @@
 (def-generic-dialog-events before-storage-selection-info-dialog [[close nil] [show-with-state state-m]] false)
 
 (def-generic-dialog-events before-storage-selection-info-dialog [[data nil]] true)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   app-pin-lock-settings-dialog   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def-generic-dialog-events app-pin-lock-settings-dialog [[show-with-state state-m]
+                                                ;; e.g fields-value-vec =  [kws-v value]
+                                                ;; kws-v is a vec or kw
+                                                ;; See :generic-dialog-update
+                                                #_[update fields-value-vec]
+                                                [update-with-map state-m]
+                                                [close nil]] false)
+
+(def-generic-dialog-events app-pin-lock-settings-dialog [[data nil]] true)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -140,6 +158,9 @@
  (fn [{:keys [_db]} [_event-id dialog-identifier-kw state-m]]
    {:fx [[:dispatch [:generic-dialog-init dialog-identifier-kw (assoc state-m :dialog-show true)]]]}))
 
+;; The event arg is a map  
+;; See event :generic-dialog-update where the event arg is a vec
+
 ;; state is a map having keys as in 'init-dialog-map'
 ;; Here we are assuming the 'dialog-state' for the given 'dialog-identifier-kw' is already initialized
 ;; if the arg 'state' has key ':dialog-show true', then the dialog will be shown
@@ -149,6 +170,19 @@
    (let [dialog-state (get-in db [dialog-identifier-kw])
          dialog-state (u/deep-merge dialog-state state)]
      {:db (-> db (assoc dialog-identifier-kw dialog-state))})))
+
+;; The event arg is a vec  - [kws-v value]
+;; See event :generic-dialog-update-with-map where the event arg is a map
+
+(reg-event-fx
+ :generic-dialog-update
+ (fn [{:keys [db]} [_event-id dialog-identifier-kw [kws-v value]]]
+   (let [db (assoc-in db (into [dialog-identifier-kw] (if (vector? kws-v)
+                                                        kws-v
+                                                        [kws-v])) value)
+         ;; For now clear any previous errors set
+         db (assoc-in db [dialog-identifier-kw :error-fields] {})]
+     {:db db})))
 
 ;; Not yet used
 ;; Updates the existing dialog state and sets :dialog-show true so that dialog is shown
@@ -188,16 +222,6 @@
  :generic-dialog-close
  (fn [{:keys [db]} [_event-id dialog-identifier-kw]]
    {:db (assoc-in db [dialog-identifier-kw] (init-dialog-map))}))
-
-(reg-event-fx
- :generic-dialog-update
- (fn [{:keys [db]} [_event-id dialog-identifier-kw [kws-v value]]]
-   (let [db (assoc-in db (into [dialog-identifier-kw] (if (vector? kws-v)
-                                                        kws-v
-                                                        [kws-v])) value)
-         ;; For now clear any previous errors set
-         db (assoc-in db [dialog-identifier-kw :error-fields] {})]
-     {:db db})))
 
 (reg-sub
  :generic-dialog-data

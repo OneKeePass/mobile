@@ -218,7 +218,7 @@
      [rnc/rnp-divider]]
 
     [rn-view {:style {:flex 1 :width "100%"}}
-     [databases-list-content @(cmn-events/recently-used)]]]
+     [databases-list-content @(cmn-events/recently-used-dbs)]]]
    #_[rn-view {:style {:flex 1}}
       [databases-list-content @(cmn-events/recently-used)]]])
 

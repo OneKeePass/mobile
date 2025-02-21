@@ -5,9 +5,10 @@
             [onekeepass.mobile.app-database-settings :as app-db-settings]
             [onekeepass.mobile.autofill :as af-settings]
             [onekeepass.mobile.common-components :as cc :refer [menu-action-factory]]
-            [onekeepass.mobile.constants  :refer [AUTOFILL_SETTINGS_PAGE_ID
+            [onekeepass.mobile.constants  :refer [ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID
+                                                  APP_LOCK_SETTINGS_PAGE_ID
+                                                  AUTOFILL_SETTINGS_PAGE_ID
                                                   CAMERA_SCANNER_PAGE_ID
-                                                  ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID
                                                   RS_CONNECTION_CONFIG_PAGE_ID
                                                   RS_CONNECTIONS_LIST_PAGE_ID
                                                   RS_FILES_FOLDERS_PAGE_ID]]
@@ -18,6 +19,7 @@
             [onekeepass.mobile.rs-configs :as rs-configs]
             [onekeepass.mobile.rs-config-form :as rs-form]
             [onekeepass.mobile.rs-files-folders :as rs-files-folders]
+            [onekeepass.mobile.app-lock-settings :as app-lock-settings]
             [onekeepass.mobile.events.app-settings :as as-events]
             [onekeepass.mobile.events.common :as cmn-events]
             [onekeepass.mobile.events.entry-form :as ef-events]
@@ -26,7 +28,7 @@
             [onekeepass.mobile.events.search :as search-events]
             [onekeepass.mobile.events.settings :as stgs-events]
             [onekeepass.mobile.events.remote-storage :as rs-events]
-            [onekeepass.mobile.events.app-database-settings :as ads-settings]
+            #_[onekeepass.mobile.events.app-database-settings :as ads-settings]
             [onekeepass.mobile.group-form :as group-form]
             [onekeepass.mobile.icons-list :as icons-list]
             [onekeepass.mobile.key-file-form :as kf-form]
@@ -93,7 +95,8 @@
      (= page :privacy-policy)
      (= page RS_CONNECTION_CONFIG_PAGE_ID)
      (= page RS_CONNECTIONS_LIST_PAGE_ID)
-     (= page ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID))
+     (= page ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID)
+     (= page APP_LOCK_SETTINGS_PAGE_ID))
     (do
       (cmn-events/to-previous-page)
       true)
@@ -205,6 +208,7 @@
 ;; If we have more than one appbar action icon on right side, the title text is not centered
 ;; One solution is to use appbar content with absolute position based on the discussion here
 ;;https://stackoverflow.com/questions/54120003/how-can-i-center-the-title-in-appbar-header-in-react-native-paper 
+
 (defn positioned-title [& {:keys [title page style titleStyle]}]
 
   [:<>
@@ -235,6 +239,9 @@
                                  (= page RS_CONNECTIONS_LIST_PAGE_ID)
                                  (r/as-element [rs-configs/appbar-title])
 
+                                ;;  (= page APP_LOCK_SETTINGS_PAGE_ID)
+                                ;;  (r/as-element [app-lock-settings/appbar-title])
+
                                  ;;TODO 
                                  ;; Need to add translation of titles for Entry types and General cat types
                                  ;; Something similar one used in entry category page
@@ -254,25 +261,34 @@
                                  :else
                                  "No Title")}]])
 
+
+(def page-id-based-title-providers [:entry-form
+                                    :password-generator
+                                    RS_CONNECTIONS_LIST_PAGE_ID])
+
+(def title-provider-pages [:home
+                           :about
+                           :privacy-policy
+                           :entry-history-list
+                           :search
+                           :icons-list
+                           :settings
+                           :app-settings
+                           AUTOFILL_SETTINGS_PAGE_ID
+                           :key-file-form
+                           CAMERA_SCANNER_PAGE_ID
+                           ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID
+                           APP_LOCK_SETTINGS_PAGE_ID
+                           RS_CONNECTION_CONFIG_PAGE_ID
+                           RS_FILES_FOLDERS_PAGE_ID])
+
 (defn- appbar-title [{:keys [page title]}]
   ;; title is required
-  (cond
-    (or (= page :home)
-        (= page :about)
-        (= page :privacy-policy)
-        (= page :entry-history-list)
-        (= page :search)
-        (= page :icons-list)
-        (= page :settings)
-        (= page :app-settings)
-        (= page AUTOFILL_SETTINGS_PAGE_ID)
-        (= page :key-file-form)
-        (= page CAMERA_SCANNER_PAGE_ID)
-        (= page ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID)
-        (= page RS_CONNECTION_CONFIG_PAGE_ID)
-        (= page RS_FILES_FOLDERS_PAGE_ID))
+  (cond 
+    (u/contains-val? title-provider-pages page)
     [positioned-title :title title]
 
+    ;; Both page and title are required
     (= page :entry-list)
     [positioned-title :page page :title @(elist-events/current-page-title)  :titleStyle {:max-width "50%"}] ;;
 
@@ -282,13 +298,27 @@
     (= page :group-form)
     [positioned-title :page page :title title]
 
-    ;; page id is required
+    ;; page id is required and title is provided by page specific app 'appbar-title' fn
     (or
-     (= page :entry-form)
-     (is-settings-page page)
-     (= page :password-generator)
-     (= page RS_CONNECTIONS_LIST_PAGE_ID))
+     (u/contains-val? page-id-based-title-providers page)
+     (is-settings-page page))
     [positioned-title :page page]))
+
+;; All pages that has back action using default "<" button
+(def back-button-pages [:about
+                        :privacy-policy
+                        :qr-scanner
+                        :entry-history-list
+                        :icons-list
+                        :search
+                        :settings
+                        :app-settings
+                        AUTOFILL_SETTINGS_PAGE_ID
+                        ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID
+                        APP_LOCK_SETTINGS_PAGE_ID
+                        CAMERA_SCANNER_PAGE_ID
+                        RS_CONNECTION_CONFIG_PAGE_ID
+                        :key-file-form])
 
 (defn appbar-header-content [page-info]
   (let [{:keys [page]} page-info]
@@ -299,6 +329,7 @@
     [rnp-appbar-header {:style {:backgroundColor @primary-color}}
 
      ;; Component for the back icon with onpress event handlers
+     ;; Note: Some page provide its own back action handler
      (cond
        (= page :entry-list)
        [rnp-appbar-back-action {:style {}
@@ -308,26 +339,13 @@
        (= page RS_FILES_FOLDERS_PAGE_ID)
        [rnp-appbar-back-action {:color @background-color
                                 :onPress rs-events/remote-storage-listing-previous}]
-
-       (or
-        (= page :about)
-        (= page :privacy-policy)
-        (= page :qr-scanner)
-        (= page :entry-history-list)
-        (= page :icons-list)
-        (= page :search)
-        (= page :settings)
-        (= page :app-settings)
-        (= page AUTOFILL_SETTINGS_PAGE_ID)
-        (= page ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID)
-        (= page CAMERA_SCANNER_PAGE_ID)
-        (= page RS_CONNECTION_CONFIG_PAGE_ID)
-        (= page :key-file-form))
+       
+       (u/contains-val? back-button-pages page)
        [rnp-appbar-back-action {:color @background-color
                                 :onPress cmn-events/to-previous-page}])
 
    ;; Title component 
-     (appbar-title page-info) ;; [appbar-titlet page-info] did not work. Why?
+     (appbar-title page-info) ;; [appbar-title page-info] did not work. Why?
 
    ;; The right side action icons component (dots icon, search icon .. ) and are shown for certain pages only
      (when (or
@@ -417,9 +435,12 @@
 
     (= page RS_FILES_FOLDERS_PAGE_ID)
     [rs-files-folders/dir-entries-content]
-    
+
     (= page ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID)
     [app-db-settings/content]
+
+    (= page APP_LOCK_SETTINGS_PAGE_ID)
+    [app-lock-settings/content]
 
     ;; For now, this page is shown after loading the newly selected language translation
     ;; Other attempts to refresh the app settings page itself did not work
@@ -444,3 +465,38 @@
     [rnc/rn-view (merge {:style {:flex 1}} pan-handlers-m)
      [appbar-header-content @(cmn-events/page-info)]
      [appbar-body-content @(cmn-events/page-info)]]))
+
+
+;; Titles
+;; (or (= page :home)
+    ;;     (= page :about)
+    ;;     (= page :privacy-policy)
+    ;;     (= page :entry-history-list)
+    ;;     (= page :search)
+    ;;     (= page :icons-list)
+    ;;     (= page :settings)
+    ;;     (= page :app-settings)
+    ;;     (= page AUTOFILL_SETTINGS_PAGE_ID)
+    ;;     (= page :key-file-form)
+    ;;     (= page CAMERA_SCANNER_PAGE_ID)
+    ;;     (= page ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID)
+    ;;     (= page APP_LOCK_SETTINGS_PAGE_ID)
+    ;;     (= page RS_CONNECTION_CONFIG_PAGE_ID)
+    ;;     (= page RS_FILES_FOLDERS_PAGE_ID))
+
+;; Used for back action <
+;;  (or
+      ;;   (= page :about)
+      ;;   (= page :privacy-policy)
+      ;;   (= page :qr-scanner)
+      ;;   (= page :entry-history-list)
+      ;;   (= page :icons-list)
+      ;;   (= page :search)
+      ;;   (= page :settings)
+      ;;   (= page :app-settings)
+      ;;   (= page AUTOFILL_SETTINGS_PAGE_ID)
+      ;;   (= page ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID)
+      ;;   (= page APP_LOCK_SETTINGS_PAGE_ID)
+      ;;   (= page CAMERA_SCANNER_PAGE_ID)
+      ;;   (= page RS_CONNECTION_CONFIG_PAGE_ID)
+      ;;   (= page :key-file-form))

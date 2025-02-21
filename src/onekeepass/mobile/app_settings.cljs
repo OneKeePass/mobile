@@ -5,6 +5,7 @@
                                                   DEFAULT-SYSTEM-THEME
                                                   LIGHT-THEME]]
    [onekeepass.mobile.events.app-settings :as as-events]
+   [onekeepass.mobile.events.app-lock-settings :as al-events]
    [onekeepass.mobile.events.common :as cmn-events]
    [onekeepass.mobile.rn-components :as rnc :refer [modal-selector-colors
                                                     page-background-color
