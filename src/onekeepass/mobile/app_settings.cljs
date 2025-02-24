@@ -5,7 +5,7 @@
                                                   DEFAULT-SYSTEM-THEME
                                                   LIGHT-THEME]]
    [onekeepass.mobile.events.app-settings :as as-events]
-   [onekeepass.mobile.events.app-lock-settings :as al-events]
+   [onekeepass.mobile.events.app-lock-settings :as al-settings-events]
    [onekeepass.mobile.events.common :as cmn-events]
    [onekeepass.mobile.rn-components :as rnc :refer [modal-selector-colors
                                                     page-background-color
@@ -18,16 +18,16 @@
    [reagent.core :as r]))
 
 #_(defn section-header [title]
-  [rn-view  {:style {:flexDirection "row"
-                     :width "100%"
-                     :backgroundColor @inverse-onsurface-color
-                     :margin-top 0
-                     :min-height 38}}
-   [rnp-text {:style {:textTransform "uppercase"
-                      :alignSelf "center"
+    [rn-view  {:style {:flexDirection "row"
+                       :width "100%"
+                       :backgroundColor @inverse-onsurface-color
+                       :margin-top 0
+                       :min-height 38}}
+     [rnp-text {:style {:textTransform "uppercase"
+                        :alignSelf "center"
                       ;;:width "85%"
-                      :text-align "center"
-                      :padding-left 5} :variant "titleSmall"} (lstr-l title)]])
+                        :text-align "center"
+                        :padding-left 5} :variant "titleSmall"} (lstr-l title)]])
 
 ;;TODO: Need to add lstr for these options
 (def db-session-timeout-options [{:key 15000 :label "15 seconds"}
@@ -98,7 +98,7 @@
      [rnp-text {:style {:margin-left 15}}
       (lstr-mt 'appSettings 'inactiveDbLocked {:dbTimeoutTime label})]]))
 
-(defn clipboard-timeout-explain [{:keys [key label]}] 
+(defn clipboard-timeout-explain [{:keys [key label]}]
   (if (= key -1)
     [rn-view {:style {:margin-top 5} :flexDirection "row" :flexWrap "wrap"}
      [rnp-text {:style {:margin-left 15}} (lstr-mt 'appSettings 'clipboardCleard1)]]
@@ -114,12 +114,12 @@
   [rn-view {:style {:margin-top 1} :flexDirection "row" :flexWrap "wrap"}
    [rnp-text {:style {:margin-left 15}} label]])
 
-(defn find-match 
+(defn find-match
   "Gets the option map from the selected value"
   [options value]
   (first
    (filter
-    (fn [m] 
+    (fn [m]
       (= value (:key m)))
     options)))
 
@@ -162,14 +162,25 @@
      [field-explain title selected-option]]))
 
 (defn on-app-language-update
-  "Called when user selects a language id" 
+  "Called when user selects a language id"
   [language-id]
-  (as-events/app-language-update 
+  (as-events/app-language-update
    language-id
   ;; This fn is called after the selected language translations data 
   ;; are laoded 
    (fn [_m]
      (t/reload-language-translation))))
+
+(defn app-lock-settings-row-item [title]
+  [rn-view {:style {}}
+   [rnp-list-item {:style {}
+                   :contentStyle {}
+                   :onPress (fn []
+                              (al-settings-events/to-app-lock-settings-page))
+                   :title (r/as-element
+                           [rnp-text {:style {}
+                                      :variant "titleMedium"} (lstr-l title)])
+                   :right (fn [_props] (r/as-element [rnp-list-icon {:icon const/ICON-CHEVRON-RIGHT}]))}]])
 
 (defn row-item
   "Provides a row component - a view with children list-item-modal-selector and db-timeout-explain
@@ -190,18 +201,27 @@
       [row-item-with-select title db-session-timeout-options @(as-events/db-session-timeout-value) as-events/update-db-session-timeout]
 
       (= key "CLIPBOARD-TIMEOUT")
-      [row-item-with-select title clipboard-session-timeout-options @(as-events/clipboard-timeout-value) as-events/update-clipboard-timeout])))
+      [row-item-with-select title clipboard-session-timeout-options @(as-events/clipboard-timeout-value) as-events/update-clipboard-timeout]
+
+      (= key "APP-LOCK-SETTINGS")
+      [app-lock-settings-row-item title])))
 
 (defn settings-list-content []
-  (let [sections [{:title "dataProtection"
+  (let [sections [{;; Here title is for section and used in settings-section-header
+                   :title "dataProtection"
                    :key "Data Protection"
-                   :data [{:title "dbTimeout" :key "DB-TIMEOUT"}
+                   :data [;; Here title is for row item
+                          {:title "dbTimeout" :key "DB-TIMEOUT"}
                           {:title "clipboardTimeout" :key "CLIPBOARD-TIMEOUT"}]}
 
                   {:title "appearance"
                    :key "Appearance"
                    :data [{:title "theme" :key "APP-THEME"}
-                          {:title "language" :key "APP-LANGUAGE"}]}]]
+                          {:title "language" :key "APP-LANGUAGE"}]}
+
+                  {:title "appProtection"
+                   :key "App Protection"
+                   :data [{:title "appLockSettings" :key "APP-LOCK-SETTINGS"}]}]]
     [rn-section-list  {:style {}
                        :sections (clj->js sections)
                        :renderItem  (fn [props]

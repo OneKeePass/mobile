@@ -374,7 +374,7 @@
  (fn [db _query-vec]
    (current-database-name db)))
 
-;; Gets all db keys / full database file names
+;; Gets a vec of all opened db-keys
 (reg-sub
  :common/opened-database-file-names
  (fn [db _query-vec]
@@ -513,9 +513,9 @@
    (subscribe [:app-lock-preference])))
 
 #_(defn app-lock-preference-field-data
-  "Gets a specific field value"
-  [app-db field-kw]
-  (get-in app-db [:app-preference :data :app-lock-preference field-kw]))
+    "Gets a specific field value"
+    [app-db field-kw]
+    (get-in app-db [:app-preference :data :app-lock-preference field-kw]))
 
 (defn update-app-lock-preference-field-data
   "Called to update a specific field of app lock preference
@@ -523,6 +523,12 @@
    "
   [app-db field-kw value]
   (assoc-in app-db [:app-preference :data :app-lock-preference field-kw] value))
+
+;; Called on the following events
+;; when app launches first time
+;; when user navigates to the home page
+;; when a db is opened
+;; when a db is closed
 
 (reg-event-fx
  :load-app-preference
@@ -561,7 +567,8 @@
             (assoc :biometric-available (bg/is-biometric-available))
             (assoc-in [:app-preference :status] :loaded)
             (assoc-in [:app-preference :data] pref))
-    :fx [[:dispatch [:app-settings/app-preference-loaded]]]}))
+    :fx [[:dispatch [:app-settings/app-preference-loaded]]
+         [:dispatch [:app-lock/app-launched]]]}))
 
 (reg-sub
  :recently-used

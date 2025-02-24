@@ -98,11 +98,21 @@
                                                 ;; e.g fields-value-vec =  [kws-v value]
                                                 ;; kws-v is a vec or kw
                                                 ;; See :generic-dialog-update
-                                                #_[update fields-value-vec]
-                                                [update-with-map state-m]
-                                                [close nil]] false)
+                                                         #_[update fields-value-vec]
+                                                         [update-with-map state-m]
+                                                         [close nil]] false)
 
 (def-generic-dialog-events app-pin-lock-settings-dialog [[data nil]] true)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   locked-app-log-in-dialog   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; dialog-identifier-kw is :locked-app-log-in-dialog
+(def-generic-dialog-events locked-app-log-in-dialog [[show nil]
+                                                     [update-with-map state-m]
+                                                     [close nil]] false)
+
+(def-generic-dialog-events locked-app-log-in-dialog [[data nil]] true)
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

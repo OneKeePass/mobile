@@ -1,4 +1,5 @@
 (ns onekeepass.mobile.app-database-settings
+  "Additional database Settings"
   (:require
    [onekeepass.mobile.background :refer [is-iOS]]
    [onekeepass.mobile.common-components :refer [settings-section-header]]
@@ -21,7 +22,9 @@
 (defn- row-item [_m]
   (fn [{:keys [title] :as _item}]
     (let [db-key @(active-db-key)
-          enabled? (if (= title db-open-id) @(biometric-enabled-to-open-db db-key) @(biometric-enabled-to-unlock-db db-key))
+          enabled? (if (= title db-open-id)
+                     @(biometric-enabled-to-open-db db-key)
+                     @(biometric-enabled-to-unlock-db db-key))
           text (if (is-iOS)
                  (lstr-l 'faceId)
                  (lstr-l 'faceUnlockFingerprint))]
@@ -75,7 +78,9 @@
    [rn-view
     [settings-list-content]]])
 
-
-(defn content []
+;; This page is called from onekeepass.mobile.settings
+(defn content
+  "Provides content when user wants to set additional database settings like FaceID enable/disable"
+  []
   [rn-safe-area-view {:style {:flex 1 :backgroundColor @page-background-color}}
    [main-content]])

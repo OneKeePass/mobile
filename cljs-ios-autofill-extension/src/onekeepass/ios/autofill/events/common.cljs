@@ -6,7 +6,6 @@
             [re-frame.core :refer [dispatch dispatch-sync reg-event-db
                                    reg-event-fx reg-fx reg-sub subscribe]]))
 
-
 (defn sync-initialize
   "Called just before rendering to set all requied values in re-frame db"
   []
@@ -86,7 +85,6 @@
 
 (defn key-files-info []
   (subscribe [:key-files-info]))
-
 
 (reg-event-fx
  :load-autofill-db-files-info

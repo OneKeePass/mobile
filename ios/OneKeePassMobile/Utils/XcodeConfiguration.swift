@@ -7,6 +7,7 @@
 
 import Foundation
 
+// Used in SecureEnclaveServiceSupport to form fullAccssGroupName
 enum XcodeConfiguration {
 
     // Note we need to add the key 'DEVELOPMENT_TEAM' to App's Info.plist and also in AutoFill extension's Info.plist

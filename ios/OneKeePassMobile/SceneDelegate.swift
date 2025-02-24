@@ -51,6 +51,9 @@ class SceneDelegate: NSObject, UIWindowSceneDelegate {
     }
   }
   
+  // Following are from UIWindowSceneDelegate
+  // See https://developer.apple.com/documentation/uikit/uiscenedelegate
+  
   // This will be called when user presses .kdbx file and the app is in the background
   func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
     logger.debug("scene with openURLContexts called \(URLContexts)")
@@ -63,24 +66,35 @@ class SceneDelegate: NSObject, UIWindowSceneDelegate {
       logger.debug("URLContexts are \(context.url)")
     }
   }
+  
+  func sceneWillEnterForeground(_ scene: UIScene) {
+    // A scene is about to enter the foreground.
+    // It appears all RN modules init are happening after this call only
+    logger.debug("A scene is about to enter the foreground")
+  }
+  
+  func sceneDidBecomeActive(_ scene: UIScene) {
+    
+    logger.debug("sceneDidBecomeActive.....")
+    
+    // By this all RN modules and rust init should have happened
+    OkpEvents.sendAppBecomesActive()
+  }
+  
+  func sceneWillResignActive(_ scene: UIScene) {
+    // A scene will enter the background.
+    
+    logger.debug("A scene sceneWillResignActive ....")
+    
+    OkpEvents.sendAppBecomesInActive()
+  }
 
   func sceneDidEnterBackground(_ scene: UIScene) {
     // A scene did enter the background.
     logger.debug("A scene did enter the background")
   }
 
-  func sceneWillEnterForeground(_ scene: UIScene) {
-    // A scene is about to enter the foreground.
-    logger.debug("A scene is about to enter the foreground")
-  }
-  
   func sceneDidDisconnect(_ scene: UIScene) {
     logger.debug("sceneDidDisconnect...")
-  }
-  
-  func sceneDidBecomeActive(_ scene: UIScene) {
-    logger.debug("sceneDidBecomeActive.....")
-//    let m = AutoFillMessageHandler()
-//    m.listen2()
   }
 }

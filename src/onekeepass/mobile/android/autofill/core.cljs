@@ -49,6 +49,9 @@
       [rnc/rnp-provider {:theme (if (= DARK-THEME theme-name) rnc/dark-theme rnc/light-theme)}
        [main-content-tr]])))
 
+;; This is the entry point (from onekeepass/mobile/core.cljs) for Android AutoFill
+;; Android AutoFill shares the same '@re-frame.db/app-db' 
+;; and also some events (loading app preference ? - See fn 'init-calls') from the main app
 (defn app-root []
   [rnc/gh-gesture-handler-root-view {:style {:flex 1}}
    [:f> main-content]])

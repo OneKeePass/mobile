@@ -34,7 +34,7 @@
 (reg-event-fx
  :to-app-lock-settings-page
  (fn [{:keys [_db]} [_event-id]]
-   {:fx [[:dispatch [:common/next-page APP_LOCK_SETTINGS_PAGE_ID "appLock"]]]}))
+   {:fx [[:dispatch [:common/next-page APP_LOCK_SETTINGS_PAGE_ID "appLockSettings"]]]}))
 
 (reg-event-fx
  :pin-store-action-completed

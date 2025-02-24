@@ -26,9 +26,8 @@
    [onekeepass.mobile.utils :as u :refer [contains-val? str->int]]
    [onekeepass.mobile.events.common :as cmn-events]
    [onekeepass.mobile.events.dialogs :as dlg-events]
-   [onekeepass.mobile.events.app-lock-settings :as lck-settings-events]
-   [onekeepass.mobile.translation :refer [lstr-pt lstr-bl lstr-l lstr-cv lstr-dlg-title lstr-mt]]
-   [onekeepass.mobile.events.app-lock-settings :as al-events]))
+   [onekeepass.mobile.events.app-lock-settings :as al-settings-events]
+   [onekeepass.mobile.translation :refer [lstr-pt lstr-bl lstr-l lstr-cv lstr-dlg-title lstr-mt]]))
 
 
 ;;;;;;;;;;;; dialog ;;;;;;;;;;
@@ -60,7 +59,7 @@
                                 (dlg-events/app-pin-lock-settings-dialog-update-with-map
                                  {:error-text (lstr-mt 'enterPin 'validPinRequired)})
                                 (do
-                                  (al-events/pin-entered val)
+                                  (al-settings-events/pin-entered val)
                                   (dlg-events/app-pin-lock-settings-dialog-close)))))}
      (lstr-bl "ok")]]])
 
@@ -107,7 +106,7 @@
                      :onValueChange (fn [new-val]
                                       (if new-val
                                         (dlg-events/app-pin-lock-settings-dialog-show-with-state {})
-                                        (al-events/pin-removed)))}]]]
+                                        (al-settings-events/pin-removed)))}]]]
 
       (when pin-lock-enabled
         [rn-view {:style {}}
@@ -122,7 +121,7 @@
                                                             ;;:label-extractor-fn cc/select-field-tr-key-label-extractor 
                         :text-input-style {:background-color @(:background-color modal-selector-colors)}
                         :on-change (fn [^js/SelOption option]
-                                     (al-events/app-lock-preference-update :lock-timeout (.-key option)))}]
+                                     (al-settings-events/app-lock-preference-update :lock-timeout (.-key option)))}]
          (when (> lock-timeout 0)
            [rn-view {:style {:margin-top 10 :margin-bottom 10 :padding 10}}
             [rnp-text "The app will be locked after this timeout. You need to enter the PIN to use OneKeePass"]])]
@@ -137,7 +136,7 @@
                         :value (find-matching-label attemps-allowed-options attempts-allowed)
                         :text-input-style {:background-color @(:background-color modal-selector-colors)}
                         :on-change (fn [^js/SelOption option]
-                                     (al-events/app-lock-preference-update :attempts-allowed (.-key option)))}]
+                                     (al-settings-events/app-lock-preference-update :attempts-allowed (.-key option)))}]
 
          [rn-view {:style {:margin-top 10 :margin-bottom 10
                            :padding 10}}
@@ -189,7 +188,7 @@
      {:error-text "Please enter a valid PIN"})
     (do
       (println "pin-value type " (type pin-value))
-      #_(al-events/pin-entered (str->int))
+      #_(al-settings-events/pin-entered (str->int))
       (dlg-events/app-pin-lock-settings-dialog-close)))
 
 #_[rn-view {:style {:flexDirection "row" :min-height 50 :justify-content "space-between"}}

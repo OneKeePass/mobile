@@ -11,6 +11,8 @@
         "allItems": "All Items",
         "appInfo": "App Info",
         "appearance": "Appearance",
+        "appLockSettings": "App Lock Settings",
+        "appProtection": "App Protection",
         "appSettings": "App Settings",
         "autofillSettings": "Autofill Settings",
         "biometrics": "Biometrics",
@@ -299,7 +301,7 @@
     },
     "pageTitles": {
         "about": "About",
-        "appLock": "App Lock",
+        "appLockSettings": "App Lock Settings",
         "appSettings": "App Settings",
         "additionalDbAcccess": "Additional Database Access",
         "autoFillPassword": "AutoFill Password",

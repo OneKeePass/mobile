@@ -21,6 +21,11 @@ public class OkpEvents: RCTEventEmitter {
   
   static let EVENT_ENTRY_OTP_UPDATE = "onEntryOtpUpdate"
   
+  static let EVENT_APP_BECOMES_ACTIVE = "onAppBecomingActive"
+  
+  static let EVENT_APP_BECOMES_INACTIVE = "onAppBecomingInActive"
+  
+  
   override init() {
     super.init()
     OkpEvents.instance = self
@@ -45,7 +50,11 @@ public class OkpEvents: RCTEventEmitter {
   
   override public func supportedEvents() -> [String]! {
     // At this time, only one event is supported
-    return [OkpEvents.EVENT_ON_APPLICATION_URL,OkpEvents.EVENT_ON_TIME_TICK, OkpEvents.EVENT_ENTRY_OTP_UPDATE]
+    return [OkpEvents.EVENT_APP_BECOMES_ACTIVE,
+            OkpEvents.EVENT_APP_BECOMES_INACTIVE,
+            OkpEvents.EVENT_ON_APPLICATION_URL,
+            OkpEvents.EVENT_ON_TIME_TICK,
+            OkpEvents.EVENT_ENTRY_OTP_UPDATE]
   }
   
   // Called from SceneDelegate when user presses a .kdbx file
@@ -71,5 +80,13 @@ public class OkpEvents: RCTEventEmitter {
   // Called from rust async fn through BackendEventDispatcher class
   public static func sendEntryOtpUpdate(_ jsonString:String) {
     instance?.sendEvent(withName: EVENT_ENTRY_OTP_UPDATE, body: jsonString)
+  }
+  
+  public static func sendAppBecomesActive() {
+    instance?.sendEvent(withName: EVENT_APP_BECOMES_ACTIVE, body: "{}")
+  }
+  
+  public static func sendAppBecomesInActive() {
+    instance?.sendEvent(withName: EVENT_APP_BECOMES_INACTIVE, body: "{}")
   }
 }

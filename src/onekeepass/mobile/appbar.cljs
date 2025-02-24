@@ -19,8 +19,10 @@
             [onekeepass.mobile.rs-configs :as rs-configs]
             [onekeepass.mobile.rs-config-form :as rs-form]
             [onekeepass.mobile.rs-files-folders :as rs-files-folders]
+            [onekeepass.mobile.app-lock :as app-lock]
             [onekeepass.mobile.app-lock-settings :as app-lock-settings]
             [onekeepass.mobile.events.app-settings :as as-events]
+            [onekeepass.mobile.events.app-lock :as app-lock-events]
             [onekeepass.mobile.events.common :as cmn-events]
             [onekeepass.mobile.events.entry-form :as ef-events]
             [onekeepass.mobile.events.entry-list :as elist-events]
@@ -38,6 +40,7 @@
                                                              dots-icon-name
                                                              on-primary-color
                                                              primary-color
+                                                             rn-view
                                                              rnp-appbar-action
                                                              rnp-appbar-back-action
                                                              rnp-appbar-content
@@ -261,7 +264,6 @@
                                  :else
                                  "No Title")}]])
 
-
 (def page-id-based-title-providers [:entry-form
                                     :password-generator
                                     RS_CONNECTIONS_LIST_PAGE_ID])
@@ -284,7 +286,7 @@
 
 (defn- appbar-title [{:keys [page title]}]
   ;; title is required
-  (cond 
+  (cond
     (u/contains-val? title-provider-pages page)
     [positioned-title :title title]
 
@@ -339,7 +341,7 @@
        (= page RS_FILES_FOLDERS_PAGE_ID)
        [rnp-appbar-back-action {:color @background-color
                                 :onPress rs-events/remote-storage-listing-previous}]
-       
+
        (u/contains-val? back-button-pages page)
        [rnp-appbar-back-action {:color @background-color
                                 :onPress cmn-events/to-previous-page}])
@@ -462,9 +464,32 @@
 
         pan-handlers-m (-> (rnc/create-pan-responder handler-fns-m)
                            (js->clj :keywordize-keys true) :panHandlers)]
-    [rnc/rn-view (merge {:style {:flex 1}} pan-handlers-m)
-     [appbar-header-content @(cmn-events/page-info)]
-     [appbar-body-content @(cmn-events/page-info)]]))
+    [rn-view (merge {:style {:flex 1}} pan-handlers-m)
+     (let [lock-state @(app-lock-events/app-lock-state)
+           page-info @(cmn-events/page-info)]
+       (if-not (= lock-state :locked)
+         [rn-view {:style {:flex 1}}
+          [appbar-header-content page-info]
+          [appbar-body-content page-info]]
+         [rn-view {:style {:flex 1}}
+          [app-lock/content]
+          #_[rnc/rnp-text "App locked"]]))]))
+
+
+#_(defn appbar-main-content
+    "An App bar has both header and the body combined"
+    []
+    (let [handler-fns-m {:onStartShouldSetPanResponderCapture (fn []
+                                                                (as-events/user-action-detected)
+                                                              ;; Returns false so that the event is passed to other 
+                                                              ;; listeners
+                                                                false)}
+
+          pan-handlers-m (-> (rnc/create-pan-responder handler-fns-m)
+                             (js->clj :keywordize-keys true) :panHandlers)]
+      [rnc/rn-view (merge {:style {:flex 1}} pan-handlers-m)
+       [appbar-header-content @(cmn-events/page-info)]
+       [appbar-body-content @(cmn-events/page-info)]]))
 
 
 ;; Titles

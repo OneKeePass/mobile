@@ -9,6 +9,7 @@
                                 auto-open-db-file-required-info-dialog
                                 before-storage-selection-info-dialog
                                 app-pin-lock-settings-dialog
+                                locked-app-log-in-dialog
                                 update-and-show
                                 update-with-map
                                 dispatch-on-ok
