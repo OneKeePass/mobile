@@ -1,11 +1,7 @@
 (ns onekeepass.mobile.app-lock
   (:require
    [clojure.string :as str]
-   [onekeepass.mobile.background :refer [is-iOS]]
-   [onekeepass.mobile.rn-components :as rnc :refer [custom-color0
-                                                    page-title-text-variant
-                                                    appbar-text-color
-                                                    page-background-color
+   [onekeepass.mobile.rn-components :as rnc :refer [page-background-color
                                                     cust-dialog
                                                     rnp-dialog-title
                                                     rnp-dialog-content
@@ -13,24 +9,14 @@
                                                     rnp-text-input
                                                     rnp-helper-text
                                                     rnp-portal
-                                                    rn-scroll-view
-                                                    rn-keyboard-avoiding-view
                                                     rn-view
                                                     rnp-button
-                                                    rnp-divider
-                                                    rnp-slider
-                                                    rnp-switch
-                                                    rnp-segmented-buttons
-                                                    rnp-text
-                                                    rnp-icon-button]]
-   [onekeepass.mobile.common-components :as cc :refer [select-field get-form-style]]
+                                                    rnp-text]]
    [onekeepass.mobile.utils :as u :refer [str->int]]
-   [onekeepass.mobile.events.common :as cmn-events]
    [onekeepass.mobile.events.dialogs :as dlg-events]
    [onekeepass.mobile.events.app-lock :as app-lock-events]
-   [onekeepass.mobile.translation :refer [lstr-pt lstr-bl lstr-l lstr-mt lstr-cv lstr-dlg-title]]))
+   [onekeepass.mobile.translation :refer [lstr-bl lstr-l lstr-mt lstr-dlg-title]]))
 
-;; locked-app-log-in-dialog
 (defn locked-app-log-in-dialog [{:keys [dialog-show error-text pin-value visible]}]
   [cust-dialog {:style {} :dismissable true :visible dialog-show :onDismiss #()}
    [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1} (lstr-dlg-title 'enterPin)]
@@ -57,10 +43,7 @@
                               (if (str/blank? pin-value)
                                 (dlg-events/app-pin-lock-settings-dialog-update-with-map
                                  {:error-text (lstr-mt 'enterPin 'validPinRequired)})
-                                (app-lock-events/verify-pin-entered val)
-                                #_(do
-                                    (app-lock-events/verify-pin-entered val)
-                                    (dlg-events/locked-app-log-in-dialog-close)))))}
+                                (app-lock-events/verify-pin-entered val app-lock-events/app-lock-verify-pin-handler))))}
      (lstr-bl "ok")]]])
 
 (defn main-content []

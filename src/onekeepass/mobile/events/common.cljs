@@ -660,13 +660,19 @@
          [:dispatch [:common/to-home-page]]
          [:dispatch [:common/message-snackbar-open 'databaseLocked]]]}))
 
+
 (reg-event-fx
  :lock-on-session-timeout
  (fn [{:keys [db]} [_event-id db-key]]
    (let [curr-dbkey  (:current-db-file-name db)]
      {:db (assoc-in-selected-db db db-key [:locked] true)
-      :fx [(when (= curr-dbkey db-key)
-             [:dispatch [:common/to-home-page]])]})))
+      :fx (if  (= curr-dbkey db-key)
+            [[:dispatch [:common/to-home-page]]
+             [:dispatch [:app-lock/current-db-locked-on-timeout]]]
+            [])
+      ;; :fx [(when (= curr-dbkey db-key)
+      ;;        [:dispatch [:common/to-home-page]])]
+      })))
 
 ;; Need to make use of API call in case we want to do something for lock call
 ;; Currently nothing is done on the backend

@@ -17,18 +17,6 @@
    [onekeepass.mobile.translation :as t :refer [lstr-bl lstr-cv lstr-l lstr-mt]]
    [reagent.core :as r]))
 
-#_(defn section-header [title]
-    [rn-view  {:style {:flexDirection "row"
-                       :width "100%"
-                       :backgroundColor @inverse-onsurface-color
-                       :margin-top 0
-                       :min-height 38}}
-     [rnp-text {:style {:textTransform "uppercase"
-                        :alignSelf "center"
-                      ;;:width "85%"
-                        :text-align "center"
-                        :padding-left 5} :variant "titleSmall"} (lstr-l title)]])
-
 ;;TODO: Need to add lstr for these options
 (def db-session-timeout-options [{:key 15000 :label "15 seconds"}
                                  {:key 20000 :label "20 seconds"}
