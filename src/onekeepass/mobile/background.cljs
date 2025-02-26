@@ -438,8 +438,8 @@
   (invoke-api "stored_db_credentials" {:db-key db-key} dispatch-fn))
 
 (defn remove-from-recently-used
-  "Removes recently used file info for the passed db-key and the database id also 
-   closed automatically in the backend"
+  "Removes recently used file info for the passed db-key, removes all files that were created for this db 
+   and the database is closed automatically in the backend"
   [db-key dispatch-fn]
   (invoke-api "remove_from_recently_used" {:db-key db-key} dispatch-fn))
 
@@ -688,6 +688,9 @@
 
 (defn pin-removed [dispatch-fn]
   (invoke-api "pin_removed" {} dispatch-fn))
+
+(defn app-reset [dispatch-fn]
+  (invoke-api "app_reset" {} dispatch-fn))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;; OTP, Timer etc  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

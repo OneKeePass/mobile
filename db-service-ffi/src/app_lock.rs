@@ -1,15 +1,17 @@
 use log::{self, debug};
-use onekeepass_core::{error, service_util::string_to_simple_hash};
+use onekeepass_core::{db_service, error};
 use serde::{Deserialize, Serialize};
 
+use crate::{biometric_auth, ios};
 use crate::{app_state::AppState, udl_types::SecureKeyOperationError, OkpResult};
 
+use crate::util::{remove_dir_contents, remove_files};
 
-//////////  
+//////////
 
 // Stores the encrypted pin for later authentication
-pub fn pin_entered(pin:usize)  -> OkpResult<()> {
-    let app_lock_credential = AppLockCredential{pin};
+pub fn pin_entered(pin: usize) -> OkpResult<()> {
+    let app_lock_credential = AppLockCredential { pin };
     let r = app_lock_credential.encrypt_and_store();
 
     // Need to ensure that the preference is enabled and persisted accordingly
@@ -17,17 +19,61 @@ pub fn pin_entered(pin:usize)  -> OkpResult<()> {
     r
 }
 
-pub fn pin_removed()  -> OkpResult<()> {
+pub fn pin_removed() -> OkpResult<()> {
     let r = AppLockCredential::remove_app_lock_credential();
     // Need to ensure that the preference is disabled and persisted accordingly
     AppState::update_app_lock_with_pin_enabled(false);
     r
 }
 
-pub fn pin_verify(pin:usize)  -> OkpResult<bool> {
-    let app_lock_credential = AppLockCredential{pin};
+pub fn pin_verify(pin: usize) -> OkpResult<bool> {
+    let app_lock_credential = AppLockCredential { pin };
     let r = app_lock_credential.verify();
     r
+}
+
+// Called to remove all app dirs and files to bring it to a default state
+pub fn app_reset() -> OkpResult<()> {
+
+    for db in AppState::recent_dbs_info() {
+        // Close any opened database
+        let _ = db_service::close_kdbx(&db.db_file_path);
+
+        // Remove all stored credentials
+        let _ = biometric_auth::StoredCredential::remove_credentials(&db.db_file_path);
+    }
+
+    // Remove all stored app lock credentials (PIN)
+    let _r = AppLockCredential::remove_app_lock_credential();
+
+    // Deletes contents of backups/history dir including sub dirs found under this dir
+    let _ = remove_dir_contents(AppState::backup_history_dir_path());
+
+    // Deletes contents of export_data dir including sub dirs found under this dir
+    let _ = remove_dir_contents(AppState::export_data_dir_path());
+
+    // Deletes contents of key_files dir including sub dirs found under this dir
+    let _ = remove_dir_contents(AppState::key_files_dir_path());
+
+    //  Deletes contents of remote_storage/sftp including sub dirs found under this dir
+    // This ensure we keep the sftp sub dir
+    let _ = remove_dir_contents(AppState::sftp_private_keys_path());
+
+    // Deletes files found under remote_storage
+    let _ = remove_files(AppState::remote_storage_path());
+
+    AppState::reset_preference();
+
+    #[cfg(target_os = "ios")]
+    {
+        let _ = remove_dir_contents(ios::bookmark::bookmark_dir());
+
+        ios::remove_all_app_extension_contents();
+    }
+
+    debug!("App reset is done...");
+
+    Ok(())
 }
 
 ////////
@@ -41,7 +87,6 @@ pub(crate) struct AppLockCredential {
 }
 
 impl AppLockCredential {
-
     fn encrypt_and_store(&self) -> OkpResult<()> {
         // Note: We are using APP_LOCK_PIN_TAG in both secure_enclave_cb_service calls and key store calls
 
@@ -61,7 +106,6 @@ impl AppLockCredential {
     }
 
     fn verify(&self) -> OkpResult<bool> {
-
         // First we need to get the previously stored encrypted data from key store
         let decoded_enc_data = keystore_get_value(APP_LOCK_PIN_TAG).ok_or_else(|| {
             error::Error::SecureKeyOperationError(format!(
@@ -139,4 +183,3 @@ fn keystore_get_value(data_key: &str) -> Option<Vec<u8>> {
     });
     val
 }
-

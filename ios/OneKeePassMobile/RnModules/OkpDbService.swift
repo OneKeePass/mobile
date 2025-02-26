@@ -341,6 +341,11 @@ class OkpDbService: NSObject {
   func authenticateWithBiometric(_ resolve: @escaping RCTPromiseResolveBlock,
                                  reject _: @escaping RCTPromiseRejectBlock)
   {
+    
+    // See how this is used in SceneDelegate.sceneWillResignActive
+    SceneDelegate.inBiometricCall = true
+    self.logger.debug("inBiometricCall is set \(SceneDelegate.inBiometricCall)")
+    
     DispatchQueue.global(qos: .userInteractive).async { [unowned self] in
       let localAuthenticationContext = LAContext()
       let reason = "Authentication is required to unlock database"

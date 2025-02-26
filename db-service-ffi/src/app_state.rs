@@ -24,6 +24,17 @@ use crate::{
     OkpError, OkpResult,
 };
 
+pub(crate) const EXPORT_DATA_DIR: &str = "export_data";
+
+pub(crate) const BACKUPS_DIR: &str = "backups";
+
+pub(crate) const BACKUPS_HIST_DIR: &str = "history"; 
+
+pub(crate) const REMOTE_STORAGE_DIR: &str = "remote_storage";
+
+pub(crate) const REMOTE_STORAGE_SFTP_SUB_DIR: &str =  "sftp";
+
+
 // Any mutable field needs to be behind Mutex
 pub struct AppState {
     app_home_dir: String,
@@ -110,18 +121,18 @@ impl AppState {
         // IMPORTANT: 'preference_home_dir' should have a valid path
         let preference = Preference::read(&preference_home_dir);
 
-        let export_data_dir_path = util::create_sub_dir(&app_dir, "export_data");
+        let export_data_dir_path = util::create_sub_dir(&app_dir, EXPORT_DATA_DIR);
         log::debug!("export_data_dir_path is {:?}", &export_data_dir_path);
 
-        let backup_history_dir_path = util::create_sub_dirs(&app_dir, vec!["backups", "history"]);
+        let backup_history_dir_path = util::create_sub_dirs(&app_dir, vec![BACKUPS_DIR, BACKUPS_HIST_DIR]);
         log::debug!("backup_history_dir_path is {:?}", &backup_history_dir_path);
 
         let key_files_dir_path = util::create_sub_dir(&app_dir, "key_files");
         log::debug!("key_files_dir_path is {:?}", &key_files_dir_path);
 
         // All remote storage related dirs
-        let remote_storage_path = util::create_sub_dir(&app_dir, "remote_storage");
-        util::create_sub_dir_path(&remote_storage_path, "sftp");
+        let remote_storage_path = util::create_sub_dir(&app_dir, REMOTE_STORAGE_DIR);
+        util::create_sub_dir_path(&remote_storage_path, REMOTE_STORAGE_SFTP_SUB_DIR);
 
         // As we started storing backup files to the folder 'backups/history' since 0.15.0 rlease
         // we remove the old backup files
@@ -239,7 +250,7 @@ impl AppState {
     // Root dir where all the private key files of one or more SFTP connections are stored
     pub fn sftp_private_keys_path() -> PathBuf {
         // Sub dir "sftp" should exist
-        let p = Self::shared().remote_storage_path.join("sftp");
+        let p = Self::shared().remote_storage_path.join(REMOTE_STORAGE_SFTP_SUB_DIR);
         p
     }
 
@@ -334,6 +345,13 @@ impl AppState {
     // pub fn preference() -> &'static Mutex<Preference> {
     //     &Self::shared().preference
     // }
+
+    // Creates a default Preference, writes to the json file and AppState is updated with this new pref
+    pub(crate) fn reset_preference() {
+        let mut store_pref = Self::shared().preference.lock().unwrap();
+        let new_pref = Preference::write_default();
+        *store_pref = new_pref;
+    }
 
     pub fn preference_clone() -> Preference {
         let store_pref = Self::shared().preference.lock().unwrap();

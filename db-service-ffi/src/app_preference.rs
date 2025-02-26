@@ -304,6 +304,12 @@ impl Preference {
         final_pref
     }
 
+    pub(crate) fn write_default() -> Self {
+        let pref = Self::default();
+        pref.write_to_app_dir();
+        pref
+    }
+
     fn write<P: AsRef<Path>>(&self, preference_home_dir: P) {
         // Remove old file names from the list before writing
         //self.remove_old_db_use_info();
@@ -325,7 +331,7 @@ impl Preference {
         }
     }
 
-    pub(crate) fn write_to_app_dir(&self) {
+    fn write_to_app_dir(&self) {
         self.write(AppState::preference_home_dir());
     }
 
@@ -348,7 +354,7 @@ impl Preference {
         }
     }
 
-    pub fn update_session_timeout(
+    pub(crate) fn update_session_timeout(
         &mut self,
         db_session_timeout: Option<i64>,
         clipboard_timeout: Option<i64>,

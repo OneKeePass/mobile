@@ -4,6 +4,12 @@ pub(crate) mod autofill_app_group;
 pub use autofill_app_group::*;
 
 #[cfg(target_os = "ios")]
+pub(crate) mod bookmark;
+#[cfg(target_os = "ios")]
+pub use bookmark::*;
+
+
+#[cfg(target_os = "ios")]
 pub(crate) mod callback_services;
 #[cfg(target_os = "ios")]
 pub(crate) use callback_services::*;
@@ -26,64 +32,6 @@ use onekeepass_core::db_content::AttachmentHashValue;
 use onekeepass_core::db_service::{self, service_util::string_to_simple_hash};
 use regex::{Regex, RegexSet};
 
-#[cfg(target_os = "ios")]
-fn form_bookmark_file_path(full_file_name_uri: &str) -> PathBuf {
-    let file_name = string_to_simple_hash(&full_file_name_uri).to_string();
-    let book_mark_file_path = Path::new(AppState::app_home_dir())
-        .join("bookmarks")
-        .join(file_name);
-
-    log::info!("Book mark file path is {:?}", book_mark_file_path);
-    book_mark_file_path
-}
-
-#[cfg(target_os = "ios")]
-pub fn delete_book_mark_data(full_file_name_uri: &str) {
-    let book_mark_file_path = form_bookmark_file_path(full_file_name_uri);
-    let r = fs::remove_file(book_mark_file_path);
-    log::debug!(
-        "Delete bookmark file for the file full_file_name_uri {} result {:?}",
-        full_file_name_uri,
-        r
-    );
-}
-
-#[cfg(target_os = "ios")]
-pub fn get_app_group_root() -> Option<String> {
-    let Some(app_group_home_dir) = AppState::app_group_home_dir() else {
-        log::error!("No app group home dir is found");
-        return None;
-    };
-
-    debug!("App group home dir is {:?} ", &app_group_home_dir);
-
-    let db_file_root = Path::new(app_group_home_dir).join("db_files");
-    // Ensure that the parent dir exists
-    if !db_file_root.exists() {
-        if let Err(e) = std::fs::create_dir_all(&db_file_root) {
-            log::error!("Directory creation under app group home dir failed {:?}", e);
-            return None;
-        }
-        log::debug!("Created dir {:?}", &db_file_root);
-    }
-    db_file_root.to_str().map(|s| s.to_string())
-}
-
-#[cfg(target_os = "ios")]
-pub fn list_app_group_db_files() -> Vec<String> {
-    let Some(app_root_path) = get_app_group_root() else {
-        return vec![];
-    };
-    util::list_dir_files(&Path::new(&app_root_path))
-}
-
-pub fn list_bookmark_files() -> Vec<String> {
-    if cfg!(target_os = "ios") {
-        util::list_dir_files(&Path::new(AppState::app_home_dir()).join("bookmarks"))
-    } else {
-        vec![]
-    }
-}
 
 // The rust side file path should have prefix "file;//" to use in Swift side,
 #[inline]
@@ -104,13 +52,6 @@ pub fn to_ios_file_uri_str(file_path: &Option<String>) -> Option<String> {
         .as_deref()
         .cloned()
 }
-
-// Generates a hash key based on the bytes data
-// fn to_hash(data: &[u8]) -> u64 {
-//     let mut hasher = DefaultHasher::new();
-//     hasher.write(data);
-//     hasher.finish()
-// }
 
 #[cfg(target_os = "ios")]
 pub fn extract_file_provider(full_file_name_uri: &str) -> String {
@@ -205,3 +146,75 @@ pub fn save_attachment_as_temp_file(
 ) -> OkpResult<String> {
     db_service::save_attachment_as_temp_file(db_key, name, data_hash)
 }
+
+
+
+
+/////
+
+// #[cfg(target_os = "ios")]
+// fn form_bookmark_file_path(full_file_name_uri: &str) -> PathBuf {
+//     let file_name = string_to_simple_hash(&full_file_name_uri).to_string();
+//     let book_mark_file_path = Path::new(AppState::app_home_dir())
+//         .join(BOOK_MARK_FILES_DIR)
+//         .join(file_name);
+
+//     log::info!("Book mark file path is {:?}", book_mark_file_path);
+//     book_mark_file_path
+// }
+
+// #[cfg(target_os = "ios")]
+// pub fn delete_book_mark_data(full_file_name_uri: &str) {
+//     let book_mark_file_path = form_bookmark_file_path(full_file_name_uri);
+//     let r = fs::remove_file(book_mark_file_path);
+//     log::debug!(
+//         "Delete bookmark file for the file full_file_name_uri {} result {:?}",
+//         full_file_name_uri,
+//         r
+//     );
+// }
+
+// Generates a hash key based on the bytes data
+// fn to_hash(data: &[u8]) -> u64 {
+//     let mut hasher = DefaultHasher::new();
+//     hasher.write(data);
+//     hasher.finish()
+// }
+
+// pub fn list_bookmark_files() -> Vec<String> {
+//     if cfg!(target_os = "ios") {
+//         util::list_dir_files(&Path::new(AppState::app_home_dir()).join(BOOK_MARK_FILES_DIR))
+//     } else {
+//         vec![]
+//     }
+// }
+
+
+// #[cfg(target_os = "ios")]
+// pub fn get_app_group_root() -> Option<String> {
+//     let Some(app_group_home_dir) = AppState::app_group_home_dir() else {
+//         log::error!("No app group home dir is found");
+//         return None;
+//     };
+
+//     debug!("App group home dir is {:?} ", &app_group_home_dir);
+
+//     let db_file_root = Path::new(app_group_home_dir).join("db_files");
+//     // Ensure that the parent dir exists
+//     if !db_file_root.exists() {
+//         if let Err(e) = std::fs::create_dir_all(&db_file_root) {
+//             log::error!("Directory creation under app group home dir failed {:?}", e);
+//             return None;
+//         }
+//         log::debug!("Created dir {:?}", &db_file_root);
+//     }
+//     db_file_root.to_str().map(|s| s.to_string())
+// }
+
+// #[cfg(target_os = "ios")]
+// pub fn list_app_group_db_files() -> Vec<String> {
+//     let Some(app_root_path) = get_app_group_root() else {
+//         return vec![];
+//     };
+//     util::list_dir_files(&Path::new(&app_root_path))
+// }

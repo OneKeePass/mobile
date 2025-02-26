@@ -15,14 +15,18 @@ use crate::{
     commands::{
         error_json_str, ok_json_str, result_json_str, CommandArg, InvokeResult, ResponseJson,
     },
-    parse_command_args_or_err, util, OkpError, OkpResult,
+    parse_command_args_or_err,
+    util::{self, remove_dir_contents},
+    OkpError, OkpResult,
 };
 
 use super::IosApiCallbackImpl;
 
-const AG_DATA_FILES: &str = "db_files";
+const EXTENSION_ROOT_DIR: &str = "okp";
 
-const AG_KEY_FILES: &str = "key_files";
+pub(crate) const AG_DATA_FILES_DIR: &str = "db_files";
+
+pub(crate) const AG_KEY_FILES_DIR: &str = "key_files";
 
 const META_JSON_FILE_NAME: &str = "autofill_meta.json";
 
@@ -31,7 +35,7 @@ const META_JSON_FILE_VERSION: &str = "1.0.0";
 /////////  Some public exposed fns ////////////////
 
 pub(crate) fn delete_copied_autofill_details(db_key: &str) -> OkpResult<()> {
-    let db_file_root = app_group_root_sub_dir(AG_DATA_FILES)?;
+    let db_file_root = app_group_root_sub_dir(AG_DATA_FILES_DIR)?;
     let hash_of_db_key = string_to_simple_hash(&db_key).to_string();
 
     let group_db_file_dir = Path::new(&db_file_root).join(&hash_of_db_key);
@@ -44,7 +48,7 @@ pub(crate) fn delete_copied_autofill_details(db_key: &str) -> OkpResult<()> {
     );
 
     if util::is_dir_empty(&db_file_root) {
-        let app_group_key_file_dir = app_group_root_sub_dir(AG_KEY_FILES)?;
+        let app_group_key_file_dir = app_group_root_sub_dir(AG_KEY_FILES_DIR)?;
         let r = fs::remove_dir_all(&app_group_key_file_dir);
         log::debug!(
             "Delete key files dir {:?} result {:?}",
@@ -75,7 +79,36 @@ pub(crate) fn copy_files_to_app_group_on_save_or_read(db_key: &str) {
     }
 }
 
+// Called during app reset
+// Removes all data and key files. Also the autofill config removed
+pub(crate) fn remove_all_app_extension_contents() {
+    if let Ok(path) = app_group_root_sub_dir(AG_DATA_FILES_DIR) {
+        let _ = remove_dir_contents(path);
+    }
+
+    if let Ok(path) = app_group_root_sub_dir(AG_KEY_FILES_DIR) {
+        let _ = remove_dir_contents(path);
+    }
+
+    if let Some(path) = autofill_meta_json_file() {
+        let _ = fs::remove_file(path);
+    }
+}
+
+// pub(crate) fn app_extension_data_files_dir() -> OkpResult<PathBuf> {
+//     // e.g app_group_root/okp/data_files
+//     app_group_root_sub_dir(AG_DATA_FILES_DIR)
+// }
+
+// pub(crate) fn app_extension_key_files_dir() -> OkpResult<PathBuf> {
+//     // e.g app_group_root/okp/key_files
+//     app_group_root_sub_dir(AG_KEY_FILES_DIR)
+// }
+
 /////////////////////////////////////////////
+
+// Gets the app extension root
+// e.g app_group_root/okp
 
 fn app_extension_root() -> OkpResult<PathBuf> {
     let Some(app_group_home_dir) = AppState::app_group_home_dir() else {
@@ -86,7 +119,7 @@ fn app_extension_root() -> OkpResult<PathBuf> {
 
     //temp_delete_old_af_files(); // Need to be removed
 
-    let full_path_dir = Path::new(app_group_home_dir).join("okp");
+    let full_path_dir = Path::new(app_group_home_dir).join(EXTENSION_ROOT_DIR);
     Ok(full_path_dir.to_path_buf())
 }
 
@@ -117,7 +150,7 @@ fn copy_files_to_app_group(db_key: &str) -> OkpResult<CopiedDbFileInfo> {
     let file_name = AppState::uri_to_file_name(&db_key);
     debug!("File name from db_file_name  is {} ", &file_name);
 
-    let db_file_root = app_group_root_sub_dir(AG_DATA_FILES)?;
+    let db_file_root = app_group_root_sub_dir(AG_DATA_FILES_DIR)?;
 
     let hash_of_db_key = string_to_simple_hash(&db_key).to_string();
 
@@ -137,7 +170,7 @@ fn copy_files_to_app_group(db_key: &str) -> OkpResult<CopiedDbFileInfo> {
     let copied_db_info = CopiedDbFileInfo::new(file_name, db_file_path, db_key.to_string());
     AutoFillMeta::read().add_copied_db_info(copied_db_info.clone());
 
-    let app_group_key_file_dir = app_group_root_sub_dir(AG_KEY_FILES)?;
+    let app_group_key_file_dir = app_group_root_sub_dir(AG_KEY_FILES_DIR)?;
 
     // Copies all the key files available
     util::copy_files(&AppState::key_files_dir_path(), &app_group_key_file_dir);
@@ -187,6 +220,9 @@ impl Default for AutoFillMeta {
 }
 
 impl AutoFillMeta {
+    // Reads any previously created config file or creates a default config
+    // TODO: We may need to write the default config as we do with Preference when
+    // we make any changes in the structure of AutoFillMeta
     fn read() -> Self {
         let Some(pref_file_name) = autofill_meta_json_file() else {
             return Self::default();
@@ -317,7 +353,7 @@ impl IosAppGroupSupportService {
     // Gets the list of key files that may be used to authenticate a selected database in autofill extension
     fn list_of_key_files(&self) -> ResponseJson {
         let inner_fn = || -> OkpResult<Vec<String>> {
-            let app_group_key_file_dir = app_group_root_sub_dir(AG_KEY_FILES)?;
+            let app_group_key_file_dir = app_group_root_sub_dir(AG_KEY_FILES_DIR)?;
             let v = util::list_dir_files(&app_group_key_file_dir);
             Ok(v)
         };
@@ -461,4 +497,3 @@ impl IosAppGroupSupportService {
         r
     }
 }
-

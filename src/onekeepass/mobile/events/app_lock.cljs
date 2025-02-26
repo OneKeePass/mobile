@@ -1,14 +1,14 @@
 (ns onekeepass.mobile.events.app-lock
   "App lock specific events"
   (:require
-   [onekeepass.mobile.events.common :as cmn-events :refer [app-lock-preference on-ok on-error]]
+   [onekeepass.mobile.events.common :as cmn-events :refer [app-lock-preference  on-ok on-error]]
    [re-frame.core :refer [dispatch subscribe reg-event-fx reg-sub reg-fx]]
    [onekeepass.mobile.translation :refer [lstr-mt]]
    [onekeepass.mobile.background :as bg]))
 
-(defn app-lock-verify-pin-handler 
+(defn app-lock-verify-pin-handler
   "Called when pin verification backend returns. This is fn is passed from the pin entry dialog"
-  [verify-result] 
+  [verify-result]
   (dispatch [:app-lock-verified verify-result]))
 
 (defn verify-pin-entered [pin verify-pin-handler-fn]
@@ -49,13 +49,15 @@
                            {:state :unlocked
                             :last-user-action-time (js/Date.now)}))}))
 
-;; Called from the native event
+;; Called from the native event when app goes background
 (reg-event-fx
  :app-lock/app-becoming-inactive
  (fn [{:keys [db]} [_event-id]]
-   (let [{:keys [pin-lock-enabled lock-timeout]} (app-lock-preference db)]
-     (if (and pin-lock-enabled (= lock-timeout 0))
-       {:db (-> db (assoc-in [:app-lock :state] :locked))}
+   (let [{:keys [pin-lock-enabled lock-timeout attempts-allowed]} (app-lock-preference db)]
+     ;;(println ":app-lock/app-becoming-inactive is called...")
+     (if (and pin-lock-enabled (= lock-timeout 0)) 
+       {:db (-> db (assoc-in [:app-lock :state] :locked)
+                (assoc-in [:app-lock :attempts-count-remaining] attempts-allowed))}
        {}))))
 
 
@@ -71,8 +73,9 @@
  (fn [{:keys [db]} [_event-id]]
    (let [{:keys [pin-lock-enabled attempts-allowed]} (app-lock-preference db)
          app-lock (get-in db [:app-lock])
+         ;; NOTE: app-lock is nil when the app starts first time
          lock-app? (and (nil? app-lock) pin-lock-enabled)]
-     ;;(println ":app-lock/app-launched is called and pin-lock-enabled , lock-app? are  " pin-lock-enabled lock-app?)
+     ;; (println ":app-lock/app-launched is called and pin-lock-enabled , attempts-allowed, lock-app? are  " pin-lock-enabled attempts-allowed lock-app?)
      (if lock-app?
        {:db (-> db (assoc-in [:app-lock] {:state :locked
                                           :attempts-count-remaining attempts-allowed
@@ -85,13 +88,13 @@
    ;;(println "time-now is " time-now)
    {:db (-> db (assoc-in [:app-lock :last-user-action-time] time-now))}))
 
-(def ^:private ENFORCED-TIMEOUT-IN-MILLISECONDS 60000) 
+(def ^:private ENFORCED-TIMEOUT-IN-MILLISECONDS 60000)
 
 
-;; In case of '(= lock-timeout 0)' (app lockout is set with option "Immediately"), we use this
+;; In case of '(= lock-timeout 0)' (app lockout is set with the option "Immediately"), we use this
 ;; 'ENFORCED-TIMEOUT-IN-MILLISECONDS' as default app lock timeout time to be safe.
 
-;; If we do not do that, the app lock will happen when any db is locked but db-session-timeout may be larger
+;; If we do not do that, the app lock will happen only when any db is locked but db-session-timeout may be larger
 ;; Also the home page needs protection when user after entering PIN and keeps the app in the foreground without doing anything
 
 ;; App lock timeout checked and the app will be locked accordingly
@@ -101,9 +104,8 @@
    (let [{:keys [pin-lock-enabled lock-timeout attempts-allowed]} (app-lock-preference db)
          last-user-action-time (get-in db [:app-lock :last-user-action-time])
          final-time-out (if (= lock-timeout 0) ENFORCED-TIMEOUT-IN-MILLISECONDS  lock-timeout)]
-     ;; (println " tick last-user-action-time lock-timeout > test"  tick last-user-action-time lock-timeout (and (not (nil? last-user-action-time)) (> (- tick last-user-action-time) lock-timeout)))
-     ;;(if  (and pin-lock-enabled (not= lock-timeout 0)) 
-     (if  pin-lock-enabled
+     ;; (println " tick last-user-action-time lock-timeout > test"  tick last-user-action-time lock-timeout (and (not (nil? last-user-action-time)) (> (- tick last-user-action-time) lock-timeout))) 
+     (if pin-lock-enabled
        (if (and (not (nil? last-user-action-time)) (> (- tick last-user-action-time) final-time-out))
          {:db (-> db (assoc-in [:app-lock :state] :locked)
                   (assoc-in [:app-lock :attempts-count-remaining] attempts-allowed))}
@@ -123,6 +125,7 @@
                 (assoc-in [:app-lock :attempts-count-remaining] attempts-allowed))}
        {}))))
 
+;; Called when after user entered PIN is verified from backend
 (reg-event-fx
  :app-lock-verified
  (fn [{:keys [db]} [_event-id verify-result]]
@@ -139,12 +142,12 @@
 
      ;; PIN verification failed (else part)
      (let [{:keys [attempts-count-remaining]} (get-in db [:app-lock])
-           ;; _ (println ":app-lock attempts-count-remaining " attempts-count-remaining)
+           ;;_ (println ":app-lock attempts-count-remaining " attempts-count-remaining)
            attempts-count-remaining (dec attempts-count-remaining)
            attempts-exceeded (if (= attempts-count-remaining 0) true false)]
-       
-       #_(println "In :app-lock-verified attempts-count-remaining attempts-exceeded " attempts-count-remaining attempts-exceeded)
-       
+
+       ;;(println "In :app-lock-verified attempts-count-remaining attempts-exceeded " attempts-count-remaining attempts-exceeded)
+
        (if attempts-exceeded
          ;; Call app reset
          {:fx [[:bg-app-reset]]}
@@ -154,8 +157,20 @@
 
 (reg-fx
  :bg-app-reset
- (fn []
-   (println "bg-app-reset will be called")))
+ (fn [] 
+   (bg/app-reset (fn [api-reponse]
+                   (when-not (on-error api-reponse)
+                     (dispatch [:app-lock-app-reset-completed]))))))
+
+(reg-event-fx
+ :app-lock-app-reset-completed
+ (fn [{:keys [db]} [_event-id]]
+   ;; Ensure that app-lock is in unlocked state as app is reset
+   {:db (-> db (assoc-in [:app-lock :state] :unlocked)) 
+    :fx [;; This event loads app peference and then navigates to home page
+         [:dispatch [:common/to-home-page]]
+         ;; Need to close the dialog 
+         [:dispatch (locked-app-log-in-dialog-close-disp-fx-vec)]]}))
 
 (reg-sub
  :app-lock-state

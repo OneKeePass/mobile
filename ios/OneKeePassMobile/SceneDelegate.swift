@@ -27,6 +27,11 @@ class SceneDelegate: NSObject, UIWindowSceneDelegate {
   
   var window: UIWindow?
   
+  // A flag to indicate that user is doing 'authenticateWithBiometric'
+  // This ensures that we do not send native event in 'sceneWillResignActive'
+  // It looks like 'sceneWillResignActive' is fired when FaceID is shown. This causes the App lock
+  static var inBiometricCall: Bool = false
+  
   func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
     // A new scene was added to the app.
     
@@ -74,7 +79,6 @@ class SceneDelegate: NSObject, UIWindowSceneDelegate {
   }
   
   func sceneDidBecomeActive(_ scene: UIScene) {
-    
     logger.debug("sceneDidBecomeActive.....")
     
     // By this all RN modules and rust init should have happened
@@ -82,11 +86,23 @@ class SceneDelegate: NSObject, UIWindowSceneDelegate {
   }
   
   func sceneWillResignActive(_ scene: UIScene) {
-    // A scene will enter the background.
+    // A scene is becoming inactive.
     
-    logger.debug("A scene sceneWillResignActive ....")
+    logger.debug("A scene sceneWillResignActive .... \(Self.inBiometricCall)")
     
-    OkpEvents.sendAppBecomesInActive()
+    // The sceneWillResignActive method is called when the app is about to move
+    // from active to inactive state, which can occur when Face ID is used for authentication
+    // We do not want to emit 'sendAppBecomesInActive' in that case.
+    // For this the Self.inBiometricCall is set true in OkpDbService.authenticateWithBiometric before calling system bioauthentication
+    if !Self.inBiometricCall {
+      logger.debug("A scene sceneWillResignActive ...sending sendAppBecomesInActive as \(Self.inBiometricCall)")
+      OkpEvents.sendAppBecomesInActive()
+    } else {
+      logger.debug("A scene sceneWillResignActive ...is NOT sending sendAppBecomesInActive")
+      
+      // Need to reset so that we can send 'sendAppBecomesInActive' to UI when the app is becoming inactive
+      Self.inBiometricCall = false
+    }
   }
 
   func sceneDidEnterBackground(_ scene: UIScene) {

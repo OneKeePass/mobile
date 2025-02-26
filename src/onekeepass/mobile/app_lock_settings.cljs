@@ -178,10 +178,10 @@
 
        [rn-view {:style {:margin-top 10 :margin-bottom 10
                          :padding 10}}
-        [rnp-text "When PIN authentication failure exceeds this many attempts, the app will be reset. All previous references of databases, key files and internal caches will be removed"]]
+        [rnp-text {:style {:color @rnc/error-color}} "When PIN authentication failure exceeds this many attempts, the app will be reset. All previous references of database files, key files and internal caches will be removed"]]
 
        [rn-view {:style {:margin-top 5 :margin-bottom 5 :padding 10}}
-        [rnp-text "The database files from its original locations are not removed"]]]])])
+        [rnp-text {:style {:color @rnc/error-color}} "The database files from its original locations are not removed"]]]])])
 
 (defn authenticate-with-pin []
   [rn-view {:flex 1 :justify-content "center"}

@@ -554,8 +554,6 @@ impl Commands {
 
             "all_kdbx_cache_keys" => result_json_str(db_service::all_kdbx_cache_keys()),
 
-            "list_bookmark_files" => ok_json_str(ios::list_bookmark_files()),
-
             "list_key_files" => ok_json_str(util::list_key_files()),
 
             "clean_export_data_dir" => result_json_str(util::clean_export_data_dir()),
@@ -590,6 +588,8 @@ impl Commands {
             }
 
             "pin_removed" => result_json_str(app_lock::pin_removed()),
+
+            "app_reset" => result_json_str(app_lock::app_reset()),
             
             //// All remote storage related
             "rs_connect_and_retrieve_root_dir" => {
@@ -865,6 +865,8 @@ impl Commands {
 
     fn remove_from_recently_used(args: &str) -> ResponseJson {
         let (db_key,) = parse_command_args_or_json_error!(args, DbKey { db_key });
+
+        // Remove all files that were created for this db
         remove_app_files(&db_key);
 
         InvokeResult::from(db_service::close_kdbx(&db_key)).json_str()
@@ -1033,7 +1035,7 @@ pub fn remove_app_files(db_key: &str) {
         // debug!("Backup file {} is deleted", &ru.file_name)
     }
 
-    // Need to remove any stored crdentials
+    // Need to remove any stored credentials
     // TODO: Should we make this call only when this db_key is found with flag 'db_open_biometric_enabled' true
     let _ = biometric_auth::StoredCredential::remove_credentials(db_key);
 
