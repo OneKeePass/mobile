@@ -95,6 +95,15 @@ impl Default for AppLockPreference {
     }
 }
 
+impl AppLockPreference {
+    // Called in ios autofill
+    #[cfg(target_os = "ios")]
+    pub(crate) fn disable_pin_lock(&mut self) {
+        // This should not be persisted
+        self.pin_lock_enabled = false;
+    }
+}
+
 pub(crate) const PREFERENCE_JSON_FILE_NAME: &str = "preference.json";
 
 const PREFERENCE_JSON_FILE_VERSION: &str = "5.0.0"; // started using 4.0.0 instead of 0.0.4
@@ -435,8 +444,12 @@ impl Preference {
             .map_or(false, |d| d.db_open_biometric_enabled)
     }
 
-    pub fn database_preferences(&self) -> &Vec<DatabasePreference> {
+    pub(crate) fn database_preferences(&self) -> &Vec<DatabasePreference> {
         &self.database_preferences
+    }
+
+    pub(crate) fn app_lock_preference(&self) -> &AppLockPreference {
+        &self.app_lock_preference
     }
 
     pub fn get_recently_used(&self, db_key: &str) -> Option<RecentlyUsed> {

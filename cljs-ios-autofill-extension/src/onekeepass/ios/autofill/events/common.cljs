@@ -2,15 +2,16 @@
   "All common events that are used across many pages"
   (:require [clojure.string :as str]
             [onekeepass.ios.autofill.background :as bg]
+            [onekeepass.ios.autofill.constants :as const :refer [HOME_PAGE_ID ENTRY_FORM_PAGE_ID ]]
             [onekeepass.ios.autofill.events.common-dialogs]
             [re-frame.core :refer [dispatch dispatch-sync reg-event-db
                                    reg-event-fx reg-fx reg-sub subscribe]]))
 
 (defn sync-initialize
   "Called just before rendering to set all requied values in re-frame db"
-  []
-  ;; For now load-app-preference also gets any uri of kdbx database in case user pressed .kdbx file 
-  (dispatch-sync [:load-autofill-db-files-info]))
+  [] 
+  (dispatch-sync [:load-autofill-init-data] 
+                 #_[:load-autofill-db-files-info]))
 
 ;;;;;;;;;;;;;;;;
 
@@ -75,10 +76,8 @@
         info (first (filter (fn [info] (= (:db-file-path info) db-key)) infos))]
     (:org-db-file-path info)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;; Init data ;;;;;;;;;;;;;;
 
-#_(defn load-autofill-db-files-info []
-    (dispatch [:load-autofill-db-files-info]))
 
 (defn autofill-db-files-info []
   (subscribe [:autofill-db-files-info]))
@@ -86,24 +85,68 @@
 (defn key-files-info []
   (subscribe [:key-files-info]))
 
-(reg-event-fx
+#_(reg-event-fx
  :load-autofill-db-files-info
  (fn [{:keys [db]} [_event-id]]
    {:fx [[:bg-list-app-group-db-files]]}))
 
-(reg-event-fx
+#_(reg-fx
+ :bg-list-app-group-db-files
+ (fn []
+   (bg/list-app-group-db-files (fn [api-response]
+                                 (when-let [files-info (on-ok api-response)]
+                                   (dispatch [:autofill-db-files-info-loaded files-info]))))))
+
+#_(reg-event-fx
  :autofill-db-files-info-loaded
  (fn [{:keys [db]} [_event-id files-info]]
    {:db (-> db (assoc-in [:autofill-db-files-info] files-info))
     :fx [[:bg-load-database-preferences]
          [:bg-list-key-files]]}))
 
+(defn app-preference-data
+  "Gets the app pref data"
+  ([app-db]
+   (get-in app-db [:app-preference :data])))
+
+(defn app-lock-preference
+  "Gets the app lock preference map (struct AppLockPreference)"
+  ([app-db]
+   (get-in app-db [:app-preference :data :app-lock-preference]))
+  ([]
+   (subscribe [:app-lock-preference])))
+
+;;;
+(reg-event-fx
+ :load-autofill-init-data
+ (fn [{:keys [_db]} [_event-id]]
+   {:fx [[:bg-load-autofill-init-data]]}))
+
 (reg-fx
- :bg-list-app-group-db-files
+ :bg-load-autofill-init-data
  (fn []
-   (bg/list-app-group-db-files (fn [api-response]
-                                 (when-let [files-info (on-ok api-response)]
-                                   (dispatch [:autofill-db-files-info-loaded files-info]))))))
+   (bg/load-autofill-init-data (fn [api-response]
+                                 (when-let [af-init-data (on-ok api-response)]
+                                   (dispatch [:autofill-init-data-loaded af-init-data]))))))
+
+(reg-event-fx
+ :autofill-init-data-loaded
+ (fn [{:keys [db]} [_event-id {:keys [copied-dbs-info database-preferences app-lock-preference last-pin-auth-success-time] :as af-init-data}]] 
+   {:db (-> db (assoc-in [:app-preference :data] 
+                         {:database-preferences database-preferences
+                          :app-lock-preference app-lock-preference
+                          :last-pin-auth-success-time last-pin-auth-success-time})
+            (assoc-in [:autofill-db-files-info] copied-dbs-info))
+    :fx [[:dispatch [:app-lock/app-launched]]
+         [:bg-list-key-files]]}))
+
+(reg-sub
+ :app-lock-preference
+ (fn [db [_event-id]]
+   (app-lock-preference db)))
+
+;;;
+
 
 (reg-fx
  :bg-list-key-files
@@ -157,19 +200,17 @@
                        :db-open-biometric-enabled false
                        :db-unlock-biometric-enabled true}  db-p)))
 
-(reg-fx
- :bg-load-database-preferences
- (fn []
-   (bg/database-preferences (fn [api-response]
-                              (when-let [db-prefs (on-ok api-response #())]
-                                (dispatch [:database-preferences-loaded db-prefs]))))))
+#_(reg-fx
+   :bg-load-database-preferences
+   (fn []
+     (bg/database-preferences (fn [api-response]
+                                (when-let [db-prefs (on-ok api-response #())]
+                                  (dispatch [:database-preferences-loaded db-prefs]))))))
 
-(reg-event-fx
- :database-preferences-loaded
- (fn [{:keys [db]} [_event-id db-prefs]]
-   {:db (-> db (assoc-in [:app-preference :data :database-preferences] db-prefs))}))
-
-
+#_(reg-event-fx
+   :database-preferences-loaded
+   (fn [{:keys [db]} [_event-id db-prefs]]
+     {:db (-> db (assoc-in [:app-preference :data :database-preferences] db-prefs))}))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -178,10 +219,10 @@
 
 (def home-page-title "home")
 
-(def HOME_PAGE_ID :home)
-(def LOGIN_PAGE_ID :login)
-(def ENTRY_LIST_PAGE_ID :entry-list)
-(def ENTRY_FORM_PAGE_ID :entry-form)
+;; (def HOME_PAGE_ID :home)
+;; (def LOGIN_PAGE_ID :login)
+;; (def ENTRY_LIST_PAGE_ID :entry-list)
+;; (def ENTRY_FORM_PAGE_ID :entry-form)
 
 (defn to-home []
   (dispatch [:common/next-page HOME_PAGE_ID "Home"]))

@@ -3,7 +3,13 @@
                                                                message-snackbar
                                                                select-field]]
             [onekeepass.ios.autofill.constants :as const :refer [FLEX-DIR-ROW
-                                                                 TR-KEY-AUTOFILL]]
+                                                                 TR-KEY-AUTOFILL
+                                                                 HOME_PAGE_ID
+                                                                 LOGIN_PAGE_ID
+                                                                 ENTRY_FORM_PAGE_ID
+                                                                 ENTRY_LIST_PAGE_ID]]
+            [onekeepass.ios.autofill.app-lock :as app-lock]
+            [onekeepass.ios.autofill.events.app-lock :as app-lock-events]
             [onekeepass.ios.autofill.entry-form :as entry-form]
             [onekeepass.ios.autofill.entry-list :as entry-list]
             [onekeepass.ios.autofill.events.common :as cmn-events]
@@ -164,24 +170,27 @@
 
         [rn-view {:style {:flex 1 :justify-content "center"
                           :padding 20}}
-         [rnp-text {:style {:text-align "center"} :variant "titleSmall"} 
+         [rnp-text {:style {:text-align "center"} :variant "titleSmall"}
           (lstr-mt TR-KEY-AUTOFILL 'enableMsgExt1)
           #_"No database is enabled for AutoFill use"]
          [rn-view {:height 20}]
-         [rnp-text {:style {:text-align "center"} :variant "titleSmall"} 
+         [rnp-text {:style {:text-align "center"} :variant "titleSmall"}
           (lstr-mt TR-KEY-AUTOFILL 'enableMsgExt2)
           #_"Please open a database in OneKeePass App, go to its settings page and enable that database to use in AutoFill"]]))))
 
 (defn home-page []
-  [rn-view {:style {:flex 1 :width "100%"}}
-   [rn-view {:style {:flex 1}}
-    [databases-list-content]]])
+  (let [{:keys [state]} @(app-lock-events/app-lock-data)]
+    (if (= state :unlocked)
+      [rn-view {:style {:flex 1 :width "100%"}}
+       [rn-view {:style {:flex 1}}
+        [databases-list-content]]]
+      [app-lock/content])))
 
 (defn login-page []
   [open-db-page])
 
 (defn top-bar-left-action [page]
-  (if (= page cmn-events/ENTRY_FORM_PAGE_ID)
+  (if (= page ENTRY_FORM_PAGE_ID)
     {:action form-events/cancel-entry-form
      :label (lstr-bl 'back)
      :title (lstr-pt 'entry)}
@@ -236,23 +245,24 @@
    (let [{:keys [page]} @(cmn-events/page-info)]
      [rn-view {:style {:flex 1 :width "100%"}}
       [top-bar page]
-      (when (= cmn-events/ENTRY_LIST_PAGE_ID page)
+      (when (= ENTRY_LIST_PAGE_ID page)
         [searchbar])
 
       [rn-view {:style {:justify-content "center"
                         :align-items "center"
                         :flex 1}}
        (condp = page
-         cmn-events/HOME_PAGE_ID
+
+         HOME_PAGE_ID
          [home-page]
 
-         cmn-events/LOGIN_PAGE_ID
+         LOGIN_PAGE_ID
          [login-page]
 
-         cmn-events/ENTRY_LIST_PAGE_ID
+         ENTRY_LIST_PAGE_ID
          [show-all-entries]
 
-         cmn-events/ENTRY_FORM_PAGE_ID
+         ENTRY_FORM_PAGE_ID
          [show-form]
 
          :else

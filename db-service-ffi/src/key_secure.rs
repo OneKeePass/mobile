@@ -7,8 +7,8 @@ use std::{
 
 use onekeepass_core::db_service as kp_service;
 
-use crate::app_state::AppState;
 use crate::udl_types::SecureKeyOperationError;
+use crate::{app_state::AppState, OkpResult};
 
 // Should be called on app startup (see db_service_initialize fn and called from middle layer)
 // so that services are availble for the db_service layer.
@@ -126,4 +126,68 @@ impl kp_service::KeyStoreService for KeyStoreServiceImpl {
 
         Ok(())
     }
+}
+
+/////////////
+
+// TODO: 
+// Need to combine 'KeyStoreServiceImpl' in this module and one in 'biometric_auth' module
+// to use this keystore_* fns
+
+pub(crate) fn keystore_insert_or_update(acct_key: &str, encrypted_data: &Vec<u8>) -> bool {
+    let ops = AppState::secure_key_operation();
+    let encoded_enc_data = hex::encode(encrypted_data);
+    match ops.store_key(acct_key.to_string(), encoded_enc_data.to_string()) {
+        Ok(()) => {
+            log::info!("Encrypted data is stored in key chain");
+            true
+        }
+        Err(e) => {
+            // This should not happen. However in case of iOS, we may get this error if the entry
+            // is not deleted on closing the database
+            if let SecureKeyOperationError::StoringKeyDuplicateItemError = e {
+                if ops.delete_key(acct_key.to_string()).is_ok() {
+                    let r = ops.store_key(acct_key.to_string(), encoded_enc_data.to_string());
+                    log::info!("Second time call store key called and result is {:?}", r);
+                    match r {
+                        Ok(_) => true,
+                        Err(_) => false,
+                    }
+                } else {
+                    log::error!("secure_key_operation.delete call failed for app lock credential store time");
+                    false
+                }
+            } else {
+                log::error!("secure_key_operation.store_key failed for app lock credential store time with error: {} ", e);
+                false
+            }
+        }
+    }
+}
+
+pub(crate) fn keystore_get_value(data_key: &str) -> Option<Vec<u8>> {
+    let key_str_opt = match AppState::secure_key_operation().get_key(data_key.to_string()) {
+        Ok(v) => v,
+        Err(e) => {
+            log::error!("Query call to key chain failed {:?}", e);
+            None
+        }
+    };
+
+    log::debug!("Get key returned {:?}", &key_str_opt);
+
+    let val = key_str_opt.and_then(|v| match hex::decode(&v) {
+        Ok(v) => Some(v),
+        Err(e) => {
+            log::error!("Hex decoding failed for the value {} with error {}", v, e);
+            None
+        }
+    });
+    val
+}
+
+#[inline]
+pub fn keystore_delete_key(acct_key: &str) -> kp_service::Result<()> {
+    let _r = AppState::secure_key_operation().delete_key(acct_key.to_string());
+    Ok(())
 }

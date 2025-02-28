@@ -12,7 +12,8 @@ use onekeepass_core::{db_service as kp_service, service_util};
 
 use crate::{
     app_preference::{
-        DatabasePreference, Preference, PreferenceData, RecentlyUsed, PREFERENCE_JSON_FILE_NAME,
+        AppLockPreference, DatabasePreference, Preference, PreferenceData, RecentlyUsed,
+        PREFERENCE_JSON_FILE_NAME,
     },
     remote_storage,
     udl_types::SecureKeyOperation,
@@ -28,12 +29,11 @@ pub(crate) const EXPORT_DATA_DIR: &str = "export_data";
 
 pub(crate) const BACKUPS_DIR: &str = "backups";
 
-pub(crate) const BACKUPS_HIST_DIR: &str = "history"; 
+pub(crate) const BACKUPS_HIST_DIR: &str = "history";
 
 pub(crate) const REMOTE_STORAGE_DIR: &str = "remote_storage";
 
-pub(crate) const REMOTE_STORAGE_SFTP_SUB_DIR: &str =  "sftp";
-
+pub(crate) const REMOTE_STORAGE_SFTP_SUB_DIR: &str = "sftp";
 
 // Any mutable field needs to be behind Mutex
 pub struct AppState {
@@ -124,7 +124,8 @@ impl AppState {
         let export_data_dir_path = util::create_sub_dir(&app_dir, EXPORT_DATA_DIR);
         log::debug!("export_data_dir_path is {:?}", &export_data_dir_path);
 
-        let backup_history_dir_path = util::create_sub_dirs(&app_dir, vec![BACKUPS_DIR, BACKUPS_HIST_DIR]);
+        let backup_history_dir_path =
+            util::create_sub_dirs(&app_dir, vec![BACKUPS_DIR, BACKUPS_HIST_DIR]);
         log::debug!("backup_history_dir_path is {:?}", &backup_history_dir_path);
 
         let key_files_dir_path = util::create_sub_dir(&app_dir, "key_files");
@@ -250,7 +251,9 @@ impl AppState {
     // Root dir where all the private key files of one or more SFTP connections are stored
     pub fn sftp_private_keys_path() -> PathBuf {
         // Sub dir "sftp" should exist
-        let p = Self::shared().remote_storage_path.join(REMOTE_STORAGE_SFTP_SUB_DIR);
+        let p = Self::shared()
+            .remote_storage_path
+            .join(REMOTE_STORAGE_SFTP_SUB_DIR);
         p
     }
 
@@ -373,7 +376,7 @@ impl AppState {
     }
 
     // Updates PIN lock enable / disbale flag and also writes the pref file
-    pub(crate) fn update_app_lock_with_pin_enabled(pin_lock_enabled:bool) {
+    pub(crate) fn update_app_lock_with_pin_enabled(pin_lock_enabled: bool) {
         let mut pref = Self::shared().preference.lock().unwrap();
         pref.update_app_lock_with_pin_enabled(pin_lock_enabled);
     }
@@ -404,6 +407,16 @@ impl AppState {
             .lock()
             .unwrap()
             .database_preferences()
+            .clone()
+    }
+
+    #[inline]
+    pub fn app_lock_preference() -> AppLockPreference {
+        Self::shared()
+            .preference
+            .lock()
+            .unwrap()
+            .app_lock_preference()
             .clone()
     }
 
@@ -510,7 +523,7 @@ impl AppState {
         }
     }
 
-    pub(crate) fn update_recent_db_file_info(db_key: &str,) {
+    pub(crate) fn update_recent_db_file_info(db_key: &str) {
         let file_info = Self::uri_to_file_info(db_key);
         let mut pref = Self::shared().preference.lock().unwrap();
 

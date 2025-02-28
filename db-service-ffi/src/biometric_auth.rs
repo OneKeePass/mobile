@@ -115,6 +115,7 @@ impl StoredCredential {
 }
 
 // TODO: Need to combine this with key_secure::KeyStoreServiceImpl
+// See comments in src/key_secure.rs
 
 #[derive(Default)]
 struct KeyStoreServiceImpl {}

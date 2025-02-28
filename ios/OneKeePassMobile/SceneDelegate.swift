@@ -94,6 +94,9 @@ class SceneDelegate: NSObject, UIWindowSceneDelegate {
     // from active to inactive state, which can occur when Face ID is used for authentication
     // We do not want to emit 'sendAppBecomesInActive' in that case.
     // For this the Self.inBiometricCall is set true in OkpDbService.authenticateWithBiometric before calling system bioauthentication
+    
+    // Also see https://stackoverflow.com/questions/26035546/touchid-calls-applicationwillresignactive-and-applicationdidbecomeactive
+    
     if !Self.inBiometricCall {
       logger.debug("A scene sceneWillResignActive ...sending sendAppBecomesInActive as \(Self.inBiometricCall)")
       OkpEvents.sendAppBecomesInActive()

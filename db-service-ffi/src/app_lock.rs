@@ -2,8 +2,8 @@ use log::{self, debug};
 use onekeepass_core::{db_service, error};
 use serde::{Deserialize, Serialize};
 
-use crate::{biometric_auth, ios};
 use crate::{app_state::AppState, udl_types::SecureKeyOperationError, OkpResult};
+use crate::{biometric_auth, ios, key_secure};
 
 use crate::util::{remove_dir_contents, remove_files};
 
@@ -34,7 +34,6 @@ pub fn pin_verify(pin: usize) -> OkpResult<bool> {
 
 // Called to remove all app dirs and files to bring it to a default state
 pub fn app_reset() -> OkpResult<()> {
-
     for db in AppState::recent_dbs_info() {
         // Close any opened database
         let _ = db_service::close_kdbx(&db.db_file_path);
@@ -98,7 +97,7 @@ impl AppLockCredential {
             .encrypt_bytes(APP_LOCK_PIN_TAG.to_string(), plain_data.as_bytes().to_vec())?;
 
         // Store the encrypted data in the key store
-        let r = keystore_insert_or_update(APP_LOCK_PIN_TAG, &encrypted_data);
+        let r = key_secure::keystore_insert_or_update(APP_LOCK_PIN_TAG, &encrypted_data);
 
         debug!("keystore_insert_or_update is done to store PIN {}", r);
 
@@ -107,11 +106,12 @@ impl AppLockCredential {
 
     fn verify(&self) -> OkpResult<bool> {
         // First we need to get the previously stored encrypted data from key store
-        let decoded_enc_data = keystore_get_value(APP_LOCK_PIN_TAG).ok_or_else(|| {
-            error::Error::SecureKeyOperationError(format!(
-                "Getting expected encrypted app lock data from key store failed"
-            ))
-        })?;
+        let decoded_enc_data =
+            key_secure::keystore_get_value(APP_LOCK_PIN_TAG).ok_or_else(|| {
+                error::Error::SecureKeyOperationError(format!(
+                    "Getting expected encrypted app lock data from key store failed"
+                ))
+            })?;
 
         // Decrypt the data
         let decrypted_data = AppState::secure_enclave_cb_service()
@@ -124,14 +124,15 @@ impl AppLockCredential {
         Ok(self == &stored_app_lock)
     }
 
-    // Called to remove any encrypted app lock crdentials from key store
+    // Called to remove any previously stored encrypted app lock credentials from the key store
     fn remove_app_lock_credential() -> OkpResult<()> {
-        let _r = AppState::secure_key_operation().delete_key(APP_LOCK_PIN_TAG.to_string());
+        let r = key_secure::keystore_delete_key(APP_LOCK_PIN_TAG);
         log::debug!("App lock enc data from key store is deleted..");
-        Ok(())
+        r
     }
 }
 
+/*
 fn keystore_insert_or_update(acct_key: &str, encrypted_data: &Vec<u8>) -> bool {
     let ops = AppState::secure_key_operation();
     let encoded_enc_data = hex::encode(encrypted_data);
@@ -183,3 +184,4 @@ fn keystore_get_value(data_key: &str) -> Option<Vec<u8>> {
     });
     val
 }
+*/

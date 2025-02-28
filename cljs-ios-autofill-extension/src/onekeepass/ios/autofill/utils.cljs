@@ -54,15 +54,15 @@
 
 ;; Based on some examples in https://stackoverflow.com/questions/32467299/clojurescript-convert-arbitrary-javascript-object-to-clojure-script-map
 ;; Somewhat old, but the solution used here works
- #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
- (defn jsx->clj
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
+(defn jsx->clj
   "Converts objects of type '#object[Error Error: Document picker was cancelled..]' to 
   {:nativeStackAndroid [], :code \"DOCUMENT_PICKER_CANCELED\"..}
   "
   [obj]
   (js->clj (-> obj js/JSON.stringify js/JSON.parse) :keywordize-keys true))
 
-(defn find-match 
+(defn find-match
   "Finds a map that has a matching value for a given keyword key
    The arg 'seq-of-maps' is a vec of map elements. 
    The first match is returned ignoring any other subsequent ones
@@ -74,6 +74,27 @@
       (= value (kw-key m)))
     seq-of-maps)))
 
-(comment 
-  (in-ns 'onekeepass.ios.autofill.utils)
-  )
+;; From an article https://dnaeon.github.io/recursively-merging-maps-in-clojure/
+(defn deep-merge
+  "Recursively merges maps."
+  [& maps]
+  (letfn [(m [& xs]
+            (if (some #(and (map? %) (not (record? %))) xs)
+              (apply merge-with m xs)
+              (last xs)))]
+    (reduce m maps)))
+
+(defn deep-merge-with
+  "Recursively merges maps. Applies function f when we have duplicate keys.
+  The fn 'f' should take two args
+  "
+  [f & maps]
+  (letfn [(m [& xs]
+             ;;(println "xs is " xs)
+            (if (some #(and (map? %) (not (record? %))) xs)
+              (apply merge-with m xs)
+              (apply f xs)))]
+    (reduce m maps)))
+
+(comment
+  (in-ns 'onekeepass.ios.autofill.utils))

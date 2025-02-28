@@ -80,7 +80,7 @@
   @rnc/secondary-container-color)
 
 (defn before-storage-selection-info-dialog [{:keys [dialog-show]
-                                             {:keys [file-name db-file-path location last-accessed last-modified]} :recently-used}]
+                                             {:keys [file-name db-file-path location last-accessed _last-modified]} :recently-used}]
   [rnp-modal {:style {:margin-right 25
                       :margin-left 25}
               :visible dialog-show
@@ -124,18 +124,23 @@
                          :padding 10
                          :justify-content "center"}}
 
+        [rn-view {:style {:height 10}}] 
+        [rnp-divider] 
         [rn-view {:style {:height 10}}]
-        [rnp-divider]
-        [rn-view {:style {:height 10}}]
+        
         [rn-view {:style {:justify-content "space-between"} :flexDirection "row"}
          [rnp-text "Source"]
          [rnp-text location]]
+        
         [rn-view {:style {:height 10}}]
         [rnp-divider]
         [rn-view {:style {:height 10}}]
+        
         [rn-view {:style {:justify-content "space-between"} :flexDirection "row"}
          [rnp-text "Last Accessed"]
          [rnp-text (utc-to-local-datetime-str last-accessed "LLL dd,yyyy hh:mm:ss aaa")]]
+        
+        [rn-view {:style {:height 10}}]
         [rnp-divider]]
 
        [rnp-text {:style {:margin-top 10
@@ -168,10 +173,14 @@
                   :mode "text"
                   :on-press (fn []
                               (dlg-events/before-storage-selection-info-dialog-close)
-                              (opndb-events/open-database-on-press))} "Pick the database again"]]]])
-
-#_(defn before-storage-selection-info-dialog-show [recently-used]
-    (dlg-events/before-storage-selection-info-dialog-show-with-state {}))
+                              (opndb-events/open-database-on-press))} "Pick the database again"]
+     [rnp-button {:style {:width "70%"}
+                  :labelStyle {:fontWeight "bold"}
+                  :mode "text"
+                  :on-press (fn []
+                              (dlg-events/before-storage-selection-info-dialog-close))} (lstr-bl 'cancel)]
+     
+     ]]])
 
 ;;;;;;;;;;;;;;
 
@@ -256,8 +265,7 @@
       [rnp-button {:mode "text" :disabled in-progress?
                    :onPress #(ndb-events/new-database-validate-before-create-action
                               (fn []
-                                (start-page-storage-selection-dialog-show BROWSE-TYPE-DB-NEW :new-db-data {:database-name database-name})
-                                #_(start-page-storage-selection-dialog-show BROWSE-TYPE-DB-NEW :new-db-data {:database-name database-name})))}
+                                (start-page-storage-selection-dialog-show BROWSE-TYPE-DB-NEW :new-db-data {:database-name database-name})))}
        (lstr-bl "create")]]]))
 
 ;; open-db-dialog is called after user pick a database file open 
@@ -530,7 +538,8 @@
     found
     (opndb-events/set-opened-database-active db-file-path)
 
-    (not (show-file-reference-use-dlg? location))
+    #_(not (show-file-reference-use-dlg? location))
+    (show-file-reference-use-dlg? location)
     (dlg-events/before-storage-selection-info-dialog-show-with-state {:recently-used recently-used})
 
     :else
