@@ -47,7 +47,7 @@ class OkpDbService: NSObject {
       "MainBundleDir": Bundle.main.bundlePath,
       "Country": Locale.current.regionCode ?? "NONE", // Device country
       "Language": Locale.preferredLanguages.first!, // Device level language
-      "BiometricAvailable": b
+      "BiometricAvailable": b,
     ]
   }
   
@@ -64,8 +64,8 @@ class OkpDbService: NSObject {
   
   @objc
   func iOSInvokeCommand(_ commandName: String, args: String,
-                     resolve: @escaping RCTPromiseResolveBlock,
-                     reject _: @escaping RCTPromiseRejectBlock)
+                        resolve: @escaping RCTPromiseResolveBlock,
+                        reject _: @escaping RCTPromiseRejectBlock)
   {
     DispatchQueue.global(qos: .userInteractive).async { [unowned self] in
       logger.debug("The iOSInvokeCommand InvokeCommand for \(commandName) called with args \(args) and delegating to api call")
@@ -76,7 +76,7 @@ class OkpDbService: NSObject {
   /// All app group realted API calls
   
   @objc
-  func autoFillInvokeCommand(_ commandName: String, args: String, resolve: @escaping RCTPromiseResolveBlock,reject _: @escaping RCTPromiseRejectBlock)
+  func autoFillInvokeCommand(_ commandName: String, args: String, resolve: @escaping RCTPromiseResolveBlock, reject _: @escaping RCTPromiseRejectBlock)
   {
     DispatchQueue.global(qos: .userInteractive).async { [unowned self] in
       logger.debug("The autoFillInvokeCommand InvokeCommand for \(commandName) called with args \(args) and delegating to api call")
@@ -129,7 +129,6 @@ class OkpDbService: NSObject {
       logger.debug("saveKdbx received fullFileNameUri is \(fullFileNameUri)")
       
       let dbFileUrl = URL(string: fullFileNameUri)
-      
       
       let bookmarkData = DbServiceAPI.iosSupportService().loadBookMarkData(dbFileUrl!.absoluteString)
             
@@ -214,16 +213,21 @@ class OkpDbService: NSObject {
             reject(E_BOOK_MARK_STALE, "Existing bookmark is stale.File selection is required before use", nil)
           } else {
             let isAccessed = burl.startAccessingSecurityScopedResource()
-            defer { if isAccessed { burl.stopAccessingSecurityScopedResource() }}
+            defer { if isAccessed {
+              burl.stopAccessingSecurityScopedResource()
+            }}
             
             var error: NSError?
             NSFileCoordinator().coordinate(readingItemAt: burl, error: &error) { _ in
               resolveResponse(DbServiceAPI.readKdbx(burl.absoluteString, jsonArgs), resolve)
             }
             
-            if error != nil {
-              logger.error("In readKdbx NSFileCoordinator().coordinate call error \(String(describing: error?.localizedDescription))")
-              reject(E_COORDINATOR_CALL_FAILED, "\(String(describing: error?.localizedDescription))", error)
+            guard error == nil else {
+              // logger.error("In readKdbx NSFileCoordinator().coordinate call error \(String(describing: error?.localizedDescription))")
+              // reject(E_COORDINATOR_CALL_FAILED, "\(String(describing: error!.localizedDescription))", error)
+              let msg = "\(error!.code) \(error!.localizedDescription) \(error!.description)"
+              reject(E_COORDINATOR_CALL_FAILED,msg, error)
+              return
             }
           }
         } catch let error as NSFileProviderError where error.code == .noSuchItem {
@@ -271,7 +275,7 @@ class OkpDbService: NSObject {
   
   // A generic handler after user picks a file in an earlier step by using an api call to
   // lauch document picker using 'OkpDocumentPickerService'
-  // TODO: Need to move 'copyKeyFile' and 'uploadAttachment' calls to use this api 
+  // TODO: Need to move 'copyKeyFile' and 'uploadAttachment' calls to use this api
   @objc
   func handlePickedFile(_ fullFileNameUri: String, jsonArgs: String,
                         resolve: @escaping RCTPromiseResolveBlock,
@@ -281,7 +285,6 @@ class OkpDbService: NSObject {
       resolve(DbServiceAPI.handlePickedFile(url.absoluteString, jsonArgs))
     }
   }
-  
   
   // TODO: Verify the use of  bookmarkedFileHandler in 'copyKeyFile' and 'uploadAttachment' works for both on sim and devices
   func bookmarkedFileHandler(_ fullFileNameUri: String, _ reject: @escaping RCTPromiseRejectBlock, _ handler: (URL) -> Void) {
@@ -334,17 +337,15 @@ class OkpDbService: NSObject {
     DbServiceAPI.iosSupportService().deleteBookMarkData(keyFileUrl!.absoluteString)
   }
   
-  
   // TDODO: Need to move authenticateWithBiometric and getAuthenticationErrorDescription to a common class and share between app and autofill
   
   @objc
   func authenticateWithBiometric(_ resolve: @escaping RCTPromiseResolveBlock,
                                  reject _: @escaping RCTPromiseRejectBlock)
   {
-    
     // See how this is used in SceneDelegate.sceneWillResignActive
     SceneDelegate.inBiometricCall = true
-    self.logger.debug("inBiometricCall is set \(SceneDelegate.inBiometricCall)")
+    logger.debug("inBiometricCall is set \(SceneDelegate.inBiometricCall)")
     
     DispatchQueue.global(qos: .userInteractive).async { [unowned self] in
       let localAuthenticationContext = LAContext()

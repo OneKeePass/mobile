@@ -60,8 +60,8 @@
       structuredConsoleMode = "1">
       <RemoteRunnable
          runnableDebuggingMode = "1"
-         BundleIdentifier = "com.onekeepass.ios"
-         RemotePath = "/Users/jeyasankar/Library/Developer/CoreSimulator/Devices/A45B3252-1AA4-4D50-9E6E-89AB1E873B1F/data/Containers/Bundle/Application/C8457A17-8A89-48BC-A38C-382C9263AFAE/OneKeePassMobile.app">
+         BundleIdentifier = "com.apple.MobileAddressBook"
+         RemotePath = "/Library/Developer/CoreSimulator/Volumes/iOS_21C62/Library/Developer/CoreSimulator/Profiles/Runtimes/iOS 17.2.simruntime/Contents/Resources/RuntimeRoot/Applications/Contacts.app">
       </RemoteRunnable>
       <MacroExpansion>
          <BuildableReference

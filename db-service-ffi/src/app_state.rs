@@ -322,6 +322,7 @@ impl AppState {
         // First we attempt to see whether the 'full_file_name_uri' is meant fo the remote storage 'Sftp' or 'Webdav'
         let info = remote_storage::uri_to_file_info(full_file_name_uri);
         if info.is_some() {
+            debug!("Returning RS file info {:?}", &info);
             return info;
         }
 
@@ -485,6 +486,7 @@ impl AppState {
     }
 
     pub fn add_recently_used_with_file_info(db_key: &str, file_info: &Option<FileInfo>) {
+        debug!("add_recently_used_with_file_info is called with file_info {:?}",&file_info);
         let file_info = if file_info.is_none() {
             Self::uri_to_file_info(db_key)
         } else {

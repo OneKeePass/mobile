@@ -104,7 +104,7 @@
   "Converts objects of type '#object[Error Error: Document picker was cancelled..]' to 
   {:nativeStackAndroid [], :code \"DOCUMENT_PICKER_CANCELED\"..}
   "
-  [obj]
+  [obj] 
   (js->clj (-> obj js/JSON.stringify js/JSON.parse) :keywordize-keys true))
 
 (def KB 1024)

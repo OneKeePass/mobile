@@ -642,6 +642,8 @@ impl Commands {
                 })
             }
             ////
+            
+            "read_latest_backup" => result_json_str(crate::db_backup_read::read_latest_backup(&args)),
 
             // "list_backup_files" => ok_json_str(util::list_backup_files()),
             // "delete_key_file" => Self::delete_key_file(&args),

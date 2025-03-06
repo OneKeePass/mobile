@@ -223,6 +223,22 @@ class CommonDeviceServiceImpl(val reactContext: ReactApplicationContext) : Commo
         return fileContent
     }
 
+    // Kotlin does not have checked exceptions
+    // May throw an exception
+    override fun loadResourceWordlist(wordlistFileName: String): String {
+        var fileContent: String? = null
+
+        val assetManager = reactContext.assets
+        val builder = StringBuilder()
+        val fileName =
+            builder.append("wordlists").append("/").append(wordlistFileName).append(".txt").toString()
+
+        fileContent = assetManager.open(fileName).bufferedReader().use {
+            it.readText()
+        }
+        return fileContent
+    }
+
     override fun uriToFileName(fullFileNameUri: String): String? {
         try {
             val uri = Uri.parse(fullFileNameUri);

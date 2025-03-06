@@ -4,7 +4,7 @@
    [onekeepass.mobile.background :as bg]
    [onekeepass.mobile.constants :as const]
    [onekeepass.mobile.events.common :refer [biometric-enabled-to-open-db
-                                            biometric-enabled-to-unlock-db 
+                                            biometric-enabled-to-unlock-db
                                             on-ok
                                             opened-db-keys
                                             is-db-locked]]
@@ -22,24 +22,24 @@
   []
   (dispatch [:pick-database-file]))
 
-(defn set-opened-database-active 
+(defn set-opened-database-active
   "Called when user selects a db name on the start page database list which is already opened and not locked
    It is assumed the db is opened but not locked
    "
   [full-file-name-uri]
   (dispatch [:common/set-active-db-key full-file-name-uri]))
 
-(defn open-selected-database 
+(defn open-selected-database
   "Called when user selects a db name on the start page database list"
   [file-name full-file-name-uri]
   (dispatch [:open-database/database-file-picked-1 {:file-name file-name :full-file-name-uri full-file-name-uri}]))
 
 #_(defn open-selected-database
-  "Called when user picks a db on the start page database list"
-  [file-name full-file-name-uri already-opened?]
-  (if already-opened?
-    (dispatch [:common/set-active-db-key full-file-name-uri])
-    (dispatch [:open-database/database-file-picked-1 {:file-name file-name :full-file-name-uri full-file-name-uri}])))
+    "Called when user picks a db on the start page database list"
+    [file-name full-file-name-uri already-opened?]
+    (if already-opened?
+      (dispatch [:common/set-active-db-key full-file-name-uri])
+      (dispatch [:open-database/database-file-picked-1 {:file-name file-name :full-file-name-uri full-file-name-uri}])))
 
 (defn database-field-update [kw-field-name value]
   (dispatch [:open-database-field-update kw-field-name value]))
@@ -301,7 +301,7 @@
 
 ;; Called when biometric auth fails. 
 ;; This can happen when the user uses FaceId first time after enabling or 
-;; stored crdentials are no more valid
+;; stored credentials are no more valid
 (reg-event-fx
  :open-database-db-open-with-credentials
  (fn [{:keys [_db]} [_event-id kdbx-file-info-m]]
@@ -357,7 +357,7 @@
    ;; If the user cancels any file selection, 
    ;; the RN response is a error due to the use of promise rejecton in Native Module. And we can ignore that error 
    {:fx [(when-not (= "DOCUMENT_PICKER_CANCELED" (:code error))
-           [:dispatch [:common/error-box-show "File Pick Error" error]])]}))
+           [:dispatch [:common/error-box-show 'filePickError error]])]}))
 
 ;; TODO: Need to initiate loading progress indication
 ;; :open-database should have valid values by this time as user has picked a database and entered all valid 
@@ -393,26 +393,54 @@
                                  (dispatch [:open-database-read-kdbx-error error kdbx-file-info-m])))]
                      (dispatch [:open-database-db-opened kdbx-loaded]))))))
 
+(reg-fx
+ :bg-read-latest-backup-kdbx
+ (fn [[{:keys [db-file-name password key-file-name biometric-auth-used]}]]
+   (bg/read-latest-backup-kdbx db-file-name password key-file-name biometric-auth-used
+                               (fn [api-response]
+                                 (when-some [kdbx-loaded
+                                             (on-ok api-response
+                                                    (fn [error]
+                                                      (dispatch [:common/message-modal-hide])
+                                                      (dispatch [:open-database-read-kdbx-error error nil])))]
+                                   (dispatch [:open-database-db-opened kdbx-loaded]))))))
+
 (reg-event-fx
  :open-database-read-kdbx-error
  (fn [{:keys [db]} [_event-id error kdbx-file-info-m]]
    {:db (-> db (assoc-in [:open-database :error-fields] {})
             (assoc-in [:open-database :status] :completed))
+    
+    ;; IMPORTANT: The arg "error" may be a string or map
 
     ;; We get error code PERMISSION_REQUIRED_TO_READ or FILE_NOT_FOUND from middle layer readKdbx 
-
+    
     ;; PERMISSION_REQUIRED_TO_READ may happen if the File Manager decides 
     ;; that the existing uri should be refreshed by asking user to pick the database again 
-
+    
     ;; FILE_NOT_FOUND happens when the uri we have no more points to a valid file as that file 
     ;; might have been changed by other program.
-
+    
     ;; In iOS, typically the error is "NSFileProviderErrorDomain Code=-1005 "The file doesn’t exist."
-
+    
     ;; In iOS FILE_NOT_FOUND is triggered when the iCloud file url remains the same but the iCloud sync has not
     ;; yet completed. In that we ask the user to repick the same file
     :fx (cond
 
+          ;; Need to make sure "error" is a string for this condition. 
+          ;; Otherwise str/starts-with? will result in exception as it happend when "error" is a map and this check was not done
+          ;; *** Terminating app due to uncaught exception 
+          ;; 'RCTFatalException: Unhandled JS Exception: TypeError: n.lastIndexOf is not a function. 
+          ;; (In 'n.lastIndexOf("InvalidCredentials:",0)', 'n.lastIndexOf' is undefined)', reason: 'Unhandled JS Exception: TypeError: n.lastIndexOf is not a function. 
+          ;; (In 'n.lastIndexOf ("InvalidCredentials:",0) ', 'n.lastIndexOf' is undefined)
+          
+          (and (string? error) (str/starts-with? error "InvalidCredentials:"))
+          [[:dispatch [:common/error-box-show 'dbOpenError (-> error (str/split #"InvalidCredentials:") last str/trim)]]]
+          
+          (and (string? error) (= error "BiometricCredentialsAuthenticationFailed"))
+          [[:dispatch [:open-database-db-open-with-credentials kdbx-file-info-m]]]
+
+          ;; error is a map
           (= (:code error) const/PERMISSION_REQUIRED_TO_READ)
           [[:dispatch [:repick-confirm-show const/PERMISSION_REQUIRED_TO_READ]]
            [:dispatch [:open-database-dialog-hide]]]
@@ -421,21 +449,17 @@
           [[:dispatch [:open-database-dialog-hide]]
            [:dispatch [:repick-confirm-show const/FILE_NOT_FOUND]]]
 
-          (= error "BiometricCredentialsAuthenticationFailed")
-          [[:dispatch [:open-database-db-open-with-credentials kdbx-file-info-m]]]
-          #_[[:dispatch [:open-database/database-file-picked kdbx-file-info-m]]
-             [:dispatch [:common/error-box-show "Database Open" "Please enter the credentials"]]]
-
+          ;; Handles iOS NSFileCoordinator call error "4101 Couldn’t communicate with a helper application"
+          ;; This happened while trying to load a kdbx file from GDrive when user picks that db from the recent db list
+          (and (= (:code error) const/COORDINATOR_CALL_FAILED) (str/starts-with? (:message error) "4101")) 
+          (let [{:keys [database-full-file-name password key-file-name]} (get-in db [:open-database])]
+            [[:bg-read-latest-backup-kdbx [{:db-file-name database-full-file-name
+                                            :password password
+                                            :key-file-name key-file-name
+                                            :biometric-auth-used false}]]])
+          
           :else
-          (let [b (str/starts-with? error "InvalidCredentials:")
-                msg (if b
-                      (-> error (str/split #"InvalidCredentials:") last str/trim)
-                      error)]
-            [[:dispatch [:common/error-box-show "Database Open Error" msg]]])
-
-          ;;:else
-          ;;[[:dispatch [:common/error-box-show "Database Open Error" error]]]
-          )}))
+          [[:dispatch [:common/error-box-show "Database Open Error" error]]])}))
 
 (reg-event-fx
  :open-database-db-opened

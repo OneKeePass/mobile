@@ -16,7 +16,7 @@
                                                     rnp-segmented-buttons
                                                     rnp-text
                                                     rnp-icon-button]]
-   [onekeepass.mobile.common-components :as cc :refer [select-field get-form-style]]
+   [onekeepass.mobile.common-components :as cc :refer [select-field find-matching-label get-form-style]]
    [onekeepass.mobile.utils :as u :refer [contains-val?]]
    [onekeepass.mobile.events.common :as cmn-events]
    [onekeepass.mobile.events.password-generator :as pg-events]
@@ -91,7 +91,8 @@
        [select-field {:text-label (lstr-l 'wordList)
                       :options all-wl
                       :disabled false
-                      :value wl-source
+                      ;; This is used as initValue for modal selector and also as value prop of  the inner rnp-text-input
+                      :value (find-matching-label all-wl  wl-source)
                       :on-change  (select-on-change-factory-1 :word-list-source)}]]]
      [rn-view {:style (get-form-style)}
 

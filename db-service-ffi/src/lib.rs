@@ -11,6 +11,7 @@ mod event_dispatcher;
 mod file_util;
 mod ios;
 mod key_secure;
+mod db_backup_read;
 mod remote_storage;
 mod util;
 

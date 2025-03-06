@@ -129,6 +129,7 @@ interface JsonService {
     constructor();
     string form_with_file_name(string full_file_name_uri);
     string map_as_ok_json_string(record<DOMString,string> info);
+    string map_as_error_json_string(record<DOMString,string> info);
     string ok_json_string(string info);
     string error_json_string(string error);
 };

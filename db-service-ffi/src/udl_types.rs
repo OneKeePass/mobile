@@ -181,6 +181,19 @@ impl JsonService {
         InvokeResult::with_ok(info).json_str()
     }
 
+    // Returns the map data as a parseable (by cljs) json string with "error" key
+    pub fn map_as_error_json_string(&self, info: HashMap<String, String>) -> String {
+        
+        // we use serde_json to serilaize the incoming HashMap to a string beforming error json
+        match serde_json::to_string(&info) {
+            Ok(json) => InvokeResult::<()>::with_error(&json).json_str(),
+            Err(e) => {
+                let er = format!("Error in map_as_error_json_string: {}", &e);
+                InvokeResult::<()>::with_error(&er).json_str()
+            }
+        }
+    }
+
     // Returns a parseable (by cljs) json string with "ok"
     pub fn ok_json_string(&self, info: String) -> String {
         InvokeResult::with_ok(info).json_str()

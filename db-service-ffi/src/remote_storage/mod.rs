@@ -17,6 +17,7 @@ use crate::backup::{
     self, latest_backup_file_path, latest_backup_full_file_name, matching_backup_exists,
 };
 use crate::commands::{result_json_str, CommandArg, ResponseJson};
+use crate::db_backup_read::{read_latest_backup_db_arg, KdbxLoadedEx};
 use crate::udl_types::FileInfo;
 use crate::{biometric_auth, open_backup_file, parse_command_args_or_err};
 use crate::{OkpError, OkpResult};
@@ -46,6 +47,8 @@ use storage_service::ParsedDbKey;
 /// -------   All public functions   -------
 
 pub(crate) fn uri_to_file_info(db_key: &str) -> Option<FileInfo> {
+    debug!("RS uri_to_file_info is called with db_key {}", db_key);
+
     let Ok((remaining, parsed)) = parse_db_key(db_key) else {
         // Parsing of db_key (remote url) failed
         return None;
@@ -70,6 +73,7 @@ pub(crate) fn uri_to_file_info(db_key: &str) -> Option<FileInfo> {
                 //debug!(" RS file_info.last_modified since epoch {} ",&r);
                 r
             });
+            file_info.file_name = Some(parsed.file_name.to_string());
             file_info.location = Some(parsed.rs_type_name.to_string());
             file_info
         });
@@ -125,7 +129,16 @@ fn parse_db_key(db_key: &str) -> IResult<&str, ParsedDbKey> {
     // remaining should be empty str after a successful db key parsing
 
     // We extract the file name
-    let file_name = file_path_part.rsplit_once("/").map_or_else(|| "", |p| p.1);
+    let file_name = file_path_part.rsplit_once("/").map_or_else(
+        || {
+            info!(
+                "Failed to extract file_name from file_path_part {}",
+                &file_path_part
+            );
+            ""
+        },
+        |p| p.1,
+    );
 
     Ok((
         remaining,
@@ -180,52 +193,6 @@ fn parse_db_key_to_rs_type_opertaion(db_key: &str) -> OkpResult<RemoteStorageOpe
     Ok(rt)
 }
 
-#[derive(Debug, Serialize)]
-struct RsAdditionalInfo {
-    no_connection: bool,
-}
-
-// This adds an additional info to the existing KdbxLoaded
-// For now we set 'no_connection' field only to indicate to the UI side
-// that we have opened the db content using the backup and editing should be
-// disabled for now
-#[derive(Debug, Serialize)]
-struct KdbxLoadedEx {
-    db_key: String,
-    database_name: String,
-    file_name: Option<String>,
-    key_file_name: Option<String>,
-    rs_additional_info: Option<RsAdditionalInfo>,
-}
-
-impl KdbxLoadedEx {
-    fn set_no_read_connection(mut self) -> Self {
-        self.rs_additional_info = Some(RsAdditionalInfo {
-            no_connection: true,
-        });
-        self
-    }
-}
-
-impl From<KdbxLoaded> for KdbxLoadedEx {
-    fn from(kdbx_loaded: KdbxLoaded) -> Self {
-        let KdbxLoaded {
-            db_key,
-            database_name,
-            file_name,
-            key_file_name,
-        } = kdbx_loaded;
-
-        KdbxLoadedEx {
-            db_key,
-            database_name,
-            file_name,
-            key_file_name,
-            rs_additional_info: None,
-        }
-    }
-}
-
 fn rs_read_file(json_args: &str) -> OkpResult<KdbxLoadedEx> {
     let (db_file_name, password, key_file_name, biometric_auth_used) = parse_command_args_or_err!(
         json_args,
@@ -243,10 +210,15 @@ fn rs_read_file(json_args: &str) -> OkpResult<KdbxLoadedEx> {
     // If the remote server is not available, send an error to UI and user determines what to do
 
     if let Err(e) = rs_operation_type.connect_by_id() {
+        info!("Connection to remote server is not available and read only mode from backup. The remote call error details:{}", e);
+
         // If the db file is read earlier, then we should have at least one backup. Otherwise an error is returned
+        return read_latest_backup_db_arg(&db_file_name, &password, &key_file_name);
+
+        /*
         let path = latest_backup_file_path(&db_file_name).ok_or(error::Error::UnexpectedError(
             format!(
-                "Connection to remote server is not available and error details:{}",
+                "Getting latest backup file failed and error details:{}",
                 e
             ),
         ))?;
@@ -269,6 +241,8 @@ fn rs_read_file(json_args: &str) -> OkpResult<KdbxLoadedEx> {
         let k: KdbxLoadedEx = kdbx_loaded.into();
         // We return the no connection info so that we can show read only mode
         return Ok(k.set_no_read_connection());
+
+        */
     }
 
     debug!("Remote server connected");

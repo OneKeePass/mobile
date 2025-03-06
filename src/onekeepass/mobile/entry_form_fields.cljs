@@ -67,39 +67,43 @@
                                        icon-space-required
                                        _non-edit-kdbx-url] :as kv}]
   (let [label (to-field-label kv)
-        val (to-field-value kv)]
-    ^{:key (str key protected)} [rnp-text-input {:label label
-                                                 :defaultValue val
+        val (to-field-value kv)] 
+    ;; We need to use this ^:key so that text-input field is unique 
+    ;; Otherwise :defaultValue will show old value when we change from non edit to edit
+    ^{:key (str edit key protected)} [rnp-text-input {:label label
+                                                      :defaultValue val
                                                  ;; :value val
                                                  ;;:editable edit
-                                                 :showSoftInputOnFocus edit
-                                                 :ref (fn [^js/Ref ref]
-                                                        (when (and (not (nil? ref)) (str/blank? value)) (.clear ref)))
-                                                 :autoCapitalize "none"
-                                                 :keyboardType (if-not protected "email-address" "default")
-                                                 :autoComplete "off"
-                                                 :autoCorrect false
-                                                 :style {:width (if icon-space-required  "90%" "100%")}
-                                                 :multiline true
-                                                 :onFocus #(field-focus-action key true)
-                                                 :onBlur #(field-focus-action key false)
-                                                 :onChangeText (if edit on-change-text nil)
-                                                 :onPressOut (if-not edit
-                                                               #(cmn-events/write-string-to-clipboard
-                                                                 {:field-name key
-                                                                  :protected protected
-                                                                  :value val})
-                                                               nil)
-                                                 :secureTextEntry (if (or (not protected) visible) false true)
-                                                 ;; It looks like we can have only one icon
-                                                 :right (when protected
-                                                          (if visible
-                                                            (r/as-element [rnp-text-input-icon
-                                                                           {:icon "eye"
-                                                                            :onPress #(form-events/entry-form-field-visibility-toggle key)}])
-                                                            (r/as-element [rnp-text-input-icon
-                                                                           {:icon "eye-off"
-                                                                            :onPress #(form-events/entry-form-field-visibility-toggle key)}])))}]))
+                                                      :showSoftInputOnFocus edit
+                                                      :ref (fn [^js/Ref ref]
+                                                             (when (and (not (nil? ref)) (str/blank? value)) (.clear ref)))
+                                                      :autoCapitalize "none"
+                                                      :keyboardType (if-not protected "email-address" "default")
+                                                      :autoComplete "off"
+                                                      :autoCorrect false
+                                                      :style {:width (if icon-space-required  "90%" "100%") :min-height 70}
+                                                      ;; If multiline true, then secureTextEntry is not working
+                                                      :multiline (not protected)
+                                                      :numberOfLines 1
+                                                      :onFocus #(field-focus-action key true)
+                                                      :onBlur #(field-focus-action key false)
+                                                      :onChangeText (if edit on-change-text nil)
+                                                      :onPressOut (if-not edit
+                                                                    #(cmn-events/write-string-to-clipboard
+                                                                      {:field-name key
+                                                                       :protected protected
+                                                                       :value val})
+                                                                    nil)
+                                                      :secureTextEntry (if (or (not protected) visible) false true)
+                                                     ;; It looks like we can have only one icon
+                                                      :right (when protected
+                                                               (if visible
+                                                                 (r/as-element [rnp-text-input-icon
+                                                                                {:icon "eye"
+                                                                                 :onPress #(form-events/entry-form-field-visibility-toggle key)}])
+                                                                 (r/as-element [rnp-text-input-icon
+                                                                                {:icon "eye-off"
+                                                                                 :onPress #(form-events/entry-form-field-visibility-toggle key)}])))}]))
 
 
 ;; For "react-native-paper": "^5.12.3"

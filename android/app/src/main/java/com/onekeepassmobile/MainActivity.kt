@@ -89,6 +89,17 @@ class MainActivity : ReactActivity() {
     override fun onPause() {
         super.onPause();
         Log.d("MainActivity", "On pause is called...")
+        EventEmitter.emitAppBecomesInactive()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        Log.d("MainActivity", "On start is called...")
+    }
+
+    override fun onRestart() {
+        super.onRestart()
+        Log.d("MainActivity", "On restart is called...")
     }
 
     override fun onResume() {

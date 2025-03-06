@@ -1,11 +1,13 @@
 (ns onekeepass.mobile.android.autofill.start-page
   "Only the Android Autofill specific start page components"
-  (:require [onekeepass.mobile.background :refer [is-iOS]]
-            [onekeepass.mobile.common-components :as cc
-             :refer [message-dialog message-snackbar]]
+  (:require #_[onekeepass.mobile.background :refer [is-iOS]]
+   [onekeepass.mobile.common-components :as cc
+    :refer [message-dialog message-snackbar]]
             [onekeepass.mobile.constants :as const]
             [onekeepass.mobile.events.common :as cmn-events]
-            [onekeepass.mobile.events.open-database :as opndb-events]
+            #_[onekeepass.mobile.events.open-database :as opndb-events]
+            [onekeepass.mobile.app-lock :as app-lock]
+            [onekeepass.mobile.events.app-lock :as app-lock-events]
             [onekeepass.mobile.android.autofill.events.common :as android-af-cmn-events]
             [onekeepass.mobile.rn-components
              :as rnc
@@ -17,7 +19,7 @@
                      rnp-helper-text rnp-icon-button rnp-list-icon
                      rnp-list-item rnp-portal rnp-progress-bar rnp-text
                      rnp-text-input rnp-text-input-icon]]
-            [onekeepass.mobile.translation :refer [lstr-bl lstr-dlg-text
+            [onekeepass.mobile.translation :refer [lstr-bl
                                                    lstr-dlg-title lstr-l]]
             [onekeepass.mobile.utils :as u]
             [reagent.core :as r]))
@@ -114,34 +116,34 @@
                       :padding-left 0} :variant "titleLarge"} title]])
 
 #_(defn message-repick-database-file-dialog [{:keys [dialog-show file-name reason-code]}]
-  (let [[title text] (if (= reason-code const/PERMISSION_REQUIRED_TO_READ)
-                       [(str (lstr-dlg-title 'reopen) " " file-name),
-                        (str (lstr-dlg-text 'reopenReadPermissionrequired) ". " (lstr-dlg-text 'reopenAgain {:file-name file-name}))]
+    (let [[title text] (if (= reason-code const/PERMISSION_REQUIRED_TO_READ)
+                         [(str (lstr-dlg-title 'reopen) " " file-name),
+                          (str (lstr-dlg-text 'reopenReadPermissionrequired) ". " (lstr-dlg-text 'reopenAgain {:file-name file-name}))]
                        ;; in iOS, seen this happening when we try to open (pressing on the home page dabase list) a database 
                        ;; file stored in iCloud and file is not synched to the mobile yet  
-                       [(lstr-dlg-title 'reopen)
-                        (str (lstr-dlg-text 'reopenNotOldRef) ". " (lstr-dlg-text 'reopenAgain {:file-name file-name}))])]
-    [cc/confirm-dialog  {:dialog-show dialog-show
-                         :title title
-                         :confirm-text text
-                         :actions [{:label (lstr-bl "cancel")
-                                    :on-press #(opndb-events/repick-confirm-cancel)}
-                                   {:label (lstr-bl "continue")
-                                    :on-press (fn []
-                                                (opndb-events/repick-confirm-close))}]}]))
+                         [(lstr-dlg-title 'reopen)
+                          (str (lstr-dlg-text 'reopenNotOldRef) ". " (lstr-dlg-text 'reopenAgain {:file-name file-name}))])]
+      [cc/confirm-dialog  {:dialog-show dialog-show
+                           :title title
+                           :confirm-text text
+                           :actions [{:label (lstr-bl "cancel")
+                                      :on-press #(opndb-events/repick-confirm-cancel)}
+                                     {:label (lstr-bl "continue")
+                                      :on-press (fn []
+                                                  (opndb-events/repick-confirm-close))}]}]))
 
 #_(defn authenticate-biometric-confirm-dialog [{:keys [dialog-show]}]
-  [cc/confirm-dialog  {:dialog-show dialog-show
-                       :title (lstr-dlg-title  'biometricConfirm)
-                       :confirm-text (if (is-iOS)
-                                       (lstr-dlg-text 'biometricConfirmTxt1)
-                                       (lstr-dlg-text 'biometricConfirmTxt2))
-                       :actions [{:label "Cancel"
-                                  :on-press (fn []
-                                              (opndb-events/authenticate-biometric-cancel))}
-                                 {:label "Continue"
-                                  :on-press (fn []
-                                              (opndb-events/authenticate-biometric-ok))}]}])
+    [cc/confirm-dialog  {:dialog-show dialog-show
+                         :title (lstr-dlg-title  'biometricConfirm)
+                         :confirm-text (if (is-iOS)
+                                         (lstr-dlg-text 'biometricConfirmTxt1)
+                                         (lstr-dlg-text 'biometricConfirmTxt2))
+                         :actions [{:label "Cancel"
+                                    :on-press (fn []
+                                                (opndb-events/authenticate-biometric-cancel))}
+                                   {:label "Continue"
+                                    :on-press (fn []
+                                                (opndb-events/authenticate-biometric-ok))}]}])
 
 (defn- icon-name-color [found locked]
   (cond
@@ -208,24 +210,46 @@
                                  (r/as-element [databases-list-header title])))}])))
 
 (defn- home-page []
-  [rn-view {:style {:flex 1 :width "100%"}}
-   [rn-view {:style {:flex 1 :justify-content "center" :align-items "center" :margin-top "10%"}}
-    [rn-view {:style {:flex .1 :justify-content "center" :width "90%"}}
-     [rnp-button {:mode "contained" :onPress #(android-af-cmn-events/open-database-on-press)}
-      (lstr-bl "opendb")]]
+  (let [lock-state @(app-lock-events/app-lock-state)]
+    ;; The home page will show a page to enter PIN if this feature is enabled
+    ;; in the main app. We are using the main app's app-lock implementation
+    ;; for the android autofill also
+    (if (= lock-state :locked)
+      [rn-view
+       [app-lock/content]]
 
-    [rn-view {:style {:margin-top 20}}
-     [rnc/rnp-divider]]
+      [rn-view {:style {:flex 1 :width "100%"}}
+       [rn-view {:style {:flex 1 :justify-content "center" :align-items "center" :margin-top "10%"}}
+        [rn-view {:style {:flex .1 :justify-content "center" :width "90%"}}
+         [rnp-button {:mode "contained" :onPress #(android-af-cmn-events/open-database-on-press)}
+          (lstr-bl "opendb")]]
 
+        [rn-view {:style {:margin-top 20}}
+         [rnc/rnp-divider]]
+
+        [rn-view {:style {:flex 1 :width "100%"}}
+         [databases-list-content @(cmn-events/recently-used-dbs)]]]])))
+
+
+#_(defn- home-page []
     [rn-view {:style {:flex 1 :width "100%"}}
-     [databases-list-content @(cmn-events/recently-used-dbs)]]]
-   #_[rn-view {:style {:flex 1}}
-      [databases-list-content @(cmn-events/recently-used)]]])
+     [rn-view {:style {:flex 1 :justify-content "center" :align-items "center" :margin-top "10%"}}
+      [rn-view {:style {:flex .1 :justify-content "center" :width "90%"}}
+       [rnp-button {:mode "contained" :onPress #(android-af-cmn-events/open-database-on-press)}
+        (lstr-bl "opendb")]]
+
+      [rn-view {:style {:margin-top 20}}
+       [rnc/rnp-divider]]
+
+      [rn-view {:style {:flex 1 :width "100%"}}
+       [databases-list-content @(cmn-events/recently-used-dbs)]]]
+     #_[rn-view {:style {:flex 1}}
+        [databases-list-content @(cmn-events/recently-used)]]])
 
 (defn open-page-content []
   [rn-safe-area-view {:style {:flex 1 :background-color @rnc/page-background-color}}
-   (let [{:keys [page]} {} #_@(cmn-events/page-info)]
-     [rn-view {:style {:flex 1 :width "100%"}} 
+   (let [{:keys [_page]} {} #_@(cmn-events/page-info)]
+     [rn-view {:style {:flex 1 :width "100%"}}
       [rn-view {:style {:justify-content "center"
                         :align-items "center"
                         :flex 1}}

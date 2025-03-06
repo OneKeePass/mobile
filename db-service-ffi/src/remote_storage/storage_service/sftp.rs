@@ -12,13 +12,14 @@ use std::{collections::HashMap, sync::Arc};
 use tokio::sync::oneshot;
 use uuid::Uuid;
 
-use crate::{parse_operation_fields_if, receive_from_async_fn, remote_storage::callback_service::CallbackServiceProvider, reply_by_async_fn};
+use crate::{
+    parse_operation_fields_if, receive_from_async_fn,
+    remote_storage::callback_service::CallbackServiceProvider, reply_by_async_fn,
+};
 
 use onekeepass_core::async_service::async_runtime;
-use onekeepass_core::service_util::system_time_to_seconds;
 use onekeepass_core::db_service::error::{self, Error, Result};
-
-
+use onekeepass_core::service_util::system_time_to_seconds;
 
 pub use super::server_connection_config::SftpConnectionConfig;
 use super::{
@@ -390,7 +391,7 @@ impl SftpConnection {
             host,
             port,
             private_key_full_file_name,
-            private_key_file_name:_,
+            private_key_file_name: _,
             user_name,
             password,
             // Omits the remaining fields
@@ -665,14 +666,15 @@ impl SftpConnection {
     //reply_by_sftp_async_fn!(send_metadata (parent_dir:String,fiile_name:String), metadata (&parent_dir,&fiile_name), RemoteFileMetadata);
 }
 
-// For now this custom error messaging is done for russh::Error 
+// For now this custom error messaging is done for russh::Error
 // TODO: Need to find out how to incorporate this conversion in the crate::error::Error itself using From
 
 fn convert_error(inner_error: russh::Error) -> error::Error {
+    debug!("The incoming inner_error in convert_error is {:?}", &inner_error);
     match inner_error {
         russh::Error::ConnectionTimeout => {
-            debug!("russh::Error::ConnectionTimeout  happened ");
-            error::Error::RemoteStorageCallError(format!("Connection timedout"))
+            debug!("russh::Error::ConnectionTimeout happened");
+            error::Error::RemoteStorageCallError(format!("Connection timed out"))
         }
 
         russh::Error::Keys(e) => convert_russh_keys_error(e),
@@ -681,10 +683,15 @@ fn convert_error(inner_error: russh::Error) -> error::Error {
             // Connection refused (os error 111) when port is not correct
 
             let s = format!("{}", x);
-            debug!("Formatted s is {}", s);
+            debug!("russh::Error - The formatted s is {}", s);
+
+            // Saw on ios Connection refused (os error 61) 
+            // when server was not running or port is wrong
             if s.contains("Connection refused") {
-                error::Error::RemoteStorageCallError(format!("Valid host and port are required"))
+                // error::Error::RemoteStorageCallError(format!("Valid host and port are required"))
+                error::Error::RemoteStorageCallError(format!("Connection refused. The server may not be running or connection information is not correct"))
             } else {
+                // Sometimes saw "Operation timed out (os error 60)" when host is wrong
                 debug!("Unhandled russh::Error {} ", x);
                 error::Error::RemoteStorageCallError(format!("{}", x))
             }
@@ -712,20 +719,25 @@ fn convert_russh_keys_error(inner_error: russh_keys::Error) -> error::Error {
         }
 
         x => {
-            // TDOO: 
+            // TDOO:
             // "stream did not contain valid UTF-8" when invalid file is used for private key
 
             // Connection refused (os error 111) when port or host is not correct
-            debug!("Unhandled russh_keys::Error {} ", x);
+            debug!("Unhandled russh_keys::Error x {} ", x);
+
             let s = format!("{}", x);
-            debug!("Formatted s is {}", s);
+            debug!("russh_keys::Error - The formatted s is {}", s);
+
             if s.contains("Connection refused") {
-                error::Error::RemoteStorageCallError(format!("Valid host and port are required"))
+                error::Error::RemoteStorageCallError(format!("Connection refused. The server may not be running or connection information is not correct"))
+                // error::Error::RemoteStorageCallError(format!("Valid host and port are required"))
             } else if s.contains("stream did not contain valid") {
                 error::Error::RemoteStorageCallError(format!("Valid private key file is requied"))
-            } 
-            else {
-                error::Error::RemoteStorageCallError(format!("{}. Please ensure a valid private key file is used", x))
+            } else {
+                error::Error::RemoteStorageCallError(format!(
+                    "{}. Please ensure a valid private key file is used",
+                    x
+                ))
             }
         }
     }

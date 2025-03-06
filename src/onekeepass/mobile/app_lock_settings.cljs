@@ -18,7 +18,7 @@
                                                     rnp-divider
                                                     rnp-switch
                                                     rnp-text]]
-   [onekeepass.mobile.common-components :as cc :refer [select-field get-form-style]]
+   [onekeepass.mobile.common-components :as cc :refer [select-field find-matching-label get-form-style ]]
    [onekeepass.mobile.utils :as u :refer [str->int]]
    [onekeepass.mobile.events.common :as cmn-events]
    [onekeepass.mobile.events.dialogs :as dlg-events]
@@ -119,7 +119,7 @@
                               {:key 10 :label  "10"}
                               {:key 15  :label  "15"}])
 
-(defn find-matching-label
+#_(defn find-matching-label
   "Gets the option label from the selected value"
   [options value]
   (:label (first

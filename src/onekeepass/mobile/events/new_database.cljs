@@ -203,7 +203,7 @@
     :fx (if (= "DOCUMENT_PICKER_CANCELED" (:code error))
           [[:dispatch [:new-database-dialog-hide]]]
           [[:dispatch [:new-database-dialog-hide]]
-           [:dispatch [:common/error-box-show "File Pick Error" error]]])}))
+           [:dispatch [:common/error-box-show 'filePickError error]]])}))
 
 (defn- on-database-creation-completed
   [api-response]

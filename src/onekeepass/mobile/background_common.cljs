@@ -8,7 +8,7 @@
    [cljs.core.async.interop :refer-macros [<p!]]
    [onekeepass.mobile.utils :as u :refer [contains-val?]]
    [onekeepass.mobile.constants :as const]
-   [clojure.string :as str] 
+   [clojure.string :as str]
    [camel-snake-kebab.extras :as cske]
    [camel-snake-kebab.core :as csk]))
 
@@ -139,7 +139,6 @@
         (dispatch-fn deserialized-response))
       (catch js/Error err
         (do
-
           ;;(reset! test-raw-response-data err)
 
           ;; (println "type of err is " (type err))
@@ -170,6 +169,8 @@
 
                                  :else
                                  (ex-cause err))})
+          ;; We can see the console log output in xcode debug console and in Android studio Logcat window,
+          ;; We can also see the console log in the terminal screen where 'React native dev server' is running
           (js/console.log (ex-cause err)))))))
 
 ;;TODO: Combine android-invoke-api,ios-autofill-invoke-api and invoke-api
@@ -226,10 +227,10 @@
          args-keys-excluded nil
          convert-response true}}]
   (call-api-async (fn [] (.iOSInvokeCommand okp-db-service
-                                                name
-                                                (api-args->json api-args
-                                                                :convert-request convert-request
-                                                                :args-keys-excluded args-keys-excluded)))
+                                            name
+                                            (api-args->json api-args
+                                                            :convert-request convert-request
+                                                            :args-keys-excluded args-keys-excluded)))
                   dispatch-fn :convert-response convert-response :convert-response-fn convert-response-fn))
 
 

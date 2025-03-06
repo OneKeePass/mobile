@@ -52,7 +52,8 @@
 (def language-options [{:key "en" :label "en - English"}
                        {:key "es" :label "es - Español"}
                        {:key "fr" :label "fr - Français"}
-                       {:key "de" :label "de - Deutsch"}])
+                       {:key "de" :label "de - Deutsch"}
+                       {:name "zh - 中文" :value "zh"}])
 
 (defn list-item-modal-selector
   [{:keys [options value on-change label-extractor-fn list-title]}]

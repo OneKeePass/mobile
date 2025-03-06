@@ -88,7 +88,7 @@
               :dismissableBackButton false
                  ;;:onDismiss #() 
               :contentContainerStyle {:borderRadius 15
-                                      :height "70%"
+                                      :height "80%"
                                       :backgroundColor (bg1)
                                       :padding 10}}
    [rn-view {:style {:flexDirection "column"  :flex 1}}
@@ -106,7 +106,7 @@
     [divider .5]
 
     [rn-view {:style {:flex .7
-                      :background-color "red"}}
+                      :backgroundColor (bg1)}}
      [rn-scroll-view {;; This puts the content in the center 
                       ;; :centerContent "true"
                       :style {:backgroundColor (bg1)
@@ -124,22 +124,22 @@
                          :padding 10
                          :justify-content "center"}}
 
-        [rn-view {:style {:height 10}}] 
-        [rnp-divider] 
-        [rn-view {:style {:height 10}}]
-        
-        [rn-view {:style {:justify-content "space-between"} :flexDirection "row"}
-         [rnp-text "Source"]
-         [rnp-text location]]
-        
         [rn-view {:style {:height 10}}]
         [rnp-divider]
         [rn-view {:style {:height 10}}]
-        
+
+        [rn-view {:style {:justify-content "space-between"} :flexDirection "row"}
+         [rnp-text "Source"]
+         [rnp-text location]]
+
+        [rn-view {:style {:height 10}}]
+        [rnp-divider]
+        [rn-view {:style {:height 10}}]
+
         [rn-view {:style {:justify-content "space-between"} :flexDirection "row"}
          [rnp-text "Last Accessed"]
          [rnp-text (utc-to-local-datetime-str last-accessed "LLL dd,yyyy hh:mm:ss aaa")]]
-        
+
         [rn-view {:style {:height 10}}]
         [rnp-divider]]
 
@@ -178,9 +178,7 @@
                   :labelStyle {:fontWeight "bold"}
                   :mode "text"
                   :on-press (fn []
-                              (dlg-events/before-storage-selection-info-dialog-close))} (lstr-bl 'cancel)]
-     
-     ]]])
+                              (dlg-events/before-storage-selection-info-dialog-close))} (lstr-bl 'cancel)]]]])
 
 ;;;;;;;;;;;;;;
 
@@ -538,7 +536,7 @@
     found
     (opndb-events/set-opened-database-active db-file-path)
 
-    #_(not (show-file-reference-use-dlg? location))
+    #_(not (show-file-reference-use-dlg? location)) ;; use dev time
     (show-file-reference-use-dlg? location)
     (dlg-events/before-storage-selection-info-dialog-show-with-state {:recently-used recently-used})
 
@@ -622,7 +620,7 @@
      [rn-view {:style {:margin-top 20}}
       [rnc/rnp-divider]]
 
-     [rn-view {:style {:flex 1 :width "100%"}}
+     [rn-view {:style {:flex .9 :width "100%"}}
       [databases-list-content recent-uses]]]))
 
 (defn open-page-content []

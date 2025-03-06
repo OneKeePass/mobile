@@ -209,6 +209,8 @@
 
 ;; When the db is loaded from a remote storage connection, the ok response
 ;; will have a map 'kdbx-loaded-ex' (struct KdbxLoadedEx)
+
+;; Also this struct KdbxLoadedEx is used when we open a db in on read only mode
 (reg-event-fx
  :common/kdbx-database-opened
  (fn [{:keys [db]} [_event-id {:keys [database-name rs-additional-info] :as kdbx-loaded-ex}]]
@@ -1019,8 +1021,22 @@
    ;; We need to convert message as '(str message)' to ensure it can be used 
    ;; in UI component
    ;; The message may be a symbol meaning that it is to be used as a key to get the translated text
-   (let [msg (if (symbol? message) message
-                 (get message :message (str message)))]
+  
+   (let [msg  (cond
+
+                (symbol? message)
+                message
+
+                (string? message)
+                message
+
+                (map? message)
+                (let [msg (get message :message)
+                      msg (if (empty? msg) (str message) msg)]
+                  msg)
+
+                :else
+                (str message))] 
      (-> db
          (assoc-in [:message-box :dialog-show] true)
          (assoc-in [:message-box :title] (if (str/blank? title) "Error" title))

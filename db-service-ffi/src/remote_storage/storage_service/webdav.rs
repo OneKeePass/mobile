@@ -7,11 +7,14 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::oneshot;
 use uuid::Uuid;
 
-use crate::{parse_operation_fields_if, receive_from_async_fn, remote_storage::callback_service::CallbackServiceProvider, reply_by_async_fn};
+use crate::{
+    parse_operation_fields_if, receive_from_async_fn,
+    remote_storage::callback_service::CallbackServiceProvider, reply_by_async_fn,
+};
 
 use onekeepass_core::async_service::async_runtime;
-use onekeepass_core::service_util::system_time_to_seconds;
 use onekeepass_core::db_service::error::{self, Error, Result};
+use onekeepass_core::service_util::system_time_to_seconds;
 
 pub use super::server_connection_config::WebdavConnectionConfig;
 use super::ConnectStatus;
@@ -410,7 +413,11 @@ impl WebdavConnection {
             &file_path
         );
 
-        let response = self.client.get(&file_path).await?;
+        let response = self
+            .client
+            .get(&file_path)
+            .await
+            .map_err(|e| convert_error(e))?;
         // Copies the full file content to memory
         let contents: Vec<u8> = response.bytes().await?.into();
 
@@ -571,33 +578,36 @@ impl WebdavConnection {
     reply_by_webdav_async_fn!(send_file_metadta(file_path:String), file_metadata(&file_path), RemoteFileMetadata);
 }
 
-
 // For now this custom error messaging is done for reqwest_dav::types::Error
 // TODO: Need to find out how to incorporate this conversion in the crate::error::Error itself using From
 
 fn convert_error(inner_error: reqwest_dav::types::Error) -> error::Error {
-    
+    debug!(
+        "The incoming inner_error in convert_error is {:?}",
+        &inner_error
+    );
+
     match inner_error {
-        
         reqwest_dav::Error::Reqwest(e) => {
             debug!("The r is {:?}", e);
             debug!("The r is {}, {}", &e.is_timeout(), &e.is_connect());
+
             if e.is_connect() {
-                error::Error::RemoteStorageCallError(format!("Invalid root url. Please provide a valid value for host and port"))
-            }
-            else if e.is_timeout() && e.is_connect() {
-                error::Error::RemoteStorageCallError(format!(
-                    "Invalid root url. Please provide a valid value for host and port"
-                ))
+                // error::Error::RemoteStorageCallError(format!("Invalid root url. Please provide a valid value for host and port"))
+                error::Error::RemoteStorageCallError(format!("Connection refused. The server may not be running or connection information is not correct"))
+            } else if e.is_timeout() && e.is_connect() {
+                error::Error::RemoteStorageCallError(format!("Connection timed out. The server may not be running or connection information is not correct"))
+                // error::Error::RemoteStorageCallError(format!(
+                //     "Invalid root url. Please provide a valid value for host and port"
+                // ))
             } else {
                 error::Error::RemoteStorageCallError(format!("{}", e))
             }
         }
 
         reqwest_dav::Error::Decode(e1) => {
-            debug!("reqwest_dav::Error::Decode error is {:?}",&e1);
+            debug!("reqwest_dav::Error::Decode error is {:?}", &e1);
             match e1 {
-            
                 reqwest_dav::DecodeError::StatusMismatched(e) => {
                     if e.response_code == 404 {
                         // && e2.expected_code == 207
@@ -615,9 +625,9 @@ fn convert_error(inner_error: reqwest_dav::types::Error) -> error::Error {
                 e => error::Error::RemoteStorageCallError(format!("{:?}", e)),
             }
         }
-        
+
         reqwest_dav::Error::ReqwestDecode(e1) => {
-            debug!("reqwest_dav::Error::ReqwestDecode error is {:?}",&e1);
+            debug!("reqwest_dav::Error::ReqwestDecode error is {:?}", &e1);
             match e1 {
                 reqwest_dav::ReqwestDecodeError::Url(e) => {
                     let s = format!("{}", &e);
@@ -633,9 +643,8 @@ fn convert_error(inner_error: reqwest_dav::types::Error) -> error::Error {
                 }
                 e => error::Error::RemoteStorageCallError(format!("{:?}", e)),
             }
-        },
+        }
 
         e => error::Error::RemoteStorageCallError(format!("{:?}", e)),
     }
 }
-

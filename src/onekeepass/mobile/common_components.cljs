@@ -151,6 +151,15 @@
   [^js/RnModalDataItem d]
   (lstr-cv (.-key d)))
 
+(defn find-matching-label
+  "Gets the option label from the selected value"
+  [options value]
+  (:label (first
+           (filter
+            (fn [m]
+              (= value (:key m)))
+            options))))
+
 ;;; Uses react-native-modal-selector based selector
 ;; Refer https://github.com/peacechen/react-native-modal-selector#props for all supported props
 ;; that can be used with 'rnms-modal-selector'

@@ -229,6 +229,7 @@
         "titles": {
             "apiError": "API Call Error",
             "biometricDbOpenFirstTime": "Database Open",
+            "dbOpenError":"Database Open Error",
             "filePickError": "File Pick Error",
             "keyFileSavingCancelled": "Key file saving cancelled",
             "missingFields": "Missing Fields",
