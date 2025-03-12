@@ -88,7 +88,10 @@
    ;;(println "time-now is " time-now)
    {:db (-> db (assoc-in [:app-lock :last-user-action-time] time-now))}))
 
-(def ^:private ENFORCED-TIMEOUT-IN-MILLISECONDS 60000)
+;; TODO: Investicate
+;; Though user activity is happening, sometime this ':app-lock/lock-on-timeout' is called 
+;; particularly in Android when this forced timeout is used 1 min
+(def ^:private ENFORCED-TIMEOUT-IN-MILLISECONDS 120000)
 
 
 ;; In case of '(= lock-timeout 0)' (app lockout is set with the option "Immediately"), we use this

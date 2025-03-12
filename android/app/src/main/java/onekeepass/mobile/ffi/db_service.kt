@@ -1003,6 +1003,8 @@ internal open class UniffiVTableCallbackInterfaceSecureEnclaveCbService(
 
 
 
+
+
 // A JNA Library to expose the extern-C FFI definitions.
 // This is an implementation detail which will be called internally by the public API.
 
@@ -1047,6 +1049,8 @@ internal interface UniffiLib : Library {
     fun uniffi_db_service_ffi_fn_method_jsonservice_error_json_string(`ptr`: Pointer,`error`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_db_service_ffi_fn_method_jsonservice_form_with_file_name(`ptr`: Pointer,`fullFileNameUri`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_db_service_ffi_fn_method_jsonservice_map_as_error_json_string(`ptr`: Pointer,`info`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_db_service_ffi_fn_method_jsonservice_map_as_ok_json_string(`ptr`: Pointer,`info`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1274,6 +1278,8 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_db_service_ffi_checksum_method_jsonservice_form_with_file_name(
     ): Short
+    fun uniffi_db_service_ffi_checksum_method_jsonservice_map_as_error_json_string(
+    ): Short
     fun uniffi_db_service_ffi_checksum_method_jsonservice_map_as_ok_json_string(
     ): Short
     fun uniffi_db_service_ffi_checksum_method_jsonservice_ok_json_string(
@@ -1392,6 +1398,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_ffi_checksum_method_jsonservice_form_with_file_name() != 2775.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_ffi_checksum_method_jsonservice_map_as_error_json_string() != 55513.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_ffi_checksum_method_jsonservice_map_as_ok_json_string() != 33764.toShort()) {
@@ -3110,6 +3119,8 @@ public interface JsonServiceInterface {
     
     fun `formWithFileName`(`fullFileNameUri`: kotlin.String): kotlin.String
     
+    fun `mapAsErrorJsonString`(`info`: Map<kotlin.String, kotlin.String>): kotlin.String
+    
     fun `mapAsOkJsonString`(`info`: Map<kotlin.String, kotlin.String>): kotlin.String
     
     fun `okJsonString`(`info`: kotlin.String): kotlin.String
@@ -3222,6 +3233,18 @@ open class JsonService: Disposable, AutoCloseable, JsonServiceInterface {
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_method_jsonservice_form_with_file_name(
         it, FfiConverterString.lower(`fullFileNameUri`),_status)
+}
+    }
+    )
+    }
+    
+
+    override fun `mapAsErrorJsonString`(`info`: Map<kotlin.String, kotlin.String>): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_method_jsonservice_map_as_error_json_string(
+        it, FfiConverterMapStringString.lower(`info`),_status)
 }
     }
     )
