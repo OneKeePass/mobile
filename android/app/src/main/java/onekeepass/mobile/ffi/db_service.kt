@@ -667,13 +667,16 @@ internal interface UniffiCallbackInterfaceCommonDeviceServiceMethod3 : com.sun.j
     fun callback(`uniffiHandle`: Long,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
 }
 internal interface UniffiCallbackInterfaceCommonDeviceServiceMethod4 : com.sun.jna.Callback {
-    fun callback(`uniffiHandle`: Long,`languageId`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
+    fun callback(`uniffiHandle`: Long,`fullFileNameUri`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
 }
 internal interface UniffiCallbackInterfaceCommonDeviceServiceMethod5 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`fullFileNameUri`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
 }
 internal interface UniffiCallbackInterfaceCommonDeviceServiceMethod6 : com.sun.jna.Callback {
-    fun callback(`uniffiHandle`: Long,`fullFileNameUri`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
+    fun callback(`uniffiHandle`: Long,`languageId`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
+}
+internal interface UniffiCallbackInterfaceCommonDeviceServiceMethod7 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`wordlistFileName`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,)
 }
 internal interface UniffiCallbackInterfaceSecureKeyOperationMethod0 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`dbKey`: RustBuffer.ByValue,`encKeyData`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
@@ -711,15 +714,16 @@ internal interface UniffiCallbackInterfaceSecureEnclaveCbServiceMethod1 : com.su
 internal interface UniffiCallbackInterfaceSecureEnclaveCbServiceMethod2 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`identifier`: RustBuffer.ByValue,`uniffiOutReturn`: ByteByReference,uniffiCallStatus: UniffiRustCallStatus,)
 }
-@Structure.FieldOrder("appHomeDir", "appGroupHomeDir", "cacheDir", "tempDir", "loadLanguageTranslation", "uriToFileName", "uriToFileInfo", "uniffiFree")
+@Structure.FieldOrder("appHomeDir", "appGroupHomeDir", "cacheDir", "tempDir", "uriToFileName", "uriToFileInfo", "loadLanguageTranslation", "loadResourceWordlist", "uniffiFree")
 internal open class UniffiVTableCallbackInterfaceCommonDeviceService(
     @JvmField internal var `appHomeDir`: UniffiCallbackInterfaceCommonDeviceServiceMethod0? = null,
     @JvmField internal var `appGroupHomeDir`: UniffiCallbackInterfaceCommonDeviceServiceMethod1? = null,
     @JvmField internal var `cacheDir`: UniffiCallbackInterfaceCommonDeviceServiceMethod2? = null,
     @JvmField internal var `tempDir`: UniffiCallbackInterfaceCommonDeviceServiceMethod3? = null,
-    @JvmField internal var `loadLanguageTranslation`: UniffiCallbackInterfaceCommonDeviceServiceMethod4? = null,
-    @JvmField internal var `uriToFileName`: UniffiCallbackInterfaceCommonDeviceServiceMethod5? = null,
-    @JvmField internal var `uriToFileInfo`: UniffiCallbackInterfaceCommonDeviceServiceMethod6? = null,
+    @JvmField internal var `uriToFileName`: UniffiCallbackInterfaceCommonDeviceServiceMethod4? = null,
+    @JvmField internal var `uriToFileInfo`: UniffiCallbackInterfaceCommonDeviceServiceMethod5? = null,
+    @JvmField internal var `loadLanguageTranslation`: UniffiCallbackInterfaceCommonDeviceServiceMethod6? = null,
+    @JvmField internal var `loadResourceWordlist`: UniffiCallbackInterfaceCommonDeviceServiceMethod7? = null,
     @JvmField internal var `uniffiFree`: UniffiCallbackInterfaceFree? = null,
 ) : Structure() {
     class UniffiByValue(
@@ -727,20 +731,22 @@ internal open class UniffiVTableCallbackInterfaceCommonDeviceService(
         `appGroupHomeDir`: UniffiCallbackInterfaceCommonDeviceServiceMethod1? = null,
         `cacheDir`: UniffiCallbackInterfaceCommonDeviceServiceMethod2? = null,
         `tempDir`: UniffiCallbackInterfaceCommonDeviceServiceMethod3? = null,
-        `loadLanguageTranslation`: UniffiCallbackInterfaceCommonDeviceServiceMethod4? = null,
-        `uriToFileName`: UniffiCallbackInterfaceCommonDeviceServiceMethod5? = null,
-        `uriToFileInfo`: UniffiCallbackInterfaceCommonDeviceServiceMethod6? = null,
+        `uriToFileName`: UniffiCallbackInterfaceCommonDeviceServiceMethod4? = null,
+        `uriToFileInfo`: UniffiCallbackInterfaceCommonDeviceServiceMethod5? = null,
+        `loadLanguageTranslation`: UniffiCallbackInterfaceCommonDeviceServiceMethod6? = null,
+        `loadResourceWordlist`: UniffiCallbackInterfaceCommonDeviceServiceMethod7? = null,
         `uniffiFree`: UniffiCallbackInterfaceFree? = null,
-    ): UniffiVTableCallbackInterfaceCommonDeviceService(`appHomeDir`,`appGroupHomeDir`,`cacheDir`,`tempDir`,`loadLanguageTranslation`,`uriToFileName`,`uriToFileInfo`,`uniffiFree`,), Structure.ByValue
+    ): UniffiVTableCallbackInterfaceCommonDeviceService(`appHomeDir`,`appGroupHomeDir`,`cacheDir`,`tempDir`,`uriToFileName`,`uriToFileInfo`,`loadLanguageTranslation`,`loadResourceWordlist`,`uniffiFree`,), Structure.ByValue
 
    internal fun uniffiSetValue(other: UniffiVTableCallbackInterfaceCommonDeviceService) {
         `appHomeDir` = other.`appHomeDir`
         `appGroupHomeDir` = other.`appGroupHomeDir`
         `cacheDir` = other.`cacheDir`
         `tempDir` = other.`tempDir`
-        `loadLanguageTranslation` = other.`loadLanguageTranslation`
         `uriToFileName` = other.`uriToFileName`
         `uriToFileInfo` = other.`uriToFileInfo`
+        `loadLanguageTranslation` = other.`loadLanguageTranslation`
+        `loadResourceWordlist` = other.`loadResourceWordlist`
         `uniffiFree` = other.`uniffiFree`
     }
 
@@ -996,6 +1002,9 @@ internal open class UniffiVTableCallbackInterfaceSecureEnclaveCbService(
 
 
 
+
+
+
 // A JNA Library to expose the extern-C FFI definitions.
 // This is an implementation detail which will be called internally by the public API.
 
@@ -1040,6 +1049,8 @@ internal interface UniffiLib : Library {
     fun uniffi_db_service_ffi_fn_method_jsonservice_error_json_string(`ptr`: Pointer,`error`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_db_service_ffi_fn_method_jsonservice_form_with_file_name(`ptr`: Pointer,`fullFileNameUri`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+    ): RustBuffer.ByValue
+    fun uniffi_db_service_ffi_fn_method_jsonservice_map_as_error_json_string(`ptr`: Pointer,`info`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
     fun uniffi_db_service_ffi_fn_method_jsonservice_map_as_ok_json_string(`ptr`: Pointer,`info`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
     ): RustBuffer.ByValue
@@ -1267,6 +1278,8 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_db_service_ffi_checksum_method_jsonservice_form_with_file_name(
     ): Short
+    fun uniffi_db_service_ffi_checksum_method_jsonservice_map_as_error_json_string(
+    ): Short
     fun uniffi_db_service_ffi_checksum_method_jsonservice_map_as_ok_json_string(
     ): Short
     fun uniffi_db_service_ffi_checksum_method_jsonservice_ok_json_string(
@@ -1305,11 +1318,13 @@ internal interface UniffiLib : Library {
     ): Short
     fun uniffi_db_service_ffi_checksum_method_commondeviceservice_temp_dir(
     ): Short
-    fun uniffi_db_service_ffi_checksum_method_commondeviceservice_load_language_translation(
-    ): Short
     fun uniffi_db_service_ffi_checksum_method_commondeviceservice_uri_to_file_name(
     ): Short
     fun uniffi_db_service_ffi_checksum_method_commondeviceservice_uri_to_file_info(
+    ): Short
+    fun uniffi_db_service_ffi_checksum_method_commondeviceservice_load_language_translation(
+    ): Short
+    fun uniffi_db_service_ffi_checksum_method_commondeviceservice_load_resource_wordlist(
     ): Short
     fun uniffi_db_service_ffi_checksum_method_securekeyoperation_store_key(
     ): Short
@@ -1385,6 +1400,9 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_db_service_ffi_checksum_method_jsonservice_form_with_file_name() != 2775.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_db_service_ffi_checksum_method_jsonservice_map_as_error_json_string() != 55513.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_db_service_ffi_checksum_method_jsonservice_map_as_ok_json_string() != 33764.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1442,13 +1460,16 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_db_service_ffi_checksum_method_commondeviceservice_temp_dir() != 13364.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_db_service_ffi_checksum_method_commondeviceservice_load_language_translation() != 37179.toShort()) {
-        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
-    }
     if (lib.uniffi_db_service_ffi_checksum_method_commondeviceservice_uri_to_file_name() != 18616.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_ffi_checksum_method_commondeviceservice_uri_to_file_info() != 38559.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_ffi_checksum_method_commondeviceservice_load_language_translation() != 37179.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_ffi_checksum_method_commondeviceservice_load_resource_wordlist() != 55752.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_ffi_checksum_method_securekeyoperation_store_key() != 55442.toShort()) {
@@ -3098,6 +3119,8 @@ public interface JsonServiceInterface {
     
     fun `formWithFileName`(`fullFileNameUri`: kotlin.String): kotlin.String
     
+    fun `mapAsErrorJsonString`(`info`: Map<kotlin.String, kotlin.String>): kotlin.String
+    
     fun `mapAsOkJsonString`(`info`: Map<kotlin.String, kotlin.String>): kotlin.String
     
     fun `okJsonString`(`info`: kotlin.String): kotlin.String
@@ -3210,6 +3233,18 @@ open class JsonService: Disposable, AutoCloseable, JsonServiceInterface {
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_method_jsonservice_form_with_file_name(
         it, FfiConverterString.lower(`fullFileNameUri`),_status)
+}
+    }
+    )
+    }
+    
+
+    override fun `mapAsErrorJsonString`(`info`: Map<kotlin.String, kotlin.String>): kotlin.String {
+            return FfiConverterString.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_method_jsonservice_map_as_error_json_string(
+        it, FfiConverterMapStringString.lower(`info`),_status)
 }
     }
     )
@@ -4134,11 +4169,13 @@ public interface CommonDeviceService {
     
     fun `tempDir`(): kotlin.String
     
-    fun `loadLanguageTranslation`(`languageId`: kotlin.String): kotlin.String?
-    
     fun `uriToFileName`(`fullFileNameUri`: kotlin.String): kotlin.String?
     
     fun `uriToFileInfo`(`fullFileNameUri`: kotlin.String): FileInfo?
+    
+    fun `loadLanguageTranslation`(`languageId`: kotlin.String): kotlin.String?
+    
+    fun `loadResourceWordlist`(`wordlistFileName`: kotlin.String): kotlin.String
     
     companion object
 }
@@ -4190,19 +4227,7 @@ internal object uniffiCallbackInterfaceCommonDeviceService {
             uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
         }
     }
-    internal object `loadLanguageTranslation`: UniffiCallbackInterfaceCommonDeviceServiceMethod4 {
-        override fun callback(`uniffiHandle`: Long,`languageId`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
-            val uniffiObj = FfiConverterTypeCommonDeviceService.handleMap.get(uniffiHandle)
-            val makeCall = { ->
-                uniffiObj.`loadLanguageTranslation`(
-                    FfiConverterString.lift(`languageId`),
-                )
-            }
-            val writeReturn = { value: kotlin.String? -> uniffiOutReturn.setValue(FfiConverterOptionalString.lower(value)) }
-            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
-        }
-    }
-    internal object `uriToFileName`: UniffiCallbackInterfaceCommonDeviceServiceMethod5 {
+    internal object `uriToFileName`: UniffiCallbackInterfaceCommonDeviceServiceMethod4 {
         override fun callback(`uniffiHandle`: Long,`fullFileNameUri`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
             val uniffiObj = FfiConverterTypeCommonDeviceService.handleMap.get(uniffiHandle)
             val makeCall = { ->
@@ -4214,7 +4239,7 @@ internal object uniffiCallbackInterfaceCommonDeviceService {
             uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
         }
     }
-    internal object `uriToFileInfo`: UniffiCallbackInterfaceCommonDeviceServiceMethod6 {
+    internal object `uriToFileInfo`: UniffiCallbackInterfaceCommonDeviceServiceMethod5 {
         override fun callback(`uniffiHandle`: Long,`fullFileNameUri`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
             val uniffiObj = FfiConverterTypeCommonDeviceService.handleMap.get(uniffiHandle)
             val makeCall = { ->
@@ -4224,6 +4249,35 @@ internal object uniffiCallbackInterfaceCommonDeviceService {
             }
             val writeReturn = { value: FileInfo? -> uniffiOutReturn.setValue(FfiConverterOptionalTypeFileInfo.lower(value)) }
             uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
+        }
+    }
+    internal object `loadLanguageTranslation`: UniffiCallbackInterfaceCommonDeviceServiceMethod6 {
+        override fun callback(`uniffiHandle`: Long,`languageId`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeCommonDeviceService.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`loadLanguageTranslation`(
+                    FfiConverterString.lift(`languageId`),
+                )
+            }
+            val writeReturn = { value: kotlin.String? -> uniffiOutReturn.setValue(FfiConverterOptionalString.lower(value)) }
+            uniffiTraitInterfaceCall(uniffiCallStatus, makeCall, writeReturn)
+        }
+    }
+    internal object `loadResourceWordlist`: UniffiCallbackInterfaceCommonDeviceServiceMethod7 {
+        override fun callback(`uniffiHandle`: Long,`wordlistFileName`: RustBuffer.ByValue,`uniffiOutReturn`: RustBuffer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeCommonDeviceService.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`loadResourceWordlist`(
+                    FfiConverterString.lift(`wordlistFileName`),
+                )
+            }
+            val writeReturn = { value: kotlin.String -> uniffiOutReturn.setValue(FfiConverterString.lower(value)) }
+            uniffiTraitInterfaceCallWithError(
+                uniffiCallStatus,
+                makeCall,
+                writeReturn,
+                { e: ApiCallbackException -> FfiConverterTypeApiCallbackError.lower(e) }
+            )
         }
     }
 
@@ -4238,9 +4292,10 @@ internal object uniffiCallbackInterfaceCommonDeviceService {
         `appGroupHomeDir`,
         `cacheDir`,
         `tempDir`,
-        `loadLanguageTranslation`,
         `uriToFileName`,
         `uriToFileInfo`,
+        `loadLanguageTranslation`,
+        `loadResourceWordlist`,
         uniffiFree,
     )
 

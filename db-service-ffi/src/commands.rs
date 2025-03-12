@@ -1,17 +1,15 @@
-use crate::app_preference::{PreferenceData, RecentlyUsed};
+use crate::app_preference::PreferenceData;
 use crate::app_state::AppState;
+use crate::auto_open::AutoOpenProperties;
 use crate::file_util::PickedFileHandler;
+use crate::remote_storage::{self, RemoteStorageOperation};
 use crate::{android, file_util::KeyFileInfo, ios};
-use crate::{backup, biometric_auth, util, OkpError, OkpResult};
+use crate::{app_lock, backup, biometric_auth, util, OkpError, OkpResult};
 use onekeepass_core::async_service::{self, OtpTokenTtlInfoByField, TimerID};
 use onekeepass_core::db_content::AttachmentHashValue;
 use onekeepass_core::db_service::{
     self, DbSettings, EntryCategory, EntryCategoryGrouping, EntryFormData, Group, KdbxLoaded,
-    NewDatabase, OtpSettings, PasswordGenerationOptions,
-};
-
-use onekeepass_core::db_service::storage::{
-    read_configs, RemoteStorageOperation, RemoteStorageOperationType,
+    NewDatabase, OtpSettings, PassphraseGenerationOptions, PasswordGenerationOptions,
 };
 
 use std::fmt::format;
@@ -71,6 +69,9 @@ pub enum CommandArg {
     PasswordGeneratorArg {
         password_options: PasswordGenerationOptions,
     },
+    PassPhraseGeneratorArg {
+        pass_phrase_options: PassphraseGenerationOptions,
+    },
     SessionTimeoutArg {
         // timeout_type is a dummy field so that SessionTimeoutArg is matched only we have this
         // field in the incoming json str. See
@@ -81,6 +82,10 @@ pub enum CommandArg {
     PrefefenceUpdateArg {
         preference_data: PreferenceData,
     },
+    AppLockCredentialArg {
+        pin:usize,
+    },
+
     // Not used
     // OpenDbArgWithFileName {
     //     file_name: String,
@@ -202,11 +207,15 @@ pub enum CommandArg {
     },
 
     RemoteServerOperationArg {
-        rs_operation_type: RemoteStorageOperationType,
+        rs_operation_type: remote_storage::RemoteStorageOperationType,
     },
 
     PickedFileHandlerArg {
         picked_file_handler: PickedFileHandler,
+    },
+
+    AutoOpenPropsResolveArg {
+        auto_open_properties: AutoOpenProperties,
     },
 
     // This variant needs to come last so that other variants starting with db_key is matched before this
@@ -233,7 +242,7 @@ pub enum CommandArg {
 pub type ResponseJson = String;
 
 // Parses the CommandArg enum variants and calls a fn with those args values. This fn is expected to return OkpResult<T>
-// This OkpResult is converted to a json str
+// This OkpResult is then converted to a json str
 macro_rules! service_call  {
     ($args:expr,$enum_name:tt {$($enum_vals:tt)*} => $path:ident $fn_name:tt ($($fn_args:expr),*) ) => {
 
@@ -367,7 +376,7 @@ impl Commands {
             "close_kdbx" => db_service_call!(args, DbKey{db_key} => close_kdbx(&db_key)),
 
             "combined_category_details" => {
-                db_service_call! (args, CategoryDetailArg{db_key,grouping_kind} => combined_category_details(&db_key,grouping_kind))
+                db_service_call! (args, CategoryDetailArg{db_key,grouping_kind} => combined_category_details(&db_key,&grouping_kind))
             }
 
             "categories_to_show" => {
@@ -471,7 +480,13 @@ impl Commands {
             }
 
             "analyzed_password" => {
-                db_service_call! (args, PasswordGeneratorArg{password_options} => analyzed_password(password_options))
+                service_call_closure!(args,PasswordGeneratorArg {password_options}  => move || {
+                    result_json_str(password_options.analyzed_password())
+                })
+            }
+
+            "generate_password_phrase" => {
+                service_call!(args, PassPhraseGeneratorArg {pass_phrase_options} => Self generate_pass_phrase(pass_phrase_options))
             }
 
             "save_attachment_as_temp_file" => {
@@ -517,7 +532,6 @@ impl Commands {
             "shutdown_async_services" => {
                 wrap_no_arg_ok_call! (async_service shutdown_async_services)
             }
-
             //////
             "remove_from_recently_used" => Self::remove_from_recently_used(&args),
 
@@ -526,14 +540,19 @@ impl Commands {
             "get_file_info" => Self::get_file_info(&args),
 
             "prepare_export_kdbx_data" => Self::prepare_export_kdbx_data(&args),
+
+            "resolve_auto_open_properties" => {
+                service_call_closure!(args,AutoOpenPropsResolveArg {auto_open_properties}  => move || {
+                    result_json_str(auto_open_properties.resolve())
+                })
+            }
+
             ///////
             "app_preference" => Self::app_preference(),
 
             "recently_used_dbs_info" => Self::recently_used_dbs_info(),
 
             "all_kdbx_cache_keys" => result_json_str(db_service::all_kdbx_cache_keys()),
-
-            "list_bookmark_files" => ok_json_str(ios::list_bookmark_files()),
 
             "list_key_files" => ok_json_str(util::list_key_files()),
 
@@ -556,6 +575,22 @@ impl Commands {
                 })
             }
 
+            "pin_entered" => {
+                service_call_closure!(args,AppLockCredentialArg {pin}  => move || {
+                    result_json_str(app_lock::pin_entered(pin))
+                })
+            }
+
+            "pin_verify" => {
+                service_call_closure!(args,AppLockCredentialArg {pin}  => move || {
+                    result_json_str(app_lock::pin_verify(pin))
+                })
+            }
+
+            "pin_removed" => result_json_str(app_lock::pin_removed()),
+
+            "app_reset" => result_json_str(app_lock::app_reset()),
+            
             //// All remote storage related
             "rs_connect_and_retrieve_root_dir" => {
                 service_call_closure!(args,RemoteServerOperationArg {rs_operation_type} => move || {
@@ -599,7 +634,7 @@ impl Commands {
 
             "rs_create_kdbx" => crate::remote_storage::rs_create_kdbx(&args),
 
-            "rs_read_configs" => result_json_str(read_configs()),
+            "rs_read_configs" => result_json_str(remote_storage::read_configs()),
 
             "rs_delete_config" => {
                 service_call_closure!(args,RemoteServerOperationArg {rs_operation_type} => move || {
@@ -607,6 +642,8 @@ impl Commands {
                 })
             }
             ////
+            
+            "read_latest_backup" => result_json_str(crate::db_backup_read::read_latest_backup(&args)),
 
             // "list_backup_files" => ok_json_str(util::list_backup_files()),
             // "delete_key_file" => Self::delete_key_file(&args),
@@ -739,7 +776,6 @@ impl Commands {
 
     fn prepare_export_kdbx_data(args: &str) -> String {
         if let Ok(CommandArg::DbKey { db_key }) = serde_json::from_str(args) {
-
             // For now we remove all previous files of export_data dir
             // TDOO: We need to add 'delete call' of specific exported files in cljs when 'bg/export-kdbx' returns
             let _ = util::clean_export_data_dir();
@@ -831,6 +867,8 @@ impl Commands {
 
     fn remove_from_recently_used(args: &str) -> ResponseJson {
         let (db_key,) = parse_command_args_or_json_error!(args, DbKey { db_key });
+
+        // Remove all files that were created for this db
         remove_app_files(&db_key);
 
         InvokeResult::from(db_service::close_kdbx(&db_key)).json_str()
@@ -935,6 +973,25 @@ impl Commands {
         };
         result_json_str(inner_fn())
     }
+
+    fn generate_pass_phrase(
+        pass_phrase_options: PassphraseGenerationOptions,
+    ) -> OkpResult<db_service::GeneratedPassPhrase> {
+        struct Loader {}
+        impl db_service::WordListLoader for Loader {
+            fn load_from_resource(&self, word_list_file_name: &str) -> db_service::Result<String> {
+                // We pass the file name part of the passed 'word_list_file_name' removing .txt
+                // This is requied for iOS
+                let file_name_part = word_list_file_name
+                    .split_once(".")
+                    .map_or("InvalidWordlistFile".to_string(), |c| c.0.to_string());
+
+                Ok(AppState::common_device_service().load_resource_wordlist(file_name_part)?)
+            }
+        }
+        let loader = Loader {};
+        pass_phrase_options.generate(&loader)
+    }
 }
 
 // Just for some testing. Comment out when testing is done
@@ -980,19 +1037,18 @@ pub fn remove_app_files(db_key: &str) {
         // debug!("Backup file {} is deleted", &ru.file_name)
     }
 
-    // Need to remove any stored crdentials
+    // Need to remove any stored credentials
     // TODO: Should we make this call only when this db_key is found with flag 'db_open_biometric_enabled' true
     let _ = biometric_auth::StoredCredential::remove_credentials(db_key);
 
-
-    // For now we remove all files in the export_data dir when 
+    // For now we remove all files in the export_data dir when
     // this db link remove is called
     // TDOO: We need to delete the temp exported file for this db if any
     let _ = util::clean_export_data_dir();
 
-    // Removes this db related info from recent db info list and also removes this db preference 
-    AppState::remove_recent_db_use_info(&db_key,true);
-    
+    // Removes this db related info from recent db info list and also removes this db preference
+    AppState::remove_recent_db_use_info(&db_key, true);
+
     #[cfg(target_os = "ios")]
     ios::delete_book_mark_data(&db_key);
 
@@ -1085,16 +1141,16 @@ pub fn full_path_file_to_create(full_file_name: &str) -> db_service::Result<File
     // log::debug!(".. full_file_path {:?} exists {} ",&p,p.exists());
     // log::debug!("Deleting temp file {:?}", std::fs::remove_file(&p));
 
-    // Sometimes in iOS Simulator, the 'OpenOptions' call failed (called from create_temp_kdbx) 
-    // for some file names with the following error  
-    
+    // Sometimes in iOS Simulator, the 'OpenOptions' call failed (called from create_temp_kdbx)
+    // for some file names with the following error
+
     // Io(Os { code: 17, kind: AlreadyExists, message: "File exists" })
-    
+
     // e.g While checking simulator 'tmp' dir, found a file Test45.kdbx and but when full_file_name file ends in 'test45.kdbx'
     // the error happend and not when ends in 'Test45.kdbx'
 
     // Not sure this will happen often; Need to watch out this hapepening on devices
-    
+
     // IMPORTANT: We need to create a file using OpenOptions so that the file is opened for read and write
     let file = OpenOptions::new()
         .read(true)

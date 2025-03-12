@@ -185,13 +185,16 @@
                                                                  :args-keys-excluded args-keys-excluded)))
                   dispatch-fn :convert-response convert-response :convert-response-fn convert-response-fn))
 
-(defn list-app-group-db-files [dispatch-fn]
+(defn load-autofill-init-data [dispatch-fn]
+  (autofill-invoke-api  "autofill_init_data" {} dispatch-fn))
+
+#_(defn list-app-group-db-files [dispatch-fn]
   (autofill-invoke-api  "list_of_autofill_db_infos" {} dispatch-fn))
 
 (defn list-key-files [dispatch-fn]
   (autofill-invoke-api "list_of_key_files" {} dispatch-fn))
 
-(defn database-preferences [dispatch-fn]
+#_(defn database-preferences [dispatch-fn]
   (autofill-invoke-api "database_preferences" {} dispatch-fn))
 
 #_(defn read-kdbx-from-app-group
@@ -291,6 +294,12 @@
 ;; The same applies for the theme
 (defn load-language-translations [language-ids dispatch-fn]
   (invoke-api "load_language_translations" {:language-ids language-ids} dispatch-fn))
+
+
+;;;;;;;;;;;;; App lock ;;;;;;;;;;;;;;;;;;;;;;
+
+(defn pin-verify [pin dispatch-fn]
+  (autofill-invoke-api "pin_verify" {:pin pin} dispatch-fn))
 
 ;;;;;;;;;;;;;;; Native Events ;;;;;;;;;;;;;;;;;;
 

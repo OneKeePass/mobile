@@ -1,5 +1,5 @@
 (ns onekeepass.mobile.utils
-  (:require 
+  (:require
    [clojure.string :as str]))
 
 (set! *warn-on-infer* true)
@@ -13,39 +13,39 @@
 ;; (= Platform.OS "ios") is false during the compile phase - may be Platform.OS is set some other default value 
 ;; See onekeepass.mobile.background/platform-os for alternative implementation for advanced compilation to work
 #_(defn is-iOS []
-  (= Platform.OS "ios"))
+    (= Platform.OS "ios"))
 
 #_(defn is-Android []
-  (= Platform.OS "android"))
+    (= Platform.OS "android"))
 
 #_(defn append-path
-  "Called to append the given name to the uri encoded path. 
+    "Called to append the given name to the uri encoded path. 
   used mainly in iOS
   "
-  [path name]
-  (if (str/ends-with? path "/")
-    (str path (js/encodeURI name))
-    (str path "/" (js/encodeURI name))))
+    [path name]
+    (if (str/ends-with? path "/")
+      (str path (js/encodeURI name))
+      (str path "/" (js/encodeURI name))))
 
 #_(defn to-file-path
-  "In case ios, we need to get the file path from file URI so that we can use in rust ffi"
-  [path-uri]
-  (if (= Platform.OS "ios")
-    (let [path (js/decodeURI path-uri)]
-      (if (str/starts-with? path "file://")
-        (-> path (str/split  #"file://") last)
-        path))
-    path-uri))
+    "In case ios, we need to get the file path from file URI so that we can use in rust ffi"
+    [path-uri]
+    (if (= Platform.OS "ios")
+      (let [path (js/decodeURI path-uri)]
+        (if (str/starts-with? path "file://")
+          (-> path (str/split  #"file://") last)
+          path))
+      path-uri))
 
 #_(defn extract-file-name
-  "Given the full file url as returned by native layer, we get the file name
+    "Given the full file url as returned by native layer, we get the file name
   In Android, the full url is in the format
   content://com.android.externalstorage.documents/document/primary%3ADocuments%2FTest2.kdbx
   decodeURIComponent of this url returns content://com.android.externalstorage.documents/document/primary:Documents/Test2.kdbx
   The file name 'Test2.kdbx' is returned
   "
-  [full-url]
-  (last (str/split (js/decodeURIComponent full-url)  #"[/:]")))
+    [full-url]
+    (last (str/split (js/decodeURIComponent full-url)  #"[/:]")))
 
 (def UUID-DEFAULT "00000000-0000-0000-0000-000000000000")
 
@@ -87,21 +87,24 @@
 
 (defn str->int
   "Converts the incoming 'data' to an integer or returns nil"
-  [data]
-  (if (int? data)
-    data
-    (if (and (string? data) (re-matches #"\d+" data))  ;;(re-matches #"\d+"  data) will return nil when data includes space or any non numeric char
-      (js/parseInt data)
-      nil)))
+  ([data]
+   (if (int? data)
+     data
+     (if (and (string? data) (re-matches #"\d+" data))  ;;(re-matches #"\d+"  data) will return nil when data includes space or any non numeric char
+       (js/parseInt data)
+       nil)))
+  ([data default]
+   (let [v (str->int data)]
+     (if-not (nil? v) v default))))
 
 ;; Based on some examples in https://stackoverflow.com/questions/32467299/clojurescript-convert-arbitrary-javascript-object-to-clojure-script-map
 ;; Somewhat old, but the solution used here works
- #_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
- (defn jsx->clj
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
+(defn jsx->clj
   "Converts objects of type '#object[Error Error: Document picker was cancelled..]' to 
   {:nativeStackAndroid [], :code \"DOCUMENT_PICKER_CANCELED\"..}
   "
-  [obj]
+  [obj] 
   (js->clj (-> obj js/JSON.stringify js/JSON.parse) :keywordize-keys true))
 
 (def KB 1024)
@@ -126,6 +129,28 @@
     :else
     (str (.toFixed (/ number GB) 2) " GiB")))
 
+;; From an article https://dnaeon.github.io/recursively-merging-maps-in-clojure/
+(defn deep-merge
+  "Recursively merges maps."
+  [& maps]
+  (letfn [(m [& xs]
+            (if (some #(and (map? %) (not (record? %))) xs)
+              (apply merge-with m xs)
+              (last xs)))]
+    (reduce m maps)))
+
+(defn deep-merge-with
+  "Recursively merges maps. Applies function f when we have duplicate keys.
+  The fn 'f' should take two args
+  "
+  [f & maps]
+  (letfn [(m [& xs]
+             ;;(println "xs is " xs)
+            (if (some #(and (map? %) (not (record? %))) xs)
+              (apply merge-with m xs)
+              (apply f xs)))]
+    (reduce m maps)))
+
 (comment
   (in-ns 'onekeepass.mobile.utils)
   ;; daf114d0-a518-4e13-b75b-fbe893e69a9d 8bd81fe1-f786-46c3-b0e4-d215f8247a10
@@ -140,4 +165,36 @@
   
   (utc-to-local-datetime-str 1676337120434 "LLL dd,yyyy hh:mm:ss aaa")
   ;; => "Feb 13,2023 05:12:00 pm"
+  
+  (str->int "000001")
+  ;; => 1
+  
+  (str->int "23e3qwe")
+  ;; => nil
+  
+  (str->int "d" 34)
+  ;; => 34
+
+  (def a {:data {:field1 3} :dialog-show false})
+  (deep-merge a {:data {:field2 4}})
+  ;; => {:data {:field1 3, :field2 4}, :dialog-show false}
+  
+  (deep-merge a {:data {:field1 4} :dialog-show true})
+  ;; => {:data {:field1 4}, :dialog-show true}
+  
+  (deep-merge a {:data {:field1 4 :field2 22} :dialog-show true :error-text "sometext"})
+
+  ;; => {:data {:field1 4, :field2 22}, :dialog-show true, :error-text "sometext"}
+  
+  (deep-merge {} nil) ;; => {}
+  
+  (deep-merge) or (deep-merge nil) ;; => nil
+  
+  (deep-merge-with first {:foo "foo" :bar {:baz "baz"}} {:foo "another-foo" :bar {:qux "qux"}})
+  ;; => {:foo "f", :bar {:baz "baz", :qux "qux"}}
+  ;; expected as per atricle {:foo "foo", :bar {:baz "baz", :qux "qux"}}
+  ;; using first did not work 
+  
+  (deep-merge-with (fn [a b] a)  {:foo "foo" :bar {:baz "baz"}} {:foo "another-foo" :bar {:qux "qux"}})
+  ;; => {:foo "foo", :bar {:baz "baz", :qux "qux"}}
   )

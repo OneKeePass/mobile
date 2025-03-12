@@ -27,6 +27,11 @@ class SceneDelegate: NSObject, UIWindowSceneDelegate {
   
   var window: UIWindow?
   
+  // A flag to indicate that user is doing 'authenticateWithBiometric'
+  // This ensures that we do not send native event in 'sceneWillResignActive'
+  // It looks like 'sceneWillResignActive' is fired when FaceID is shown. This causes the App lock
+  static var inBiometricCall: Bool = false
+  
   func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
     // A new scene was added to the app.
     
@@ -51,6 +56,9 @@ class SceneDelegate: NSObject, UIWindowSceneDelegate {
     }
   }
   
+  // Following are from UIWindowSceneDelegate
+  // See https://developer.apple.com/documentation/uikit/uiscenedelegate
+  
   // This will be called when user presses .kdbx file and the app is in the background
   func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
     logger.debug("scene with openURLContexts called \(URLContexts)")
@@ -63,24 +71,49 @@ class SceneDelegate: NSObject, UIWindowSceneDelegate {
       logger.debug("URLContexts are \(context.url)")
     }
   }
+  
+  func sceneWillEnterForeground(_ scene: UIScene) {
+    // A scene is about to enter the foreground.
+    // It appears all RN modules init are happening after this call only
+    logger.debug("A scene is about to enter the foreground")
+  }
+  
+  func sceneDidBecomeActive(_ scene: UIScene) {
+    logger.debug("sceneDidBecomeActive.....")
+    
+    // By this all RN modules and rust init should have happened
+    OkpEvents.sendAppBecomesActive()
+  }
+  
+  func sceneWillResignActive(_ scene: UIScene) {
+    // A scene is becoming inactive.
+    
+    logger.debug("A scene sceneWillResignActive .... \(Self.inBiometricCall)")
+    
+    // The sceneWillResignActive method is called when the app is about to move
+    // from active to inactive state, which can occur when Face ID is used for authentication
+    // We do not want to emit 'sendAppBecomesInActive' in that case.
+    // For this the Self.inBiometricCall is set true in OkpDbService.authenticateWithBiometric before calling system bioauthentication
+    
+    // Also see https://stackoverflow.com/questions/26035546/touchid-calls-applicationwillresignactive-and-applicationdidbecomeactive
+    
+    if !Self.inBiometricCall {
+      logger.debug("A scene sceneWillResignActive ...sending sendAppBecomesInActive as \(Self.inBiometricCall)")
+      OkpEvents.sendAppBecomesInActive()
+    } else {
+      logger.debug("A scene sceneWillResignActive ...is NOT sending sendAppBecomesInActive")
+      
+      // Need to reset so that we can send 'sendAppBecomesInActive' to UI when the app is becoming inactive
+      Self.inBiometricCall = false
+    }
+  }
 
   func sceneDidEnterBackground(_ scene: UIScene) {
     // A scene did enter the background.
     logger.debug("A scene did enter the background")
   }
 
-  func sceneWillEnterForeground(_ scene: UIScene) {
-    // A scene is about to enter the foreground.
-    logger.debug("A scene is about to enter the foreground")
-  }
-  
   func sceneDidDisconnect(_ scene: UIScene) {
     logger.debug("sceneDidDisconnect...")
-  }
-  
-  func sceneDidBecomeActive(_ scene: UIScene) {
-    logger.debug("sceneDidBecomeActive.....")
-//    let m = AutoFillMessageHandler()
-//    m.listen2()
   }
 }

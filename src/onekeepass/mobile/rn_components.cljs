@@ -18,7 +18,8 @@
             
             [react]
             [react-native :as rn]
-            [reagent.core :as r]))
+            [reagent.core :as r]
+            [onekeepass.mobile.constants :as const]))
 
 (set! *warn-on-infer* true)
 
@@ -115,6 +116,7 @@
                        ProgressBar
                        Snackbar
                        Searchbar
+                       SegmentedButtons
                        Switch
                        ;;TextInput
                        TextInput.Icon
@@ -130,6 +132,7 @@
 (def rnms-modal-selector (r/adapt-react-class (.-default ^js/rnms rnms)))
 
 ;; Slider component from react native community
+;; See https://github.com/callstack/react-native-slider for all props
 (def rnp-slider (r/adapt-react-class (.-default ^js/RncSlider rnc-slider)))
 
 (declare-comp-classes [GestureHandlerRootView] "gh-" "gh/")
@@ -189,12 +192,17 @@
 (def inverse-onsurface-color (r/atom nil))
 
 (def error-color (r/atom nil))
-(def on-error-container (r/atom nil))
+(def on-error-container-color (r/atom nil))
+(def error-container-color (r/atom nil))
 
 (def surface-variant (r/atom nil))
 (def outline-variant (r/atom nil))
 
 (def custom-color0 (r/atom nil))
+(def custom-color0-ontainer (r/atom nil))
+
+(def custom-color1 (r/atom nil))
+(def custom-color1-ontainer (r/atom nil))
 
 (def circular-progress-color custom-color0 #_(r/atom "#F8BD2A"))
 
@@ -229,13 +237,25 @@
     (reset! on-background-color (.-onBackground colors))
     (reset! tertiary-color (.-tertiary colors))
     (reset! outline-color (.-outline colors))
+    
     (reset! error-color (.-error colors))
+    (reset! error-container-color (.-errorContainer colors))
+    (reset! on-error-container-color (.-onErrorContainer colors))
+    
     (reset! inverse-onsurface-color (.-inverseOnSurface colors))
     (reset! surface-variant (.-surfaceVariant colors))
     (reset! outline-variant (.-outlineVariant colors))
-    (reset! on-error-container (.-onErrorContainer colors))
+    
 
-    (reset! custom-color0 (.-custom0 colors))))
+    (reset! custom-color0 (.-custom0 colors))
+    (reset! custom-color0-ontainer (.-custom0Container colors))
+    
+    (reset! custom-color1 (.-custom1 colors))
+    (reset! custom-color1-ontainer (.-custom1Container colors))
+    ))
+
+(defn is-light-theme? []
+  (= const/LIGHT-THEME @current-theme))
 
 ;;;;;;;;;;
 

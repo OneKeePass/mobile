@@ -8,11 +8,12 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use onekeepass_core::db_service as kp_service;
+use onekeepass_core::{db_service as kp_service, service_util};
 
 use crate::{
     app_preference::{
-        DatabasePreference, Preference, PreferenceData, RecentlyUsed, PREFERENCE_JSON_FILE_NAME,
+        AppLockPreference, DatabasePreference, Preference, PreferenceData, RecentlyUsed,
+        PREFERENCE_JSON_FILE_NAME,
     },
     remote_storage,
     udl_types::SecureKeyOperation,
@@ -23,6 +24,16 @@ use crate::{
     udl_types::{CommonDeviceService, EventDispatch, FileInfo},
     OkpError, OkpResult,
 };
+
+pub(crate) const EXPORT_DATA_DIR: &str = "export_data";
+
+pub(crate) const BACKUPS_DIR: &str = "backups";
+
+pub(crate) const BACKUPS_HIST_DIR: &str = "history";
+
+pub(crate) const REMOTE_STORAGE_DIR: &str = "remote_storage";
+
+pub(crate) const REMOTE_STORAGE_SFTP_SUB_DIR: &str = "sftp";
 
 // Any mutable field needs to be behind Mutex
 pub struct AppState {
@@ -76,6 +87,9 @@ pub struct AppState {
 static APP_STATE: OnceCell<AppState> = OnceCell::new();
 
 impl AppState {
+    //
+    const APP_VERSION: &str = "0.16.0";
+
     pub fn shared() -> &'static AppState {
         // Panics if no global state object was set. ??
         APP_STATE.get().unwrap()
@@ -107,21 +121,22 @@ impl AppState {
         // IMPORTANT: 'preference_home_dir' should have a valid path
         let preference = Preference::read(&preference_home_dir);
 
-        let export_data_dir_path = util::create_sub_dir(&app_dir, "export_data");
+        let export_data_dir_path = util::create_sub_dir(&app_dir, EXPORT_DATA_DIR);
         log::debug!("export_data_dir_path is {:?}", &export_data_dir_path);
 
-        let backup_history_dir_path = util::create_sub_dirs(&app_dir, vec!["backups", "history"]);
+        let backup_history_dir_path =
+            util::create_sub_dirs(&app_dir, vec![BACKUPS_DIR, BACKUPS_HIST_DIR]);
         log::debug!("backup_history_dir_path is {:?}", &backup_history_dir_path);
 
         let key_files_dir_path = util::create_sub_dir(&app_dir, "key_files");
         log::debug!("key_files_dir_path is {:?}", &key_files_dir_path);
 
         // All remote storage related dirs
-        let remote_storage_path = util::create_sub_dir(&app_dir, "remote_storage");
-        util::create_sub_dir_path(&remote_storage_path, "sftp");
+        let remote_storage_path = util::create_sub_dir(&app_dir, REMOTE_STORAGE_DIR);
+        util::create_sub_dir_path(&remote_storage_path, REMOTE_STORAGE_SFTP_SUB_DIR);
 
         // As we started storing backup files to the folder 'backups/history' since 0.15.0 rlease
-        // we rmove the old backup files 
+        // we remove the old backup files
         remove_old_0140v_backup_files(&app_dir);
 
         let app_state = AppState {
@@ -189,6 +204,10 @@ impl AppState {
         }
     }
 
+    pub fn app_version() -> &'static str {
+        Self::APP_VERSION
+    }
+
     pub fn app_home_dir() -> &'static String {
         &Self::shared().app_home_dir
     }
@@ -232,7 +251,9 @@ impl AppState {
     // Root dir where all the private key files of one or more SFTP connections are stored
     pub fn sftp_private_keys_path() -> PathBuf {
         // Sub dir "sftp" should exist
-        let p = Self::shared().remote_storage_path.join("sftp");
+        let p = Self::shared()
+            .remote_storage_path
+            .join(REMOTE_STORAGE_SFTP_SUB_DIR);
         p
     }
 
@@ -298,11 +319,15 @@ impl AppState {
     }
 
     pub fn uri_to_file_info(full_file_name_uri: &str) -> Option<FileInfo> {
+        // First we attempt to see whether the 'full_file_name_uri' is meant fo the remote storage 'Sftp' or 'Webdav'
         let info = remote_storage::uri_to_file_info(full_file_name_uri);
         if info.is_some() {
+            debug!("Returning RS file info {:?}", &info);
             return info;
         }
 
+        // Uses the iOS or Android service to get the file info as the 'full_file_name_uri' is from
+        // the device 'File App' picked url
         let info = Self::shared()
             .common_device_service
             .uri_to_file_info(full_file_name_uri.into());
@@ -325,6 +350,13 @@ impl AppState {
     //     &Self::shared().preference
     // }
 
+    // Creates a default Preference, writes to the json file and AppState is updated with this new pref
+    pub(crate) fn reset_preference() {
+        let mut store_pref = Self::shared().preference.lock().unwrap();
+        let new_pref = Preference::write_default();
+        *store_pref = new_pref;
+    }
+
     pub fn preference_clone() -> Preference {
         let store_pref = Self::shared().preference.lock().unwrap();
         store_pref.clone()
@@ -342,6 +374,12 @@ impl AppState {
     ) -> OkpResult<()> {
         let mut pref = Self::shared().preference.lock().unwrap();
         pref.update_session_timeout(db_session_timeout, clipboard_timeout)
+    }
+
+    // Updates PIN lock enable / disbale flag and also writes the pref file
+    pub(crate) fn update_app_lock_with_pin_enabled(pin_lock_enabled: bool) {
+        let mut pref = Self::shared().preference.lock().unwrap();
+        pref.update_app_lock_with_pin_enabled(pin_lock_enabled);
     }
 
     #[inline]
@@ -370,6 +408,16 @@ impl AppState {
             .lock()
             .unwrap()
             .database_preferences()
+            .clone()
+    }
+
+    #[inline]
+    pub fn app_lock_preference() -> AppLockPreference {
+        Self::shared()
+            .preference
+            .lock()
+            .unwrap()
+            .app_lock_preference()
             .clone()
     }
 
@@ -417,10 +465,9 @@ impl AppState {
             .uri_to_file_name(db_key.into())
             .map_or_else(|| "".into(), |s| s);
 
-        let recently_used = RecentlyUsed {
-            file_name,
-            db_file_path: db_key.into(),
-        };
+        let mut recently_used = RecentlyUsed::default();
+        recently_used.file_name = file_name;
+        recently_used.db_file_path = db_key.into();
 
         let mut pref = Self::shared().preference.lock().unwrap();
 
@@ -430,10 +477,32 @@ impl AppState {
     // The file_name is given
     // Used with remote storage related FileInfo call
     pub fn add_recent_db_use_info2(db_key: &str, file_name: &str) {
-        let recently_used = RecentlyUsed {
-            file_name: file_name.into(),
-            db_file_path: db_key.into(),
+        let mut recently_used = RecentlyUsed::default();
+        recently_used.file_name = file_name.into();
+        recently_used.db_file_path = db_key.into();
+
+        let mut pref = Self::shared().preference.lock().unwrap();
+        pref.add_recent_db_use_info(recently_used);
+    }
+
+    pub fn add_recently_used_with_file_info(db_key: &str, file_info: &Option<FileInfo>) {
+        debug!("add_recently_used_with_file_info is called with file_info {:?}",&file_info);
+        let file_info = if file_info.is_none() {
+            Self::uri_to_file_info(db_key)
+        } else {
+            file_info.clone()
         };
+
+        let mut recently_used = RecentlyUsed::default();
+        recently_used.db_file_path = db_key.into();
+
+        if let Some(info) = file_info {
+            recently_used.file_name = info.file_name.map_or("".into(), |f| f);
+            recently_used.file_size = info.file_size;
+            recently_used.last_modified = info.last_modified;
+            recently_used.last_accessed = Some(service_util::now_utc_milli_seconds());
+            recently_used.location = info.location;
+        }
 
         let mut pref = Self::shared().preference.lock().unwrap();
         pref.add_recent_db_use_info(recently_used);
@@ -443,16 +512,71 @@ impl AppState {
     pub fn recent_dbs_info() -> Vec<RecentlyUsed> {
         Self::shared().preference.lock().unwrap().recent_dbs_info()
     }
+
+    // Called to update the modified time after a "save" call
+    pub(crate) fn update_recent_db_modified_time(db_key: &str, last_modified: &Option<i64>) {
+        let mut pref = Self::shared().preference.lock().unwrap();
+
+        let v = pref.recent_dbs_info_mut_ref();
+        let v1 = v.iter_mut().find(|r| r.db_file_path == db_key);
+        if let Some(v2) = v1 {
+            v2.last_modified = last_modified.clone();
+            v2.last_accessed = Some(service_util::now_utc_milli_seconds());
+        }
+    }
+
+    pub(crate) fn update_recent_db_file_info(db_key: &str) {
+        let file_info = Self::uri_to_file_info(db_key);
+        let mut pref = Self::shared().preference.lock().unwrap();
+
+        let v = pref.recent_dbs_info_mut_ref();
+        let recently_used_opt = v.iter_mut().find(|r| r.db_file_path == db_key);
+        if let Some(recently_used) = recently_used_opt {
+            if let Some(info) = file_info {
+                recently_used.file_size = info.file_size;
+                recently_used.last_modified = info.last_modified;
+                recently_used.last_accessed = Some(service_util::now_utc_milli_seconds());
+            }
+        }
+    }
+
+    #[inline]
+    pub(crate) fn find_db_key(file_name: &str) -> Option<String> {
+        Self::shared()
+            .preference
+            .lock()
+            .unwrap()
+            .find_db_key(file_name)
+    }
+
+    // pub(crate) fn is_file_name_found(file_name: &str) -> bool {
+    //     let pref = Self::shared().preference.lock().unwrap();
+    //     // Finds any first matching recent dbs with the given file name (not full path)
+    //     pref.recent_dbs_info_ref()
+    //         .iter()
+    //         .find(|d| d.file_name == file_name)
+    //         .is_some()
+    // }
+
+    // pub fn recent_dbs_info_ref<'a>() ->  std::sync::MutexGuard<'a, Preference> {
+    //     Self::shared().preference.lock().unwrap()
+    // }
+
+    // pub fn check_file_name_in_recent_dbs_info<F: Fn(&RecentlyUsed) -> bool>(apply:F) {
+    //     let p = Self::shared().preference.lock().unwrap();
+    //     let f = p.recent_dbs_info_ref();
+    //     let d = f.iter().find(|v| apply(v));
+
+    // }
 }
 // Added in 0.15.0 version as we changed backups creation and location
 // Should be removed in later release
-fn remove_old_0140v_backup_files(app_dir: &str,) {
+fn remove_old_0140v_backup_files(app_dir: &str) {
     let bk_dir_path = Path::new(app_dir).join("backups");
     if bk_dir_path.exists() {
         let _ = util::remove_files(bk_dir_path);
     }
 }
-
 
 // iOS specific idea to move all internal dirs and files from the current app_home dir to app_group home dir
 // Also see comments in Swift impl 'CommonDeviceServiceImpl appHoemDir'

@@ -124,9 +124,10 @@
                   :error-transform true))
 
 ;; This is used specifically in iOS. Here the call sequence - pickAndSaveNewKdbxFile,readKdbx - is used
-;; This works for Local,iCloud. But the cases of GDrive, OneDrive, the new database files are created
+;; This works for Local,iCloud. But in the cases of GDrive, OneDrive, the new database files are created
 ;; But we get 'COORDINATOR_CALL_FAILED' error 'Couldn’t communicate with a helper application'
-;; As the kdbx is file is created succesully, we can open the database
+;
+; However the kdbx is file is created successfully and we can open the database (by picking the db again from File App ?)
 ;;
 ;; May need to explore the use of UIActivityViewController based export support. Using this the newly crated temp db file
 ;; may be saved to another app and then open from that. Someting similar to 'ACTION_SEND'
@@ -137,7 +138,7 @@
                           okp-document-pick-service file-name
                           ;; Explicit conversion of the api args to json here
                           ;; Note the use of ':new_db' 
-                          (api-args->json 
+                          (api-args->json
                            {:new_db (new-db-request-argon2key-transformer new-db)}
                            :convert-request false)))
                   ;; This dipatch function receives a map with keys [file-name full-file-name-uri] as ':ok' value
@@ -318,11 +319,11 @@
    and new db related info in a map
    Used only in case of Android. See comments in pick-document-to-create and pick-and-save-new-kdbxFile
    "
-  [full-file-name new-db dispatch-fn] 
+  [full-file-name new-db dispatch-fn]
   (if-not (is-rs-type full-file-name)
-    (call-api-async (fn [] 
-                      (.createKdbx 
-                       okp-db-service 
+    (call-api-async (fn []
+                      (.createKdbx
+                       okp-db-service
                        full-file-name
                        ;; Note the use of snake_case for all keys and false as convert-request value
                        (api-args->json {:new_db (new-db-request-argon2key-transformer new-db)} :convert-request false)))
@@ -356,6 +357,13 @@
                                                  :convert-request true)))
                     dispatch-fn :error-transform true)
     (bg-rs/read-kdbx db-file-name password key-file-name biometric-auth-used dispatch-fn)))
+
+
+(defn read-latest-backup-kdbx [db-file-name password key-file-name biometric-auth-used dispatch-fn]
+  (invoke-api "read_latest_backup" {:db-file-name db-file-name
+                                    :password password
+                                    :key_file_name key-file-name
+                                    :biometric-auth-used biometric-auth-used} dispatch-fn))
 
 (defn save-kdbx [full-file-name overwrite dispatch-fn]
   (if-not (is-rs-type full-file-name)
@@ -437,8 +445,8 @@
   (invoke-api "stored_db_credentials" {:db-key db-key} dispatch-fn))
 
 (defn remove-from-recently-used
-  "Removes recently used file info for the passed db-key and the database id also 
-   closed automatically in the backend"
+  "Removes recently used file info for the passed db-key, removes all files that were created for this db 
+   and the database is closed automatically in the backend"
   [db-key dispatch-fn]
   (invoke-api "remove_from_recently_used" {:db-key db-key} dispatch-fn))
 
@@ -464,22 +472,26 @@
 (defn groups-summary-data [db-key dispatch-fn]
   (invoke-api  "groups_summary_data" {:db-key db-key} dispatch-fn :convert-response-fn transform-response-groups-summary))
 
-(defn- transform-response-entry-keys
-  "All keys in the incoming raw entry map from backend will be transformed
+#_(defn- transform-response-entry-keys
+    "All keys in the incoming raw entry map from backend will be transformed
   using custom key tramsformer
    "
-  [response]
-  (let [keys_exclude (-> response (get "ok") (get "section_fields") keys vec)
-        t-fn (fn [k]
-               (if (contains-val? keys_exclude k)
-                 k
-                 (csk/->kebab-case-keyword k)))]
-    (cske/transform-keys t-fn response)))
+    [response]
+    (let [entry (-> response (get "ok"))
+          keys-exclude (-> entry (get "section_fields") keys vec)
+          keys-exclude (into keys-exclude (->  entry (get "parsed_fields") keys vec))
+          t-fn (fn [k]
+                 (if (contains-val? keys-exclude k)
+                   k
+                   (csk/->kebab-case-keyword k)))]
+      (cske/transform-keys t-fn response)))
+
+(declare transform-response-entry-form-data)
 
 (defn new-entry-form-data [db-key entry-type-uuid dispatch-fn]
   (invoke-api "new_entry_form_data" {:db-key db-key
                                      :entry-type-uuid entry-type-uuid
-                                     :parent-group-uuid nil} dispatch-fn :convert-response-fn transform-response-entry-keys))
+                                     :parent-group-uuid nil} dispatch-fn :convert-response-fn transform-response-entry-form-data))
 
 
 (defn- transform-resquest-entry-form-data
@@ -512,9 +524,10 @@
   [response]
   (let [;; Get the entry data from "ok" key of the response
         entry-form-data (get response "ok")
-        keys_exclude (->  entry-form-data (get "section_fields") keys vec)
+        keys-exclude (->  entry-form-data (get "section_fields") keys vec)
+        keys-exclude (into keys-exclude (->  entry-form-data (get "parsed_fields") keys vec))
         t-fn (fn [k]
-               (if (contains-val? keys_exclude k)
+               (if (contains-val? keys-exclude k)
                  k
                  (csk/->kebab-case-keyword k)))]
     (cske/transform-keys t-fn response)))
@@ -603,6 +616,9 @@
 (defn analyzed-password [password-options dispatch-fn]
   (invoke-api "analyzed_password" {:password-options password-options} dispatch-fn))
 
+(defn generate-password-phrase [pass-phrase-options dispatch-fn]
+  (invoke-api "generate_password_phrase" {:pass-phrase-options pass-phrase-options} dispatch-fn))
+
 ;; Not used for now; Kept for later use
 #_(defn recently-used-dbs-info [dispatch-fn]
     (invoke-api "recently_used_dbs_info" {} dispatch-fn))
@@ -658,7 +674,32 @@
 (defn load-language-translations [language-ids dispatch-fn]
   (invoke-api "load_language_translations" {:language-ids language-ids} dispatch-fn))
 
-;;;;;;;;;;;;;;;;;;;;;;;;; OTP, Timer etc ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  Auto open ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn resolve-auto-open-properties
+  "Called to resolve the auto open properties before opening the child database
+   The arg auto-open-properties is a map from struct AutoOpenProperties
+
+   The reolved props is returned as a map (struct AutoOpenPropertiesResolved) in the dispatch-fn 
+  "
+  [auto-open-properties dispatch-fn]
+  (invoke-api "resolve_auto_open_properties" {:auto-open-properties auto-open-properties} dispatch-fn))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  App lock    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn pin-entered [pin dispatch-fn]
+  (invoke-api "pin_entered" {:pin pin} dispatch-fn))
+
+(defn pin-verify [pin dispatch-fn]
+  (invoke-api "pin_verify" {:pin pin} dispatch-fn))
+
+(defn pin-removed [dispatch-fn]
+  (invoke-api "pin_removed" {} dispatch-fn))
+
+(defn app-reset [dispatch-fn]
+  (invoke-api "app_reset" {} dispatch-fn))
+
+;;;;;;;;;;;;;;;;;;;;;;;;; OTP, Timer etc  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn set-timeout [period-in-milli-seconds timer-id dispatch-fn]
   (invoke-api "set_timeout" {:period-in-milli-seconds period-in-milli-seconds :timer-id timer-id} dispatch-fn))

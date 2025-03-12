@@ -5,6 +5,14 @@
                                 setup-otp-action-dialog
                                 otp-settings-dialog
                                 start-page-storage-selection-dialog
+                                auto-open-key-file-pick-required-info-dialog
+                                auto-open-db-file-required-info-dialog
+                                before-storage-selection-info-dialog
+                                app-pin-lock-settings-dialog
+                                locked-app-log-in-dialog
+                                update-and-show
+                                update-with-map
+                                dispatch-on-ok
                                 show-with-state
                                 show
                                 close 
@@ -12,7 +20,8 @@
                                 data 
                                 state-m 
                                 fields-value
-                                
+                                fields-value-vec
+                                init
                                 
                                 ActivityIndicator
                                 Button
@@ -58,6 +67,7 @@
                                 ProgressBar
                                 Snackbar
                                 Searchbar
+                                SegmentedButtons
                                 Switch
                                 TextInput
                                 Text

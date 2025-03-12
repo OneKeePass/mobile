@@ -135,7 +135,7 @@
 
 ;; See main app common
 (defn opened-database-file-names
-  "Gets db info map with keys [db-key database-name file-name key-file-name] from the opened database list"
+  "Gets a vec of all opened db-keys from the opened database list"
   []
   (subscribe [:common/opened-database-file-names]))
 
@@ -228,7 +228,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;; Load kdbx ;;;;;;;;;;;;;;;
 
 ;; Android af specific ':open-database' map (in :android-af )
-;; [:android-af :open-database ]should have valid values by this time as
+;; [:android-af :open-database ] should have valid values by this time as
 ;; user has picked a database,entered credentials and pressed "Continue" button
 (reg-event-fx
  :android-af/open-database-read-db-file

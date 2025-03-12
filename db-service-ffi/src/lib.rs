@@ -1,15 +1,17 @@
 #![allow(dead_code, unused_imports)]
 mod android;
+mod app_lock;
 mod app_preference;
+mod auto_open;
 mod app_state;
 mod backup;
 mod biometric_auth;
-mod callback_service_provider;
 mod commands;
 mod event_dispatcher;
 mod file_util;
 mod ios;
 mod key_secure;
+mod db_backup_read;
 mod remote_storage;
 mod util;
 
@@ -17,7 +19,6 @@ mod udl_functions;
 mod udl_types;
 mod udl_uniffi_exports;
 
-use crate::app_preference::RecentlyUsed;
 use app_state::AppState;
 use commands::{
     error_json_str, full_path_file_to_create, CommandArg, Commands, InvokeResult, ResponseJson,

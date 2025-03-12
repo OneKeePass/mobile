@@ -29,7 +29,7 @@
 (defn ^:export -main
   []
   ;; Need to register the handlers for the events that
-  ;; are emitted from native maodule side
+  ;; are emitted from native module side
   (native-events/register-entry-otp-update-handler)
   
   (cmn-events/sync-initialize)

@@ -1,5 +1,6 @@
 (ns onekeepass.ios.autofill.events.entry-list
-  (:require [onekeepass.ios.autofill.events.common :refer [ENTRY_LIST_PAGE_ID]]
+  (:require [onekeepass.ios.autofill.events.common ]
+            [onekeepass.ios.autofill.constants :refer [ENTRY_LIST_PAGE_ID]]
             [re-frame.core :refer [dispatch reg-event-fx reg-sub subscribe]]))
 
 

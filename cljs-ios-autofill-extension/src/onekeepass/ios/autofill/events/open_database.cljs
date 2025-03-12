@@ -2,9 +2,9 @@
   "All events that are specific to open a selected database"
   (:require
    [onekeepass.ios.autofill.background :as bg]
-   [onekeepass.ios.autofill.constants :as const]
+   [onekeepass.ios.autofill.constants :as const :refer [LOGIN_PAGE_ID]]
    [onekeepass.ios.autofill.events.common :refer [database-preference-by-db-key
-                                                  LOGIN_PAGE_ID on-ok
+                                                   on-ok
                                                   org-db-file-path]]
    [re-frame.core :refer [dispatch reg-event-db reg-event-fx reg-fx reg-sub
                           subscribe]]))

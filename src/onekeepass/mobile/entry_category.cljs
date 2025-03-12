@@ -6,6 +6,7 @@
                                                            CATEGORY_DELETED_ENTRIES
                                                            CATEGORY_FAV_ENTRIES
                                                            CREDIT_DEBIT_CARD_TYPE_NAME
+                                                           AUTO_DB_OPEN_TYPE_NAME
                                                            GROUP_SECTION_TITLE
                                                            ICON-CHECKBOX-BLANK-OUTLINE
                                                            ICON-CHECKBOX-OUTLINE
@@ -172,7 +173,6 @@
 ;; check-all, heart-outline delete-outline, login, bank-outline,credit-card-outline, access-point,router-wireless
 ;; earth,airplane,dots-horizontal,dots-vertical
 
-;; TODO: Move Icon names to 'onekeepass.mobile.constants'
 (def category-icons {;; General categories
                      CATEGORY_ALL_ENTRIES const/ICON-CHECK-ALL
                      CATEGORY_FAV_ENTRIES const/ICON-HEART-OUTLINE
@@ -181,7 +181,9 @@
                      LOGIN_TYPE_NAME const/ICON-LOGIN
                      BANK_ACCOUNT_TYPE_NAME const/ICON-BANK-OUTLINE
                      WIRELESS_ROUTER_TYPE_NAME const/ICON-ROUTER-WIRELESS
-                     CREDIT_DEBIT_CARD_TYPE_NAME const/ICON-CREDIT-CARD-OUTLINE})
+                     CREDIT_DEBIT_CARD_TYPE_NAME const/ICON-CREDIT-CARD-OUTLINE
+                     AUTO_DB_OPEN_TYPE_NAME const/ICON-LAUNCH
+                     })
 
 (defn category-icon-name
   "Called to get icon name for General categories or Entry types category or Group as Category or Group "

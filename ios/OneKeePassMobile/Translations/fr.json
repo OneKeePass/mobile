@@ -21,7 +21,7 @@
         "databaseName": "Nom de la base de données",
         "dbSettings": "Paramètres de la base de données",
         "dbTimeout": "Délai d'attente de la base de données",
-        "deleted": "Supprimé",
+        "deleted": "Supprimés",
         "description": "Description",
         "encriptionAlgorithm": "Algorithme de chiffrement",
         "enterCode": "Saisir le code",
@@ -140,7 +140,7 @@
             "remove": "Retirer",
             "removing": "Suppression de {{dbFileName}}",
             "reopen": "Réouverture",
-            "setupOtp": "Configurer OTP",
+            "setupOtp": "Configuration du mot de passe à usage unique",
             "unlockDatabase": "Déverrouiller la base de données"
         },
         "texts": {
@@ -164,7 +164,7 @@
             "reopenAgain": "Veuillez ouvrir à nouveau le fichier de base de données {{fileName}} à partir de son emplacement d'origine.",
             "reopenNotOldRef": "La base de données n'a pas pu être ouverte avec l'ancienne référence",
             "reopenReadPermissionrequired": "L'autorisation de lecture est à nouveau requise pour charger cette base de données",
-            "setupOtp": "Vous pouvez configurer TOTP en scannant un code QR ou en saisissant manuellement le secret ou un URL OTPAuth."
+            "setupOtp": "Vous pouvez configurer le mot de passe à usage unique en numérisant un code QR ou en saisissant manuellement le secret ou un URL OTPAuth."
         }
     },
     "errorDialog": {
@@ -201,7 +201,7 @@
             "deletingGroup":"Suppression d'un groupe ...",
             "overwritingDb":"Ecraser la base de données ...",
             "preparingExportData":"Préparation des données à exporter",
-            "saving": "Économiser..."
+            "saving": "Sauvegarde..."
         }
     },
     "snackbarMessages": {
@@ -237,14 +237,14 @@
         "home": "Accueil",
         "icons": "Icônes",
         "keyFileForm": "Dossiers clés",
-        "histories": "Histoires",
+        "histories": "Historiques",
         "historyEntry": "Entrée de l'historique",
         "historyEntries": "Entrées de l'historique",
         "newCategory": "Nouvelle catégorie",
         "newGroup": "Nouveau groupe",
         "privacyPolicy": "Politique de confidentialité",
         "scanQRcode": "Numériser un code QR",
-        "search": "Recherche",
+        "search": "Rechercher",
         "settings": "Paramètres"
     },
     "buttonLabels": {
@@ -263,11 +263,11 @@
         "newdb": "Nouvelle base de données",
         "no": "Non",
         "ok": "OK",
-        "opendb": "Base de données ouverte",
+        "opendb": "Ouvrir une base de données",
         "refresh":"Rafraîchir",
         "removePassword": "Supprimer le mot de passe",
         "select": "Sélectionner",
-        "save": "Économiser",
+        "save": "Sauvegarder",
         "scanQRcode": "Scanner le code QR",
         "setUpOneTimePassword": "Configuration d'un mot de passe à usage unique",
         "yes": "Oui"
@@ -311,7 +311,7 @@
         "settings": "Paramètres",
         "tags": "Étiquettes",
         "title": "Titre",
-        "types": "Les types",
+        "types": "Types",
         "unlockdb": "Déverrouiller la base de données",
         "view": "Voir"
     },

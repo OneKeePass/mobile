@@ -27,22 +27,50 @@ use regex::{Error, RegexSet};
 
 // See https://users.rust-lang.org/t/can-i-stop-vscode-rust-analyzer-from-shading-out-cfgs/58773
 
+const ANDROID_FP_SIZE: usize = 14;
+
 #[cfg(target_os = "android")]
-const FILE_PROVIDER_IDS: [&str; 5] = [
+const FILE_PROVIDER_IDS: [&str; ANDROID_FP_SIZE] = [
     r"com.android.externalstorage.documents",
     r"com.android.providers.downloads.documents",
     r"com.google.android.apps.docs.storage",
+    //
     r"com.dropbox.product.android.dbapp.document_provider.documents",
     r"com.microsoft.skydrive.content.StorageAccessProvider",
+    r"mega.privacy.android.app",
+    //
+    r"com.nextcloud.client",
+    r"com.owncloud.android",
+    r"me.proton.android.drive",
+    //
+    r"org.cryptomator",
+    r"com.sync.mobileapp",
+    r"com.synology.dsdrive",
+    //
+    r"com.prosoftnet.android.idriveonline",
+    r"ru.yandex.disk",
 ];
 
 #[cfg(target_os = "android")]
-const FILE_PROVIDER_NAMES: [&str; 5] = [
+const FILE_PROVIDER_NAMES: [&str; ANDROID_FP_SIZE] = [
     "On My Device",
     "Downloads",
     "Google Drive",
+    //
     "Dropbox",
     "OneDrive",
+    "MEGA",
+    //
+    "Next Cloud",
+    "Own Cloud",
+    "Proton Drive",
+    //
+    "Cryptomator",
+    "Sync.com",
+    "Synology Drive",
+    //
+    "IDrive",
+    "Yandex Disk",
 ];
 
 #[cfg(target_os = "android")]

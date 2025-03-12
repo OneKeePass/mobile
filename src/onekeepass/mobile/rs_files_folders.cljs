@@ -3,7 +3,7 @@
   (:require
    [onekeepass.mobile.common-components :refer [list-section-header
                                                 message-dialog]]
-   [onekeepass.mobile.constants :as const]
+   [onekeepass.mobile.constants :as const ]
    [onekeepass.mobile.events.remote-storage :as rs-events]
    [onekeepass.mobile.rn-components :as rnc :refer [page-background-color
                                                     rn-safe-area-view
@@ -19,7 +19,7 @@
 (defn row-item []
   (fn [connection-id parent-dir {:keys [entry-name is-dir]} browse-type]
     (let [color @rnc/secondary-color
-          file-selection-disbled (and (not is-dir) (= browse-type rs-events/BROWSE-TYPE-DB-NEW))
+          file-selection-disbled (and (not is-dir) (= browse-type const/BROWSE-TYPE-DB-NEW))
           disabled-color (if file-selection-disbled "grey" color)]
       [rnp-list-item {:style {}
                       :disabled file-selection-disbled
@@ -73,7 +73,7 @@
                                 (let [props (js->clj props :keywordize-keys true)
                                       {:keys [title]} (-> props :section)]
                                   (r/as-element [list-section-header title])))}]
-       #_(when (= browse-type rs-events/BROWSE-TYPE-DB-NEW)
+       #_(when (= browse-type const/BROWSE-TYPE-DB-NEW)
            [rn-view {:bottom 10}
             [rnp-button  "Select this folder"]])])))
 
@@ -83,7 +83,7 @@
          {:keys [:connection-id dir-entries] :as listings} @(rs-events/remote-storage-listing-to-show)]
      [rn-view
       [list-content listings browse-type]
-      (when (= browse-type rs-events/BROWSE-TYPE-DB-NEW)
+      (when (= browse-type const/BROWSE-TYPE-DB-NEW)
         [rnp-fab {:style {:position "absolute"
                           :margin 16
                           :right 0

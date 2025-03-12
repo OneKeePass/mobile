@@ -114,6 +114,7 @@ enum CallbackErrors: Error {
 }
 
 class CommonDeviceServiceImpl: CommonDeviceService {
+ 
   func appHomeDir() -> String {
 //    let  burl = Bundle.main.bundleURL
 //    cmnLogger.debug("$$$$$ bundleURL is \(burl)")
@@ -172,7 +173,25 @@ class CommonDeviceServiceImpl: CommonDeviceService {
     
     return nil
   }
-
+  
+  func loadResourceWordlist(_ wordlistFileName: String) throws -> String {
+    cmnLogger.debug("loadWordlist is called with \(wordlistFileName)")
+    let wordlistFileURL = Bundle.main.url(forResource: wordlistFileName, withExtension: "txt", subdirectory: "wordlists")
+    
+    guard wordlistFileURL != nil else {
+      cmnLogger.debug("Bundle.main.url for \(wordlistFileName) failed")
+      throw ApiCallbackError.InternalCallbackError(reason: "Word list file \(wordlistFileName) is not found ")
+    }
+    
+    cmnLogger.debug("Word list file  \(wordlistFileName)  full path is \(String(describing: wordlistFileURL))")
+    
+    if let fileContents = try? String(contentsOf: wordlistFileURL!) {
+      return fileContents
+    } else {
+      throw ApiCallbackError.InternalCallbackError(reason: "Word list file \(wordlistFileName) loading failed")
+    }
+  }
+  
   func uriToFileName(_ fullFileNameUri: String) -> String? {
     let file_url = URL(string: fullFileNameUri)
     return file_url?.lastPathComponent

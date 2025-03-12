@@ -14,7 +14,9 @@ object EventEmitter {
 
     // See onekeepass/mobile/events/native_events.cljs how these events are received and handled
     private const val EVENT_ON_TIME_TICK = "onTimerTick"
-    private const val  EVENT_ENTRY_OTP_UPDATE = "onEntryOtpUpdate"
+    private const val EVENT_ENTRY_OTP_UPDATE = "onEntryOtpUpdate"
+    private const val EVENT_APP_BECOMES_ACTIVE = "onAppBecomingActive"
+    private const val EVENT_APP_BECOMES_INACTIVE = "onAppBecomingInActive"
 
 
     fun initialize(reactContext: ReactApplicationContext) {
@@ -53,6 +55,16 @@ object EventEmitter {
     fun emitTickUpdate(jsonString: String) {
         reactApplicationContext.getJSModule(RCTDeviceEventEmitter::class.java)
                 .emit(EVENT_ON_TIME_TICK, jsonString)
+    }
+
+    fun emitAppBecomesActive() {
+        reactApplicationContext.getJSModule(RCTDeviceEventEmitter::class.java)
+            .emit(EVENT_APP_BECOMES_ACTIVE, "{}")
+    }
+
+    fun emitAppBecomesInactive() {
+        reactApplicationContext.getJSModule(RCTDeviceEventEmitter::class.java)
+            .emit(EVENT_APP_BECOMES_INACTIVE, "{}")
     }
 
     // This does not work as the registration of a listener for this event in UI is done only after this call

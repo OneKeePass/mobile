@@ -30,6 +30,13 @@
   ;; to send back the selected key file 
   (dispatch [:key-file-form/show :new-database-key-file-selected show-generate-option?]))
 
+(defn new-database-validate-before-create-action 
+  "This is called before showing the select storage options to ensure all required fields are entered
+   If validation is successful, then the callback-fn is called 
+   "
+  [callback-fn]
+  (dispatch [:new-database-validate-before-create-action callback-fn]))
+
 (defn dialog-data []
   (subscribe [:new-database-dialog-data]))
 
@@ -91,6 +98,17 @@
                        {})]
     error-fields))
 
+(reg-event-fx
+ :new-database-validate-before-create-action
+ (fn [{:keys [db]} [_event-id callback-fn]]
+   (let [error-fields (validate-required-fields db :all)
+         errors-found (boolean (seq error-fields))]
+     (if errors-found
+       {:db (assoc-in db [:new-database :error-fields] error-fields)}
+       (do
+         ;; Side effect call
+         (callback-fn)
+         {})))))
 
 (reg-event-fx
  :new-database-dialog-show
@@ -185,7 +203,7 @@
     :fx (if (= "DOCUMENT_PICKER_CANCELED" (:code error))
           [[:dispatch [:new-database-dialog-hide]]]
           [[:dispatch [:new-database-dialog-hide]]
-           [:dispatch [:common/error-box-show "File Pick Error" error]]])}))
+           [:dispatch [:common/error-box-show 'filePickError error]]])}))
 
 (defn- on-database-creation-completed
   [api-response]
@@ -199,7 +217,7 @@
 ;; See :document-to-create-picked-ios for iOS
 (reg-fx
  :bg-create-kdbx
- (fn [[full-file-name new-db]] 
+ (fn [[full-file-name new-db]]
    (bg/create-kdbx full-file-name (-> new-db
                                       (update-in [:kdf :Argon2 :iterations] str->int)
                                       (update-in [:kdf :Argon2 :parallelism] str->int)

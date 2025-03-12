@@ -7,7 +7,9 @@
    [re-frame.core :refer [dispatch reg-event-fx]]))
 
 
-(defn to-additional-db-acess-settings-page []
+(defn to-additional-db-acess-settings-page 
+  "Called from a database specific settings page"
+  []
   (dispatch [:to-additional-db-acess-settings-page]))
 
 (defn set-db-open-biometric-enabled [value]
@@ -30,7 +32,7 @@
 
 ;; Valid kw are [:db-open-biometric-enabled :db-unlock-biometric-enabled]
 ;; Should be called from database preference field update after a database is opened
-;; At this only two fields - db-open-biometric-enabled and  db-unlock-biometric-enabled - are used 
+;; At this time only two fields - db-open-biometric-enabled and  db-unlock-biometric-enabled - are used 
 
 ;; When we change enable or disbable the field, the backend is called immediately  
 ;; For now it is similar to ':app-preference-update-data' in 'onekeepass.mobile.events.app-settings'
@@ -45,7 +47,7 @@
       :fx [[:app-settings/bg-update-preference [{:database_preference db-pref}
                                                 ;; on success, this fn is called
                                                 (fn [_m]
-                                                  (when (and (= kw  :db-open-biometric-enabled) value)
+                                                  (when (and (= kw :db-open-biometric-enabled) value)
                                                     (dispatch [:common/message-box-show 'biometricDbOpenEnabled 'biometricDbOpenEnabled]))
                                                   (dispatch [:common/message-snackbar-open 'updatedSettings]))]]]})))
 

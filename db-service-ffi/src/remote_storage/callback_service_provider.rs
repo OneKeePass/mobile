@@ -1,7 +1,5 @@
 use crate::{
-    app_state::AppState,
-    db_service::callback_service::{CallbackServiceProvider, CommonCallbackService},
-    util,
+    app_state::AppState, remote_storage::{callback_service::{CallbackServiceProvider, CommonCallbackService}, RemoteStorageType}, util
 };
 use log::debug;
 use std::{
@@ -10,17 +8,17 @@ use std::{
     sync::Arc,
 };
 
-use onekeepass_core::db_service::storage::RemoteStorageType;
 use onekeepass_core::error::Result;
 
-// This module provides the callback service for the types in onekeepas-core crate
+// This module provides the callback service for the types in 'callback_service'
+// TODO: See comments in 'callback_service' module what to do in later release
 
 // Initalized onetime by calling this fn in 'db_service_initialize'
 pub(crate) fn init_callback_service_provider() {
     let instance = Arc::new(CommonCallbackServiceImpl::default());
-    // // In case, we need to hold any reference at this module, then we need to Arc::clone and use it
-    CallbackServiceProvider::setup(instance);
-    debug!("Remote storage connection config_reader_writer is initialized in init_rs_connection_configs_store ");
+    // In case, we need to hold any reference at this module, then we need to Arc::clone and use it
+    CallbackServiceProvider::init(instance);
+    debug!("init_callback_service_provider is called and CallbackServiceProvider init is done");
 }
 
 #[derive(Default)]

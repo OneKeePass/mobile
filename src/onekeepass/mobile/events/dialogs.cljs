@@ -6,10 +6,13 @@
             [onekeepass.mobile.constants :refer [OTP_KEY_DECODE_ERROR]]
             [onekeepass.mobile.events.common :refer [on-ok]]
             [onekeepass.mobile.events.entry-form-common :refer [is-field-exist]]
-            [re-frame.core :refer [dispatch reg-event-fx  reg-sub]]))
+            [re-frame.core :refer [dispatch reg-event-fx  reg-sub]]
+            [onekeepass.mobile.utils :as u]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;; macro def-generic-dialog-events used ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; The macro will generate wrapper functions something like the following
+
+;; The macro (def-generic-dialog-events setup-otp-action-dialog [[show nil]]) will 
+;; generate wrapper functions something like the following
 
 ;; (clojure.core/defn setup-otp-action-dialog-show []
 ;;   (re-frame.core/dispatch [:generic-dialog-show :setup-otp-action-dialog]))
@@ -37,23 +40,85 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  otp-settings-dialog    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; fields-value is a vector of [kws-v value] [[:data :some-field] value] or [:some-field value]
-(def-generic-dialog-events otp-settings-dialog  [[show nil] [close nil] [show-with-state state-m] [update fields-value]] false)
+(def-generic-dialog-events otp-settings-dialog  [[show nil]
+                                                 [show-with-state state-m]
+                                                 ;; e.g fields-value =  [kws-v value]
+                                                 ;; kws-v is a vec or kw
+                                                 ;; See :generic-dialog-update
+                                                 [update fields-value]
+                                                 [close nil]] false)
 
 (def-generic-dialog-events otp-settings-dialog [[data nil]] true)
 
-(defn otp-settings-dialog-complete-ok [] 
+(defn otp-settings-dialog-complete-ok []
   (dispatch [:otp-settings-dialog-complete-ok]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  start-page-storage-selection-dialog   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def-generic-dialog-events start-page-storage-selection-dialog  [[show nil] [close nil] [show-with-state state-m]] false)
+;; dialog-identifier-kw start-page-storage-selection-dialog
 
+(def-generic-dialog-events start-page-storage-selection-dialog  [#_[init state-m]
+                                                                 #_[update-and-show state-m]
+                                                                 #_[show nil]
+                                                                 [close nil]
+                                                                 [show-with-state state-m]] false)
+
+;; a subscribe event wrapper
 (def-generic-dialog-events start-page-storage-selection-dialog [[data nil]] true)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; auto-open-key-file-pick-required-info-dialog ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
+
+#_(def-generic-dialog-events auto-open-key-file-pick-required-info-dialog  [[init state-m] [dispatch-on-ok nil] [close nil]] false)
+
+;; dialog-identifier-kw :auto-open-key-file-pick-required-info-dialog
+
+(def-generic-dialog-events auto-open-key-file-pick-required-info-dialog  [[close nil]] false)
+
+(def-generic-dialog-events auto-open-key-file-pick-required-info-dialog  [[data nil]] true)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; auto-open-db-file-required-info-dialog ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; dialog-identifier-kw is :auto-open-db-file-required-info-dialog
+
+(def-generic-dialog-events auto-open-db-file-required-info-dialog [[close nil]] false)
+
+;; a subscribe event wrapper
+(def-generic-dialog-events auto-open-db-file-required-info-dialog [[data nil]] true)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   before-storage-selection-info-dialog   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def-generic-dialog-events before-storage-selection-info-dialog [[close nil] [show-with-state state-m]] false)
+
+(def-generic-dialog-events before-storage-selection-info-dialog [[data nil]] true)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   app-pin-lock-settings-dialog   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def-generic-dialog-events app-pin-lock-settings-dialog [[show-with-state state-m]
+                                                ;; e.g fields-value-vec =  [kws-v value]
+                                                ;; kws-v is a vec or kw
+                                                ;; See :generic-dialog-update
+                                                         #_[update fields-value-vec]
+                                                         [update-with-map state-m]
+                                                         [close nil]] false)
+
+(def-generic-dialog-events app-pin-lock-settings-dialog [[data nil]] true)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   locked-app-log-in-dialog   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; dialog-identifier-kw is :locked-app-log-in-dialog
+(def-generic-dialog-events locked-app-log-in-dialog [[show nil]
+                                                     [update-with-map state-m]
+                                                     [close nil]] false)
+
+(def-generic-dialog-events locked-app-log-in-dialog [[data nil]] true)
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- init-dialog-map
-  "Returns a map"
+  "Called to initialize fields of a dialog identified by 'dialog-identifier-kw' 
+   Returns a map which is set as intial values of these fieldds"
   []
   (-> {}
       (assoc-in [:dialog-show] false)
@@ -61,53 +126,63 @@
       (assoc-in [:confirm-text] nil)
       (assoc-in [:actions] [])
       (assoc-in [:call-on-ok-fn] #())
+      (assoc-in [:dispatch-on-ok] {})
       (assoc-in [:error-fields] {})
       (assoc-in [:api-error-text] nil)
       (assoc-in [:data] {})))
 
 ;; new-dialog-state is a map
 (defn- set-dialog-state
-  "Returns the updated map"
+  "The arg 'new-dialog-state' is a map (keys similar to ones listed in 'init-dialog-map' fn)
+   Returns the updated map"
   [db dialog-identifier-kw new-dialog-state]
   (assoc-in db [dialog-identifier-kw] new-dialog-state))
 
+;; Called to initialize all fields of a dialog identified by 'dialog-identifier-kw'
+;; The arg 'dialog-state' may have no :dialog-show key (default is false) or :dialog-show false or :dialog-show false 
+;; If we want to initialize and show dialog, then the event ':generic-dialog-show-with-state' should be used
 (reg-event-fx
  :generic-dialog-init
  (fn [{:keys [db]} [_event-id dialog-identifier-kw dialog-state]]
    (let [final-dialog-state (init-dialog-map)
-         final-dialog-state (merge final-dialog-state dialog-state)]
+         final-dialog-state (u/deep-merge final-dialog-state dialog-state) #_(merge final-dialog-state dialog-state)]
      {:db (set-dialog-state db dialog-identifier-kw final-dialog-state)})))
 
 ;; Shows the dialog
+;; Typically called through (dispatch [:generic-dialog-show dialog-identifier-kw])
 (reg-event-fx
  :generic-dialog-show
  (fn [{:keys [db]} [_event-id dialog-identifier-kw]]
    (let [db (assoc-in db [dialog-identifier-kw :dialog-show] true)]
      {:db db})))
 
-;; Shows the dialog and initializes the dialog data with the initial state map
+;; Initializes the dialog data with the initial state map,
+;; updates the state with passed arg 'state-m' and shows the dialog  
+
+;; Typically called through a wrapper fn '(dialog-identifier-show-with-state state-m)'
+;; which in turns call
+;; (dispatch [:generic-dialog-show-with-state :dialog-identifier state-m])
+
 (reg-event-fx
  :generic-dialog-show-with-state
- (fn [{:keys [_db]} [_event-id dialog-identifier-kw state]]
-   {:fx [[:dispatch [:generic-dialog-init dialog-identifier-kw (assoc state :dialog-show true)]]]}))
+ (fn [{:keys [_db]} [_event-id dialog-identifier-kw state-m]]
+   {:fx [[:dispatch [:generic-dialog-init dialog-identifier-kw (assoc state-m :dialog-show true)]]]}))
 
-;; Called to execute a fn that is set in field ':call-on-ok-fn' and closes the dialog 
-;; It is assumed some valid fn is set for 'call-on-ok-fn'
+;; The event arg is a map  
+;; See event :generic-dialog-update where the event arg is a vec
+
+;; state is a map having keys as in 'init-dialog-map'
+;; Here we are assuming the 'dialog-state' for the given 'dialog-identifier-kw' is already initialized
+;; if the arg 'state' has key ':dialog-show true', then the dialog will be shown
 (reg-event-fx
- :generic-dialog-on-ok
- (fn [{:keys [db]} [_event-id dialog-identifier-kw]]
-   (let [call-on-ok-fn (get-in db [dialog-identifier-kw :call-on-ok-fn])]
-     (call-on-ok-fn)
-     {:fx [[:dispatch [:generic-dialog-close dialog-identifier-kw]]]})))
+ :generic-dialog-update-with-map
+ (fn [{:keys [db]} [_event-id dialog-identifier-kw state]]
+   (let [dialog-state (get-in db [dialog-identifier-kw])
+         dialog-state (u/deep-merge dialog-state state)]
+     {:db (-> db (assoc dialog-identifier-kw dialog-state))})))
 
-(reg-event-fx
- :generic-dialog-close
- (fn [{:keys [db]} [_event-id dialog-identifier-kw]]
-   {:db (assoc-in db [dialog-identifier-kw] (init-dialog-map))}))
-
-(declare validate-otp-settings-fields)
-
-(def field-validators {:otp-settings-dialog validate-otp-settings-fields})
+;; The event arg is a vec  - [kws-v value]
+;; See event :generic-dialog-update-with-map where the event arg is a map
 
 (reg-event-fx
  :generic-dialog-update
@@ -119,11 +194,54 @@
          db (assoc-in db [dialog-identifier-kw :error-fields] {})]
      {:db db})))
 
+;; Not yet used
+;; Updates the existing dialog state and sets :dialog-show true so that dialog is shown
+;; This is similar to event ':generic-dialog-update-with-map' but ensures that dialog is open
+(reg-event-fx
+ :generic-dialog-update-and-show
+ (fn [{:keys [db]} [_event-id dialog-identifier-kw state]]
+   (let [dialog-state (get-in db [dialog-identifier-kw])
+         dialog-state (u/deep-merge dialog-state state)
+         dialog-state (assoc dialog-state :dialog-show true)]
+     {:db (-> db (assoc dialog-identifier-kw dialog-state))})))
+
+;; Called to execute a fn that is set in field ':call-on-ok-fn' and closes the dialog 
+;; It is assumed some valid fn is set for 'call-on-ok-fn'
+(reg-event-fx
+ :generic-dialog-on-ok
+ (fn [{:keys [db]} [_event-id dialog-identifier-kw]]
+   (let [call-on-ok-fn (get-in db [dialog-identifier-kw :call-on-ok-fn])]
+     ;; Side effect?
+     (call-on-ok-fn)
+     {:fx [[:dispatch [:generic-dialog-close dialog-identifier-kw]]]})))
+
+;; Not yet used
+;; Called to dispatch an event that is set in field ':dispatch-on-ok' and closes the dialog 
+;; It is assumed some valid fn is set for 'dispatch-on-ok'
+;; dispatch-on-ok is a map with keys [fx-event-kw args]
+(reg-event-fx
+ :generic-dialog-dispatch-on-ok
+ (fn [{:keys [db]} [_event-id dialog-identifier-kw]]
+   (let [{:keys [fx-event-kw args]} (get-in db [dialog-identifier-kw :dispatch-on-ok])]
+     (if-not (nil? fx-event-kw)
+       {:fx [[:dispatch [fx-event-kw args]]
+             [:dispatch [:generic-dialog-close dialog-identifier-kw]]]}
+       {:fx [[:dispatch [:generic-dialog-close dialog-identifier-kw]]]}))))
+
+(reg-event-fx
+ :generic-dialog-close
+ (fn [{:keys [db]} [_event-id dialog-identifier-kw]]
+   {:db (assoc-in db [dialog-identifier-kw] (init-dialog-map))}))
 
 (reg-sub
  :generic-dialog-data
  (fn [db [_event-id dialog-identifier-kw]]
    (get-in db [dialog-identifier-kw])))
+
+(declare validate-otp-settings-fields)
+
+(def field-validators {:otp-settings-dialog validate-otp-settings-fields})
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;; Following are otp-settings-dialog specific ;;;;;;;;;;;;;;;;;;;
 
@@ -154,7 +272,6 @@
                       api-response
                       #(dispatch [:otp-settings-form-url-error %]))]
     (dispatch [:otp-settings-form-url-success opt-url])))
-
 
 (defn manual-or-scan-qr-dispatch [section-name field-name standard-field secret-or-url code-entry-type]
   (if (= code-entry-type :manual)
@@ -199,13 +316,18 @@
      {:db  (-> db (assoc-in [:otp-settings-dialog] (init-dialog-map)))
       :fx  [[:dispatch [:entry-form/otp-url-form-success (as-map [section-name field-name otp-url standard-field])]]]})))
 
-
-
-
 (comment
   (in-ns 'onekeepass.mobile.events.dialogs)
 
-  (-> @re-frame.db/app-db keys) ;; will show the generic dialogs keywords 
+  (-> @re-frame.db/app-db keys) ;; will give the kw name of all generic dialogs when opened
+
+  ;; :setup-otp-action-dialog is dialog specific kw
+  ;; all fields specific this dialog is under this kw and will have some value after opening the dialog first time 
+
+  (-> @re-frame.db/app-db :setup-otp-action-dialog keys)
+
+  ;; => (:call-on-ok-fn :show-action-as-vertical :actions 
+  ;; :title :confirm-text :error-fields :api-error-text :dialog-show :section-name :data)
 
   (def db-key (-> @re-frame.db/app-db :current-db-file-name))
   (-> @re-frame.db/app-db (get db-key) keys)

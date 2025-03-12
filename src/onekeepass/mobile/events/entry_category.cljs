@@ -4,6 +4,8 @@
    [onekeepass.mobile.events.common :refer [assoc-in-key-db
                                             get-in-key-db
                                             active-db-key
+                                            on-error
+                                            default-entry-category
                                             on-ok]]
    [re-frame.core :refer [reg-event-db
                           reg-event-fx
@@ -12,7 +14,8 @@
                           reg-fx
                           subscribe]]
    [onekeepass.mobile.background :as bg]
-   [onekeepass.mobile.constants :as const]))
+   [onekeepass.mobile.constants :as const :refer [GROUPING_LABEL_TYPES GROUPING_LABEL_TAGS
+                                                  GROUPING_LABEL_CATEGORIES GROUPING_LABEL_GROUPS]]))
 
 (defn change-entries-grouping-method [kind]
   ;; kind is :type, :group-tree, :group-category
@@ -88,6 +91,43 @@
   ;; Second fn provides the comparator that uses the keys
   (sort-by (fn [m] (:title m)) (fn [v1 v2] (compare v1 v2)) grouped-categories))
 
+;; TODO: May need to use combine the use of string labels, grouping kw and enum variants. How ?
+
+(defn- groupings-label->groupings-kind-kw
+  "Converts the string value of grouping label to an appropriate keyword"
+  [start-view-to-show]
+  (cond
+    (= start-view-to-show GROUPING_LABEL_TYPES)
+    :type
+
+    (= start-view-to-show GROUPING_LABEL_CATEGORIES)
+    :group-category
+
+    (= start-view-to-show GROUPING_LABEL_GROUPS)
+    :group-tree
+
+    (= start-view-to-show GROUPING_LABEL_TAGS)
+    :tag
+
+    :else
+    :type))
+
+(defn- grouping-kind->pref-entry-category-groupings
+  "Converts the show-as kw to a string that is used in app preference settings"
+  [kw-kind]
+  (cond
+    (= kw-kind :type)
+    GROUPING_LABEL_TYPES
+
+    (= kw-kind :group-tree)
+    GROUPING_LABEL_GROUPS
+
+    (= kw-kind :tag)
+    GROUPING_LABEL_TAGS
+
+    (= kw-kind :group-category)
+    GROUPING_LABEL_GROUPS))
+
 (defn- show-as->grouping-kind
   "Converts the group-by kw to a string that is convertable to enum EntryCategoryGrouping"
   [group-by]
@@ -120,8 +160,24 @@
  :entry-category/load-categories-to-show
  (fn [{:keys [db]} [_event-id]]
    (let [group-by (get-in-key-db db [:entry-category :entries-grouping-as])
-         group-by (if (nil? group-by) :type group-by)]
-     {:fx [[:bg-combined-category-details [(active-db-key db) group-by]]]})))
+         ;; Need to set the grouping kind kw from the app-preference if required
+         db (if (nil? group-by)
+              (-> db (assoc-in-key-db
+                      [:entry-category :entries-grouping-as]
+                      (groupings-label->groupings-kind-kw (default-entry-category db))))
+              db)
+         ;; Ensure that we use any updated group-by value
+         group-by (get-in-key-db db [:entry-category :entries-grouping-as])]
+
+     {:db db
+      :fx [[:bg-combined-category-details [(active-db-key db) group-by]]]})))
+
+#_(reg-event-fx
+   :entry-category/load-categories-to-show
+   (fn [{:keys [db]} [_event-id]]
+     (let [group-by (get-in-key-db db [:entry-category :entries-grouping-as])
+           group-by (if (nil? group-by) :type group-by)]
+       {:fx [[:bg-combined-category-details [(active-db-key db) group-by]]]})))
 
 (reg-fx
  :bg-combined-category-details
@@ -152,7 +208,10 @@
  :change-entries-grouping-method
  (fn [{:keys [db]} [_event-id kind]]
    {:db (assoc-in-key-db db [:entry-category :entries-grouping-as] kind)
-    :fx [[:bg-combined-category-details [(active-db-key db) kind]]]}))
+    :fx [[:bg-combined-category-details [(active-db-key db) kind]]
+         ;; Reusing this event from app-settings to update the ":default-entry-category-groupings" in the backend  
+         [:dispatch [:app-settings/app-preference-update-data
+                     :default-entry-category-groupings (grouping-kind->pref-entry-category-groupings kind) nil]]]}))
 
 ;; entries-grouping-as is one of :type, :group-tree, :group-category
 (reg-sub

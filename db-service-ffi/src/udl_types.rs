@@ -21,12 +21,16 @@ pub(crate) struct KdbxCreated {
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct FileInfo {
     pub file_name: Option<String>,
+
     pub file_size: Option<i64>,
+
     // In milliseconds sice 00:00:00 UTC on 1 January 1970
     // The UI side it is expected in milliseconds - see onekeepass/mobile/date_utils.cljs
     // In case of remote storage file, we need to convert modified time from seconds to milli seconds
     //
     pub last_modified: Option<i64>,
+
+    // See extract povider fn
     pub location: Option<String>,
 }
 
@@ -77,9 +81,12 @@ pub trait CommonDeviceService: Send + Sync {
     fn cache_dir(&self) -> String;
     fn temp_dir(&self) -> String;
     fn app_group_home_dir(&self) -> Option<String>;
-    fn load_language_translation(&self, language_id: String) -> Option<String>;
     fn uri_to_file_name(&self, full_file_name_uri: String) -> Option<String>;
     fn uri_to_file_info(&self, full_file_name_uri: String) -> Option<FileInfo>;
+
+    // Resources loading fns
+    fn load_language_translation(&self, language_id: String) -> Option<String>;
+    fn load_resource_wordlist(&self, wordlist_file_name: String) -> ApiCallbackResult<String>;
 }
 
 // This is an udl enum 'SecureKeyOperationError' declared in 'db_service.udl' file
@@ -172,6 +179,19 @@ impl JsonService {
     // Returns the map data as a parseable (by cljs) json string with "ok" key
     pub fn map_as_ok_json_string(&self, info: HashMap<String, String>) -> String {
         InvokeResult::with_ok(info).json_str()
+    }
+
+    // Returns the map data as a parseable (by cljs) json string with "error" key
+    pub fn map_as_error_json_string(&self, info: HashMap<String, String>) -> String {
+        
+        // we use serde_json to serilaize the incoming HashMap to a string beforming error json
+        match serde_json::to_string(&info) {
+            Ok(json) => InvokeResult::<()>::with_error(&json).json_str(),
+            Err(e) => {
+                let er = format!("Error in map_as_error_json_string: {}", &e);
+                InvokeResult::<()>::with_error(&er).json_str()
+            }
+        }
     }
 
     // Returns a parseable (by cljs) json string with "ok"

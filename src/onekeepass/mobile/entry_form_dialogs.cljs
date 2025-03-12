@@ -18,13 +18,13 @@
             [onekeepass.mobile.translation :refer [lstr-bl lstr-dlg-text
                                                    lstr-dlg-title lstr-l]]
             [reagent.core :as r]
-            [onekeepass.mobile.background :as bg]))
+            [onekeepass.mobile.background :as bg]
+            [onekeepass.mobile.events.entry-form-auto-open :as ef-ao]))
 
 ;;;;;;;;;;;;;
 
 (defn confirm-delete-otp-field-dialog []
   [confirm-dialog-with-lstr @(dlg-events/confirm-delete-otp-field-dialog-data)])
-
 
 (defn confirm-delete-otp-field-show [section-name key]
   ;; We pass translation keys for title, confirm-text and for button labels as expected
@@ -86,12 +86,12 @@
 
   (let [error (boolean (seq error-fields))]
     [cust-dialog {:style {} :dismissable true :visible dialog-show :onDismiss #()}
-     
+
      [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1}
-      (if (=  code-entry-type :scan-qr) 
-        (lstr-l "scanQRcode") 
+      (if (=  code-entry-type :scan-qr)
+        (lstr-l "scanQRcode")
         (lstr-l "enterCode"))]
-     
+
      [rnp-dialog-content
       [rn-view {:flexDirection "column"}
        (when-not standard-field
@@ -307,3 +307,84 @@
                  :onPress (fn []
                             (form-events/rename-attachment name data-hash)
                             (close-rename-attachment-name-dialog))} (lstr-bl "ok")]]])
+
+(defn- action-button [{:keys [label on-press]}]
+  [rnp-button {:mode "text" :onPress on-press} label])
+
+;; dialog-show and key-file-name are set before calling this dialog in event ':entry-form-auto-open-pick-key-file'
+(defn auto-open-key-file-pick-required-info-dialog
+  ([{:keys [dialog-show key-file-name]}]
+   [cust-dialog {:style {} :dismissable true :visible dialog-show :onDismiss #()}
+    [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1} "Key file"]
+    [rnp-dialog-content
+     [rnp-text "Key file "
+      [rnp-text  {:style {:color "red"}} key-file-name]
+      [rnp-text " is not found and needs to be picked before proceeding"]]]
+    [rnp-dialog-actions
+     [action-button {:on-press (fn []
+                                 (ef-ao/show-key-file-form)
+                                 (dlg-events/auto-open-key-file-pick-required-info-dialog-close))
+                     :label (lstr-bl "continue")}]
+     [action-button {:on-press dlg-events/auto-open-key-file-pick-required-info-dialog-close
+                     :label (lstr-bl "cancel")}]]])
+  ([]
+   (auto-open-key-file-pick-required-info-dialog @(dlg-events/auto-open-key-file-pick-required-info-dialog-data))))
+
+;; dialog-show and auto-open-props are set before calling this dialog in event ':entry-form-auto-open-db-key-not-found'
+(defn auto-open-db-file-required-info-dialog
+  ([{:keys [dialog-show]
+     {:keys [db-file-name] :as auto-open-props} :auto-open-props}]
+   [cust-dialog {:style {} :dismissable true :visible dialog-show :onDismiss #()}
+    [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1} "Database file"]
+    [rnp-dialog-content
+         ;; Using https://reactnative.dev/docs/0.74/text#nested-text
+     [rnp-text "The database file "
+      [rnp-text  {:style {:color "red"}} db-file-name]
+      [rnp-text " is not found in the recently used database list and needs to be picked before proceeding"]]]
+
+    [rnp-dialog-actions
+     [action-button {:on-press (fn []
+                                 (dlg-events/auto-open-db-file-required-info-dialog-close)
+                                 (ef-ao/entry-form-auto-open-show-select-storage auto-open-props))
+                     :label (lstr-bl "continue")}]
+     [action-button {:on-press dlg-events/auto-open-db-file-required-info-dialog-close
+                     :label (lstr-bl "cancel")}]]])
+
+  ([]
+   (auto-open-db-file-required-info-dialog @(dlg-events/auto-open-db-file-required-info-dialog-data))))
+
+
+#_(defn auto-open-key-file-required-dialog [{:keys [dialog-show
+                                                    key-file-name]}]
+
+    [cust-dialog {:style {} :dismissable true :visible dialog-show :onDismiss #()}
+     [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1} "Key file"]
+     [rnp-dialog-content
+    ;; Using https://reactnative.dev/docs/0.74/text#nested-text
+      [rnp-text "Key file "
+       [rnp-text  {:style {:color "red"}} key-file-name]
+       [rnp-text " is not found and needs to be picked before proceeding"]]]
+
+     [rnp-dialog-actions
+      [rnp-button {:mode "text"
+                   :onPress ef-ao/entry-form-auto-open-key-file-required-dialog-ok} (lstr-bl "continue")]
+      [rnp-button {:mode "text"
+                   :onPress ef-ao/entry-form-auto-open-key-file-required-dialog-close} (lstr-bl "cancel")]]])
+
+;; auto-open-key-file-pick-required-info-dialog
+;; auto-open-key-file-pick-required-info-dialog
+
+;; (defn auto-open-key-file-pick-required-info-dialog []
+;;   [confirm-dialog @(dlg-events/auto-open-key-file-pick-required-info-dialog-data)])
+
+;; (defn auto-open-key-file-pick-required-info-dialog-init [on-continute-handler]
+;;   (dlg-events/auto-open-key-file-pick-required-info-dialog-init
+;;    {:title "Key File"
+;;     :confirm-text "Key file is not found and needs to be picked before proceeding"
+;;     :actions [{:label (lstr-bl "continue")
+;;                :on-press  (fn []
+;;                             (on-continute-handler)
+;;                             (dlg-events/auto-open-key-file-pick-required-info-dialog-close))}
+;;               {:label (lstr-bl "cancel")
+;;                :on-press (fn []
+;;                            (dlg-events/auto-open-key-file-pick-required-info-dialog-close))}]}))

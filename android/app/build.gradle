@@ -83,7 +83,6 @@ def enableProguardInReleaseBuilds = false
 //def jscFlavor = 'org.webkit:android-jsc:+'
 def jscFlavor = 'org.webkit:android-jsc-intl:+'
 
-
 android {
     ndkVersion rootProject.ext.ndkVersion
 
@@ -112,8 +111,9 @@ android {
         applicationId "com.onekeepassmobile"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 12
-        versionName "0.15.0"
+        // Need to use next increment in 'versionCode' as it needs to be unique for each release
+        versionCode 13
+        versionName "0.16.0"
     }
 
     signingConfigs {

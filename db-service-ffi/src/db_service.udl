@@ -38,14 +38,20 @@ interface EventDispatch {
 
 // Also see the callback CommonDeviceServiceEx definition using macros in "udl_callbacks.rs"
 // From Rust to Swift or Kotlin
+
+// The corresponding rust trait is defined in 'udl_types.rs'
 callback interface CommonDeviceService {
     string app_home_dir();
     string? app_group_home_dir(); // iOS specific
     string cache_dir();
     string temp_dir();
-    string? load_language_translation(string language_id);
     string? uri_to_file_name(string full_file_name_uri);
     FileInfo? uri_to_file_info(string full_file_name_uri);
+
+    string? load_language_translation(string language_id);
+
+    [Throws=ApiCallbackError]
+    string load_resource_wordlist(string wordlist_file_name);
 };
 
 // From Rust to Swift or Kotlin
@@ -123,6 +129,7 @@ interface JsonService {
     constructor();
     string form_with_file_name(string full_file_name_uri);
     string map_as_ok_json_string(record<DOMString,string> info);
+    string map_as_error_json_string(record<DOMString,string> info);
     string ok_json_string(string info);
     string error_json_string(string error);
 };

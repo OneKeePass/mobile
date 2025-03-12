@@ -2,6 +2,7 @@
   (:require 
    [clojure.string :as str]
    [onekeepass.mobile.background :as bg]
+   [onekeepass.mobile.constants :as const]
    [onekeepass.mobile.events.common :refer [active-db-key
                                             assoc-in-key-db
                                             current-database-file-name
@@ -28,7 +29,7 @@
   The arg error may be a string or a map with keys: code,message
   "
   [error error-title]
-  (println "Error " error error-title)
+  ;;(println "Error " error error-title)
   (cond
     (= error "DbFileContentChangeDetected")
     (dispatch [:save-error-modal-show {:error-type :content-change-detected
@@ -40,21 +41,21 @@
 
     ;; This happens when the file is removed or cloud service changes the reference after 
     ;; syncing from remote source. This invalidates the reference held by the app internally
-    (= "FILE_NOT_FOUND" (:code error))
+    (= const/FILE_NOT_FOUND (:code error))
     (dispatch [:save-error-modal-show {:error-type :file-not-found
                                        :message (:message error)
                                        :error-title error-title}])
 
     ;; Any error or exception that might have happend while saving
-    (= "SAVE_CALL_FAILED" (:code error))
+    (= const/SAVE_CALL_FAILED (:code error))
     (dispatch [:save-error-modal-show {:error-type :save-call-failled
                                        :message (:message error)
                                        :error-title error-title}])
 
     ;; This is iOS specific errors. Need to find a way how to test this
-    (or (= "COORDINATOR_CALL_FAILED" (:code error))
-        (= "BOOK_MARK_STALE" (:code error))
-        (= "BOOK_MARK_NOT_FOUND" (:code error)))
+    (or (= const/COORDINATOR_CALL_FAILED (:code error))
+        (= const/BOOK_MARK_STALE (:code error))
+        (= const/BOOK_MARK_NOT_FOUND (:code error)))
     (dispatch [:save-error-modal-show {:error-type :ios-bookmark-error
                                        :message (:message error)
                                        :error-title error-title}])
@@ -162,7 +163,7 @@
           []
           [[:dispatch [:common/error-box-show "Save as Error" error]]])}))
 
-;; Used for both  iOS and Abdroid
+;; Used for both  iOS and Android
 (reg-event-fx
  :save-as-on-error-finished
  (fn [{:keys [_db]} [_event-id kdbx-loaded]]

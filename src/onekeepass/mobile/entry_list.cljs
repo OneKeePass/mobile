@@ -304,7 +304,7 @@
                              {:label (lstr-bl "no")
                               :on-press #(reset! delete-all-entries-permanent-confirm false)}]}])
 
-(defn bottom-nav-bar 
+(defn bottom-nav-bar
   "A functional reagent componnent that returns the custom bottom bar"
   []
   (fn []
@@ -321,37 +321,37 @@
                         :borderTopWidth 1
                         :borderTopColor  @rnc/outline-variant
                         :min-height 50
-                        
+
                         ;;:position "absolute"
-                        
+
                         ;; In adndroid when we use absolute position, this bottom bar hides
                         ;; the entries list content - particularly when the list has more entries
                         ;; and even using the scroll does not work and it scrolls behind this component 
-                        
+
                         ;; Not using absolute position works for both android in iOS
-                        
+
                         :bottom (if (is-Android) (:bottom insets) 0)}}
-       
+
        [rn-view {:flexDirection "row" :justifyContent "space-between"}
         [rn-view {:align-items "center"}
          [rnp-icon-button {:size 24
                            :icon const/ICON-SORT
-                           :iconColor @rnc/on-error-container
+                           :iconColor @rnc/on-error-container-color
                            :onPress (fn [e]
                                       (show-sort-menu e sort-criteria))}]
          [rnp-text {:style {:margin-top -5}
-                    :text-align "center"} 
+                    :text-align "center"}
           (lstr-l 'sort)]]
 
         [rn-view {:align-items "center"}
          [rnp-icon-button {:size 24
                            :icon const/ICON-PLUS
-                           :iconColor @rnc/on-error-container
+                           :iconColor @rnc/on-error-container-color
                            :disabled @(cmn-events/current-db-disable-edit)
                            :onPress (fn [e]
                                       (show-fab-action-menu e selected-category-key selected-category-detail))}]
          [rnp-text {:style {:margin-top -5}
-                    :text-align "center"} 
+                    :text-align "center"}
           (lstr-l 'add)]]]])))
 
 (def idx (r/atom -1))
@@ -405,14 +405,14 @@
    ;; Otherwise we may see error like 
   ;; 'VirtualizedLists should never be nested inside plain ScrollViews with the same 
   ;;  orientation because it can break windowing and other functionality - use another VirtualizedList-backed container instead'
-   
+
    [rnc/rn-scroll-view {:style {} :contentContainerStyle {:flexGrow 1 :background-color @page-background-color}}
     [main-content]]
 
    [:f> bottom-nav-bar]
-   
+
    #_[bottom-nav-bar1]
-   
+
    [sort-menus @sort-menu-data]
    [fab-action-menu @fab-action-menu-data]
    [entry-long-press-menu @entry-long-press-menu-data]

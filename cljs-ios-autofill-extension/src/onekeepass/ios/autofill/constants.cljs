@@ -5,7 +5,6 @@
 
 
 (def BIOMETRIC-AUTHENTICATION-SUCCESS "AuthenticationSucceeded")
-
 (def BIOMETRIC-AUTHENTICATION-FAILED "AuthenticationFailed")
 
 ;; Standard Entry Type Names
@@ -42,9 +41,6 @@
 
 (def OTP_KEY_DECODE_ERROR "OtpKeyDecodeError")
 
-(def BIOMETRIC-AUTHENTICATION-SUCCESS "AuthenticationSucceeded")
-(def BIOMETRIC-AUTHENTICATION-FAILED "AuthenticationFailed")
-
 (def THEME "theme")
 (def DARK-THEME "dark")
 (def LIGHT-THEME "light")
@@ -68,6 +64,11 @@
 
 
 ;;; Page ids
+(def HOME_PAGE_ID :home)
+(def LOGIN_PAGE_ID :login)
+(def ENTRY_LIST_PAGE_ID :entry-list)
+(def ENTRY_FORM_PAGE_ID :entry-form)
+
 
 (def FLEX-DIR-ROW "row")
 

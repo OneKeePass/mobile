@@ -34,7 +34,7 @@
   "Called to show an error or a general message
   The value of key 'category' determines whether it is error or message
    "
-  ([{:keys [dialog-show title category message]}] 
+  ([{:keys [dialog-show title category message]}]
    (let [error? (= category :error)
          title-txt (if error? (lstr-error-dlg-title title) (lstr-msg-dlg-title title))
          msg-txt (if error? (lstr-error-dlg-text message) (lstr-msg-dlg-text message))]
@@ -98,7 +98,7 @@
                                             (selected-tags-receiver-fn selected-tags)
                                             (cmn-events/tags-dialog-done))} (lstr-bl 'close)]]]))
 
-(defn settings-section-header 
+(defn settings-section-header
   "The arg title is expected to be the translation key"
   [title]
   [rn-view  {:style {:flexDirection "row"
@@ -112,7 +112,7 @@
                       :text-align "center"
                       :padding-left 5} :variant "titleSmall"} (lstr-l title)]])
 
-(defn list-section-header 
+(defn list-section-header
   "The arg title is expected to be the translation key"
   [title]
   [rn-view  {:style {:flexDirection "row"
@@ -126,41 +126,66 @@
                       :text-align "center"
                       :padding-left 0} :variant "titleLarge"} (lstr-l title)]])
 
+(defn get-form-style []
+  {:padding-top 5 :padding-right 5 :padding-left 5 :padding-bottom 10
+   :margin-left 5 :margin-right 5 :margin-bottom 5
+   :borderWidth .20 :borderRadius 4
+   :border-color @rnc/on-background-color #_(if (= @rnc/current-theme const/LIGHT-THEME) @rnc/on-background-color @rnc/on-background-color)})
+
 (defn select-field-label-extractor
   "Default label extractor for the modal based selector"
   [^js/RnModalDataItem d]
   (.-label d))
 
 (defn select-field-tr-label-extractor
-  "Uses label found data item as translation key and gets the translated value
+  "Uses the label found in data item as translation key and gets the translated value
    as label for the modal based selector 
   "
   [^js/RnModalDataItem d]
   (lstr-cv (.-label d)))
 
 (defn select-field-tr-key-label-extractor
-  "Uses key found data item as translation key and gets the translated value
+  "Uses the key found in data item as translation key and gets the translated value
    as label for the modal based selector 
   "
   [^js/RnModalDataItem d]
   (lstr-cv (.-key d)))
 
+(defn find-matching-label
+  "Gets the option label from the selected value"
+  [options value]
+  (:label (first
+           (filter
+            (fn [m]
+              (= value (:key m)))
+            options))))
+
 ;;; Uses react-native-modal-selector based selector
 ;; Refer https://github.com/peacechen/react-native-modal-selector#props for all supported props
 ;; that can be used with 'rnms-modal-selector'
 
-(defn select-field [{:keys [text-label options value on-change disabled label-extractor-fn text-input-style]
+(defn select-field [{:keys [text-label
+                            options
+                            value
+                            on-change
+                            disabled
+                            label-extractor-fn
+                            ;; This style applies to the text input field
+                            text-input-style
+                            ;; This style is meant to the pop dialog that shows the select option list
+                            option-container-style]
                      :or {label-extractor-fn select-field-label-extractor
                           disabled false
+                          option-container-style {}
                           text-input-style {}}}]
   [rnms-modal-selector {;; data can also include additional custom keys which are passed to the onChange callback
                         ;; in addition to required ones - key, label
                         ;; For example uuid can also be passed
                         ;; :optionStyle {:background-color "red"}
-                        :optionContainerStyle {:background-color @(:background-color modal-selector-colors)}
+                        :optionContainerStyle (merge {:background-color @(:background-color modal-selector-colors)} option-container-style)
                         :data options
                         :initValue value
-                        ;; Extracts the label to show
+                        ;; An fn '(data) =>  data.label' to extract the label from the data item to show
                         :labelExtractor label-extractor-fn
                         ;;:selectedKey (get options value)
                         :disabled disabled

@@ -32,6 +32,7 @@ class OkpDocumentPickerService: NSObject {
       documentPicker.allowsMultipleSelection = false
       documentPicker.modalPresentationStyle = .pageSheet
       
+      
       // Need to use NSFileCoordinator in delegate so that we can create the required bookmarks
       self.readFilePickDelegate = ReadFilePickDelegate(resolve, reject)
       documentPicker.delegate = self.readFilePickDelegate

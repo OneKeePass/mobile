@@ -141,13 +141,13 @@
      (-> (filter (fn [m] (= curr-dbkey (:db-key m))) (:opened-db-list app-db))
          first :database-name))))
 
-(declare recently-used)
+(declare recently-used-dbs)
 
 (defn current-database-file-name
   "Gets the database kdbx file name"
   [app-db]
   (let [curr-dbkey  (:current-db-file-name app-db)
-        recent-dbs-info (recently-used app-db) #_(-> app-db :app-preference :data :recent-dbs-info)]
+        recent-dbs-info (recently-used-dbs app-db) #_(-> app-db :app-preference :data :recent-dbs-info)]
     (-> (filter (fn [{:keys [db-file-path]}] (= curr-dbkey db-file-path)) recent-dbs-info) first :file-name)))
 
 (defn current-kdbx-loaded-info
@@ -177,8 +177,16 @@
 #_(defn load-language-translation-completed []
     (dispatch [:common/load-language-translation-complete]))
 
+(defn opened-db-keys
+  "Gets a vec of all opened db-keys from the opened database list
+   This fn is also used in subscriber event :common/opened-database-file-names 
+   TODO: Combine these two to a single name fn
+   "
+  [app-db]
+  (mapv (fn [m] (:db-key m)) (:opened-db-list app-db)))
+
 (defn opened-database-file-names
-  "Gets db info map with keys [db-key database-name file-name key-file-name] from the opened database list"
+  "Gets just the db-keys from the opened database list"
   []
   (subscribe [:common/opened-database-file-names]))
 
@@ -201,6 +209,8 @@
 
 ;; When the db is loaded from a remote storage connection, the ok response
 ;; will have a map 'kdbx-loaded-ex' (struct KdbxLoadedEx)
+
+;; Also this struct KdbxLoadedEx is used when we open a db in on read only mode
 (reg-event-fx
  :common/kdbx-database-opened
  (fn [{:keys [db]} [_event-id {:keys [database-name rs-additional-info] :as kdbx-loaded-ex}]]
@@ -217,8 +227,7 @@
          ;; Loads the updated recent dbs info
          [:bg-app-preference]
          [:dispatch [:common/message-modal-hide]]
-         [:dispatch [:common/message-snackbar-open 'databaseOpened]]
-         ]}))
+         [:dispatch [:common/message-snackbar-open 'databaseOpened]]]}))
 
 (reg-event-fx
  :close-kdbx-db
@@ -238,7 +247,7 @@
  :common/close-current-kdbx-db
  (fn [{:keys [db]}  [_event-id]]
    {:fx [[:bg-close-kdbx [(active-db-key db)]]
-         [:dispatch [:to-home-page]]]}))
+         [:dispatch [:common/to-home-page]]]}))
 
 ;; A common refresh all forms after an entry form changes - delete, put back , delete permanent
 (reg-event-fx
@@ -367,11 +376,12 @@
  (fn [db _query-vec]
    (current-database-name db)))
 
-;; Gets all db keys / full database file names
+;; Gets a vec of all opened db-keys
 (reg-sub
  :common/opened-database-file-names
  (fn [db _query-vec]
-   (mapv (fn [m] (:db-key m)) (:opened-db-list db))))
+   (opened-db-keys db)
+   #_(mapv (fn [m] (:db-key m)) (:opened-db-list db))))
 
 ;; Editing should be disabled in case of remote connection is not availble and db content is 
 ;; read from backup 
@@ -385,7 +395,7 @@
 (defn app-preference-status-loaded []
   (subscribe [:app-preference-status-loaded]))
 
-(defn recently-used
+(defn recently-used-dbs
   "Returns a vec of maps (from struct RecentlyUsed) 
    with keys :file-name, :db-file-path 
    The kdbx file name is found here for each db-key
@@ -395,6 +405,21 @@
      (if (nil? r) [] r)))
   ([]
    (subscribe [:recently-used])))
+
+(defn recently-used-db-info-by-db-key
+  "Gets the 'db info map' including FileInfo for a given db-key
+  Returns a map if found or nil is returned if not found
+  "
+  ([app-db db-key]
+   (let [db-info-v (recently-used-dbs app-db)
+         db-info (first (filter (fn [db-info] (= (:db-file-path db-info) db-key)) db-info-v))]
+     db-info))
+  ([db-key]
+   (subscribe [:recently-used-db-info-by-db-key db-key])))
+
+
+#_(defn is-db-key-found-in-recently-used-dbs [app-db db-key]
+    (boolean (recently-used-db-info-by-db-key app-db db-key)))
 
 (defn database-preferences
   "Returns a vec of maps  (the map is from struct DatabasePreference) or an empty vec
@@ -438,7 +463,7 @@
                        :db-unlock-biometric-enabled true}  db-p)))
 
 
-(defn update-database-preference-list 
+(defn update-database-preference-list
   "Adds the passed database preference by removing the existing one from the list and then 
    add back the updated one at the end.
    The arg in-db-pref is a map.
@@ -449,7 +474,7 @@
         db-prefs (filterv (fn [m] (not= (:db-key in-db-pref) (:db-key m))) (database-preferences app-db))
         ;; Add back the incoming updated db-pref to the end 
         ;; At this time the order of db-pref does not matter
-        db-prefs (conj db-prefs in-db-pref)] 
+        db-prefs (conj db-prefs in-db-pref)]
     (assoc-in app-db [:app-preference :data :database-preferences] db-prefs)))
 
 (defn biometric-enabled-to-open-db
@@ -466,6 +491,14 @@
   ([db-key]
    (subscribe [:biometric-enabled-to-unlock-db db-key])))
 
+(defn default-entry-category
+  "Gets the default category grouping option that is set in preference 
+   to show in the entry category page
+   This is one of a string value defined as GROUPING_* labels in constants.cljs
+   "
+  [app-db]
+  (-> app-db :app-preference :data :default-entry-category-groupings))
+
 ;; field-kw should be one of 
 ;; [:database-preferences :backup-history-count :theme :
 ;; db-session-timeout :recent-dbs-info :language :version :clipboard-timeout :default-entry-category-groupings]
@@ -481,6 +514,31 @@
   "
   [app-db field-kw value]
   (assoc-in app-db [:app-preference :data field-kw] value))
+
+(defn app-lock-preference
+  "Gets the app lock preference map (struct AppLockPreference)"
+  ([app-db]
+   (get-in app-db [:app-preference :data :app-lock-preference]))
+  ([]
+   (subscribe [:app-lock-preference])))
+
+#_(defn app-lock-preference-field-data
+    "Gets a specific field value"
+    [app-db field-kw]
+    (get-in app-db [:app-preference :data :app-lock-preference field-kw]))
+
+(defn update-app-lock-preference-field-data
+  "Called to update a specific field of app lock preference
+   Returns the updated app-db
+   "
+  [app-db field-kw value]
+  (assoc-in app-db [:app-preference :data :app-lock-preference field-kw] value))
+
+;; Called on the following events
+;; when app launches first time
+;; when user navigates to the home page
+;; when a db is opened
+;; when a db is closed
 
 (reg-event-fx
  :load-app-preference
@@ -519,19 +577,28 @@
             (assoc :biometric-available (bg/is-biometric-available))
             (assoc-in [:app-preference :status] :loaded)
             (assoc-in [:app-preference :data] pref))
-    :fx [[:dispatch [:app-settings/app-preference-loaded]]]}))
+    :fx [[:dispatch [:app-settings/app-preference-loaded]]
+         [:dispatch [:app-lock/app-launched]]]}))
 
 (reg-sub
  :recently-used
  (fn [db [_event-id]]
-   (recently-used db)
-   #_(let [r (get-in db [:app-preference :data :recent-dbs-info])]
-       (if (nil? r) [] r))))
+   (recently-used-dbs db)))
+
+(reg-sub
+ :recently-used-db-info-by-db-key
+ (fn [db  [_event-id db-key]]
+   (recently-used-db-info-by-db-key db db-key)))
 
 (reg-sub
  :database-preferences
  (fn [db [_event-id]]
    (database-preferences db)))
+
+(reg-sub
+ :app-lock-preference
+ (fn [db [_event-id]]
+   (app-lock-preference db)))
 
 (reg-sub
  :biometric-enabled-to-open-db
@@ -566,6 +633,9 @@
 
 ;; All DB unlock call events are in open-databse ns
 
+(defn is-db-locked [app-db db-key]
+  (boolean (get-in-selected-db app-db db-key [:locked])))
+
 (defn locked? [db-key]
   (if (nil? db-key)
     (subscribe [:current-db-locked])
@@ -588,7 +658,7 @@
  :lock-current-kdbx
  (fn [{:keys [db]} [_event-id]]
    {:db (assoc-in-key-db db [:locked] true)
-    :fx [[:dispatch [:to-home-page]]
+    :fx [[:dispatch [:common/to-home-page]]
          [:dispatch [:common/message-snackbar-open 'databaseLocked]]]}))
 
 ;; Called to lock any opened database using the passed db-key - used from home page
@@ -597,16 +667,22 @@
  (fn [{:keys [db]} [_event-id db-key]]
    {:db (assoc-in-selected-db db db-key [:locked] true)
     :fx [#_[:bg-lock-kdbx [(active-db-key db)]]
-         [:dispatch [:to-home-page]]
+         [:dispatch [:common/to-home-page]]
          [:dispatch [:common/message-snackbar-open 'databaseLocked]]]}))
+
 
 (reg-event-fx
  :lock-on-session-timeout
  (fn [{:keys [db]} [_event-id db-key]]
    (let [curr-dbkey  (:current-db-file-name db)]
      {:db (assoc-in-selected-db db db-key [:locked] true)
-      :fx [(when (= curr-dbkey db-key)
-             [:dispatch [:to-home-page]])]})))
+      :fx (if  (= curr-dbkey db-key)
+            [[:dispatch [:common/to-home-page]]
+             [:dispatch [:app-lock/current-db-locked-on-timeout]]]
+            [])
+      ;; :fx [(when (= curr-dbkey db-key)
+      ;;        [:dispatch [:common/to-home-page]])]
+      })))
 
 ;; Need to make use of API call in case we want to do something for lock call
 ;; Currently nothing is done on the backend
@@ -633,7 +709,8 @@
 (reg-sub
  :selected-db-locked
  (fn [db [_query-id db-key]]
-   (boolean (get-in-selected-db db db-key [:locked]))))
+   (is-db-locked db db-key)
+   #_(boolean (get-in-selected-db db db-key [:locked]))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  Page Navigation ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -644,7 +721,7 @@
 (defn to-home-page
   "Called to navigate to the home page"
   []
-  (dispatch [:to-home-page]))
+  (dispatch [:common/to-home-page]))
 
 (defn to-about-page
   "Called to navigate to the about page"
@@ -671,7 +748,7 @@
     (-> page-data  :page)))
 
 (reg-event-fx
- :to-home-page
+ :common/to-home-page
  (fn [{:keys [db]} [_event-id]]
    {;;pages-stack is a list and need to be set to empty when navigated to home page
     :db (assoc-in db [:pages-stack] nil)
@@ -691,6 +768,8 @@
    {:fx [[:dispatch [:common/next-page :privacy-policy "privacyPolicy"]]]}))
 
 ;; Called when user navigates to the next page
+;; Calling multiple times with the same page id will remain in that page - that it is an idempotent action
+
 ;; For most of the cases, the title is expected to be a key to get the translated page title text
 ;; See positioned-title component in appbar.cljs 
 (reg-event-db
@@ -950,8 +1029,22 @@
    ;; We need to convert message as '(str message)' to ensure it can be used 
    ;; in UI component
    ;; The message may be a symbol meaning that it is to be used as a key to get the translated text
-   (let [msg (if (symbol? message) message
-                 (get message :message (str message)))]
+  
+   (let [msg  (cond
+
+                (symbol? message)
+                message
+
+                (string? message)
+                message
+
+                (map? message)
+                (let [msg (get message :message)
+                      msg (if (empty? msg) (str message) msg)]
+                  msg)
+
+                :else
+                (str message))] 
      (-> db
          (assoc-in [:message-box :dialog-show] true)
          (assoc-in [:message-box :title] (if (str/blank? title) "Error" title))
@@ -1039,7 +1132,8 @@
 ;;;;;;;;;;;;;;;  Get File Info ;;;;;;;;;;;;;;;;;;;;;
 
 (defn load-file-info [full-file-name-uri]
-  (dispatch [:load-file-info full-file-name-uri]))
+  (dispatch [:load-file-info-from-recntly-used-dbs full-file-name-uri])
+  #_(dispatch [:load-file-info full-file-name-uri]))
 
 (defn close-file-info-dialog []
   (dispatch [:close-file-info-dialog]))
@@ -1063,6 +1157,12 @@
  :load-file-info-complete
  (fn [{:keys [db]} [_event-id file-info]]
    {:db (assoc db :file-info-dialog-data (merge {:dialog-show true} file-info))}))
+
+(reg-event-fx
+ :load-file-info-from-recntly-used-dbs
+ (fn [{:keys [db]} [_event-id full-file-name-uri]]
+   {:db (assoc db :file-info-dialog-data
+               (merge {:dialog-show true} (recently-used-db-info-by-db-key db full-file-name-uri)))}))
 
 (reg-event-db
  :close-file-info-dialog
@@ -1124,6 +1224,8 @@
 
 (comment
   (in-ns 'onekeepass.mobile.events.common)
+
+  (-> @re-frame.db/app-db keys)
 
   ;; Sometime subscrition changes are reflected after save. In that case the following clears old subs
   (re-frame.core/clear-subscription-cache!)

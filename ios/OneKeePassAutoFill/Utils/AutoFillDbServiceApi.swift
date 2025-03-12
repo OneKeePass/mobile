@@ -127,6 +127,12 @@ enum CallbackErrors: Error {
 }
 
 class CommonDeviceServiceImpl: CommonDeviceService {
+  
+  // For now, this is not required for AutoFill
+  func loadResourceWordlist(_ wordlistFileName: String) throws -> String {
+    return ""
+  }
+  
   func appHomeDir() -> String {
 //    let  burl = Bundle.main.bundleURL
 //    cmnLogger.debug("$$$$$ bundleURL is \(burl)")

@@ -14,7 +14,9 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  Session timeout ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn user-action-detected []
+(defn user-action-detected
+  "Called from the pan handler in appbar"
+  []
   (dispatch [:user-action-detected]))
 
 (def db-session-timeout "Timeout in milliseconds" (atom 15000))
@@ -40,7 +42,9 @@
   (go-loop []
     ;; Every 5 sec, we send the tick
     (<! (timeout 5000))
-    (dispatch [:check-db-list-to-lock (js/Date.now)])
+    (let [tick (js/Date.now)]
+      (dispatch [:check-db-list-to-lock tick])
+      (dispatch [:app-lock/lock-on-timeout tick]))
     (when @continue-tick
       (recur))))
 
@@ -48,15 +52,38 @@
 ;; opened-db-list has a vec of maps (one map for each opened database)
 (reg-event-fx
  :user-action-detected
- (fn [{:keys [db]} []]
+ (fn [{:keys [_db]} [_event-id]]
+   ;;(println "user-action-detected..")
+   (let [time-now (js/Date.now)]
+     {:fx [[:dispatch [:update-current-db-active-time time-now]]
+           [:dispatch [:app-lock/update-app-active-time time-now]]]})))
+
+(reg-event-fx
+ :update-current-db-active-time
+ (fn [{:keys [db]} [_event-id time-now]]
    (let [db-key (active-db-key db)
          ;; Updates the user active time for the current active database
          dbs (mapv (fn [m]
                      (if (= db-key (:db-key m))
-                       (assoc m :user-action-time (js/Date.now))
+                       (assoc m :user-action-time time-now)
                        m))
                    (:opened-db-list db))]
      {:db (-> db (assoc-in [:opened-db-list] dbs))})))
+
+#_(reg-event-fx
+   :user-action-detected
+   (fn [{:keys [db]} []]
+   ;; (println "user-action-detected..")
+     (let [db-key (active-db-key db)
+         ;; Updates the user active time for the current active database
+           dbs (mapv (fn [m]
+                       (if (= db-key (:db-key m))
+                         (assoc m :user-action-time (js/Date.now))
+                         m))
+                     (:opened-db-list db))]
+       {:db (-> db (assoc-in [:opened-db-list] dbs))})))
+
+
 
 ;; This is used when user unlock the previously openned locked database
 ;; See 'db-opened' fn in 'onekeepass.mobile.events.common' where  'user-action-time'
@@ -110,10 +137,10 @@
   (dispatch [:clipboard-timeout-update value-in-milli-seconds]))
 
 (defn app-theme-update [theme-selected]
-  (dispatch [:app-preference-update-data :theme theme-selected nil]))
+  (dispatch [:app-settings/app-preference-update-data :theme theme-selected nil]))
 
 (defn app-language-update [lng-selected call-on-success]
-  (dispatch [:app-preference-update-data :language lng-selected call-on-success]))
+  (dispatch [:app-settings/app-preference-update-data :language lng-selected call-on-success]))
 
 (defn db-session-timeout-value
   "An atom that gives the db session timeout in milli seconds"
@@ -166,9 +193,10 @@
 
 ;; Called to update a single field found in the app preference map
 (reg-event-fx
- :app-preference-update-data
- (fn [{:keys [db]} [_event-id kw value call-on-success]] 
-   ;; First we update the UI side app prefence. 
+ :app-settings/app-preference-update-data
+ (fn [{:keys [db]} [_event-id kw value call-on-success]]
+   ;;(println "app-settings/bg-update-preference pref-update-m " kw value)
+   ;; First we update the UI side app preference. 
    {:db  (update-preference-field-data db kw value) #_(assoc-in db [:app-preference :data kw] value)
     ;; When this event is called in on-change handler of a 'list-item-modal-selector', 
     ;; calling any modal window (:common/message-modal-show) in this event did not work
@@ -180,11 +208,12 @@
 ;; At this time it appears we are using any one field from struct PreferenceData
 (reg-fx
  :app-settings/bg-update-preference
- (fn [[pref-update-m  call-on-success]] 
-   (bg/update-preference pref-update-m 
-                         (fn [api-response] 
+ (fn [[pref-update-m call-on-success]]
+   ;;(println "app-settings/bg-update-preference pref-update-m " pref-update-m)
+   (bg/update-preference pref-update-m
+                         (fn [api-response]
                            (when-not (on-error api-response)
-                             (when-not (nil? call-on-success) 
+                             (when-not (nil? call-on-success)
                                (call-on-success pref-update-m)))))))
 
 (reg-sub
@@ -205,7 +234,7 @@
 
 (reg-sub
  :app-preference-data
- (fn [db [_event-id kw default-value]] 
+ (fn [db [_event-id kw default-value]]
    (preference-field-data db kw default-value)))
 
 ;;;;;;;;;

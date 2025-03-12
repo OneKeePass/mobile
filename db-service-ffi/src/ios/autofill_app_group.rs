@@ -4,34 +4,44 @@ use std::{
 };
 
 use log::debug;
-use onekeepass_core::db_service::{self, service_util::string_to_simple_hash, EntrySummary};
+use onekeepass_core::db_service::{
+    self,
+    service_util::{self, now_utc_milli_seconds, string_to_simple_hash},
+    EntrySummary,
+};
 use serde::{Deserialize, Serialize};
 use url::Url;
 
 use onekeepass_core::error;
 
 use crate::{
+    app_lock,
+    app_preference::{AppLockPreference, DatabasePreference},
     app_state::AppState,
     commands::{
         error_json_str, ok_json_str, result_json_str, CommandArg, InvokeResult, ResponseJson,
     },
-    parse_command_args_or_err, util, OkpError, OkpResult,
+    parse_command_args_or_err,
+    util::{self, remove_dir_contents},
+    OkpError, OkpResult,
 };
 
 use super::IosApiCallbackImpl;
 
-const AG_DATA_FILES: &str = "db_files";
+const EXTENSION_ROOT_DIR: &str = "okp";
 
-const AG_KEY_FILES: &str = "key_files";
+pub(crate) const AG_DATA_FILES_DIR: &str = "db_files";
+
+pub(crate) const AG_KEY_FILES_DIR: &str = "key_files";
 
 const META_JSON_FILE_NAME: &str = "autofill_meta.json";
 
-const META_JSON_FILE_VERSION: &str = "1.0.0";
+const META_JSON_FILE_VERSION: &str = "2.0.0";
 
 /////////  Some public exposed fns ////////////////
 
 pub(crate) fn delete_copied_autofill_details(db_key: &str) -> OkpResult<()> {
-    let db_file_root = app_group_root_sub_dir(AG_DATA_FILES)?;
+    let db_file_root = app_group_root_sub_dir(AG_DATA_FILES_DIR)?;
     let hash_of_db_key = string_to_simple_hash(&db_key).to_string();
 
     let group_db_file_dir = Path::new(&db_file_root).join(&hash_of_db_key);
@@ -44,7 +54,7 @@ pub(crate) fn delete_copied_autofill_details(db_key: &str) -> OkpResult<()> {
     );
 
     if util::is_dir_empty(&db_file_root) {
-        let app_group_key_file_dir = app_group_root_sub_dir(AG_KEY_FILES)?;
+        let app_group_key_file_dir = app_group_root_sub_dir(AG_KEY_FILES_DIR)?;
         let r = fs::remove_dir_all(&app_group_key_file_dir);
         log::debug!(
             "Delete key files dir {:?} result {:?}",
@@ -75,7 +85,26 @@ pub(crate) fn copy_files_to_app_group_on_save_or_read(db_key: &str) {
     }
 }
 
+// Called during app reset
+// Removes all data and key files. Also the autofill config removed
+pub(crate) fn remove_all_app_extension_contents() {
+    if let Ok(path) = app_group_root_sub_dir(AG_DATA_FILES_DIR) {
+        let _ = remove_dir_contents(path);
+    }
+
+    if let Ok(path) = app_group_root_sub_dir(AG_KEY_FILES_DIR) {
+        let _ = remove_dir_contents(path);
+    }
+
+    if let Some(path) = autofill_meta_json_file() {
+        let _ = fs::remove_file(path);
+    }
+}
+
 /////////////////////////////////////////////
+
+// Gets the app extension root
+// e.g app_group_root/okp
 
 fn app_extension_root() -> OkpResult<PathBuf> {
     let Some(app_group_home_dir) = AppState::app_group_home_dir() else {
@@ -86,7 +115,7 @@ fn app_extension_root() -> OkpResult<PathBuf> {
 
     //temp_delete_old_af_files(); // Need to be removed
 
-    let full_path_dir = Path::new(app_group_home_dir).join("okp");
+    let full_path_dir = Path::new(app_group_home_dir).join(EXTENSION_ROOT_DIR);
     Ok(full_path_dir.to_path_buf())
 }
 
@@ -117,7 +146,7 @@ fn copy_files_to_app_group(db_key: &str) -> OkpResult<CopiedDbFileInfo> {
     let file_name = AppState::uri_to_file_name(&db_key);
     debug!("File name from db_file_name  is {} ", &file_name);
 
-    let db_file_root = app_group_root_sub_dir(AG_DATA_FILES)?;
+    let db_file_root = app_group_root_sub_dir(AG_DATA_FILES_DIR)?;
 
     let hash_of_db_key = string_to_simple_hash(&db_key).to_string();
 
@@ -137,7 +166,7 @@ fn copy_files_to_app_group(db_key: &str) -> OkpResult<CopiedDbFileInfo> {
     let copied_db_info = CopiedDbFileInfo::new(file_name, db_file_path, db_key.to_string());
     AutoFillMeta::read().add_copied_db_info(copied_db_info.clone());
 
-    let app_group_key_file_dir = app_group_root_sub_dir(AG_KEY_FILES)?;
+    let app_group_key_file_dir = app_group_root_sub_dir(AG_KEY_FILES_DIR)?;
 
     // Copies all the key files available
     util::copy_files(&AppState::key_files_dir_path(), &app_group_key_file_dir);
@@ -151,7 +180,7 @@ fn copy_files_to_app_group(db_key: &str) -> OkpResult<CopiedDbFileInfo> {
 // and inform the user accordingly (may be in some background thread or callback from js)
 // We need to use a call similar to readKdbx using the copied bookmarked data and calculate checksum and compare
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CopiedDbFileInfo {
     pub(crate) file_name: String,
     // This is also db_key
@@ -171,10 +200,13 @@ impl CopiedDbFileInfo {
 }
 
 // Used for the auto fill meta data persistence
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct AutoFillMeta {
     pub version: String,
     pub copied_dbs_info: Vec<CopiedDbFileInfo>,
+    // Adding a field to hold last pin auth done
+    // This time is used to determine whether to ask PIN auth again or to skip for a predetermined time
+    last_pin_auth_success_time: Option<i64>,
 }
 
 impl Default for AutoFillMeta {
@@ -182,11 +214,14 @@ impl Default for AutoFillMeta {
         Self {
             version: META_JSON_FILE_VERSION.to_string(),
             copied_dbs_info: vec![],
+            last_pin_auth_success_time: None,
         }
     }
 }
 
 impl AutoFillMeta {
+    // Reads any previously created config file or creates a default config
+    // TODO: Need to keep a copy of AutoFillMeta in memory so that we can avoid reading the file again and again
     fn read() -> Self {
         let Some(pref_file_name) = autofill_meta_json_file() else {
             return Self::default();
@@ -196,25 +231,69 @@ impl AutoFillMeta {
 
         let json_str = fs::read_to_string(pref_file_name).unwrap_or("".into());
         debug!("AutoFillMeta json_str is {}", &json_str);
-        if json_str.is_empty() {
-            debug!("AutoFillMeta json file is empty and default used ");
+
+        let mut af_meta = if json_str.is_empty() {
+            log::info!("AutoFillMeta is empty and default used ");
             Self::default()
         } else {
-            // If there is any change in struct AutoFillMeta, then we need to load earlier version as done in Preference
-            serde_json::from_str(&json_str).unwrap_or_else(|_| Self::default())
-        }
+            serde_json::from_str(&json_str).unwrap_or_else(|_| {
+                // If there is any change in struct AutoFillMeta, then we need to load earlier version as done in Preference
+                match serde_json::from_str(&json_str) {
+                    // Prior version
+                    Ok(prev_af_meta @ AutoFillMetaV100 { .. }) => {
+                        debug!(
+                            "Returning the new AutoFillMeta with old values from AutoFillMeta100"
+                        );
+
+                        let new_af_meta: Self = prev_af_meta.into();
+
+                        debug!("Converted new_af is {:?}", &new_af_meta);
+
+                        // Write the AutoFillMeta json with the copied values from old AutoFillMeta
+                        new_af_meta.write_to_app_group_dir();
+                        new_af_meta
+                    }
+                    Err(e) => {
+                        // We could not parse the existing json file even to the prior version.
+                        // This may happen if the 'autofill_meta.json' found is older than the previous version.
+                        // Returns the latest default af_meta
+                        debug!(
+                            "Returning the default af_meta because of json parsing error {}",
+                            e
+                        );
+                        Self::default()
+                    }
+                }
+            })
+        };
+
+        // Ensure that version is updated if required
+        let final_af_meta = if af_meta.version == META_JSON_FILE_VERSION {
+            debug!("Version Checked: Returning the current af_meta as version is the latest");
+            af_meta
+        } else {
+            // If the new field added are only Option<> type in AutoFillMeta,
+            // then parsing may through with new AutoFillMeta itself, but the version will be old
+            af_meta.version = META_JSON_FILE_VERSION.into();
+            af_meta.write_to_app_group_dir();
+            af_meta
+        };
+
+        final_af_meta
     }
 
     fn write_to_app_group_dir(&self) {
         if let Some(pref_file_name) = autofill_meta_json_file() {
             let json_str_result = serde_json::to_string_pretty(self);
             if let Ok(json_str) = json_str_result {
+                log::debug!("Writing AutoFillMeta file");
                 if let Err(err) = fs::write(pref_file_name, json_str.as_bytes()) {
                     log::error!(
                         "AutoFillMeta file write failed and error is {}",
                         err.to_string()
                     );
                 }
+
             }
         };
     }
@@ -250,7 +329,52 @@ impl AutoFillMeta {
         // Write the autofillmeta to the file system immediately
         self.write_to_app_group_dir();
     }
+
+    fn last_pin_auth_success_time(&self) -> Option<i64> {
+        self.last_pin_auth_success_time
+    }
+
+    fn set_last_pin_auth_success_time(&mut self, time: Option<i64>) {
+        self.last_pin_auth_success_time = time;
+        self.write_to_app_group_dir();
+    }
 }
+
+#[derive(Clone, Serialize, Deserialize)]
+struct AutoFillInitData {
+    copied_dbs_info: Vec<CopiedDbFileInfo>,
+    database_preferences: Vec<DatabasePreference>,
+    app_lock_preference: AppLockPreference,
+}
+
+//////////////
+
+// Previous version
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct AutoFillMetaV100 {
+    pub version: String,
+    pub copied_dbs_info: Vec<CopiedDbFileInfo>,
+}
+
+impl From<AutoFillMetaV100> for AutoFillMeta {
+    fn from(old: AutoFillMetaV100) -> Self {
+        let AutoFillMetaV100 {
+            copied_dbs_info,
+            version: _,
+        } = old;
+
+        let new_af = AutoFillMeta {
+            version: META_JSON_FILE_VERSION.to_string(),
+            copied_dbs_info,
+            last_pin_auth_success_time: None,
+        };
+
+        new_af
+    }
+}
+
+//////////////
 
 // When we use proc-macros (uniffi::export, uniffi::Object etc):
 // For generation of Swift code, in addition to udl, we need to specify the lib generated
@@ -297,7 +421,7 @@ impl IosAppGroupSupportService {
         result_json_str(inner_fn())
     }
 
-    // Finds out whether the given databse is enabled for autofill or not
+    // Finds out whether the given database is enabled for autofill or not
     fn query_autofill_db_info(&self, json_args: &str) -> ResponseJson {
         let inner_fn = || -> OkpResult<Option<CopiedDbFileInfo>> {
             let (db_key,) = parse_command_args_or_err!(json_args, DbKey { db_key });
@@ -308,16 +432,58 @@ impl IosAppGroupSupportService {
         result_json_str(inner_fn())
     }
 
-    // Gets the list of database info that are enabled for autofill
-    fn list_of_autofill_db_infos(&self) -> ResponseJson {
-        let v = AutoFillMeta::read().get_copied_dbs_info().clone();
-        result_json_str(Ok(v))
+    ////// Used in extension ///////
+
+    fn autofill_init_data(&self) -> ResponseJson {
+        let last_time = AutoFillMeta::read().last_pin_auth_success_time();
+        let mut app_lock_preference = AppState::app_lock_preference();
+        let now = service_util::now_utc_milli_seconds();
+        if let Some(t) = last_time {
+            if (now - t) <= 60000 {
+                app_lock_preference.disable_pin_lock();
+            }
+        }
+
+        let af_data = AutoFillInitData {
+            copied_dbs_info: AutoFillMeta::read().get_copied_dbs_info().clone(),
+            database_preferences: AppState::database_preferences(),
+            app_lock_preference,
+        };
+        result_json_str(Ok(af_data))
     }
+
+    fn pin_verify(&self, json_args: &str) -> ResponseJson {
+    
+        let inner_fn = || -> OkpResult<bool> {
+            let (pin,) = parse_command_args_or_err!(json_args, AppLockCredentialArg { pin });
+            app_lock::pin_verify(pin)
+        };
+
+        let r = inner_fn();
+
+        if let Ok(success) = r {
+            if success {
+                // Store the pin verify success so that we avoid asking PIN again for certain duration
+                // Sometime user may need to launch the AutoFill again to fill additional field as iOS
+                // window may close after filling initial field
+                AutoFillMeta::read()
+                    .set_last_pin_auth_success_time(Some(service_util::now_utc_milli_seconds()));
+            }
+        }
+
+        result_json_str(r)
+    }
+
+    // Gets the list of database info that are enabled for autofill
+    // fn list_of_autofill_db_infos(&self) -> ResponseJson {
+    //     let v = AutoFillMeta::read().get_copied_dbs_info().clone();
+    //     result_json_str(Ok(v))
+    // }
 
     // Gets the list of key files that may be used to authenticate a selected database in autofill extension
     fn list_of_key_files(&self) -> ResponseJson {
         let inner_fn = || -> OkpResult<Vec<String>> {
-            let app_group_key_file_dir = app_group_root_sub_dir(AG_KEY_FILES)?;
+            let app_group_key_file_dir = app_group_root_sub_dir(AG_KEY_FILES_DIR)?;
             let v = util::list_dir_files(&app_group_key_file_dir);
             Ok(v)
         };
@@ -442,8 +608,10 @@ impl IosAppGroupSupportService {
             "query_autofill_db_info" => self.query_autofill_db_info(json_args),
 
             // Used in extension
-            "list_of_autofill_db_infos" => self.list_of_autofill_db_infos(),
-            "database_preferences" => ok_json_str(AppState::database_preferences()),
+            "autofill_init_data" => self.autofill_init_data(),
+            "pin_verify" => self.pin_verify(json_args),
+            // "list_of_autofill_db_infos" => self.list_of_autofill_db_infos(),
+            // "database_preferences" => ok_json_str(AppState::database_preferences()),
             "list_of_key_files" => self.list_of_key_files(),
             "all_entries_on_db_open" => self.all_entries_on_db_open(json_args),
             "credential_service_identifier_filtering" => {
@@ -462,3 +630,12 @@ impl IosAppGroupSupportService {
     }
 }
 
+// pub(crate) fn app_extension_data_files_dir() -> OkpResult<PathBuf> {
+//     // e.g app_group_root/okp/data_files
+//     app_group_root_sub_dir(AG_DATA_FILES_DIR)
+// }
+
+// pub(crate) fn app_extension_key_files_dir() -> OkpResult<PathBuf> {
+//     // e.g app_group_root/okp/key_files
+//     app_group_root_sub_dir(AG_KEY_FILES_DIR)
+// }
