@@ -376,7 +376,7 @@ impl Commands {
             "close_kdbx" => db_service_call!(args, DbKey{db_key} => close_kdbx(&db_key)),
 
             "combined_category_details" => {
-                db_service_call! (args, CategoryDetailArg{db_key,grouping_kind} => combined_category_details(&db_key,grouping_kind))
+                db_service_call! (args, CategoryDetailArg{db_key,grouping_kind} => combined_category_details(&db_key,&grouping_kind))
             }
 
             "categories_to_show" => {

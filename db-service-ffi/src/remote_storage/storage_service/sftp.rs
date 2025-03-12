@@ -233,8 +233,8 @@ impl client::Handler for Client {
 
     async fn data(
         &mut self,
-        channel: ChannelId,
-        data: &[u8],
+        _channel: ChannelId,
+        _data: &[u8],
         _session: &mut client::Session,
     ) -> std::result::Result<(), Self::Error> {
         //info!("data on channel {:?}: {}", channel, data.len());

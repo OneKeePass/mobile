@@ -127,6 +127,7 @@
         (assoc-in-key-db [entry-form-key :undo-data] entry-form-data)
         (assoc-in-key-db [entry-form-key :otp-fields] otp-fields)
         (assoc-in-key-db [entry-form-key :showing] :selected)
+        (assoc-in-key-db [entry-form-key :visibility-list] nil)
         (assoc-in-key-db [entry-form-key :edit] false))))
 
 ;; Deprecate ?

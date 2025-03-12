@@ -137,10 +137,10 @@
   (dispatch [:clipboard-timeout-update value-in-milli-seconds]))
 
 (defn app-theme-update [theme-selected]
-  (dispatch [:app-preference-update-data :theme theme-selected nil]))
+  (dispatch [:app-settings/app-preference-update-data :theme theme-selected nil]))
 
 (defn app-language-update [lng-selected call-on-success]
-  (dispatch [:app-preference-update-data :language lng-selected call-on-success]))
+  (dispatch [:app-settings/app-preference-update-data :language lng-selected call-on-success]))
 
 (defn db-session-timeout-value
   "An atom that gives the db session timeout in milli seconds"
@@ -193,9 +193,10 @@
 
 ;; Called to update a single field found in the app preference map
 (reg-event-fx
- :app-preference-update-data
+ :app-settings/app-preference-update-data
  (fn [{:keys [db]} [_event-id kw value call-on-success]]
-   ;; First we update the UI side app prefence. 
+   ;;(println "app-settings/bg-update-preference pref-update-m " kw value)
+   ;; First we update the UI side app preference. 
    {:db  (update-preference-field-data db kw value) #_(assoc-in db [:app-preference :data kw] value)
     ;; When this event is called in on-change handler of a 'list-item-modal-selector', 
     ;; calling any modal window (:common/message-modal-show) in this event did not work
@@ -208,6 +209,7 @@
 (reg-fx
  :app-settings/bg-update-preference
  (fn [[pref-update-m call-on-success]]
+   ;;(println "app-settings/bg-update-preference pref-update-m " pref-update-m)
    (bg/update-preference pref-update-m
                          (fn [api-response]
                            (when-not (on-error api-response)

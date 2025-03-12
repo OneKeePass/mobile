@@ -8,6 +8,11 @@
 
 (def UUID-DEFAULT "00000000-0000-0000-0000-000000000000")
 
+(def GROUPING_LABEL_TYPES "Types")
+(def GROUPING_LABEL_TAGS "Tags")
+(def GROUPING_LABEL_CATEGORIES "Categories")
+(def GROUPING_LABEL_GROUPS "Groups")
+
 ;; Standard Entry Type Names
 ;; These should match names used in 'standard_entry_types.rs'
 

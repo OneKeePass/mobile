@@ -491,6 +491,14 @@
   ([db-key]
    (subscribe [:biometric-enabled-to-unlock-db db-key])))
 
+(defn default-entry-category
+  "Gets the default category grouping option that is set in preference 
+   to show in the entry category page
+   This is one of a string value defined as GROUPING_* labels in constants.cljs
+   "
+  [app-db]
+  (-> app-db :app-preference :data :default-entry-category-groupings))
+
 ;; field-kw should be one of 
 ;; [:database-preferences :backup-history-count :theme :
 ;; db-session-timeout :recent-dbs-info :language :version :clipboard-timeout :default-entry-category-groupings]

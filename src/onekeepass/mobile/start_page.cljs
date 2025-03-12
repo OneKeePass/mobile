@@ -387,7 +387,7 @@
                                :value db-file-path})}
        db-file-path]]]]
    [rnp-dialog-actions
-    [rnp-button {:mode "text" :onPress  #(cmn-events/close-file-info-dialog)} "Close"]]])
+    [rnp-button {:mode "text" :onPress  #(cmn-events/close-file-info-dialog)} (lstr-bl 'close)]]])
 
 (defn databases-list-header [title]
   [rn-view  {:style {:flexDirection "row"

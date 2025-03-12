@@ -17,6 +17,7 @@
    [onekeepass.mobile.translation :as t :refer [lstr-bl lstr-cv lstr-l lstr-mt]]
    [reagent.core :as r]))
 
+
 ;;TODO: Need to add lstr for these options
 (def db-session-timeout-options [{:key 15000 :label "15 seconds"}
                                  {:key 20000 :label "20 seconds"}
@@ -53,7 +54,14 @@
                        {:key "es" :label "es - Español"}
                        {:key "fr" :label "fr - Français"}
                        {:key "de" :label "de - Deutsch"}
-                       {:name "zh - 中文" :value "zh"}])
+                       {:key "zh - 中文" :value "zh"}])
+
+;; IMPORTANT make sure all options map should have keys :key with unique value
+;; This is different from desktop where we use :name in similar options for Selector component
+
+;; If we use :name or some other kw instead of :key, we will see error 
+;;  ERROR  Warning: Each child in a list should have a unique "key" prop.
+;; in ModalSelector (created by onekeepass.mobile.app_settings.list_item_modal_selector)
 
 (defn list-item-modal-selector
   [{:keys [options value on-change label-extractor-fn list-title]}]
@@ -138,7 +146,7 @@
 
   (let [{:keys [label] :as selected-option} (find-match options current-selection-value)
         ;; Need to use label extraction fn to use lstr calls
-        label-extractor-fn (when (= title "theme") (fn [^js/RnModal d] (lstr-cv (.-label d))))]
+        label-extractor-fn (when (= title "theme") (fn [^js/RnModal d] (lstr-cv (.-label d))))] 
     [rn-view {:style {:margin-bottom 15}}
      [list-item-modal-selector {:options options
                                 :list-title title

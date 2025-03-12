@@ -154,7 +154,7 @@ impl Default for Preference {
             clipboard_timeout: 10_000,     // 10 secondds
             theme: "system".into(),
             language: util::current_locale_language(),
-            default_entry_category_groupings: "Types".into(),
+            default_entry_category_groupings: "Groups".into(),   //"Types".into(),
             backup_history_count: 3,
             // biometric_enabled_dbs: vec![],
             database_preferences: vec![],
