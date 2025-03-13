@@ -36,7 +36,7 @@ OneKeePass is also available for **Windows, macOS and Linux desktops** can be do
 - Multi-language support
 - AutoFill supported
 - Native direct connection support to SFTP or WebDAV server
-- Child Database Opening feature
+- Linked/Child Databases Opening feature
 - Diceware Passphrase generator
 - App protection with PIN locking
 
