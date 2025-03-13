@@ -105,7 +105,31 @@ android {
     lintOptions {
         abortOnError false
     }
-    //
+
+    ////////////////////  APK Only ///////////////////
+    //TODO: (Custom-Jey) Added for APK release time only
+    // needs to be commented out for play store release
+    /* */
+    dependenciesInfo {
+        // Disables dependency metadata when building APKs.
+        includeInApk = false
+        // Disables dependency metadata when building Android App Bundles.
+        includeInBundle = false
+    }
+
+    // To compress native libraries
+    // When we use minSdkVersion >= 26, the .so files are uncompressed by default
+    // The compressing may be useful when we build the APK release. This is
+    // achieved when use the following 'useLegacyPackaging true'
+    // https://stackoverflow.com/questions/68186329/changing-minsdkversion-from-16-to-26-increased-release-apk-size-from-17-to-39-mb
+    // https://developer.android.com/build/releases/past-releases/agp-8-1-0-release-notes#compression-settings
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging true
+        }
+    }
+    ////////////////////////////////////////  APK Only ///////////////////
+
     namespace "com.onekeepassmobile"
     defaultConfig {
         applicationId "com.onekeepassmobile"
@@ -135,12 +159,11 @@ android {
                 keyPassword OKP_APP_UPLOAD_KEY_PASSWORD
             }
         }
-         */
-
+        */
 
         //TODO: (Custom-Jey) Added for release time APK build key
         // Uncomment this release only for APK build
-        /*
+
         release {
             if (project.hasProperty('OKP_APP_APK_STORE_FILE')) {
                 storeFile file(OKP_APP_APK_STORE_FILE)
@@ -149,16 +172,14 @@ android {
                 keyPassword OKP_APP_APK_KEY_PASSWORD
             }
         }
-        */
-
     }
+
     buildTypes {
 
         debug {
             signingConfig signingConfigs.debug
         }
 
-        /*
         release {
             // Caution! In production, you need to generate your own keystore file.
             // see https://reactnative.dev/docs/signed-apk-android.
@@ -168,7 +189,6 @@ android {
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
-        */
     }
 }
 
