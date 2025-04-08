@@ -1146,7 +1146,7 @@ PODS:
     - React-logger (= 0.74.5)
     - React-perflogger (= 0.74.5)
     - React-utils (= 0.74.5)
-  - RNBootSplash (4.7.5):
+  - RNBootSplash (6.3.4):
     - React-Core
   - RNCClipboard (1.14.1):
     - React-Core
@@ -1510,7 +1510,7 @@ SPEC CHECKSUMS:
   React-runtimescheduler: 057a40b536cab47481d2a2b4f5e93d7eb0b285de
   React-utils: b4b4a8bdd58632a9ec314071fbd4a642d984718e
   ReactCommon: bfd464c8f774a0acb93cf2a45afa80b763431f1b
-  RNBootSplash: 85f6b879c080e958afdb4c62ee04497b05fd7552
+  RNBootSplash: de2798061b0d1b20af2d665648a8020cbaec136e
   RNCClipboard: 0a720adef5ec193aa0e3de24c3977222c7e52a37
   RNDeviceInfo: 59344c19152c4b2b32283005f9737c5c64b42fba
   RNFileViewer: ce7ca3ac370e18554d35d6355cffd7c30437c592

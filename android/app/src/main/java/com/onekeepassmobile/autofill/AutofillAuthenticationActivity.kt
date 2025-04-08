@@ -31,7 +31,7 @@ import com.facebook.soloader.SoLoader
 class AutofillAuthenticationActivity : Activity(), DefaultHardwareBackBtnHandler {
 
     private lateinit var reactRootView: ReactRootView
-    private lateinit var reactInstanceManager: ReactInstanceManager
+        private lateinit var reactInstanceManager: ReactInstanceManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

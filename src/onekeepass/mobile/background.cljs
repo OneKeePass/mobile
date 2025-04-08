@@ -88,7 +88,7 @@
    We are not using the JS api from RNBootSplash
    "
   [dispatch-fn]
-  (call-api-async (fn [] (.hide rn-boot-splash 200)) dispatch-fn))
+  (call-api-async (fn [] (.hide rn-boot-splash true)) dispatch-fn))
 
 (defn authenticate-with-biometric
   "Called to authenticate the previously locked database. 

@@ -202,8 +202,6 @@ dependencies {
     implementation "net.java.dev.jna:jna:5.16.0@aar"
     def work_version = "2.8.0"
     implementation "androidx.work:work-runtime-ktx:$work_version"
-    // For BootSplash screen
-    implementation("androidx.core:core-splashscreen:1.0.0")
     // To use AndroidKeystore
     implementation "androidx.security:security-crypto:1.1.0-alpha06"
     // Biometric support
