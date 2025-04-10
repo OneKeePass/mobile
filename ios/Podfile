@@ -15,6 +15,7 @@ if linkage != nil
 end
 
 target 'OneKeePassMobile' do
+  
   config = use_native_modules!
 
   use_react_native!(
@@ -29,13 +30,6 @@ target 'OneKeePassMobile' do
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
   
-  pod 'SwiftyMessenger', '~>0.4.0'
-
-  target 'OneKeePassMobileTests' do
-    inherit! :complete
-    # Pods for testing
-  end
-
   post_install do |installer|
     # https://github.com/facebook/react-native/blob/main/packages/react-native/scripts/react_native_pods.rb#L197-L202
     react_native_post_install(
@@ -58,13 +52,33 @@ end
 
 
 target 'OneKeePassAutoFill' do
-  # Requires a patching in 
+  
+  ## Some references:
+  # https://github.com/react-native-community/cli/issues/1179#issuecomment-756539463
+  # https://github.com/codibly/app-clip-instant-app-react-native/blob/main/Handling-Size-React-Native-AppClip.md
+  # https://gist.github.com/ridvanaltun/a02a9a8a8d4bbd354a5cd875a20cf21f
+  
+  # https://github.com/react-native-community/cli/blob/v15.0.1/docs/autolinking.md#platform-ios
+  # react-native-community/cli v15.0.1 is used with RN 0.78.2
+  
+  ## ** This worked till RN 0.74.5 and did not work with RN 0.78.2 upgrade **
+  
+  # Requires a patching in
   # /node_modules/@react-native-community/cli-platform-ios/native_modules.rb
   # to use 'packages_to_skip'
-  config = use_native_modules!(packages_to_skip:['RNBootSplash', 'RNCClipboard',
-      'RNReanimated','RNFileViewer', 'VisionCamera',
-      'RNVectorIcons'])
+  # config = use_native_modules!(packages_to_skip:['RNBootSplash', 'RNCClipboard','RNReanimated','RNFileViewer', 'VisionCamera','RNVectorIcons'])
+  
+  
+  ## ** After RN 0.78.2 upgrade, we need make changes in /node_modules/react-native/scripts/cocoapods/autolinking.rb **
     
+  # Require a patching of /node_modules/react-native/scripts/cocoapods/autolinking.rb where we skip some native module packages
+  # The following ENV varable OKP_AUTOFILL_TARGET is used to identify the autofill target so that skipping of the pods
+  # are considered for this target only
+
+  ENV['OKP_AUTOFILL_TARGET'] = "true"
+  
+  config = use_native_modules!
+
   use_react_native!(
     :path => config[:reactNativePath],
     # to enable hermes on iOS, change `false` to `true` and then install pods
@@ -74,6 +88,4 @@ target 'OneKeePassAutoFill' do
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
   
-  pod 'SwiftyMessenger', '~>0.4.0'
-
 end

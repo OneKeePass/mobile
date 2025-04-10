@@ -1,0 +1,42 @@
+diff --git a/node_modules/react-native/scripts/.packager.env b/node_modules/react-native/scripts/.packager.env
+new file mode 100644
+index 0000000..361f5fb
+--- /dev/null
++++ b/node_modules/react-native/scripts/.packager.env
+@@ -0,0 +1 @@
++export RCT_METRO_PORT=8081
+diff --git a/node_modules/react-native/scripts/cocoapods/autolinking.rb b/node_modules/react-native/scripts/cocoapods/autolinking.rb
+index b2e5600..b6a38c3 100644
+--- a/node_modules/react-native/scripts/cocoapods/autolinking.rb
++++ b/node_modules/react-native/scripts/cocoapods/autolinking.rb
+@@ -42,10 +42,30 @@ def list_native_modules!(config_command)
+   react_native_path = Pathname.new(config["reactNativePath"])
+   found_pods = []
+ 
++  ## Added by Jey
++  ## These are packages are to be excluded for autofill target
++  autofill_packages_excluded = ["@react-native-clipboard/clipboard", "react-native-bootsplash", "react-native-reanimated",
++                                "react-native-file-viewer", "react-native-vision-camera"]
++
++
++  # Pod::UI.puts("[Jey] autofill_packages_excluded #{autofill_packages_excluded} with target #{current_target_definition}")
++  ## Added by Jey END 
++
+   packages.each do |package_name, package|
+     next unless package_config = package["platforms"]["ios"]
+ 
+     name = package["name"]
++
++    ## Added by Jey
++    skipped_pod = autofill_packages_excluded.include? name
++    okp_autofill_target = ENV['OKP_AUTOFILL_TARGET'] == 'true'
++
++    if skipped_pod && okp_autofill_target
++      Pod::UI.notice "[Jey] Skipping pod: #{name}"
++      next
++    end
++    ## Added by Jey END
++
+     podspec_path = package_config["podspecPath"]
+     script_phases = package_config["scriptPhases"]
+     configurations = package_config["configurations"]
