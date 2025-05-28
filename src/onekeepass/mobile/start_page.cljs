@@ -75,7 +75,6 @@
   ;; The arg passed to this event will be available in 'start-page-storage-selection-dialog' fn
   (dlg-events/start-page-storage-selection-dialog-show-with-state {:kw-browse-type kw-browse-type :rs-opt-arg opts-m}))
 
-
 (defn- bg1 []
   @rnc/secondary-container-color)
 
@@ -614,7 +613,8 @@
       [rnp-button {:mode "contained"
                    :onPress (fn []
                               (start-page-storage-selection-dialog-show BROWSE-TYPE-DB-OPEN)
-                              #_(start-page-storage-selection-dialog-show BROWSE-TYPE-DB-OPEN))}
+                              ;; This reset call is to ensure we handle the usual db opening and not for merging
+                              (opndb-events/reset-new-merging-source-db-wanted))}
        (lstr-bl "opendb")]]
 
      [rn-view {:style {:margin-top 20}}
@@ -642,135 +642,5 @@
     [before-storage-selection-info-dialog @(dlg-events/before-storage-selection-info-dialog-data)]
     [start-page-storage-selection-dialog]
     [file-info-dialog @(cmn-events/file-info-dialog-data)]
-    [message-repick-database-file-dialog @(opndb-events/repick-confirm-data)]
-    #_[authenticate-biometric-confirm-dialog @(opndb-events/authenticate-biometric-confirm-dialog-data)]
+    [message-repick-database-file-dialog @(opndb-events/repick-confirm-data)] 
     [message-dialog @(cmn-events/message-dialog-data)]]])
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;  Remove these ;;;;;;;;;;;;
-
-#_(defn open-page-content []
-    (let [recent-uses @(cmn-events/recently-used)]
-      [rn-safe-area-view {:style {:flex 1 :background-color @rnc/page-background-color}}
-       [rn-view {:style {:flex 1 :justify-content "center" :align-items "center" :margin-top "10%"}}
-        [rn-view {:style {:flex .1 :justify-content "center" :width "90%"}}
-         [rnp-button {:mode "contained" :onPress (fn [] (ndb-events/new-database-dialog-show))}
-          (lstr-bl "newdb")]] ;;
-        [rn-view {:style {:flex .1 :justify-content "center" :width "90%"}}
-         [rnp-button {:mode "contained"
-                      :onPress (fn [] (start-page-storage-selection-dialog-show BROWSE-TYPE-DB-OPEN))}
-          (lstr-bl "opendb")]]
-
-        [rn-view {:style {:margin-top 20}}
-         [rnc/rnp-divider]]
-
-        [rn-view {:style {:flex 1 :width "100%"}}
-         [databases-list-content recent-uses]]]
-
-     ;; This absolutely position view works in both android and iOS
-     ;; And then may be used for bottom icons panel
-       #_[rn-view {:style {:width "100%" :height 60 :backgroundColor "red" :position "absolute" :bottom 0}}
-          [rnp-text {:variant "titleMedium"} "Some icons here"]]
-
-       [rnp-portal
-        [db-action-menu @db-action-menu-data]
-      ;; Gets the precreated dialog reagent component
-        (:dialog remove-confirm-dialog-info)
-        [new-db-dialog @(ndb-events/dialog-data)]
-        [open-db-dialog @(opndb-events/dialog-data)]
-        #_[start-page-storage-selection-dialog]
-        [start-page-storage-selection-dialog-1]
-        [file-info-dialog @(cmn-events/file-info-dialog-data)]
-        [message-repick-database-file-dialog @(opndb-events/repick-confirm-data)]
-        #_[authenticate-biometric-confirm-dialog @(opndb-events/authenticate-biometric-confirm-dialog-data)]
-        [message-dialog @(cmn-events/message-dialog-data)]]]))
-
-#_(defn start-page-storage-selection-dialog-1
-    ([{:keys [dialog-show title confirm-text actions]}]
-     [cust-dialog
-      {:style {} :dismissable false :visible dialog-show :onDismiss #()}
-      [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1} (lstr-dlg-title title)]
-      [rnp-dialog-content {:style {:min-height 100}}
-       [rnp-text (lstr-dlg-text confirm-text)]
-       [rn-view {:style {:flexDirection "column" :margin-top 10 :margin-bottom 10 :align-content "center"}}
-        (doall
-         (for [{:keys [label on-press]} actions]
-           ^{:key label} [rn-view {:style {:min-height 50}} ;;:align-items "center"
-                          [rnp-button {:mode "text"
-                                       :contentStyle {}
-                                       :style {:margin-top 10}
-                                       :on-press on-press} (if (= label "filePicker") (str "iOS " (lstr-bl label)) (lstr-bl label))]
-                          [rnc/cust-rnp-divider {:style {:margin-top 10
-                                                         :height 1
-                                                         :background-color @rnc/background-color}}]]))]]
-      #_[rnp-dialog-actions
-         [rnp-button {:mode "text"
-                      :onPress dlg-events/start-page-storage-selection-dialog-close}
-          (lstr-bl "cancel")]]])
-
-    ([]
-     (start-page-storage-selection-dialog-1 @(dlg-events/start-page-storage-selection-dialog-data))))
-
-
-;; For now we will use a simple dialog using generic confirm type dialog
-;; Called to create a dialog and the dialog is shown if the 'show' is true in 
-;; the dialog data
-#_(defn start-page-storage-selection-dialog []
-    [confirm-dialog-with-lstr @(dlg-events/start-page-storage-selection-dialog-data)])
-
-;; 
-#_(defn start-page-storage-selection-dialog-show
-    "Called to show the dialog showing storage locations
-   The arg 'kw-browse-type' determines we are showing the dialog during open database or new database time
-   We pass additional new db data in the arg 'opts-m'  
-   "
-    [kw-browse-type & {:as opts-m}]
-    (println "start-page-storage-selection-dialog is called..." kw-browse-type opts-m)
-  ;; We pass translation keys for title, confirm-text and for button labels
-    (dlg-events/start-page-storage-selection-dialog-show-with-state
-     {:title "dbStorage"
-      :confirm-text "dbStorage"
-      :show-action-as-vertical true
-      :actions [{:label "filePicker" #_"localDevice"
-                 :on-press (fn []
-                             (if (= BROWSE-TYPE-DB-OPEN kw-browse-type)
-                               (opndb-events/open-database-on-press)
-                               (ndb-events/done-on-click))
-                             (dlg-events/start-page-storage-selection-dialog-close))}
-                {:label "sftp"
-                 :on-press (fn []
-                             (rs-events/remote-storage-type-selected :sftp kw-browse-type opts-m)
-                             (dlg-events/start-page-storage-selection-dialog-close))}
-                {:label "webdav"
-                 :on-press (fn []
-                             (rs-events/remote-storage-type-selected :webdav kw-browse-type opts-m)
-                             (dlg-events/start-page-storage-selection-dialog-close))}
-                {:label "cancel"
-                 :on-press dlg-events/start-page-storage-selection-dialog-close}]}))
-#_[rn-scroll-view {:centerContent "true" :style {:backgroundColor "green" :borderWidth 1
-                                                 :contentContainerStyle {:flexGrow 1}}}
-   [rn-view {:style {:flexDirection "column"  :flex 1}}
-
-    [rn-view {:style {:backgroundColor "blue" :borderWidth 1
-                      :flex .2}}
-
-     [rnp-text {:style {:color @rnc/tertiary-color}
-                :variant "titleLarge"}
-
-      "Database opening"]]
-
-    #_[rnp-divider]
-    [rn-view {:style {:margin-top 10 :margin-bottom 10
-                      :align-items "center"
-                      :flex .2
-                      :borderWidth 1}}
-     [rnp-button {:style {:width "70%"}
-                  :labelStyle {:fontWeight "bold"}
-                  :mode "text"
-                  :on-press #(dlg-events/before-storage-selection-info-dialog-close)} "Cancel"]
-     [rnp-text {:style {:textAlign "justify"}} ""]]
-
-
-    [rn-view {:style {:flex .7
-                      :background-color "red" :height 10}}]]]

@@ -4,7 +4,8 @@
    [cljs.core.async :refer [<! go timeout]]
    [clojure.string :as str]
    [onekeepass.mobile.background :as bg :refer [is-Android]]
-   [onekeepass.mobile.utils :as u :refer [contains-val? str->int tags->vec]]
+   [onekeepass.mobile.constants :refer [HOME_PAGE_ID]]
+   [onekeepass.mobile.utils :as u :refer [str->int tags->vec]]
    [re-frame.core :refer [dispatch dispatch-sync reg-event-db reg-event-fx
                           reg-fx reg-sub subscribe]]))
 
@@ -100,7 +101,7 @@
   ;; First we get the kdbx content map and then supplied keys 'ks' used to get the actual value
   (get-in app-db (into [db-key] ks)))
 
-(defn db-opened
+(defn- db-opened
   "Updates the db list and current active db key when a new kdbx database is loaded
   The args are the re-frame 'app-db' and KdbxLoaded struct returned by backend API.
   Returns the updated app-db
@@ -113,10 +114,10 @@
         app-db (assoc app-db :opened-db-list dbs)]
     (-> app-db
         (assoc :current-db-file-name db-key)
-         ;; opened-db-list is a vec of map with keys [db-key database-name file-name user-action-time]
-         ;; :database-name is different from :file-name found in the the map Preference -> RecentlyUsed
-         ;; See ':recently-used' subscription 
-         ;; The latest opened db is last in the vector
+        ;; opened-db-list is a vec of map with keys [db-key database-name file-name user-action-time]
+        ;; :database-name is different from :file-name found in the the map Preference -> RecentlyUsed
+        ;; See ':recently-used' subscription 
+        ;; The latest opened db is last in the vector
         (update-in [:opened-db-list] conj {:db-key db-key
                                            :database-name database-name
                                            :file-name file-name
@@ -128,9 +129,37 @@
                                            ;;:database-name (:database-name meta)
                                            }))))
 
+;; TODO. 
+;; In few other ns (app-settings.cljs, android autofill events), the map in :opened-db-list is accessed directly
+;; Instead we may need to use this fn
+
+(defn opened-db-list
+  "Returns a vec of all databases that are opened including locked. 
+   Use fn is-db-locked to check whether a db is locked or not"
+  [app-db]
+  (:opened-db-list app-db))
+
+;; This uses the opened db list. And returns the file name only if the db is opened
+(defn opened-db-file-name
+  "Called to get the kdbx file name for the given db-key
+   Returns the file name part (e.g 'MyPasswords.kdbx') 
+   "
+  [app-db db-key-arg]
+  (-> (filter
+       (fn [{:keys [db-key]}] (= db-key-arg db-key)) (opened-db-list app-db))
+      first
+      :file-name))
+
+#_(defn opened-db-list
+    "Gets an atom to get all opened db summary list if app-db is not passed"
+    ([]
+     (subscribe [:opened-db-list]))
+    ([app-db]
+     (:opened-db-list app-db)))
+
 #_(defn is-db-in-opened-dbs? [app-db database-file-name]
-  ;; not-any? Returns false if (pred x) is logical true - 'database-file-name' is found in db-list - else returns true
-  ;; need to do the complement (not fn) to return the expected true or false as the name of this fn indicates
+    ;; not-any? Returns false if (pred x) is logical true - 'database-file-name' is found in db-list - else returns true
+    ;; need to do the complement (not fn) to return the expected true or false as the name of this fn indicates
     (not (not-any? (fn [{:keys [db-key]}] (= db-key database-file-name)) (:opened-db-list app-db))))
 
 (defn current-database-name
@@ -204,7 +233,7 @@
  (fn [_db _event]              ;; Ignore both params (db and event)
    {:opened-db-list []
     :previous-page {}
-    :page-info {:page :home
+    :page-info {:page HOME_PAGE_ID
                 :title home-page-title}}))
 
 ;; When the db is loaded from a remote storage connection, the ok response
@@ -232,21 +261,32 @@
 (reg-event-fx
  :close-kdbx-db
  (fn [{:keys [_db]}  [_event-id db-key]]
-   {:fx [[:bg-close-kdbx [db-key]]]}))
+   {:fx [[:common/bg-close-kdbx [db-key]]]}))
+
+(defn- close-kdbx-response-handler [db-key api-response]
+  (when-not (on-error api-response)
+    (dispatch [:common/message-snackbar-open 'databaseClosed])
+    (dispatch [:close-kdbx-completed db-key])))
 
 (reg-fx
- :bg-close-kdbx
- (fn [[db-key]]
-   (bg/close-kdbx db-key
-                  (fn [api-response]
-                    (when-not (on-error api-response)
-                      (dispatch [:common/message-snackbar-open 'databaseClosed])
-                      (dispatch [:close-kdbx-completed db-key]))))))
+ :common/bg-close-kdbx
+ (fn [[db-key response-handler-fn]]
+   (let [handler-fn (if (nil? response-handler-fn) (partial close-kdbx-response-handler db-key) response-handler-fn)]
+     (bg/close-kdbx db-key handler-fn))))
+
+#_(reg-fx
+   :bg-close-kdbx
+   (fn [[db-key]]
+     (bg/close-kdbx db-key
+                    (fn [api-response]
+                      (when-not (on-error api-response)
+                        (dispatch [:common/message-snackbar-open 'databaseClosed])
+                        (dispatch [:close-kdbx-completed db-key]))))))
 
 (reg-event-fx
  :common/close-current-kdbx-db
  (fn [{:keys [db]}  [_event-id]]
-   {:fx [[:bg-close-kdbx [(active-db-key db)]]
+   {:fx [[:common/bg-close-kdbx [(active-db-key db)]]
          [:dispatch [:common/to-home-page]]]}))
 
 ;; A common refresh all forms after an entry form changes - delete, put back , delete permanent
@@ -636,6 +676,7 @@
 (defn is-db-locked [app-db db-key]
   (boolean (get-in-selected-db app-db db-key [:locked])))
 
+;; Returns an atom 
 (defn locked? [db-key]
   (if (nil? db-key)
     (subscribe [:current-db-locked])
@@ -691,8 +732,8 @@
    (fn [[db-key]]
      #_(bg/lock-kdbx db-key (fn [api-response]
                               (when-not (on-error api-response)
-                            ;; Add any relevant dispatch calls here
-                            ;;(println "Database is locked")
+                                ;; Add any relevant dispatch calls here
+                                ;;(println "Database is locked")
                                 #())))))
 
 ;;:open-database/unlock-dialog-show
@@ -755,7 +796,7 @@
     :fx [;; load-app-preference loads preference asynchronously and it may complte
          ;; before or after the next-page is displayed
          [:dispatch [:load-app-preference]]
-         [:dispatch [:common/next-page :home home-page-title]]]}))
+         [:dispatch [:common/next-page HOME_PAGE_ID home-page-title]]]}))
 
 (reg-event-fx
  :to-about-page
@@ -810,7 +851,7 @@
  (fn [db _query-vec]
    (let [info (first (get-in db [:pages-stack]))]
      (if (empty? info)
-       {:page :home
+       {:page HOME_PAGE_ID
         :title home-page-title}
        info))))
 
@@ -888,10 +929,10 @@
    :is-custom-entry-type-uuid
    :<- [:entry-type-headers]
    (fn [{:keys [custom]} [_query-id entry-type-uuid]]
-   ;; custom field is a vector with a list of  maps (EntryTypeHeader struct)
-   ;; One matching member in custom vector need to be found to return true
-   ;; We can use (boolean seq coll) to determine true or false or alternative we can use 
-   ;; (->> custom (filter (fn [m] (= entry-type-uuid (:uuid m)))) count (= 1))
+     ;; custom field is a vector with a list of  maps (EntryTypeHeader struct)
+     ;; One matching member in custom vector need to be found to return true
+     ;; We can use (boolean seq coll) to determine true or false or alternative we can use 
+     ;; (->> custom (filter (fn [m] (= entry-type-uuid (:uuid m)))) count (= 1))
      (->> custom (filter (fn [m] (= entry-type-uuid (:uuid m)))) seq boolean)))
 
 
@@ -1029,7 +1070,7 @@
    ;; We need to convert message as '(str message)' to ensure it can be used 
    ;; in UI component
    ;; The message may be a symbol meaning that it is to be used as a key to get the translated text
-  
+
    (let [msg  (cond
 
                 (symbol? message)
@@ -1044,7 +1085,7 @@
                   msg)
 
                 :else
-                (str message))] 
+                (str message))]
      (-> db
          (assoc-in [:message-box :dialog-show] true)
          (assoc-in [:message-box :title] (if (str/blank? title) "Error" title))
@@ -1224,6 +1265,10 @@
 
 (comment
   (in-ns 'onekeepass.mobile.events.common)
+
+  (require '[cljs.pprint :refer [pprint]])
+
+  (pprint (-> @re-frame.db/app-db keys))
 
   (-> @re-frame.db/app-db keys)
 

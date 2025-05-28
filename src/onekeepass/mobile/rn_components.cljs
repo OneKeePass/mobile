@@ -117,6 +117,7 @@
                        Snackbar
                        Searchbar
                        SegmentedButtons
+                       Surface
                        Switch
                        ;;TextInput
                        TextInput.Icon

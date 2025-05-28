@@ -164,12 +164,17 @@
 ;; Refer https://github.com/peacechen/react-native-modal-selector#props for all supported props
 ;; that can be used with 'rnms-modal-selector'
 
-(defn select-field [{:keys [text-label
+(defn select-field [{:keys [;; This is the label used for the inner rnp-text-input
+                            text-label
+                            ;; Vec of map (required keys [key label])
                             options
+                            ;; This is used as initValue for modal selector and also as value prop of the inner rnp-text-input
                             value
+
                             on-change
                             disabled
                             label-extractor-fn
+
                             ;; This style applies to the text input field
                             text-input-style
                             ;; This style is meant to the pop dialog that shows the select option list
@@ -199,15 +204,15 @@
 (defn select-field-view [{:keys [text-label options value on-change disabled pressable-on-press] :or [disabled false]}]
   [rn-pressable {:on-press (if-not (nil? pressable-on-press) pressable-on-press #()) #_#(println "Pressed value.. " value)}
    [rnms-modal-selector {;; data can also include additional custom keys which are passed to the onChange callback
-                           ;; in addition to required ones - key, label
-                           ;; For example uuid can also be passed
-                           ;;:optionStyle {:background-color "red"}
+                         ;; in addition to required ones - key, label
+                         ;; For example uuid can also be passed
+                         ;;:optionStyle {:background-color "red"}
                          :optionContainerStyle {:background-color @(:background-color modal-selector-colors)}
                          :data options
                          :initValue value
-                           ;;:selectedKey (get options value)
+                         ;;:selectedKey (get options value)
                          :disabled disabled
-                           ;;:supportedOrientations (clj->js ["portrait" ])
+                         ;;:supportedOrientations (clj->js ["portrait" ])
                          :selectedItemTextStyle {:color @(:selected-text-color modal-selector-colors) :fontWeight "bold"}
                          :onChange on-change}
     [rnp-text-input {:style {:width "100%"} :editable false :label text-label :value value}]]])
@@ -363,3 +368,15 @@
   [data-ref]
   {:dialog [confirm-dialog-with-ref data-ref]
    :show #(swap! data-ref assoc :dialog-show true)})
+
+(defn list-header [title]
+  [rn-view  {:style {:flexDirection "row"
+                     :width "100%"
+                     :backgroundColor @primary-container-color
+                     :justify-content "space-around"
+                     :margin-top 5
+                     :min-height 38}}
+   [rnp-text {:style {:alignSelf "center"
+                      :width "85%"
+                      :text-align "center"
+                      :padding-left 0} :variant "titleLarge"} title]])

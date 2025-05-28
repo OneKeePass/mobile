@@ -1,5 +1,6 @@
 (ns onekeepass.mobile.events.key-file-form
   (:require [clojure.string :as str]
+            [onekeepass.mobile.constants :refer [KEY_FILE_FORM_PAGE_ID]]
             [onekeepass.mobile.background :as bg]
             [onekeepass.mobile.events.common :refer [on-error on-ok]] 
             [re-frame.core :refer [dispatch reg-event-db reg-event-fx reg-fx
@@ -96,7 +97,7 @@
 (reg-event-db
  :key-files-loaded
  (fn [db [_event-id key-files-list]]
-   ;; key-files-list is a list of maps 
+   ;; key-files-list is a list of maps  -  Vec<KeyFileInfo>
    (assoc-in db [:key-file-form :key-files] key-files-list)))
 
 (reg-event-fx
@@ -109,7 +110,7 @@
             (assoc-in [:key-file-form :show-generate-option] show-generate-option)
             (assoc-in [:key-file-form :dispatch-on-file-selection] dispatch-on-file-selection))
     :fx [[:dispatch [:load-imported-key-files]]
-         [:dispatch [:common/next-page :key-file-form "keyFileForm"]]]}))
+         [:dispatch [:common/next-page KEY_FILE_FORM_PAGE_ID "keyFileForm"]]]}))
 
 ;; Any file picked by user is copied to app's private area in a backend api and then this event is called
 (reg-event-fx

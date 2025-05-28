@@ -1,5 +1,5 @@
 (ns onekeepass.mobile.key-file-form
-  (:require [onekeepass.mobile.common-components  :refer [menu-action-factory]]
+  (:require [onekeepass.mobile.common-components  :refer [menu-action-factory list-header]]
             [onekeepass.mobile.events.key-file-form :as kf-events]
             [onekeepass.mobile.rn-components :as rnc :refer [cust-dialog
                                                              dots-icon-name
@@ -52,10 +52,10 @@
 (def ^:private list-menu-action-data (r/atom {:show false :x 0 :y 0
                                               :key-file-info nil}))
 
-(defn hide-list-action-menu []
+(defn- hide-list-action-menu []
   (swap! list-menu-action-data assoc :show false))
 
-(defn show-list-menu
+(defn- show-list-menu
   "Pops the menu popup for the selected row item"
   [^js/PEvent event key-file-info]
   (swap! list-menu-action-data
@@ -66,7 +66,7 @@
 ;;menu-action-factory returns a factory to use in 'onPress' 
 (def list-menu-action-factory (menu-action-factory hide-list-action-menu))
 
-(defn list-action-menu [{:keys [show x y key-file-info]}]
+(defn- list-action-menu [{:keys [show x y key-file-info]}]
   [rnp-menu {:visible show :onDismiss hide-list-action-menu :anchor (clj->js {:x x :y y})}
    [rnp-menu-item {:title (lstr-ml "select")
                    :onPress (list-menu-action-factory
@@ -80,19 +80,7 @@
                    :onPress (list-menu-action-factory
                              kf-events/key-file-save-as key-file-info)}]])
 
-(defn list-header [title]
-  [rn-view  {:style {:flexDirection "row"
-                     :width "100%"
-                     :backgroundColor @primary-container-color
-                     :justify-content "space-around"
-                     :margin-top 5
-                     :min-height 38}}
-   [rnp-text {:style {:alignSelf "center"
-                      :width "85%"
-                      :text-align "center"
-                      :padding-left 0} :variant "titleLarge"} title]])
-
-(defn row-item [{:keys [file-name] :as key-file-info}]
+(defn- row-item [{:keys [file-name] :as key-file-info}]
   [rnp-list-item {:style {}
                   :onPress #(kf-events/set-selected-key-file-info key-file-info)
                   :title (r/as-element
@@ -107,7 +95,7 @@
                                           :icon dots-icon-name
                                           :onPress #(show-list-menu % key-file-info)}]]))}])
 
-(defn key-files-list-content []
+(defn- key-files-list-content []
   (fn [imported-key-files]
     (let [sections  [{:title (lstr-l "importedKeyFiles")
                       :key "Key Files"
@@ -119,6 +107,7 @@
         :sections (clj->js sections)
         :renderItem  (fn [props] ;; keys are (:item :index :section :separators)
                        (let [props (js->clj props :keywordize-keys true)]
+                         ;; (-> props :item) returns the key-file-info map
                          (r/as-element [row-item (-> props :item)])))
         :ItemSeparatorComponent (fn [_p]
                                   (r/as-element [rnp-divider]))
@@ -127,7 +116,7 @@
                                      {:keys [title]} (-> props :section)]
                                  (r/as-element [list-header title])))}])))
 
-(defn main-content []
+(defn- main-content []
   (let [show-generate-option? @(kf-events/show-generate-option)]
     [rn-view {:style {:height "100%" :padding 5}} ;;:backgroundColor "red"
      [rn-view {:style {:margin-top 20 :margin-bottom 20 :align-items "center"}}

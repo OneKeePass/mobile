@@ -5,8 +5,13 @@ alias bca := build-android-lib-cp-src
 alias bca-r := build-android-lib-cp-src-release 
 
 #alias gs := generate-swift
+
+## iOS Simulator build
 alias bcis := cp-ios-ffi-sim-debug-lib-src
+
+## iOS Device debug build
 alias bcid := cp-ios-ffi-device-debug-lib-src
+
 ## iOS release
 alias bcid-r := cp-ios-ffi-device-release-lib-src
 

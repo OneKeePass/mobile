@@ -43,6 +43,11 @@
   [kw-field-name value]
   (dispatch [:db-settings-field-update kw-field-name value]))
 
+(defn db-settings-kdf-algorithm-select 
+  "Called to update the kdf algorithm selection"
+  [kdf-selection]
+  (dispatch [:db-settings-kdf-algorithm-select kdf-selection]))
+
 (defn db-settings-password-updated [pwd]
   (dispatch [:db-settings-password-updated pwd]))
 
@@ -86,15 +91,15 @@
 (defn- validate-security-fields
   "Validates panel specific fields and returns errors map if any"
   [app-db]
-  (let [{:keys [iterations memory parallelism]} (get-in-key-db app-db [:db-settings :data :kdf :Argon2])
+  (let [{:keys [iterations memory parallelism]} (get-in-key-db app-db [:db-settings :data :kdf])
         [iterations memory parallelism] (mapv str->int [iterations memory parallelism])
-        errors (if (or (nil? iterations) (or (< iterations 5) (> iterations 100)))
+        errors (if (or (nil? iterations) (< iterations 5) (> iterations 100))
                  {:iterations (lstr-mt 'dbSettings 'iterations)} {})
         errors (merge errors
-                      (if (or (nil? memory) (or (< memory 1) (> memory 1000)))
+                      (if (or (nil? memory) (< memory 1) (> memory 1000))
                         {:memory (lstr-mt 'dbSettings 'memory)} {}))
         errors (merge errors
-                      (if (or (nil? parallelism) (or (< parallelism 1) (> parallelism 100)))
+                      (if (or (nil? parallelism) (< parallelism 1) (> parallelism 100))
                         {:parallelism (lstr-mt 'dbSettings 'parallelism)} {}))]
 
     errors))
@@ -142,7 +147,7 @@
    ;; Need to convert memory value from bytes to MB. And we need to convert back bytes before saving back
    ;; See event ':bg-set-db-settings' 
    (let [data (-> settings
-                  (update-in [:kdf :Argon2 :memory] #(Math/floor (/ % 1048576))))]
+                  (update-in [:kdf :memory] #(Math/floor (/ % 1048576))))]
      {:db (-> db (assoc-in-key-db  [:db-settings :data] data)
               (assoc-in-key-db  [:db-settings :undo-data] data)
               (assoc-in-key-db [:db-settings :password-visible] false)
@@ -227,6 +232,7 @@
          db (-> db (assoc-in-key-db [:db-settings :errors] errors))]
      {:db db})))
 
+;; A common event that handles most of the update of fields in the map found in ':db-settings :data'
 (reg-event-fx
  :db-settings-data-field-update
  (fn [{:keys [db]} [_event-id kw-field-name value]] ;; kw-field-name is single kw or a vec of kws  
@@ -239,6 +245,16 @@
          new-db-name (when (= [:meta :database-name] kw-field-name) value)]
      {:db (-> db (assoc-in-key-db [:db-settings :errors] errors))
       :fx [(when new-db-name [:dispatch [:common/database-name-update new-db-name]])]})))
+
+(reg-event-db
+ :db-settings-kdf-algorithm-select
+ (fn [db [_event-id kdf-selection]]
+   ;; Fields algorithm and variant need to be set to these values so that 
+   ;; kdf map is serialized to enum KdfAlgorithm::Argon2d or  KdfAlgorithm::Argon2id
+   ;; Also see events in new-database.cljs
+   (-> db (assoc-in-key-db [:db-settings :data :kdf :algorithm] kdf-selection)
+       ;; Need to set variant int value based on the argon algorithm selected
+       (assoc-in-key-db [:db-settings :data :kdf :variant] (if (= kdf-selection "Argon2d") 0 2)))))
 
 ;; Event to update any field at the top level of :db-settings other than :data field
 (reg-event-db
@@ -263,10 +279,10 @@
  (fn [[db-key settings]] ;; settings is [:db-settings :data]
    ;; Need to do some str to int and blank str handling
    (let [settings  (-> settings
-                       (update-in [:kdf :Argon2 :iterations] str->int)
-                       (update-in [:kdf :Argon2 :parallelism] str->int)
-                       (update-in [:kdf :Argon2 :memory] str->int)
-                       (update-in [:kdf :Argon2 :memory] * 1048576)
+                       (update-in [:kdf :iterations] str->int)
+                       (update-in [:kdf :parallelism] str->int)
+                       (update-in [:kdf :memory] str->int)
+                       (update-in [:kdf :memory] * 1048576)
                        (update-in [:password] #(if (str/blank? %) nil %))
                        (update-in [:key-file-name] #(if (str/blank? %) nil %)))]
      (bg/set-db-settings db-key settings (fn [api-response]

@@ -53,6 +53,13 @@
 (defn repick-confirm-cancel []
   (dispatch [:repick-confirm-cancel]))
 
+(defn reset-new-merging-source-db-wanted
+  "This needs to be called to reset any previously set value of this flag. 
+   This flag is set to true when user wants to open a source database for merging
+  "
+  []
+  (dispatch [:open-database/new-merging-source-db-wanted false]))
+
 (defn repick-confirm-data []
   (subscribe [:repick-confirm-data]))
 
@@ -131,14 +138,13 @@
  :open-database-dialog-hide
  (fn [db [_event-id]]
    ;; only :dialog-show is set to false leaving all fields with previous values
-   ;; These prvious values are used when user repicks the database
-   (assoc-in  db [:open-database :dialog-show] false)))
+   ;; These previous values are used when user repicks the database
+   (assoc-in db [:open-database :dialog-show] false)))
 
 (reg-event-db
  :open-database-dialog-close
  (fn [db [_event-id]]
-   (-> db init-open-database-data)
-   #_(assoc-in  db [:open-database :dialog-show] false)))
+   (-> db init-open-database-data)))
 
 ;; An event to be called (from key file related page) after user selects a key file 
 (reg-event-fx
@@ -225,19 +231,19 @@
    :open-database/database-file-picked
    (fn [{:keys [db]} [_event-id {:keys [file-name full-file-name-uri]}]]
      (let [{:keys [db-file-name] :as auto-open-props} (get-in db [:open-database :auto-open-props])]
-     ;; auto-open-props is set when child database open is launched but the db file name is not found
-     ;; in the recently used db list
+       ;; auto-open-props is set when child database open is launched but the db file name is not found
+       ;; in the recently used db list
        (if (or (empty? auto-open-props) (not= db-file-name file-name))
          {:db (-> db init-open-database-data
-                ;; database-file-name is just the 'file name' part derived from full uri 'database-full-file-name'
-                ;; to show in the dialog
+                  ;; database-file-name is just the 'file name' part derived from full uri 'database-full-file-name'
+                  ;; to show in the dialog
                   (assoc-in [:open-database :database-file-name] file-name)
                   (assoc-in [:open-database :database-full-file-name] full-file-name-uri)
                   (assoc-in [:open-database :dialog-show] true))}
-       ;; Call auto open 
+         ;; Call auto open 
          {:fx [[:dispatch [:open-database/database-file-picked-in-auto-open
-                         ;; Note: the db-key in 'auto-open-props' is nil and that is the reason we asked user to pick a file
-                         ;; and that is set to the picked full file url 'full-file-name-uri'
+                           ;; Note: the db-key in 'auto-open-props' is nil and that is the reason we asked user to pick a file
+                           ;; and that is set to the picked full file url 'full-file-name-uri'
                            (assoc auto-open-props :db-key full-file-name-uri)]]]}))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;  DB open using biometric  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -249,7 +255,7 @@
    (let [biometric-available (bg/is-biometric-available)
          biometric-enabled-db? (biometric-enabled-to-open-db db full-file-name-uri)]
      (if (and biometric-available biometric-enabled-db?)
-       {;; Calls the biometric authentication to get stored crdentials
+       {;; Calls the biometric authentication to get stored credentials
         :fx [[:bg-authenticate-with-biometric-before-db-open [kdbx-file-info-m]]]}
        ;; Calls the regular open db dialog
        {:db (init-show-open-database-dialog db kdbx-file-info-m)}))))
@@ -266,8 +272,8 @@
   (let [stored-credentials (on-ok api-response
                                   (fn [error]
                                     (println "The bg/stored-db-credentials-on-biometric-authentication call returned error " error)
-                                   ;; When Backend api 'stored-db-credentials-on-biometric-authentication' results in error 
-                                   ;; for whatever reason. Ideally should not happen!
+                                    ;; When Backend api 'stored-db-credentials-on-biometric-authentication' results in error 
+                                    ;; for whatever reason. Ideally should not happen!
                                     (dispatch [:open-database-dialog-show kdbx-file-info-m])))]
     (if (nil? stored-credentials)
       ;; Handles the situation the stored-credentials returned from backend api is None
@@ -410,19 +416,19 @@
  (fn [{:keys [db]} [_event-id error kdbx-file-info-m]]
    {:db (-> db (assoc-in [:open-database :error-fields] {})
             (assoc-in [:open-database :status] :completed))
-    
+
     ;; IMPORTANT: The arg "error" may be a string or map
 
     ;; We get error code PERMISSION_REQUIRED_TO_READ or FILE_NOT_FOUND from middle layer readKdbx 
-    
+
     ;; PERMISSION_REQUIRED_TO_READ may happen if the File Manager decides 
     ;; that the existing uri should be refreshed by asking user to pick the database again 
-    
+
     ;; FILE_NOT_FOUND happens when the uri we have no more points to a valid file as that file 
     ;; might have been changed by other program.
-    
+
     ;; In iOS, typically the error is "NSFileProviderErrorDomain Code=-1005 "The file doesn’t exist."
-    
+
     ;; In iOS FILE_NOT_FOUND is triggered when the iCloud file url remains the same but the iCloud sync has not
     ;; yet completed. In that we ask the user to repick the same file
     :fx (cond
@@ -433,10 +439,10 @@
           ;; 'RCTFatalException: Unhandled JS Exception: TypeError: n.lastIndexOf is not a function. 
           ;; (In 'n.lastIndexOf("InvalidCredentials:",0)', 'n.lastIndexOf' is undefined)', reason: 'Unhandled JS Exception: TypeError: n.lastIndexOf is not a function. 
           ;; (In 'n.lastIndexOf ("InvalidCredentials:",0) ', 'n.lastIndexOf' is undefined)
-          
+
           (and (string? error) (str/starts-with? error "InvalidCredentials:"))
           [[:dispatch [:common/error-box-show 'dbOpenError (-> error (str/split #"InvalidCredentials:") last str/trim)]]]
-          
+
           (and (string? error) (= error "BiometricCredentialsAuthenticationFailed"))
           [[:dispatch [:open-database-db-open-with-credentials kdbx-file-info-m]]]
 
@@ -451,23 +457,31 @@
 
           ;; Handles iOS NSFileCoordinator call error "4101 Couldn’t communicate with a helper application"
           ;; This happened while trying to load a kdbx file from GDrive when user picks that db from the recent db list
-          (and (= (:code error) const/COORDINATOR_CALL_FAILED) (str/starts-with? (:message error) "4101")) 
+          (and (= (:code error) const/COORDINATOR_CALL_FAILED) (str/starts-with? (:message error) "4101"))
           (let [{:keys [database-full-file-name password key-file-name]} (get-in db [:open-database])]
             [[:bg-read-latest-backup-kdbx [{:db-file-name database-full-file-name
                                             :password password
                                             :key-file-name key-file-name
                                             :biometric-auth-used false}]]])
-          
+
           :else
           [[:dispatch [:common/error-box-show "Database Open Error" error]]])}))
 
 (reg-event-fx
  :open-database-db-opened
  (fn [{:keys [db]} [_event-id kdbx-loaded]]
-   {:db (-> db (assoc-in [:open-database :error-fields] {})
-            (assoc-in [:open-database :status] :completed))
-    :fx [[:dispatch [:open-database-dialog-close]]
-         [:dispatch [:common/kdbx-database-opened kdbx-loaded]]]}))
+   (let [open-new-merging-source? (get-in db [:open-new-merging-source])]
+     {:db (-> db (assoc-in [:open-database :error-fields] {})
+              (assoc-in [:open-database :status] :completed))
+      :fx [[:dispatch [:open-database-dialog-close]]
+           (if open-new-merging-source?
+             [:dispatch [:merging-databases/kdbx-database-opened kdbx-loaded]]
+             [:dispatch [:common/kdbx-database-opened kdbx-loaded]])]})))
+
+(reg-event-fx
+ :open-database/new-merging-source-db-wanted
+ (fn [{:keys [db]} [_event-id wanted?]]
+   {:db (-> db (assoc-in [:open-new-merging-source] wanted?))}))
 
 (reg-event-db
  :repick-confirm-show
@@ -561,14 +575,7 @@
 (reg-event-fx
  :open-database-unlock-dialog-show
  (fn [{:keys [db]} [_event-id {:keys [_file-name _full-file-name-uri] :as kdbx-file-info-m}]]
-   {:db (init-show-open-database-dialog db kdbx-file-info-m)
-
-    #_(-> db init-open-database-data
-            ;; database-file-name is just the 'file name' part derived from full uri 'database-full-file-name'
-            ;; to show in the dialog
-          (assoc-in [:open-database :database-file-name] file-name)
-          (assoc-in [:open-database :database-full-file-name] full-file-name-uri)
-          (assoc-in [:open-database :dialog-show] true))}))
+   {:db (init-show-open-database-dialog db kdbx-file-info-m)}))
 
 ;; Somewhat similar to :open-database-read-db-file
 ;; Called after user enters the credentials to unlock db
@@ -719,7 +726,7 @@
 #_(reg-event-fx
    :open-database-authenticate-biometric-ok
    (fn [{:keys [db]} [_event-id]]
-   ;; Need to close the dialog!
+     ;; Need to close the dialog!
      {:db (-> db (assoc-in [:open-database :authenticate-biometric-confirm :dialog-show] false))
       :fx [[:bg-authenticate-with-biometric [(get-in db [:open-database :authenticate-biometric-confirm :data])]]]}))
 

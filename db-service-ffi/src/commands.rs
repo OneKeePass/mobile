@@ -83,7 +83,7 @@ pub enum CommandArg {
         preference_data: PreferenceData,
     },
     AppLockCredentialArg {
-        pin:usize,
+        pin: usize,
     },
 
     // Not used
@@ -167,6 +167,11 @@ pub enum CommandArg {
     SaveDbArg {
         db_key: String,
         overwrite: bool,
+    },
+
+    MergeDbs {
+        target_db_key: String,
+        source_db_key: String,
     },
 
     DbOpenBiomerticArg {
@@ -479,6 +484,10 @@ impl Commands {
                 db_service_call! (args, SearchArg{db_key,term} => search_term(&db_key,&term))
             }
 
+            "merge_databases" => {
+                service_call! (args, MergeDbs{target_db_key,source_db_key} => Self merge_databases(&target_db_key,&source_db_key))
+            }
+
             "analyzed_password" => {
                 service_call_closure!(args,PasswordGeneratorArg {password_options}  => move || {
                     result_json_str(password_options.analyzed_password())
@@ -590,7 +599,7 @@ impl Commands {
             "pin_removed" => result_json_str(app_lock::pin_removed()),
 
             "app_reset" => result_json_str(app_lock::app_reset()),
-            
+
             //// All remote storage related
             "rs_connect_and_retrieve_root_dir" => {
                 service_call_closure!(args,RemoteServerOperationArg {rs_operation_type} => move || {
@@ -642,8 +651,9 @@ impl Commands {
                 })
             }
             ////
-            
-            "read_latest_backup" => result_json_str(crate::db_backup_read::read_latest_backup(&args)),
+            "read_latest_backup" => {
+                result_json_str(crate::db_backup_read::read_latest_backup(&args))
+            }
 
             // "list_backup_files" => ok_json_str(util::list_backup_files()),
             // "delete_key_file" => Self::delete_key_file(&args),
@@ -991,6 +1001,28 @@ impl Commands {
         }
         let loader = Loader {};
         pass_phrase_options.generate(&loader)
+    }
+}
+
+// We need to call mobile specific 'merge_databases' this way as we do not have a clear cut
+// platform specific fns in db_service. Many fns from db_service are used in all platforms except few that
+// are desktop or mobile specifics
+
+// TODO: Need to find a better way using mobile specific fns from db_service
+#[allow(unused_variables)]
+impl Commands {
+    fn merge_databases(
+        target_db_key: &str,
+        source_db_key: &str,
+    ) -> OkpResult<db_service::MergeResult> {
+        cfg_if::cfg_if! {
+            if #[cfg(any(target_os = "ios",target_os = "android"))] {
+                db_service::merge_databases(target_db_key, source_db_key)
+            } else {
+                // Just a dummy else clause
+                Err(OkpError::DataError(""))
+            }
+        }
     }
 }
 

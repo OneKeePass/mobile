@@ -42,6 +42,8 @@ tokio = { version = "1", features = [ "time" ,"rt", "rt-multi-thread","sync"] }
 
 enum_dispatch = "0.3.13"
 
+cfg-if = "1.0"
+
 ## derive_builder = "0.20.2"
 
 ## SFTP

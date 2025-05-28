@@ -31,8 +31,9 @@
 ;; 'dialog-events-by-name' is a helper fn
 ;; Though we are not using any gensym based variables here
 (defn- dialog-events-by-name [dlg-name suffix args subscribe-event?]
-  (let [f-name (symbol (str dlg-name "-" (str suffix)))
-        g-name (keyword (str "generic-dialog" "-" (str suffix)))
+  (let [dlg-name (if (symbol? dlg-name) dlg-name (symbol dlg-name))
+        f-name (symbol (str dlg-name "-" suffix))
+        g-name (keyword (str "generic-dialog" "-" suffix))
         dlg-id (keyword (str dlg-name))
         event-name (if subscribe-event? (symbol "re-frame.core/subscribe")  (symbol "re-frame.core/dispatch"))]
     (if (nil? args)
@@ -71,6 +72,12 @@
   `(do
      ~@(map (fn [[sx args]] (dialog-events-by-name dlg-name sx args subscribe-event?)) suffixes-with-args)))
 
+(defmacro defn-generic-dialog-disp-events [dlg-name suffixes-with-args]
+  `(def-generic-dialog-events ~dlg-name ~suffixes-with-args false))
+
+(defmacro defn-generic-dialog-subs-events [dlg-name suffixes-with-args]
+  `(def-generic-dialog-events ~dlg-name ~suffixes-with-args true))
+
 ;; (macroexpand-1 '(as-map [a b])) => {:a a, :b b}
 ;; Here variables a and b are already set in the calling site
 (defmacro as-map
@@ -79,7 +86,7 @@
   (reduce (fn [m s] (assoc m (keyword s) s)) {} variable-names))
 
 ;; Need two more patterns based macros are required - they are on-error and on-ok based pattern
-(defmacro as-api-response-handler 
+(defmacro as-api-response-handler
   "The arg ok-response-handler, error-response-handler 
    are functions names - symbols or anonymous functions
    "
@@ -96,9 +103,9 @@
   ;;  https://clojure.org/guides/deps_and_cli
   ;;  https://code.thheller.com/blog/shadow-cljs/2019/10/12/clojurescript-macros.html
   ;;  https://clojure-doc.org/articles/tutorials/getting_started_cli/
-  
+
   ;; https://www.braveclojure.com/writing-macros/
-  
+
   ;; Macros are compiled by 'clj' and not by 'cljs' compiler
   ;; Use clj repl in the folder 
   ;; mobile where deps.edn is located
@@ -107,9 +114,9 @@
   ;; Clojure 1.11.1
   ;; user=> (require '[onekeepass.mobile.comp-classes :refer [declare-comp-classes ]])
   ;; Then do the following macroexpand-1
-  
+
   (macroexpand-1 '(declare-comp-classes [TextInput.Icon TextInput Textinput Text] "rn1-" "rn1/"))
-     ;;Will print in clj repl
+  ;;Will print in clj repl
   (do
     (def rn1-text-input-icon (reagent.core/adapt-react-class rn1/TextInput.Icon))
     (def rn1-text-input (reagent.core/adapt-react-class rn1/TextInput))
@@ -128,9 +135,8 @@
         (re-frame.core/dispatch [:generic-dialog-close :setup-otp-action-dialog]))
       (clojure.core/defn setup-otp-action-dialog-show-with-state [state-m]
         (re-frame.core/dispatch [:generic-dialog-show-with-state :setup-otp-action-dialog state-m])))
-  
-  
-  (macroexpand-1 '(as-api-response-handler my-ok-fn  error-fn)) 
-  (clojure.core/fn [G__4938] 
-    (clojure.core/when-let [G__4939 (onekeepass.mobile.events.common/on-ok G__4938 error-fn)] (my-ok-fn G__4939)))
-  )
+
+
+  (macroexpand-1 '(as-api-response-handler my-ok-fn  error-fn))
+  (clojure.core/fn [G__4938]
+    (clojure.core/when-let [G__4939 (onekeepass.mobile.events.common/on-ok G__4938 error-fn)] (my-ok-fn G__4939))))

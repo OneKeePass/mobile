@@ -91,8 +91,8 @@
        [select-field {:text-label (lstr-l 'wordList)
                       :options all-wl
                       :disabled false
-                      ;; This is used as initValue for modal selector and also as value prop of  the inner rnp-text-input
-                      :value (find-matching-label all-wl  wl-source)
+                      ;; This is used as initValue for modal selector and also as value prop of the inner rnp-text-input
+                      :value (find-matching-label all-wl wl-source)
                       :on-change  (select-on-change-factory-1 :word-list-source)}]]]
      [rn-view {:style (get-form-style)}
 

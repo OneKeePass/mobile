@@ -9,6 +9,9 @@
                                                   APP_LOCK_SETTINGS_PAGE_ID
                                                   AUTOFILL_SETTINGS_PAGE_ID
                                                   CAMERA_SCANNER_PAGE_ID
+                                                  HOME_PAGE_ID
+                                                  KEY_FILE_FORM_PAGE_ID
+                                                  MERGE_DATABASE_PAGE_ID
                                                   RS_CONNECTION_CONFIG_PAGE_ID
                                                   RS_CONNECTIONS_LIST_PAGE_ID
                                                   RS_FILES_FOLDERS_PAGE_ID]]
@@ -30,11 +33,13 @@
             [onekeepass.mobile.events.search :as search-events]
             [onekeepass.mobile.events.settings :as stgs-events]
             [onekeepass.mobile.events.remote-storage :as rs-events]
+            [onekeepass.mobile.events.merging :as merging-events]
             #_[onekeepass.mobile.events.app-database-settings :as ads-settings]
             [onekeepass.mobile.group-form :as group-form]
             [onekeepass.mobile.icons-list :as icons-list]
             [onekeepass.mobile.key-file-form :as kf-form]
             [onekeepass.mobile.password-generator :as pg]
+            [onekeepass.mobile.merging :as merging]
             [onekeepass.mobile.rn-components :as rnc :refer [background-color
                                                              cust-rnp-divider
                                                              dots-icon-name
@@ -69,7 +74,7 @@
    "
   [{:keys [page]}]
   (cond
-    (= page :home)
+    (= page HOME_PAGE_ID)
     false
 
     (= page :entry-list)
@@ -92,14 +97,15 @@
      (= page :settings)
      (= page :app-settings)
      (= page AUTOFILL_SETTINGS_PAGE_ID)
-     (= page :key-file-form)
+     (= page KEY_FILE_FORM_PAGE_ID)
      (= page CAMERA_SCANNER_PAGE_ID)
      (= page :about)
      (= page :privacy-policy)
      (= page RS_CONNECTION_CONFIG_PAGE_ID)
      (= page RS_CONNECTIONS_LIST_PAGE_ID)
      (= page ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID)
-     (= page APP_LOCK_SETTINGS_PAGE_ID))
+     (= page APP_LOCK_SETTINGS_PAGE_ID)
+     (= page MERGE_DATABASE_PAGE_ID))
     (do
       (cmn-events/to-previous-page)
       true)
@@ -132,7 +138,7 @@
              :onDismiss header-menu-hide
              :anchor (clj->js {:x x :y y})}
    (cond
-     (= page :home)
+     (= page HOME_PAGE_ID)
      [:<>
       [rnp-menu-item {:title (lstr-ml "appSettings")
                       :onPress (header-menu-action as-events/to-app-settings-page)}]
@@ -159,9 +165,12 @@
       [cust-rnp-divider]
       [rnp-menu-item {:title  (lstr-ml "lockdb")
                       :onPress (header-menu-action cmn-events/lock-kdbx nil)}]
-      [cust-rnp-divider]
+
       [rnp-menu-item {:title (lstr-ml "closedb")
                       :onPress (header-menu-action cmn-events/close-current-kdbx-db)}]
+      [cust-rnp-divider]
+      [rnp-menu-item {:title (lstr-ml "mergeDatabases")
+                      :onPress (header-menu-action merging-events/merging-databases-page)}]
       [cust-rnp-divider]
       [rnp-menu-item {:title (lstr-ml "settings")
                       :onPress (header-menu-action stgs-events/load-db-settings)}]]
@@ -202,7 +211,7 @@
 
 #_(def appbar-content-style {:padding-top 0
                              :alignItems "center"
-                           ;;:color background-color
+                             ;;:color background-color
                              :backgroundColor @primary-color})
 
 (defn is-settings-page [page]
@@ -219,7 +228,7 @@
    ;; We need to use the dummy one's zIndex = -1 so that any click action on the buttons used inside the custom title
    ;; are active. Otherwise this dummy content will be above the title buttons and clicking will not work 
    [rnp-appbar-content {:style {:zIndex -1}}]
-     ;; Need to use max-width in titleStyle for the text to put ...
+   ;; Need to use max-width in titleStyle for the text to put ...
    [rnp-appbar-content {:style (merge {:marginLeft 0  :position "absolute", :left 0, :right 0, :zIndex -1} style)
                         :color @background-color
                         :titleStyle (merge {:align-self "center"} titleStyle)
@@ -242,8 +251,8 @@
                                  (= page RS_CONNECTIONS_LIST_PAGE_ID)
                                  (r/as-element [rs-configs/appbar-title])
 
-                                ;;  (= page APP_LOCK_SETTINGS_PAGE_ID)
-                                ;;  (r/as-element [app-lock-settings/appbar-title])
+                                 ;;  (= page APP_LOCK_SETTINGS_PAGE_ID)
+                                 ;;  (r/as-element [app-lock-settings/appbar-title])
 
                                  ;;TODO 
                                  ;; Need to add translation of titles for Entry types and General cat types
@@ -268,7 +277,7 @@
                                     :password-generator
                                     RS_CONNECTIONS_LIST_PAGE_ID])
 
-(def title-provider-pages [:home
+(def title-provider-pages [HOME_PAGE_ID
                            :about
                            :privacy-policy
                            :entry-history-list
@@ -277,12 +286,13 @@
                            :settings
                            :app-settings
                            AUTOFILL_SETTINGS_PAGE_ID
-                           :key-file-form
+                           KEY_FILE_FORM_PAGE_ID
                            CAMERA_SCANNER_PAGE_ID
                            ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID
                            APP_LOCK_SETTINGS_PAGE_ID
                            RS_CONNECTION_CONFIG_PAGE_ID
-                           RS_FILES_FOLDERS_PAGE_ID])
+                           RS_FILES_FOLDERS_PAGE_ID
+                           MERGE_DATABASE_PAGE_ID])
 
 (defn- appbar-title [{:keys [page title]}]
   ;; title is required
@@ -320,7 +330,8 @@
                         APP_LOCK_SETTINGS_PAGE_ID
                         CAMERA_SCANNER_PAGE_ID
                         RS_CONNECTION_CONFIG_PAGE_ID
-                        :key-file-form])
+                        KEY_FILE_FORM_PAGE_ID
+                        MERGE_DATABASE_PAGE_ID])
 
 (defn appbar-header-content [page-info]
   (let [{:keys [page]} page-info]
@@ -346,27 +357,27 @@
        [rnp-appbar-back-action {:color @background-color
                                 :onPress cmn-events/to-previous-page}])
 
-   ;; Title component 
+     ;; Title component 
      (appbar-title page-info) ;; [appbar-title page-info] did not work. Why?
 
-   ;; The right side action icons component (dots icon, search icon .. ) and are shown for certain pages only
+     ;; The right side action icons component (dots icon, search icon .. ) and are shown for certain pages only
      (when (or
-            (= page :home)
+            (= page HOME_PAGE_ID)
             (= page :entry-category)
             (= page :entry-list)
             (and (= page :entry-form) (not @(ef-events/deleted-category-showing))) ;; Do not show in deleted entry form 
             (= page :entry-history-list))
        [:<>
         [header-menu @header-menu-data page-info]
-        (when-not (or (= page :home) (= page :entry-form) (= page :entry-history-list))
+        (when-not (or (= page HOME_PAGE_ID) (= page :entry-form) (= page :entry-history-list))
           [rnp-appbar-action {:style {:backgroundColor @primary-color
-                                    ;;:position "absolute" :right 50
+                                      ;;:position "absolute" :right 50
                                       :margin-right -9}
                               :color @on-primary-color
                               :icon "magnify"
                               :onPress search-events/to-search-page}])
         [rnp-appbar-action {:style {:backgroundColor @primary-color
-                                  ;;:position "absolute" :right 0 
+                                    ;;:position "absolute" :right 0 
                                     }
                             :color @on-primary-color
                             :icon dots-icon-name
@@ -377,7 +388,7 @@
   [{:keys [page]}]
   (cond
 
-    (= page :home)
+    (= page HOME_PAGE_ID)
     [open-page-content]
 
     (= page :entry-category)
@@ -413,7 +424,7 @@
     (= page AUTOFILL_SETTINGS_PAGE_ID)
     [af-settings/content]
 
-    (= page :key-file-form)
+    (= page KEY_FILE_FORM_PAGE_ID)
     (kf-form/content)
 
     (u/contains-val? [:settings-general :settings-credentials
@@ -443,6 +454,9 @@
 
     (= page APP_LOCK_SETTINGS_PAGE_ID)
     [app-lock-settings/content]
+    
+    (= page MERGE_DATABASE_PAGE_ID)
+    [merging/main-content]
 
     ;; For now, this page is shown after loading the newly selected language translation
     ;; Other attempts to refresh the app settings page itself did not work
@@ -474,54 +488,3 @@
          [rn-view {:style {:flex 1}}
           [app-lock/content]
           #_[rnc/rnp-text "App locked"]]))]))
-
-
-#_(defn appbar-main-content
-    "An App bar has both header and the body combined"
-    []
-    (let [handler-fns-m {:onStartShouldSetPanResponderCapture (fn []
-                                                                (as-events/user-action-detected)
-                                                              ;; Returns false so that the event is passed to other 
-                                                              ;; listeners
-                                                                false)}
-
-          pan-handlers-m (-> (rnc/create-pan-responder handler-fns-m)
-                             (js->clj :keywordize-keys true) :panHandlers)]
-      [rnc/rn-view (merge {:style {:flex 1}} pan-handlers-m)
-       [appbar-header-content @(cmn-events/page-info)]
-       [appbar-body-content @(cmn-events/page-info)]]))
-
-
-;; Titles
-;; (or (= page :home)
-    ;;     (= page :about)
-    ;;     (= page :privacy-policy)
-    ;;     (= page :entry-history-list)
-    ;;     (= page :search)
-    ;;     (= page :icons-list)
-    ;;     (= page :settings)
-    ;;     (= page :app-settings)
-    ;;     (= page AUTOFILL_SETTINGS_PAGE_ID)
-    ;;     (= page :key-file-form)
-    ;;     (= page CAMERA_SCANNER_PAGE_ID)
-    ;;     (= page ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID)
-    ;;     (= page APP_LOCK_SETTINGS_PAGE_ID)
-    ;;     (= page RS_CONNECTION_CONFIG_PAGE_ID)
-    ;;     (= page RS_FILES_FOLDERS_PAGE_ID))
-
-;; Used for back action <
-;;  (or
-      ;;   (= page :about)
-      ;;   (= page :privacy-policy)
-      ;;   (= page :qr-scanner)
-      ;;   (= page :entry-history-list)
-      ;;   (= page :icons-list)
-      ;;   (= page :search)
-      ;;   (= page :settings)
-      ;;   (= page :app-settings)
-      ;;   (= page AUTOFILL_SETTINGS_PAGE_ID)
-      ;;   (= page ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID)
-      ;;   (= page APP_LOCK_SETTINGS_PAGE_ID)
-      ;;   (= page CAMERA_SCANNER_PAGE_ID)
-      ;;   (= page RS_CONNECTION_CONFIG_PAGE_ID)
-      ;;   (= page :key-file-form))
