@@ -14,7 +14,7 @@
 
 (defn cancel-on-press
   "Called to close the dialog and resets all fields in ':open-database' "
-  []
+  [] 
   (dispatch [:open-database-dialog-close]))
 
 (defn open-database-on-press
@@ -34,13 +34,6 @@
   [file-name full-file-name-uri]
   (dispatch [:open-database/database-file-picked-1 {:file-name file-name :full-file-name-uri full-file-name-uri}]))
 
-#_(defn open-selected-database
-    "Called when user picks a db on the start page database list"
-    [file-name full-file-name-uri already-opened?]
-    (if already-opened?
-      (dispatch [:common/set-active-db-key full-file-name-uri])
-      (dispatch [:open-database/database-file-picked-1 {:file-name file-name :full-file-name-uri full-file-name-uri}])))
-
 (defn database-field-update [kw-field-name value]
   (dispatch [:open-database-field-update kw-field-name value]))
 
@@ -53,7 +46,7 @@
 (defn repick-confirm-cancel []
   (dispatch [:repick-confirm-cancel]))
 
-(defn reset-new-merging-source-db-wanted
+#_(defn reset-new-merging-source-db-wanted
   "This needs to be called to reset any previously set value of this flag. 
    This flag is set to true when user wants to open a source database for merging
   "

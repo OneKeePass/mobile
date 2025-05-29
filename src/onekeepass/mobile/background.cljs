@@ -317,9 +317,9 @@
     (call-api-async (fn []
                       (.createKdbx
                        okp-db-service
-                       full-file-name 
-                       (api-args->json {:new-db new-db} )))
-                    dispatch-fn :error-transform true) 
+                       full-file-name
+                       (api-args->json {:new-db new-db})))
+                    dispatch-fn :error-transform true)
 
     (bg-rs/create-kdbx new-db dispatch-fn)))
 
@@ -558,6 +558,10 @@
   [db-key entry-uuid new-parent-id dispatch-fn]
   (invoke-api "move_entry" {:db-key db-key :uuid entry-uuid :new-parent-id new-parent-id} dispatch-fn))
 
+(defn move-group
+  [db-key group-uuid new-parent-id dispatch-fn]
+  (invoke-api "move_group" {:db-key db-key :uuid group-uuid :new-parent-id new-parent-id} dispatch-fn))
+
 (defn move-group-to-recycle-bin [db-key group-uuid dispatch-fn]
   (invoke-api "move_group_to_recycle_bin" {:db-key db-key :uuid group-uuid} dispatch-fn))
 
@@ -577,7 +581,7 @@
   (invoke-api "empty_trash" {:db-key db-key} dispatch-fn))
 
 
-(defn get-db-settings [db-key dispatch-fn] 
+(defn get-db-settings [db-key dispatch-fn]
   (invoke-api "get_db_settings" {:db-key db-key} dispatch-fn))
 
 

@@ -104,7 +104,7 @@
   "Converts objects of type '#object[Error Error: Document picker was cancelled..]' to 
   {:nativeStackAndroid [], :code \"DOCUMENT_PICKER_CANCELED\"..}
   "
-  [obj] 
+  [obj]
   (js->clj (-> obj js/JSON.stringify js/JSON.parse) :keywordize-keys true))
 
 (def KB 1024)
@@ -131,13 +131,21 @@
 
 ;; From an article https://dnaeon.github.io/recursively-merging-maps-in-clojure/
 (defn deep-merge
-  "Recursively merges maps."
+  "Recursively merges maps.
+   The arg 'maps' is one or more cljs map
+  "
   [& maps]
-  (letfn [(m [& xs]
+  ;;(println "maps are " maps) 
+  (letfn [(my-map-fn [& xs]
+            ;; (println "xs is " xs)
+
+            ;; 'some' fn returns the first logical true value of (pred x) for any x in xs
             (if (some #(and (map? %) (not (record? %))) xs)
-              (apply merge-with m xs)
+              ;; my-map-fn is called recursively
+              (apply merge-with my-map-fn xs)
               (last xs)))]
-    (reduce m maps)))
+    ;; The 'reduce' fn calls 'my-map-fn' with the first 2 items in coll and then the result and the next item in coll
+    (reduce my-map-fn maps)))
 
 (defn deep-merge-with
   "Recursively merges maps. Applies function f when we have duplicate keys.
@@ -145,7 +153,7 @@
   "
   [f & maps]
   (letfn [(m [& xs]
-             ;;(println "xs is " xs)
+            ;;(println "xs is " xs)
             (if (some #(and (map? %) (not (record? %))) xs)
               (apply merge-with m xs)
               (apply f xs)))]
@@ -162,39 +170,52 @@
 
   (utc-str-to-local-datetime-str "2023-01-03 00:38:46.164941")
   ;; => "2023-01-02 04:38:46 PM"
-  
+
   (utc-to-local-datetime-str 1676337120434 "LLL dd,yyyy hh:mm:ss aaa")
   ;; => "Feb 13,2023 05:12:00 pm"
-  
+
   (str->int "000001")
   ;; => 1
-  
+
   (str->int "23e3qwe")
   ;; => nil
-  
+
   (str->int "d" 34)
   ;; => 34
 
   (def a {:data {:field1 3} :dialog-show false})
   (deep-merge a {:data {:field2 4}})
   ;; => {:data {:field1 3, :field2 4}, :dialog-show false}
-  
+
   (deep-merge a {:data {:field1 4} :dialog-show true})
   ;; => {:data {:field1 4}, :dialog-show true}
-  
+
   (deep-merge a {:data {:field1 4 :field2 22} :dialog-show true :error-text "sometext"})
 
   ;; => {:data {:field1 4, :field2 22}, :dialog-show true, :error-text "sometext"}
-  
+
   (deep-merge {} nil) ;; => {}
-  
+
   (deep-merge) or (deep-merge nil) ;; => nil
-  
+
+  (def a {:data {:field1 3 :error-fields {:msg "some msg"}} :dialog-show false})
+
+  (deep-merge a {:data {:field2 4 :error-fields {}}})
+
+  ;; => {:data {:field1 3, :error-fields {:msg "some msg"}, :field2 4}, :dialog-show false}
+
+  ;; Note error-fields is not reset to {}
+
+  (deep-merge a {:data {:field2 4 :error-fields {:msg nil}}})
+
+  ;; => {:data {:field1 3, :error-fields {:msg nil}, :field2 4}, :dialog-show false} 
+  ;; This time :error-fields is reset.  This is due to the use of "some" fn based testing
+
   (deep-merge-with first {:foo "foo" :bar {:baz "baz"}} {:foo "another-foo" :bar {:qux "qux"}})
   ;; => {:foo "f", :bar {:baz "baz", :qux "qux"}}
   ;; expected as per atricle {:foo "foo", :bar {:baz "baz", :qux "qux"}}
   ;; using first did not work 
-  
+
   (deep-merge-with (fn [a b] a)  {:foo "foo" :bar {:baz "baz"}} {:foo "another-foo" :bar {:qux "qux"}})
   ;; => {:foo "foo", :bar {:baz "baz", :qux "qux"}}
   )

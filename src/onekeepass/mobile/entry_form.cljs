@@ -22,8 +22,7 @@
                                                           setup-otp-action-dialog-show
                                                           ;;auto-open-key-file-required-dialog
                                                           auto-open-key-file-pick-required-info-dialog
-                                                          auto-open-db-file-required-info-dialog
-                                                          ]]
+                                                          auto-open-db-file-required-info-dialog]]
             [onekeepass.mobile.entry-form-fields :refer [otp-field text-field]]
             [onekeepass.mobile.entry-form-menus :refer [attachment-long-press-menu
                                                         attachment-long-press-menu-data
@@ -37,6 +36,7 @@
             [onekeepass.mobile.events.dialogs :as dlg-events]
             [onekeepass.mobile.events.entry-form :as form-events :refer [place-holder-resolved-value]]
             [onekeepass.mobile.icons-list :as icons-list]
+            [onekeepass.mobile.entry-list :as entry-list]
             [onekeepass.mobile.rn-components
              :as rnc
              :refer [appbar-text-color dots-icon-name icon-color
@@ -197,10 +197,10 @@
                    :autoCapitalize "none"
                    :defaultValue title
                    :ref (fn [^js/Ref ref]
-                               ;; Keys found in ref for textinput
-                               ;; are #js ["focus" "clear" "setNativeProps" "isFocused" "blur" "forceFocus"]
-                               ;; Need to call clear directly as the previous value is not getting cleared 
-                               ;; when there is a change in entry type selection name
+                          ;; Keys found in ref for textinput
+                          ;; are #js ["focus" "clear" "setNativeProps" "isFocused" "blur" "forceFocus"]
+                          ;; Need to call clear directly as the previous value is not getting cleared 
+                          ;; when there is a change in entry type selection name
                           (when (and (not (nil? ref)) (str/blank? title)) (.clear ref)))
                    :onChangeText #(form-events/entry-form-data-update-field-value :title %)
                    :right (r/as-element
@@ -261,8 +261,8 @@
   (let [value @(form-events/entry-form-data-fields :notes)]
     (when (or edit (not (str/blank? value)))
       [rn-view {:style {:padding-right 5 :padding-left 5 :borderWidth .20 :borderRadius 4}}
-       [rnp-text-input {:style {:width "100%"} 
-                        :multiline true 
+       [rnp-text-input {:style {:width "100%"}
+                        :multiline true
                         :label  (lstr-l "notes")
                         ;; :label (r/as-element [rnp-text {:style {:color "red"}} "My Notes"])
                         :defaultValue value
@@ -412,9 +412,9 @@
     [rn-view {:style box-style-2}
      (doall
       (for [section-name section-names]
-        ^{:key section-name} [section-content {:edit edit 
-                                               :section-name section-name 
-                                               :section-data (get-section-data  entry-type-uuid section-name section-fields parsed-fields )}]))]))
+        ^{:key section-name} [section-content {:edit edit
+                                               :section-name section-name
+                                               :section-data (get-section-data  entry-type-uuid section-name section-fields parsed-fields)}]))]))
 
 (defn add-section-btn []
   [rn-view {:style {:padding-top 5 :padding-bottom 5}  :justify-content "center"}
@@ -519,12 +519,12 @@
       [rn-view {:style (merge box-style-1 {:margin-top 5 :min-height 60})}
        [attachment-content-header edit]
 
-           ;; We may see the warning/error in the console: 
-           ;; VirtualizedLists should never be nested inside plain ScrollViews with the same orientation because 
-           ;; it can break windowing and other functionality - use another VirtualizedList-backed container instead
-           ;; :scrollEnabled false (from RN 0.71)  removes that error
-           ;; See https://stackoverflow.com/questions/58243680/react-native-another-virtualizedlist-backed-container
-           ;; https://stackoverflow.com/questions/67623952/error-virtualizedlists-should-never-be-nested-inside-plain-scrollviews-with-th
+       ;; We may see the warning/error in the console: 
+       ;; VirtualizedLists should never be nested inside plain ScrollViews with the same orientation because 
+       ;; it can break windowing and other functionality - use another VirtualizedList-backed container instead
+       ;; :scrollEnabled false (from RN 0.71)  removes that error
+       ;; See https://stackoverflow.com/questions/58243680/react-native-another-virtualizedlist-backed-container
+       ;; https://stackoverflow.com/questions/67623952/error-virtualizedlists-should-never-be-nested-inside-plain-scrollviews-with-th
 
        [rn-section-list {:scrollEnabled false
                          :sections (clj->js sections)
@@ -575,12 +575,16 @@
       [otp-settings-dialog @(dlg-events/otp-settings-dialog-data)]
       (:dialog delete-attachment-dialog-info)
       [rename-attachment-name-dialog @rename-attachment-name-dialog-data]
+
+      ;; The arg 'form-events/delete-entry' is call-on-ok-fn which is called after user confirm
       [cc/entry-delete-confirm-dialog form-events/delete-entry]
-      #_[auto-open-key-file-required-dialog @(ef-ao/entry-form-auto-open-key-file-required-dialog-data)]
       [auto-open-db-file-required-info-dialog]
       [auto-open-key-file-pick-required-info-dialog]
-      #_[auto-open-key-file-pick-required-info-dialog]
-      ]]))
+
+      ;; Note: 
+      ;; We are refering this dialog from ns entry-list. 
+      ;; We may need to move some common ns if there is any circular reference issue comes up
+      [entry-list/move-group-or-entry-dialog]]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
 

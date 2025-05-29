@@ -1,7 +1,6 @@
 (ns onekeepass.mobile.events.merging
   (:require [onekeepass.mobile.background.merging :as bg-merging]
-            [onekeepass.mobile.constants :as const]
-            [onekeepass.mobile.constants :refer [MERGE_DATABASE_PAGE_ID]]
+            [onekeepass.mobile.constants :as const :refer [MERGE_DATABASE_PAGE_ID]]
             [onekeepass.mobile.events.common :refer [on-error
                                                      on-ok
                                                      opened-db-file-name
@@ -13,6 +12,11 @@
 
 (defn merging-databases-page []
   (dispatch [:merging-databases-page]))
+
+(defn merge-database-back-action [] 
+  ;; IMPORTANT: This flag should be reset for normal open db dialog to work
+  (dispatch [:open-database/new-merging-source-db-wanted false])
+  (dispatch [:common/previous-page]))
 
 (defn merging-databases-source-db-selected [source-db-key]
   (dispatch [:merging-databases-source-db-selected source-db-key]))
@@ -54,9 +58,8 @@
 (reg-event-fx
  :merging-databases-open-new-db-source-start
  (fn [{:keys [_db]} [_event-id]]
-   {:fx [[;; determines which event is to be called after kdbx loading
-          ;; See 
-          :dispatch [:open-database/new-merging-source-db-wanted true]]
+   {:fx [;; Ensures that open db dialog 'continue' event handler calls this event based on this flag 
+         [:dispatch [:open-database/new-merging-source-db-wanted true]]
          ;; Shows the storage selection option dialog
          [:dispatch [:generic-dialog-show-with-state
                      :start-page-storage-selection-dialog
@@ -82,13 +85,15 @@
                                source-db-key
                                (fn [api-response]
                                  (when-some [merge-result (on-ok api-response)]
+                                   ;; IMPORTANT: This flag should be reset for normal open db dialog to work. Otherwise merging handler is called which we do not want to happen
+                                   (dispatch [:open-database/new-merging-source-db-wanted false])
                                    (dispatch [:merge-databases-save merge-result]))))))
 
 ;; Merged target database is saved. In mobile, we always save after any db content changes
 (reg-event-fx
  :merge-databases-save
  (fn [{:keys [_db]} [_event-id merge-result]]
-   {:fx [[:dispatch [:save/save-current-kdbx 
+   {:fx [[:dispatch [:save/save-current-kdbx
                      {:error-title "Save after databases merging"
                       :save-message "Merging and saving..."
                       :on-save-ok (fn []
@@ -96,10 +101,11 @@
 
 (reg-event-fx
  :merge-databases-completed
- (fn [{:keys [db]} [_event-id merge-result]] 
+ (fn [{:keys [db]} [_event-id merge-result]]
    (let [kdbx-loaded (get-in db [:merging :kdbx-loaded])]
-     {:fx [[:dispatch [:common/refresh-forms]]
+     {:fx [[:dispatch [:common/refresh-forms]] 
            (when-not (nil? kdbx-loaded)
+             ;; The opened db is closed as it is opened only as a merging source db
              [:common/bg-close-kdbx [(:db-key kdbx-loaded) #(on-error %)]])
            [:dispatch [:generic-dialog-show-with-state :merge-result-dialog {:data merge-result}]]]})))
 

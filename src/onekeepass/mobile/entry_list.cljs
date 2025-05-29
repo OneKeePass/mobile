@@ -9,6 +9,7 @@
             [onekeepass.mobile.events.entry-category :as ecat-events]
             [onekeepass.mobile.events.entry-list :as elist-events :refer [find-entry-by-id]]
             [onekeepass.mobile.events.move-delete :as md-events]
+            [onekeepass.mobile.events.dialogs :as dlg-events]
             [onekeepass.mobile.icons-list :refer [icon-id->name]]
             [onekeepass.mobile.rn-components :as rnc :refer [cust-dialog
                                                              icon-color
@@ -30,6 +31,7 @@
                                                              rnp-menu
                                                              rnp-menu-item
                                                              rnp-text]]
+            [onekeepass.mobile.utils :as u]
             [onekeepass.mobile.translation :refer [lstr-bl lstr-cv
                                                    lstr-dlg-text
                                                    lstr-dlg-title lstr-l
@@ -77,15 +79,25 @@
 
 (def entry-long-press-menu-action (menu-action-factory hide-entry-long-press-menu))
 
+(declare move-entry-dialog-show-with-state)
+
 (defn entry-long-press-menu [{:keys [show x y entry-summary]}]
-  (let [deleted-cat @(elist-events/deleted-category-showing)]
+  (let [deleted-cat @(elist-events/deleted-category-showing)
+        {:keys [uuid parent-group-uuid]} entry-summary]
     (if-not deleted-cat
       [rnp-menu {:visible show :onDismiss hide-entry-long-press-menu :anchor (clj->js {:x x :y y})}
        ;; TODO: Need to add a rust api to toggle an entry as Favorites or not and then enable this 
        #_[rnp-menu-item {:title "Favorites" :onPress #()  :trailingIcon "check"}]
+       [rnp-menu-item {:title (lstr-ml "move")
+                       :disabled @(cmn-events/current-db-disable-edit)
+                       :onPress (entry-long-press-menu-action move-entry-dialog-show-with-state uuid parent-group-uuid)}]
+
        [rnp-menu-item {:title (lstr-ml "delete")
                        :disabled @(cmn-events/current-db-disable-edit)
-                       :onPress (entry-long-press-menu-action cc/show-entry-delete-confirm-dialog (:uuid entry-summary))}]
+                       :onPress (entry-long-press-menu-action cc/show-entry-delete-confirm-dialog uuid)}]
+
+
+
        ;; TDOO: 
        ;; Need to add backend api support to get history count as part of summary
        ;; and use that to enable/disable History menu item
@@ -117,8 +129,11 @@
 
 (def group-long-press-menu-action (menu-action-factory hide-group-long-press-menu))
 
+(declare move-group-dialog-show-with-state)
+
 (defn group-long-press-menu [{:keys [show x y category-detail]}]
-  (let [group-uuid (:uuid category-detail)]
+  (let [group-uuid (:uuid category-detail)
+        parent-group-uuid (:parent-group-uuid category-detail)]
     [rnp-menu {:visible show :onDismiss hide-group-long-press-menu :anchor (clj->js {:x x :y y})}
      [rnp-menu-item {:title (lstr-ml "edit")
                      :disabled @(cmn-events/current-db-disable-edit)
@@ -133,6 +148,10 @@
                      :onPress (group-long-press-menu-action
                                elist-events/add-group group-uuid)}]
      [rnp-divider]
+     [rnp-menu-item {:title (lstr-ml "move")
+                     :disabled @(cmn-events/current-db-disable-edit)
+                     :onPress (group-long-press-menu-action move-group-dialog-show-with-state  group-uuid parent-group-uuid)}]
+
      [rnp-menu-item {:title (lstr-ml "delete")
                      :disabled @(cmn-events/current-db-disable-edit)
                      :onPress (group-long-press-menu-action
@@ -141,18 +160,18 @@
 ;;;; Sort menus
 (def ^:private sort-menu-data (r/atom {:show false :sort-criteria {:key-name const/TITLE :direction const/ASCENDING} :x 0 :y 0}))
 
-(defn hide-sort-menu []
+(defn- hide-sort-menu []
   (swap! sort-menu-data assoc :show false))
 
 (def sort-menu-action (menu-action-factory hide-sort-menu))
 
-(defn show-sort-menu [^js/PEvent event sort-criteria]
+(defn- show-sort-menu [^js/PEvent event sort-criteria]
   (swap! sort-menu-data assoc
          :show true
          :sort-criteria sort-criteria
          :x (-> event .-nativeEvent .-pageX) :y (-> event .-nativeEvent .-pageY)))
 
-(defn sort-menus [{:keys [show x y]
+(defn- sort-menus [{:keys [show x y]
                    {:keys [key-name direction]} :sort-criteria}]
   [rnp-menu {:visible show :onDismiss hide-sort-menu :anchor (clj->js {:x x :y y})}
    [rnp-menu-item {:title (lstr-ml 'title)
@@ -176,9 +195,83 @@
                    :leadingIcon (if (= direction const/DESCENDING) ICON-CHECKBOX-OUTLINE ICON-CHECKBOX-BLANK-OUTLINE)
                    :onPress (sort-menu-action elist-events/entry-list-sort-direction-changed const/DESCENDING)}]])
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn put-back-dialog [{:keys [dialog-show title parent-group-name error-fields]}]
+(defn move-group-or-entry-dialog
+  ([{:keys [dialog-show
+            group-selection-info
+            kind-kw
+            error-fields
+            uuid-selected-to-move
+            current-parent-group-uuid]}]
+   (when dialog-show
+     (let [groups-listing @(md-events/groups-listing)
+           ;; Need to exclude certain uuids from group listing
+           groups-listing (filter (fn [group-info]
+                                    ;; Note: In case of entry 'uuid-selected-to-move' is the entry-uuid and stricly not 
+                                    ;; required to be excluded vec
+                                    (not (u/contains-val? [uuid-selected-to-move current-parent-group-uuid] (:uuid group-info))))
+                                  groups-listing)
+
+           ;; Form the selection options 
+           names (mapv (fn [m] {:key (:uuid m) :label (:name m)}) groups-listing)
+
+           ;; Called when user selects a new group
+           on-change (fn [option]
+                       (let [group-info (first (filter (fn [m] (= (:name m) (.-label option))) groups-listing))]
+                         ;; Note we need to use {:parent-group-selection-error nil} instead of setting {:error-fields {}}
+                         ;; If we do not this, the deep-merge will not update :error-fields and the error remains
+                         (dlg-events/move-group-or-entry-dialog-update-with-map
+                          {:error-fields {:parent-group-selection-error nil}
+                           :group-selection-info group-info})))
+           ;; Current selection
+           parent-group-name (:name group-selection-info)
+           ;; Error if any
+           parent-group-selection-error (:parent-group-selection-error error-fields)]
+
+       [cust-dialog {:style {} :dismissable true :visible dialog-show :onDismiss #()}
+        [rnp-dialog-title "Move"]
+        [rnp-dialog-content
+         [rn-view {:flexDirection "column"}
+          [rnp-text {:style {:margin-bottom 10} :variant "titleMedium"} (lstr-dlg-text 'putBack)]
+          (if-not (nil? parent-group-selection-error)
+            [:<>
+             [select-field {:text-label (str "Group" "*")
+                            :options names
+                            :value parent-group-name
+                            :on-change on-change}]
+             [rnp-helper-text {:type "error" :visible true} parent-group-selection-error]]
+            [select-field {:text-label (str "Group" "*")
+                           :options names
+                           :value parent-group-name
+                           :on-change on-change}])]]
+
+        [rnp-dialog-actions
+         [rnp-button {:mode "text" :onPress dlg-events/move-group-or-entry-dialog-close} (lstr-bl 'cancel)]
+         [rnp-button {:mode "text" :onPress (fn []
+                                              (md-events/move-entry-or-group kind-kw uuid-selected-to-move group-selection-info))} (lstr-bl 'ok)]]])))
+
+  ([]
+   (move-group-or-entry-dialog @(dlg-events/move-group-or-entry-dialog-data))))
+
+#_(defn move-group-or-entry-dialog-show-with-state
+    "Called to show the move dialog when menu item in group or entry panel is clicked"
+    [kind-kw uuid-selected-to-move current-parent-group-uuid]
+    (dlg-events/move-group-or-entry-dialog-show-with-state {:kind-kw kind-kw
+                                                            :uuid-selected-to-move uuid-selected-to-move
+                                                            :current-parent-group-uuid current-parent-group-uuid}))
+
+(defn move-entry-dialog-show-with-state [uuid-selected-to-move current-parent-group-uuid]
+  (dlg-events/move-group-or-entry-dialog-show-with-state {:kind-kw :entry
+                                                          :uuid-selected-to-move uuid-selected-to-move
+                                                          :current-parent-group-uuid current-parent-group-uuid}))
+
+(defn- move-group-dialog-show-with-state [uuid-selected-to-move current-parent-group-uuid]
+  (dlg-events/move-group-or-entry-dialog-show-with-state {:kind-kw :group
+                                                          :uuid-selected-to-move uuid-selected-to-move
+                                                          :current-parent-group-uuid current-parent-group-uuid}))
+
+(defn- put-back-dialog [{:keys [dialog-show parent-group-name error-fields]}]
   (let [groups-listing (md-events/groups-listing)
         names (mapv (fn [m] {:key (:uuid m) :label (:name m)}) @groups-listing)
         on-change (fn [option]
@@ -218,7 +311,7 @@
                                                           :color @icon-color
                                                           :style {:margin-left 5 :align-self "center"}}]))}])))
 
-(defn subgroup-row-item
+(defn- subgroup-row-item
   "category-detail-m is a map representing struct 'CategoryDetail'
   TODO: Need to rename section-title something category-key as we receive the section key 
   instead of section title as section title will be language dependent (in future)
@@ -239,7 +332,7 @@
                       :right (fn [_props] (r/as-element
                                            [rnp-text {:variant "titleMedium"} items-count]))}])))
 
-(defn section-header [title]
+(defn- section-header [title]
   [rn-view  {:style {:flexDirection "row"
                      :backgroundColor @primary-container-color
                      :margin-top 5
@@ -266,7 +359,7 @@
     [rn-section-list {:scrollEnabled false
                       :sections (clj->js sections)
                       :renderItem (fn [props]
-                                             ;; keys in props are (:item :index :section :separators)
+                                    ;; keys in props are (:item :index :section :separators)
                                     (let [props (js->clj props :keywordize-keys true)]
                                       (r/as-element (if (= "Groups" (-> props :section :key))
                                                       [subgroup-row-item (-> props :item) const/GROUP_SECTION_TITLE]
@@ -279,7 +372,7 @@
                                                (when (and show-subgroups (> (count data) 0))
                                                  (r/as-element [section-header title]))))}]))
 
-(defn permanent-delete-dialog []
+(defn- permanent-delete-dialog []
   [confirm-dialog (merge @(md-events/delete-permanent-dialog-data)
                          {:title (lstr-dlg-title 'deleteEntryPermanent)
                           :confirm-text (lstr-dlg-text 'deleteEntryPermanent)
@@ -293,7 +386,7 @@
 (defn show-delete-all-entries-permanent-confirm-dialog []
   (reset! delete-all-entries-permanent-confirm true))
 
-(defn delete-all-entries-permanent-confirm-dialog []
+(defn- delete-all-entries-permanent-confirm-dialog []
   [confirm-dialog {:dialog-show @delete-all-entries-permanent-confirm
                    :title  (lstr-dlg-title "deleteAllEntriesPermanet")
                    :confirm-text (lstr-dlg-text "deleteAllEntriesPermanet")
@@ -304,7 +397,7 @@
                              {:label (lstr-bl "no")
                               :on-press #(reset! delete-all-entries-permanent-confirm false)}]}])
 
-(defn bottom-nav-bar
+(defn- bottom-nav-bar
   "A functional reagent componnent that returns the custom bottom bar"
   []
   (fn []
@@ -356,7 +449,7 @@
 
 (def idx (r/atom -1))
 
-(defn bottom-nav-bar1 []
+(defn- bottom-nav-bar1 []
   (let [routes [{:key "sort" :title "Sort" :focusedIcon "heart" :unfocusedIcon "heart-outline"}
                 {:key "settings" :title "Settings" :focusedIcon "bell" :unfocusedIcon "bell-outline"}]
 
@@ -377,7 +470,7 @@
                                                   (reset! idx 1)))
                                               #_(println props))}]))
 
-(defn bottom-nav-bar2 []
+(defn- bottom-nav-bar2 []
   (let [routes [{:key "sort" :title "Sort" :focusedIcon "heart" :unfocusedIcon "heart-outline"}
                 {:key "settings" :title "Settings" :focusedIcon "bell" :unfocusedIcon "bell-outline"}]
 
@@ -403,8 +496,8 @@
 
    ;; When we use 'rn-scroll-view' and if main-content uses 'rn-section-list' we need to use ':scrollEnabled false' in rn-section-list
    ;; Otherwise we may see error like 
-  ;; 'VirtualizedLists should never be nested inside plain ScrollViews with the same 
-  ;;  orientation because it can break windowing and other functionality - use another VirtualizedList-backed container instead'
+   ;; 'VirtualizedLists should never be nested inside plain ScrollViews with the same 
+   ;;  orientation because it can break windowing and other functionality - use another VirtualizedList-backed container instead'
 
    [rnc/rn-scroll-view {:style {} :contentContainerStyle {:flexGrow 1 :background-color @page-background-color}}
     [main-content]]
@@ -418,6 +511,7 @@
    [entry-long-press-menu @entry-long-press-menu-data]
    [group-long-press-menu @group-long-press-menu-data]
    [put-back-dialog @(md-events/putback-dialog-data)]
+   [move-group-or-entry-dialog]
    [permanent-delete-dialog]
    [delete-all-entries-permanent-confirm-dialog]
    [cc/entry-delete-confirm-dialog elist-events/delete-entry]

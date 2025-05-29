@@ -86,6 +86,10 @@
     (do (rs-events/remote-storage-listing-previous)
         true)
 
+    (= page MERGE_DATABASE_PAGE_ID)
+    (do (merging-events/merge-database-back-action)
+        true)
+
     (or
      (= page :entry-category)
      (= page :entry-form)
@@ -104,8 +108,7 @@
      (= page RS_CONNECTION_CONFIG_PAGE_ID)
      (= page RS_CONNECTIONS_LIST_PAGE_ID)
      (= page ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID)
-     (= page APP_LOCK_SETTINGS_PAGE_ID)
-     (= page MERGE_DATABASE_PAGE_ID))
+     (= page APP_LOCK_SETTINGS_PAGE_ID))
     (do
       (cmn-events/to-previous-page)
       true)
@@ -192,7 +195,8 @@
 
      (= page :entry-form)
      (let [fav @(ef-events/favorites?)
-           entry-uuid @(ef-events/entry-form-uuid)]
+           entry-uuid @(ef-events/entry-form-uuid)
+           parent-group-uuid @(ef-events/entry-form-parent-group-uuid)]
        [:<>
         [rnp-menu-item {:title (lstr-ml "favorite") :trailingIcon (if fav "check" nil)
                         :disabled (not @(ef-events/history-available))
@@ -203,6 +207,10 @@
         ;; [cust-rnp-divider]
         ;; [rnp-menu-item {:title "Password Generator" :onPress #()}]
         [cust-rnp-divider]
+        [rnp-menu-item {:title (lstr-ml "move")
+                        :disabled  @(cmn-events/current-db-disable-edit)
+                        :onPress (header-menu-action entry-list/move-entry-dialog-show-with-state entry-uuid parent-group-uuid)}]
+
         [rnp-menu-item {:title (lstr-ml "delete")
                         :disabled  @(cmn-events/current-db-disable-edit)
                         :onPress (header-menu-action cc/show-entry-delete-confirm-dialog entry-uuid)}]]))])
@@ -353,6 +361,10 @@
        [rnp-appbar-back-action {:color @background-color
                                 :onPress rs-events/remote-storage-listing-previous}]
 
+       (= page MERGE_DATABASE_PAGE_ID)
+       [rnp-appbar-back-action {:color @background-color
+                                :onPress merging-events/merge-database-back-action}]
+
        (u/contains-val? back-button-pages page)
        [rnp-appbar-back-action {:color @background-color
                                 :onPress cmn-events/to-previous-page}])
@@ -454,7 +466,7 @@
 
     (= page APP_LOCK_SETTINGS_PAGE_ID)
     [app-lock-settings/content]
-    
+
     (= page MERGE_DATABASE_PAGE_ID)
     [merging/main-content]
 

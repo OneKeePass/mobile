@@ -398,6 +398,7 @@
         "lockdb": "Lock Database",
         "mergeDatabases":"Merge databases",
         "modifyCustomField": "Modify Custom Field",
+        "move": "Move",
         "modifiedTime": "Modified Time",
         "privacyPolicy": "Privacy Policy",
         "pwdGenerator": "Password Generator",

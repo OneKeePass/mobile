@@ -535,10 +535,12 @@
     found
     (opndb-events/set-opened-database-active db-file-path)
 
-    #_(not (show-file-reference-use-dlg? location)) ;; use dev time
+    ;; (not (show-file-reference-use-dlg? location)) ;; use dev time
+    ;; Checks whether location is from one of the Cloud apps based storage and show the warning
     (show-file-reference-use-dlg? location)
     (dlg-events/before-storage-selection-info-dialog-show-with-state {:recently-used recently-used})
 
+    ;; Local or Sftp or Webdav storage
     :else
     (opndb-events/open-selected-database file-name db-file-path)))
 
@@ -614,7 +616,7 @@
                    :onPress (fn []
                               (start-page-storage-selection-dialog-show BROWSE-TYPE-DB-OPEN)
                               ;; This reset call is to ensure we handle the usual db opening and not for merging
-                              (opndb-events/reset-new-merging-source-db-wanted))}
+                              #_(opndb-events/reset-new-merging-source-db-wanted))}
        (lstr-bl "opendb")]]
 
      [rn-view {:style {:margin-top 20}}

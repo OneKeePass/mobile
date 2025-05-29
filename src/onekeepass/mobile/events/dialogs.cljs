@@ -121,6 +121,16 @@
 
 (defn-generic-dialog-subs-events :merge-result-dialog [[data nil]])
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   merge-result-dialog   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn-generic-dialog-disp-events :move-group-or-entry-dialog  [[close nil]
+                                                               [show-with-state state-m]
+                                                               [update-with-map state-m]])
+
+;; a subscribe event wrapper
+(defn-generic-dialog-subs-events :move-group-or-entry-dialog [[data nil]])
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- init-dialog-map
@@ -183,9 +193,10 @@
 ;; if the arg 'state' has key ':dialog-show true', then the dialog will be shown
 (reg-event-fx
  :generic-dialog-update-with-map
- (fn [{:keys [db]} [_event-id dialog-identifier-kw state]]
-   (let [dialog-state (get-in db [dialog-identifier-kw])
+ (fn [{:keys [db]} [_event-id dialog-identifier-kw state]] 
+   (let [dialog-state (get-in db [dialog-identifier-kw]) 
          dialog-state (u/deep-merge dialog-state state)]
+     
      {:db (-> db (assoc dialog-identifier-kw dialog-state))})))
 
 ;; The event arg is a vec  - [kws-v value]

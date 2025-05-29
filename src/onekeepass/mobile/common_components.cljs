@@ -306,7 +306,9 @@
 (defn show-entry-delete-confirm-dialog [entry-uuid]
   (swap! entry-delete-confirm-dialog-data assoc :dialog-show true :entry-uuid entry-uuid))
 
-(defn entry-delete-confirm-dialog [call-on-ok-fn]
+(defn entry-delete-confirm-dialog 
+  "The arg 'call-on-ok-fn' is called after user's confirmation"
+  [call-on-ok-fn]
   (let [{:keys [dialog-show entry-uuid]} @entry-delete-confirm-dialog-data]
     ;; title, confirm-text, label etc are to be translated before calling 'confirm-dialog'
     [confirm-dialog {:dialog-show dialog-show
