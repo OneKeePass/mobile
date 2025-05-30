@@ -40,7 +40,7 @@
                   :right (fn [_props] (r/as-element
                                        [rnp-text {:variant "titleMedium"} items-count]))}])
 
-(defn merge-result-content [merge-result]
+(defn merge-result-content [merge-result] 
   (let [{:keys [added-entries
                 updated-entries
                 added-groups
@@ -190,7 +190,6 @@
          [rnp-text {:style {:margin-top 3 :margin-bottom 3 :textAlign "justify"}} "Select one of the following opened databases as a source database"]]
 
         [opened-dbs-list-content dbs]])]))
-
 
 (defn main-content []
   [rn-safe-area-view {:style {:flex 1 :background-color @rnc/page-background-color}}

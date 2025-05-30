@@ -13,8 +13,8 @@
 (defn merging-databases-page []
   (dispatch [:merging-databases-page]))
 
-(defn merge-database-back-action [] 
-  ;; IMPORTANT: This flag should be reset for normal open db dialog to work
+(defn merge-database-back-action []
+  ;; IMPORTANT: This flag should be reset ( i.e false) for normal open db dialog to work
   (dispatch [:open-database/new-merging-source-db-wanted false])
   (dispatch [:common/previous-page]))
 
@@ -83,19 +83,22 @@
  (fn [[target-db-key source-db-key]]
    (bg-merging/merge-databases target-db-key
                                source-db-key
-                               (fn [api-response]
-                                 (when-some [merge-result (on-ok api-response)]
+                               (fn [api-response] 
+                                 (when-some [{:keys [merge-done] :as merge-result} (on-ok api-response)]
                                    ;; IMPORTANT: This flag should be reset for normal open db dialog to work. Otherwise merging handler is called which we do not want to happen
                                    (dispatch [:open-database/new-merging-source-db-wanted false])
-                                   (dispatch [:merge-databases-save merge-result]))))))
+                                   (if merge-done
+                                     (dispatch [:merge-databases-save merge-result])
+                                     (dispatch [:merge-databases-completed merge-result])))))))
 
 ;; Merged target database is saved. In mobile, we always save after any db content changes
 (reg-event-fx
  :merge-databases-save
- (fn [{:keys [_db]} [_event-id merge-result]]
+ (fn [{:keys [_db]} [_event-id merge-result]] 
    {:fx [[:dispatch [:save/save-current-kdbx
                      {:error-title "Save after databases merging"
                       :save-message "Merging and saving..."
+                      :merge-save-called true
                       :on-save-ok (fn []
                                     (dispatch [:merge-databases-completed merge-result]))}]]]}))
 
@@ -103,10 +106,11 @@
  :merge-databases-completed
  (fn [{:keys [db]} [_event-id merge-result]]
    (let [kdbx-loaded (get-in db [:merging :kdbx-loaded])]
-     {:fx [[:dispatch [:common/refresh-forms]] 
+     {:fx [[:dispatch [:common/refresh-forms]]
            (when-not (nil? kdbx-loaded)
              ;; The opened db is closed as it is opened only as a merging source db
              [:common/bg-close-kdbx [(:db-key kdbx-loaded) #(on-error %)]])
+           [:dispatch [:common/message-modal-hide]]
            [:dispatch [:generic-dialog-show-with-state :merge-result-dialog {:data merge-result}]]]})))
 
 (reg-sub

@@ -72,6 +72,8 @@ npx-rn-ios:
 npx-rn-android:
     npx react-native run-android
 
+## npx react-native run-android --list-devices (to choose one of the listed emulators)
+## npx react-native run-android --device=  (did not work)
 
 # clj-nrepl:
 #     clj -A:nrepl  -M -m nrepl.cmdline --middleware '[ "cider.piggieback/wrap-cljs-repl"]'

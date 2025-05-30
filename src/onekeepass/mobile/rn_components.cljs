@@ -12,14 +12,13 @@
             ["react-native-safe-area-context" :as sa-context]
             ["react-native-vector-icons" :as vec-icons]
             ["react-native-vision-camera" :as rn-vision-camera]
-            
+
             [onekeepass.mobile.background :refer [is-iOS]]
-            [onekeepass.mobile.constants :refer [DEFAULT-SYSTEM-THEME]]
-            
+            [onekeepass.mobile.constants :as const :refer [DEFAULT-SYSTEM-THEME]]
+
             [react]
             [react-native :as rn]
-            [reagent.core :as r]
-            [onekeepass.mobile.constants :as const]))
+            [reagent.core :as r]))
 
 (set! *warn-on-infer* true)
 
@@ -41,12 +40,12 @@
 
 (def appearance ^js/RNAppearance rn/Appearance)
 
-(defn theme-to-use [prefered-theme] 
+(defn theme-to-use [prefered-theme]
   (let [theme (if (= prefered-theme DEFAULT-SYSTEM-THEME)
                 (do
                   (.setColorScheme appearance nil)
                   (.getColorScheme appearance))
-                prefered-theme)] 
+                prefered-theme)]
     theme))
 
 ;; At this moment, these are not used
@@ -140,7 +139,7 @@
 
 ;; In case of iOS, any dialog with text input will be hidden partially by the Virtual Keyboard popup 
 ;; Could not make the Dialog work with KeyboardAvoidingView as generally used for other cases
-;; It seems no support is vailable for this in react native paper 
+;; It seems no support is available for this in react native paper 
 ;; Finally the solution is based on https://github.com/callstack/react-native-paper/issues/2172
 
 ;; In Android, the overlapping of Keyboard over Dialog does not happen. We need to do 
@@ -238,22 +237,21 @@
     (reset! on-background-color (.-onBackground colors))
     (reset! tertiary-color (.-tertiary colors))
     (reset! outline-color (.-outline colors))
-    
+
     (reset! error-color (.-error colors))
     (reset! error-container-color (.-errorContainer colors))
     (reset! on-error-container-color (.-onErrorContainer colors))
-    
+
     (reset! inverse-onsurface-color (.-inverseOnSurface colors))
     (reset! surface-variant (.-surfaceVariant colors))
     (reset! outline-variant (.-outlineVariant colors))
-    
+
 
     (reset! custom-color0 (.-custom0 colors))
     (reset! custom-color0-ontainer (.-custom0Container colors))
-    
+
     (reset! custom-color1 (.-custom1 colors))
-    (reset! custom-color1-ontainer (.-custom1Container colors))
-    ))
+    (reset! custom-color1-ontainer (.-custom1Container colors))))
 
 (defn is-light-theme? []
   (= const/LIGHT-THEME @current-theme))
@@ -276,11 +274,11 @@
 ;; TODO: Need to add getting the language code from the backend - from the exported constants in 'okp-db-service' (yet to be added)
 
 #_(defn setup-i18n []
-  (let [device-language (.-Language ^js/OkpDbService (.-OkpDbService rn/NativeModules))
-        ;; device-language may be 'en' or 'es-US' ...
-        device-language (-> device-language (str/split #"-") first)]
-    ;; (println "Device language .." device-language)
-    (init-i18n device-language)))
+    (let [device-language (.-Language ^js/OkpDbService (.-OkpDbService rn/NativeModules))
+          ;; device-language may be 'en' or 'es-US' ...
+          device-language (-> device-language (str/split #"-") first)]
+      ;; (println "Device language .." device-language)
+      (init-i18n device-language)))
 
 ;; IMPORTANT: Needs to be called before set-translator in any component
 #_(setup-i18n)
@@ -288,21 +286,21 @@
 #_(def ^:private translator (atom nil)) ;; (Object.keys  @translator) => #js ["0" "1" "2" "t" "i18n" "ready"]
 
 #_(defn set-translator
-  " Needs to be called as hook in a functional react/reagent component"
-  []
-  ;; (println "set-translator is called")
-  (reset! translator (ri18n/useTranslation)))
+    " Needs to be called as hook in a functional react/reagent component"
+    []
+    ;; (println "set-translator is called")
+    (reset! translator (ri18n/useTranslation)))
 
 #_(defn lstr
-  "Called to get the language specific text based 
+    "Called to get the language specific text based 
    if any translation is available for the current active language
    IMPORTANT:
       This fn should be called only within a reagent component
    "
-  [s]
-  ;; translator should have been set before the first calling of this fn in any component
-  (t/lstr s)
-  #_((.-t ^js/Translator @translator) s))
+    [s]
+    ;; translator should have been set before the first calling of this fn in any component
+    (t/lstr s)
+    #_((.-t ^js/Translator @translator) s))
 
 
 ;; Additional colors that are specifc to MD3/MD2 

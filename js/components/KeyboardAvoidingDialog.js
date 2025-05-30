@@ -14,6 +14,26 @@ const KeyboardAvoidingDialog = props => {
       //else setBottom(0);
     }
 
+    // This may also work if do not want to use iOS check in rn_components
+    // function onKeyboardChange(e) {
+    //   if (Platform.OS === 'ios') {
+    //     if (
+    //       e?.startCoordinates &&
+    //       e.endCoordinates.screenY < e.startCoordinates.screenY
+    //     ) {
+    //       setBottom(e.endCoordinates.height / 2);
+    //     } else {
+    //       setBottom(0);
+    //     }
+    //   } else {
+    //     if (e?.endCoordinates?.height) {
+    //       setBottom(e.endCoordinates.height / 2);
+    //     } else {
+    //       setBottom(0);
+    //     }
+    //   }
+    // }
+
     function onHide(e) {
       //console.log(e);
       setBottom(0);
@@ -38,7 +58,7 @@ const KeyboardAvoidingDialog = props => {
 
   return (
     <Dialog
-      style={{bottom: bottom}}
+      style={{ bottom: bottom }}
       visible={props.visible}
       onDismiss={props.onDismiss}>
       {props.children}
@@ -74,7 +94,7 @@ export const KeyboardAvoidingModal = props => {
 
   return (
     <Modal
-      style={{bottom: bottom}}
+      style={{ bottom: bottom }}
       visible={props.visible}
       onDismiss={props.onDismiss}
       contentContainerStyle={props.contentContainerStyle}>

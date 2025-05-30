@@ -99,7 +99,7 @@ android {
             reset()
             enable true
             universalApk false
-            include "armeabi-v7a", "arm64-v8a"
+            include  "arm64-v8a"
         }
     }
     // This ensures that './gradlew build' works even if lint check failed
