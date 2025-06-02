@@ -627,7 +627,7 @@
 
 (defn open-page-content []
   [rn-safe-area-view {:style {:flex 1 :background-color @rnc/page-background-color}}
-
+   
    [:f> main-content]
 
    ;; This absolutely position view works in both android and iOS

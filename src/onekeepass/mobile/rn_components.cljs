@@ -142,13 +142,20 @@
 ;; It seems no support is available for this in react native paper 
 ;; Finally the solution is based on https://github.com/callstack/react-native-paper/issues/2172
 
+;;;;;;;;;;  This no more works for android - See comments below  ;;;;;;;;;;;;
 ;; In Android, the overlapping of Keyboard over Dialog does not happen. We need to do 
 ;; add android:windowSoftInputMode="adjustResize" in ' AndroidManifest.xml' for this
 
-(def cust-dialog
-  (if (is-iOS)
-    (r/adapt-react-class (.-default ^js/CustD (js/require "../js/components/KeyboardAvoidingDialog.js")))
-    rnp-dialog))
+#_(def cust-dialog
+    (if (is-iOS)
+      (r/adapt-react-class (.-default ^js/CustD (js/require "../js/components/KeyboardAvoidingDialog.js")))
+      rnp-dialog))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; After Android 'compileSdkVersion = 35 introduction
+;; Also see comments in js/components/KeyboardAvoidingDialog.js
+(def cust-dialog (r/adapt-react-class (.-default ^js/CustD (js/require "../js/components/KeyboardAvoidingDialog.js"))))
 
 ;; All react native paper customizations
 (def rnp-customization ^js/RNPC (js/require "../js/components/RNPCustomization.js"))

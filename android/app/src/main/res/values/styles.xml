@@ -1,7 +1,10 @@
 <resources>
 
     <!-- Base application theme. -->
-    <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
+    <!-- Added package react-native-edge-to-edge to meet Android 15 and above requirement of edge-to-edge support -->
+    <!-- As per that package recommendation, changed from Theme.AppCompat.DayNight.NoActionBar to Theme.EdgeToEdge -->
+     <!-- Also see comments in js/components/KeyboardAvoidingDialog.js -->
+    <style name="AppTheme" parent="Theme.EdgeToEdge">
         <!-- Customize your theme here. -->
         <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
     </style>

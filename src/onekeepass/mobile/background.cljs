@@ -864,6 +864,8 @@
 
   (in-ns 'onekeepass.mobile.background)
 
+  (.getConstants okp-db-service)
+
   (android-invoke-api "test_call" {} #(println %))
 
   (re-frame.core/dispatch [:common/update-page-info {:page :home :title "Welcome"}])

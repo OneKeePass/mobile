@@ -406,6 +406,7 @@
           selected-category-key @(elist-events/selected-category-key)
           selected-category-detail @(elist-events/selected-category-detail)
           sort-criteria @(elist-events/entry-list-sort-criteria)]
+      
       [rn-view {:style {:width "100%"
                         ;; Need to use the same background-color as the entry list content to make it opaque
                         :background-color @page-background-color
@@ -414,16 +415,18 @@
                         :borderTopWidth 1
                         :borderTopColor  @rnc/outline-variant
                         :min-height 50
-
+                        
                         ;;:position "absolute"
-
+                        
                         ;; In adndroid when we use absolute position, this bottom bar hides
                         ;; the entries list content - particularly when the list has more entries
                         ;; and even using the scroll does not work and it scrolls behind this component 
-
+                        
                         ;; Not using absolute position works for both android in iOS
-
-                        :bottom (if (is-Android) (:bottom insets) 0)}}
+                        
+                        ;; After Android 'compileSdkVersion = 35 introduction, adding insets hides the entries list content
+                        ;; Also see comments in js/components/KeyboardAvoidingDialog.js
+                        :bottom 0 #_(if (is-Android) (:bottom insets) 0)}}
 
        [rn-view {:flexDirection "row" :justifyContent "space-between"}
         [rn-view {:align-items "center"}
