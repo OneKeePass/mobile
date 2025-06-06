@@ -5,16 +5,19 @@ alias bca := build-android-lib-cp-src
 alias bca-r := build-android-lib-cp-src-release 
 
 #alias gs := generate-swift
+
+## iOS Simulator build
 alias bcis := cp-ios-ffi-sim-debug-lib-src
+
+## iOS Device debug build
 alias bcid := cp-ios-ffi-device-debug-lib-src
+
 ## iOS release
 alias bcid-r := cp-ios-ffi-device-release-lib-src
-
 
 udl_src := "./src/db_service.udl"
 swift-src-dir := "./target/swift"
 kotlin-src-dir := "./target/kotlin"
-
 
 ## cargo install uniffi_bindgen 
 ## installed already and version 0.20.0 should match that is used in Cargo.toml)
@@ -140,9 +143,18 @@ android-db-service-src-dir  := "../android/app/src/main/java"
 android-db-service-lib-dir  := "../android/app/src/main"
 android-lib-output-dir := "target/jniLibs"
 
-# ndk_botan_build_home := env_var('ANDROID_NDK_HOME') + "/../26.1.10909125"
-## 26.1.10909125 is the latest ndk version used after RN 0.74.5 upgrade
-ndk_botan_build_home := env_var('ANDROID_NDK_HOME')
+## env ANDROID_NDK_HOME is not used for ndk path
+
+## Using 27.1.12297006, compile step goes through (need to comment out "export BOTAN_CONFIGURE_CC_ABI_FLAGS='-arch arm64'" to compile), 
+## but linking failed. So continued using ndk 26.1.10909125 for now
+
+## 26.1.10909125 (ndk version used with RN 0.74.5)
+
+## Ref https://developer.android.com/ndk/guides/other_build_systems
+## Also see "Botan notes" below 
+
+ndk_version := "26.1.10909125"
+ndk_botan_build_home :=env_var('HOME')+"/Library/Android/sdk/ndk/" + ndk_version
 ndk_ar := ndk_botan_build_home + "/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ar"
 ndk_cxx := ndk_botan_build_home + "/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android31-clang++"
 
@@ -151,9 +163,6 @@ ndk_cxx := ndk_botan_build_home + "/toolchains/llvm/prebuilt/darwin-x86_64/bin/a
 ## and use that instead of cargo build directly for this target
 ## See https://github.com/bbqsrc/cargo-ndk
 ## 'cargo ndk --version' prints 'cargo-ndk 3.5.6'
-## ANDROID_NDK_HOME environment variable should be set to the same version of NDK version used in 
-## ".... android/build.gradle" 
-
 
 # This uses only the udl file
 # generate-kotlin:
@@ -179,7 +188,7 @@ build-android-lib-aarch64 release="":
     #!/usr/bin/env bash
     set -euxo pipefail
     export BOTAN_CONFIGURE_OS='android'
-    export BOTAN_CONFIGURE_CC_ABI_FLAGS='-arch arm64'
+    ## export BOTAN_CONFIGURE_CC_ABI_FLAGS='-arch arm64'
     export BOTAN_CONFIGURE_CC='clang'
     export BOTAN_CONFIGURE_CPU='arm64'
     export BOTAN_CONFIGURE_DISABLE_MODULES='tls,pkcs11,sodium,filters'
@@ -192,7 +201,7 @@ build-android-lib-aarch64 release="":
 
 build-android-lib-all release="":
     just build-android-lib-aarch64 {{release}}
-    cargo ndk -t armv7-linux-androideabi -o ./target/jniLibs build {{ if release == "true" {"--release" } else {""}  }} 
+    ## cargo ndk -t armv7-linux-androideabi -o ./target/jniLibs build {{ if release == "true" {"--release" } else {""}  }} 
 
 ## Dev time used 
 ## Call 'just bca' 
@@ -201,9 +210,7 @@ build-android-lib-cp-src release="":(build-android-lib-all release) generate-kot
     cp -R {{kotlin-src-dir}}/ {{android-db-service-src-dir}}
     cp -R {{android-lib-output-dir}} {{android-db-service-lib-dir}}
 
-
 build-android-lib-cp-src-release:(build-android-lib-cp-src "true")
-
 
 test-env:
     #!/usr/bin/env bash

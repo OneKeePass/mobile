@@ -39,6 +39,8 @@ OneKeePass is also available for **Windows, macOS and Linux desktops** can be do
 - Linked/Child Databases Opening feature
 - Diceware Passphrase generator
 - App protection with PIN locking
+- Merging of databases
+- Moving an entry or a group from one group to another
 
 
 

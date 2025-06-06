@@ -452,14 +452,14 @@ impl Preference {
         &self.app_lock_preference
     }
 
-    pub fn get_recently_used(&self, db_key: &str) -> Option<RecentlyUsed> {
+    pub(crate) fn get_recently_used(&self, db_key: &str) -> Option<RecentlyUsed> {
         self.recent_dbs_info
             .iter()
             .find(|r| r.db_file_path == db_key)
             .map(|r| RecentlyUsed { ..r.clone() })
     }
 
-    pub fn file_name_in_recently_used(&self, db_key: &str) -> Option<String> {
+    pub(crate) fn file_name_in_recently_used(&self, db_key: &str) -> Option<String> {
         self.find_db_info(db_key).map(|r| r.file_name.clone())
     }
 

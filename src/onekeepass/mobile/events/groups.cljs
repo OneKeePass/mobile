@@ -320,9 +320,10 @@
          ;; Need to exlude the recycle bin group showing 
          children-group-uuids (filterv (fn [gid] (not= gid recycle-bin-uuid)) group-uuids)
          summaries (reduce (fn [acc id]
-                             (let [{:keys [name uuid icon-id entry-uuids group-uuids]} (get groups id)]
+                             (let [{:keys [name uuid icon-id entry-uuids group-uuids parent-group-uuid]} (get groups id)]
                                (conj acc {:title name
                                           :uuid uuid
+                                          :parent-group-uuid parent-group-uuid
                                           :icon-id icon-id
                                           :groups-count (count group-uuids)
                                           :entries-count (count entry-uuids)}))) [] children-group-uuids)]

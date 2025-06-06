@@ -60,6 +60,8 @@ ios-ext-clj-build type="simple" :
 
 alias rns := npx-rn-start
 alias rni := npx-rn-ios
+
+alias rna-s := npx-rn-android-select
 alias rna := npx-rn-android
 
 npx-rn-start:
@@ -72,6 +74,12 @@ npx-rn-ios:
 npx-rn-android:
     npx react-native run-android
 
+## npx react-native run-android --list-devices (to choose one of the listed emulators)
+npx-rn-android-select:
+    npx react-native run-android --list-devices 
+
+
+## npx react-native run-android --device=  (did not work)
 
 # clj-nrepl:
 #     clj -A:nrepl  -M -m nrepl.cmdline --middleware '[ "cider.piggieback/wrap-cljs-repl"]'

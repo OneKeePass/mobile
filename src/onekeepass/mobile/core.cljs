@@ -1,6 +1,6 @@
 (ns onekeepass.mobile.core
   (:require ;; When we build iOS production main bundle, we can comment out this ns
- ;; and this will ensure that all android autofill related code are excluded
+   ;; and this will ensure that all android autofill related code are excluded
    [onekeepass.mobile.android.autofill.core :as android-core] ;;;;;;; ;;;;;;; ;;;;;;; ;;;;;;;
    [onekeepass.mobile.appbar :refer [appbar-main-content
                                      hardware-back-pressed]]
@@ -53,7 +53,6 @@
           ;; even when 'app-theme' from our app settings is 'system'
           _theme-name1 (use-color-scheme)
           theme-name (rnc/theme-to-use @(app-theme))]
-
       ;;(println "theme-name1 is " theme-name1)
 
       ;; displays the current time, Wi-Fi and cellular network information, battery level
@@ -73,10 +72,10 @@
       (react-use-effect
        (fn []
          (bg/hide-splash #())
-          ;; cleanup fn is returned which is called when this component unmounts
+         ;; cleanup fn is returned which is called when this component unmounts
          (fn []))
 
-      ;; Need to pass the list of all reactive values referenced inside of the setup code or empty list
+       ;; Need to pass the list of all reactive values referenced inside of the setup code or empty list
        (clj->js []))
 
       (when (bg/is-Android)
@@ -114,10 +113,6 @@
 #_(defn ^:export -main
     [_args]
 
-  ;; (native-events/register-backend-event-handlers)
-  ;; (cmn-events/sync-initialize)
-  ;; (as-events/init-session-timeout-tick)
-  ;; (t/load-language-translation)
     (init-calls)
     (r/as-element [app-root]))
 

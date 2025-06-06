@@ -1,7 +1,6 @@
 (ns onekeepass.mobile.background-remote-server
   (:require
-   [onekeepass.mobile.background-common :refer [invoke-api
-                                                new-db-request-argon2key-transformer]]
+   [onekeepass.mobile.background-common :refer [invoke-api]]
    [onekeepass.mobile.constants :as const]))
 
 (set! *warn-on-infer* true)
@@ -81,8 +80,8 @@
    The connection-id, file path etc are parsed using the field new_db.database_file_name 
    which has the formed 'db-key'
    "
-  [new-db dispatch-fn] 
-  (invoke-api "rs_create_kdbx" {:new_db (new-db-request-argon2key-transformer new-db)} dispatch-fn :convert-request false))
+  [new-db dispatch-fn]
+  (invoke-api "rs_create_kdbx" {:new-db new-db} dispatch-fn))
 
 ;; This is mainly to load the content of root dir using the connection-id
 #_(defn list-dir
@@ -103,7 +102,7 @@
 (comment
   (require '[cljs.pprint]) ;;https://cljs.github.io/api/cljs.pprint/
   (cljs.pprint/pprint someobject)
-    ;; daf114d0-a518-4e13-b75b-fbe893e69a9d 8bd81fe1-f786-46c3-b0e4-d215f8247a10
+  ;; daf114d0-a518-4e13-b75b-fbe893e69a9d 8bd81fe1-f786-46c3-b0e4-d215f8247a10
   ;; onekeepass.mobile.constants
   (def UUID-DEFAULT "00000000-0000-0000-0000-000000000000")
 

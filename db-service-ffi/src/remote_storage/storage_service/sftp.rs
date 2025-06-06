@@ -225,7 +225,7 @@ impl client::Handler for Client {
 
     async fn check_server_key(
         &mut self,
-        server_public_key: &key::PublicKey,
+        server_public_key: &ssh_key::public::PublicKey,
     ) -> std::result::Result<bool, Self::Error> {
         info!("check_server_key: {:?}", server_public_key);
         Ok(true)
@@ -422,7 +422,7 @@ impl SftpConnection {
             let key = load_secret_key(full_file_path, password.as_ref().map(|x| x.as_str()))
                 .map_err(convert_russh_keys_error)?;
             client_handle
-                .authenticate_publickey(user_name, Arc::new(key))
+                .authenticate_publickey(user_name, key::PrivateKeyWithHashAlg::new(Arc::new(key),Some(HashAlg::Sha256))?)
                 .await
                 .map_err(convert_error)?
         } else if let Some(pwd) = password {

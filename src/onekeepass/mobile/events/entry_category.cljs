@@ -38,7 +38,7 @@
 
 (defn load-selected-category-entry-items
   "Called to load entry summary list for certain category sections"
-  [category-detail-m category-section-title]
+  [category-detail-m category-section-title] 
   (dispatch [:load-selected-category-entry-items category-detail-m category-section-title]))
 
 (defn find-group-by-id

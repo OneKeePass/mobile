@@ -320,6 +320,6 @@
    [fab-action-menu @fab-action-menu-data @(ecat-events/root-group)]
    [category-long-press-menu @category-long-press-menu-data]
    [group-by-menu @group-by-menu-data]
-   [rnp-fab {:style {:position "absolute" :margin 16 :right 0 :bottom 0}
+   [rnp-fab {:style {:position "absolute" :margin 16 :right 0 :bottom (rnc/get-inset-bottom)}
              :disabled @(cmn-events/current-db-disable-edit)
              :icon ICON-PLUS :onPress (fn [e] (show-fab-action-menu e))}]])

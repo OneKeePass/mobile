@@ -85,7 +85,7 @@
 
 
 
-;; This is used when user unlock the previously openned locked database
+;; This is used when user unlock the previously opened and locked database
 ;; See 'db-opened' fn in 'onekeepass.mobile.events.common' where  'user-action-time'
 ;; is set when the db is opened first time
 (reg-event-fx

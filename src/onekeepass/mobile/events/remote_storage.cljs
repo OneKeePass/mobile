@@ -371,13 +371,14 @@
    (bg-rs/list-sub-dir kw-type connection-id parent-dir sub-dir
                        (fn [api-response]
                          (when-let [dir-entries (on-ok api-response)]
-                               ;; Need to form a map equivalent to struct ConnectedStatus
-                               ;; as used in 'bg-rs-connect-and-retrieve-root-dir'
+                           ;; Need to form a map equivalent to struct ConnectedStatus
+                           ;; as used in 'bg-rs-connect-and-retrieve-root-dir'
                            (dispatch [:remote-storage-dir-listing-loaded
                                       kw-type
                                       {:connection-id connection-id
                                        :dir-entries dir-entries}]))))))
 
+;; By this time, the user would have picked the kdbx file 
 (reg-event-fx
  :remote-storage-file-picked
  (fn fn [{:keys [db]} [_query-id connection-id parent-dir file-name]]

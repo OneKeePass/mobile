@@ -46,7 +46,7 @@ If you want to update or to change an OTP field, the existing field needs to be 
 </h1>
 </details>
 
-## How to fill username and passwords automatically ?
+## How to fill username and passwords automatically to login to an app?
 
 OneKeePass now supports the **Autofill** feature in both iOS and Android. 
 
@@ -76,15 +76,20 @@ Entries are organized so that you can view them as Entry types or Categories or 
 ## What are the entry categories ?
 It is just the flattened list of keepass groups instead of a tree/folder like structure
 
-
 ## What is an entry type?
 Each entry type is a template that has certain set of fields. For example *Login* entry type include fields like username, password, url etc.
 OneKeePass supports some built-in standard entry types: Login, Credit/Debit Card, Bank Account and Wireless Router.
 More standard entry types will be added. 
 
+## How to do merging of two databases?
 
-## Can I create custom entry type?
-Mobile version does not yet support this. It will be implemented soon.
+After opening a database, you can use the application menu "Merge Database" 
+
+Then choose any of a valid keepass database file to merge with the currently opened file. The merged database will be saved immediately.
+
+Please keep a backup copy of the database before merging into that database
+
+
 
 
 
