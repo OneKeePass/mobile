@@ -1,8 +1,8 @@
 (ns onekeepass.mobile.events.move-delete
-  (:require 
+  (:require
    [onekeepass.mobile.events.common :refer [active-db-key
                                             assoc-in-key-db
-                                            get-in-key-db 
+                                            get-in-key-db
                                             on-error]]
    [re-frame.core :refer [reg-event-db
                           reg-event-fx
@@ -43,9 +43,9 @@
    (let [from-entry-form? (get-in-key-db db [:entry-delete :from-entry-form])]
      {:db (-> db (assoc-in-key-db  [:entry-delete :status] :completed)
               (assoc-in-key-db  [:entry-delete :from-entry-form] false))
-    ;; calls to refresh entry list and category  
+      ;; calls to refresh entry list and category  
       :fx [[:dispatch [:save/save-current-kdbx {:error-title "Save entry delete"
-                                                  :save-message "Delete and Saving...."}]]
+                                                :save-message "Delete and Saving...."}]]
            [:dispatch [:common/refresh-forms]]
            (when from-entry-form?
              ;; Need to close the entry-form as delete is called from the forms's menu
@@ -81,14 +81,14 @@
    (let [from-group-page (get-in-key-db db [:group-delete :from-group-page])]
      {:db (-> db (assoc-in-key-db  [:group-delete :from-group-page] false))
       :fx [[:dispatch [:save/save-current-kdbx {:error-title "Save group delete"
-                                                  :save-message "Delete and Saving...."
-                                                  :on-save-ok (fn []
-                                                                (dispatch [:common/refresh-forms])
-                                                                (dispatch [:common/message-snackbar-open 'groupOrCatDeleted])
-                                                                (when from-group-page
-                                                                  ;; Need to go back to the previous page as group delete 
-                                                                  ;; is called from the group's header menu
-                                                                  (dispatch [:common/previous-page])))}]]]})))
+                                                :save-message "Delete and Saving...."
+                                                :on-save-ok (fn []
+                                                              (dispatch [:common/refresh-forms])
+                                                              (dispatch [:common/message-snackbar-open 'groupOrCatDeleted])
+                                                              (when from-group-page
+                                                                ;; Need to go back to the previous page as group delete 
+                                                                ;; is called from the group's header menu
+                                                                (dispatch [:common/previous-page])))}]]]})))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;; Put Back ;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -164,7 +164,7 @@
  (fn [{:keys [db]} [_event-id]]
    {:db (-> db init-put-back-dialog-data)
     :fx [[:dispatch [:save/save-current-kdbx {:error-title "Put back and save"
-                                                :save-message "Moved entry and Saving...."}]]
+                                              :save-message "Moved entry and Saving...."}]]
          [:dispatch [:common/refresh-forms]]]}))
 
 (reg-sub
@@ -206,7 +206,7 @@
  (fn [{:keys [db]} [_event-id]]
    {:db (-> db (assoc-in-key-db [:move-delete :delete-permanent-dialog-data]  {:dialog-show false :uuid nil}))
     :fx [[:dispatch [:save/save-current-kdbx {:error-title "Permanet delete"
-                                                :save-message "Entry deleted permanently and Saving...."}]]
+                                              :save-message "Entry deleted permanently and Saving...."}]]
          [:dispatch [:common/refresh-forms]]]}))
 
 (reg-fx
@@ -242,9 +242,41 @@
  :delete-all-entries-completed
  (fn [{:keys [_db]} [_event-id]]
    {:fx [[:dispatch [:save/save-current-kdbx {:error-title "Save after deleting all entries"
-                                                :save-message "Deleted permanently and Saving" 
-                                                :on-save-ok (fn []
-                                                              (dispatch [:common/refresh-forms])
-                                                              (dispatch [:common/message-snackbar-open 'entriesDeletedPermanently])
-                                                              (dispatch [:common/previous-page]))}]]]}))
+                                              :save-message "Deleted permanently and Saving"
+                                              :on-save-ok (fn []
+                                                            (dispatch [:common/refresh-forms])
+                                                            (dispatch [:common/message-snackbar-open 'entriesDeletedPermanently])
+                                                            (dispatch [:common/previous-page]))}]]]}))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Uses generic dialogs based features. 
+
+(defn move-entry-or-group
+  "The arg id is either entry uuid or group uuid"
+  [kind-kw id group-selection-info] 
+  (dispatch [:move-entry-or-group kind-kw id group-selection-info]))
+
+(reg-event-fx
+ :move-entry-or-group
+ (fn [{:keys [db]} [_event-id kind-kw id group-selection-info]]
+   (let [error-fields (if (nil? group-selection-info) {:parent-group-selection-error "Valid parent group selection is required"} {})] 
+     (if-not (empty? error-fields)
+       {:fx [[:dispatch [:generic-dialog-update-with-map :move-group-or-entry-dialog {:error-fields error-fields}]]]}
+       {:fx [[:bg-move-entry-or-group [(active-db-key db) kind-kw id (:uuid group-selection-info)]]]}))))
+
+(defn- call-on-move-complete [kind-kw api-response]
+  (when-not (on-error api-response)
+    ;; Ensure that the dialog is closed
+    (dispatch [:generic-dialog-close :move-group-or-entry-dialog])
+    (dispatch [:common/message-snackbar-open (str (if (= kind-kw :group) "Group" "Entry") " is moved")])
+    (dispatch [:common/refresh-forms])))
+
+;; Called to move a group or an entry from one parent group to another parent group
+(reg-fx
+ :bg-move-entry-or-group
+ (fn [[db-key kind-kw id parent-group-uuid]]
+   (if (= kind-kw :group)
+     (bg/move-group db-key id parent-group-uuid #(call-on-move-complete kind-kw %))
+     (bg/move-entry db-key id parent-group-uuid #(call-on-move-complete kind-kw %)))))
 

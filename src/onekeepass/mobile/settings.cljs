@@ -60,7 +60,7 @@
        [rnp-button {:style {}
                     :textColor @appbar-text-color
                     :mode "text"
-                    :onPress cancel-db-settings-form} (lstr-bl "cancel") ]
+                    :onPress cancel-db-settings-form} (lstr-bl "cancel")]
        [rnp-text {:style {:color @appbar-text-color
                           :max-width "60%"
                           :margin-right 0 :margin-left 0}
@@ -199,32 +199,34 @@
    [rnp-portal
     [master-password-change-confirm-dialog]]])
 
-(def encryption-algorithms [{:key "AES 256" :label "Aes256"} {:key "ChaCha20 256" :label "ChaCha20"}])
+(def encryption-algorithms [{:key "Aes256" :label "AES 256"} {:key "ChaCha20" :label "ChaCha20 256"}])
+
+(def kdf-algorithms [{:key "Argon2d" :label  "Argon 2d (KDBX 4)"} {:key "Argon2id" :label "Argon 2id (KDBX 4)"}])
 
 (defn security-content []
   (let [{:keys [cipher-id]
-         {:keys [Argon2]} :kdf} @(stgs-events/db-settings-data)
-        {:keys [memory iterations parallelism]} Argon2
-        errors @(stgs-events/db-settings-validation-errors)]
-
+         {:keys [memory iterations parallelism algorithm]} :kdf} @(stgs-events/db-settings-data)
+        errors @(stgs-events/db-settings-validation-errors)] 
     [rn-view {:flex 1 :backgroundColor @page-background-color}  ;;
      [form-header (lstr-l 'security)]
      [rn-view {:style form-style}
       [select-field {:text-label (lstr-l 'encriptionAlgorithm)
                      :options encryption-algorithms
-                     :value cipher-id
-                     :on-change (fn [option]
-                                  (stgs-events/db-settings-data-field-update :cipher-id (.-label option)))}]]
+                     :value (cc/find-matching-label encryption-algorithms cipher-id) 
+                     :on-change (fn [option] 
+                                  (stgs-events/db-settings-data-field-update :cipher-id (.-key option)))}]]
      [rn-view {:style form-style}
-      [rnp-text-input {:style {}
-                       :editable false
-                       :label (lstr-l 'kdf)
-                       :value "Argon 2d"}]
+      [select-field {:text-label (lstr-l 'kdf)
+                     :options kdf-algorithms
+                     :value (cc/find-matching-label kdf-algorithms algorithm)  
+                     :on-change (fn [option-selected]
+                                  (stgs-events/db-settings-kdf-algorithm-select (.-key option-selected)))}]
+
       [rnp-text-input {:style {}
                        :label (lstr-l 'transformRounds)
                        :keyboardType "numeric"
                        :value (str iterations)
-                       :onChangeText #(stgs-events/db-settings-data-field-update [:kdf :Argon2 :iterations] (str->int %))}]
+                       :onChangeText #(stgs-events/db-settings-data-field-update [:kdf :iterations] (str->int %))}]
       (when-not (nil? (:iterations errors))
         [rnp-helper-text {:type "error" :visible true} (:iterations errors)])
 
@@ -232,7 +234,7 @@
                        :label (lstr-l 'memoryUsage)
                        :keyboardType "numeric"
                        :value (str memory)
-                       :onChangeText #(stgs-events/db-settings-data-field-update [:kdf :Argon2 :memory] (str->int %))}]
+                       :onChangeText #(stgs-events/db-settings-data-field-update [:kdf :memory] (str->int %))}]
       (when-not (nil? (:memory errors))
         [rnp-helper-text {:type "error" :visible true} (:memory errors)])
 
@@ -240,7 +242,7 @@
                        :label (lstr-l 'parallelism)
                        :keyboardType "numeric"
                        :value (str parallelism)
-                       :onChangeText #(stgs-events/db-settings-data-field-update [:kdf :Argon2 :parallelism] (str->int %))}]
+                       :onChangeText #(stgs-events/db-settings-data-field-update [:kdf :parallelism] (str->int %))}]
       (when-not (nil? (:parallelism errors))
         [rnp-helper-text {:type "error" :visible true} (:parallelism errors)])]]))
 
@@ -266,7 +268,7 @@
   [rn-view {:style {:margin-top 1 :margin-bottom 15} :flexDirection "row" :flexWrap "wrap"}
    [rnp-text {:style {:margin-left 15}}
     (lstr-mt 'settings 'additionalDbAccessExplain {:biometricType (if (is-iOS)
-                                                                    (lstr-l 'faceId)  
+                                                                    (lstr-l 'faceId)
                                                                     (lstr-l 'faceUnlockFingerprint))
                                                    ;;:interpolation {:escapeValue false}
                                                    })]])
@@ -275,15 +277,15 @@
   (fn [{:keys [title page-id]} section-key]
     ;; page-id is string and need to be convereted to a keyword to get the settings panel id
     ;; title is a key to i18n map
-    [rn-view {:style {}} 
+    [rn-view {:style {}}
      [rnp-list-item {:style {}
                      :contentStyle {}
                      :onPress (fn []
                                 (cond
                                   (= section-key SECTION-KEY-DB-SETTINGS)
                                   (stgs-events/select-db-settings-panel (keyword page-id))
-                                  
-                                  (= section-key SECTION-KEY-ADDITIONAL-DB-ACCESS) 
+
+                                  (= section-key SECTION-KEY-ADDITIONAL-DB-ACCESS)
                                   (ada-events/to-additional-db-acess-settings-page)
 
                                   (and (= section-key SECTION-KEY-AUTOFILL) (is-iOS))

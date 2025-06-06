@@ -219,7 +219,7 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
         crate::ios::autofill_app_group::copy_files_to_app_group_on_save_or_read(&db_file_name);
     }
 
-    // Store the crdentials if we will be using biometric
+    // Store the credentials if we will be using biometric
     let _r = biometric_auth::StoredCredential::store_credentials_on_check(
         &db_file_name,
         &password,

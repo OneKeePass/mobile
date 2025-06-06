@@ -17,7 +17,7 @@
                                                                          is-field-exist
                                                                          extract-form-otp-fields
                                                                          entry-form-key Favorites
-                                                                         validate-entry-form-data]] 
+                                                                         validate-entry-form-data]]
    [clojure.string :as str]
    [onekeepass.mobile.utils :as u :refer [contains-val?]]
    [onekeepass.mobile.background :as bg]
@@ -78,6 +78,9 @@
 (defn entry-form-uuid []
   (subscribe [:entry-form-data-fields :uuid]))
 
+(defn entry-form-parent-group-uuid []
+  (subscribe [:entry-form-data-fields :group-uuid]))
+
 (defn entry-form
   "Returns an atom that has the map entry-form"
   []
@@ -133,7 +136,7 @@
 ;; Deprecate ?
 (reg-event-fx
  :entry-delete
- (fn [{:keys [db]} [_event-id]] 
+ (fn [{:keys [db]} [_event-id]]
    {:fx [[:dispatch [:move-delete/entry-delete-start (get-in-key-db db [entry-form-key :data :uuid]) true]]]}))
 
 (defn- on-entry-find [api-response]
@@ -201,7 +204,7 @@
    (fn [db [_event-id edit?]]
      (if edit?
        (-> db
-         ;;(assoc-in-key-db [entry-form-key :undo-data] (get-in-key-db db [entry-form-key :data]))
+           ;;(assoc-in-key-db [entry-form-key :undo-data] (get-in-key-db db [entry-form-key :data]))
            (assoc-in-key-db [entry-form-key :edit] edit?))
        (assoc-in-key-db db [entry-form-key :edit] edit?))))
 
@@ -325,8 +328,8 @@
    "
   [form-data]
   (let [error-fields (validate-entry-form-data form-data)
-         ;; We get all fields across all sections
-         ;; Need to use make a sequence of all KV maps
+        ;; We get all fields across all sections
+        ;; Need to use 'flatten' to get a sequence of all KV maps's vals
         kvds (flatten (vals (:section-fields form-data)))
         error-fields (validate-required-fields error-fields kvds)]
     error-fields))
@@ -422,7 +425,7 @@
     (let [section-fields-m (get-in-key-db
                             app-db
                             [entry-form-key :data :section-fields])
-        ;; fields is a vec of KVs for a given section
+          ;; fields is a vec of KVs for a given section
           fields (-> section-fields-m (get section-name []))
           fields (conj fields {:key field-name
                                :value nil
@@ -658,7 +661,7 @@
             :fx [[:dispatch [:common/message-snackbar-open 'newSectionCreated]]]}
            {:db (-> db (modify-section-name m)
                     (to-section-name-dialog-data :dialog-show false))
-            :fx [[:dispatch [:common/message-snackbar-open 'sectionNameChanged ]]]}))))))
+            :fx [[:dispatch [:common/message-snackbar-open 'sectionNameChanged]]]}))))))
 
 (reg-sub
  :section-name-dialog-data
@@ -804,7 +807,7 @@
               (assoc-in-key-db db [entry-form-key :undo-data] (get-in-key-db db [entry-form-key :data]))
               db)]
      {:fx [(if (= :new current-showing)
-             [:dispatch [:common/message-snackbar-open 'createdEntry ]]
+             [:dispatch [:common/message-snackbar-open 'createdEntry]]
              [:dispatch [:common/message-snackbar-open  'updatedEntry]])
 
            ;; Reload entry data again to reflect the saved changes after an update or after a new entry is inserted
@@ -828,7 +831,7 @@
            db (if (= :new current-showing)
                 (assoc-in-key-db db [entry-form-key :undo-data] (get-in-key-db db [entry-form-key :data]))
                 db)]
-     ;; If showing is already :selected, then this is update and we need to reload the entry data
+       ;; If showing is already :selected, then this is update and we need to reload the entry data
        {:db (-> db (assoc-in-key-db  [entry-form-key :edit] false)
                 (assoc-in-key-db [entry-form-key :showing] :selected))
         :fx [;; Reload entry data again to reflect the saved changes
@@ -837,13 +840,13 @@
              (if (= :new current-showing)
                [:dispatch [:common/message-snackbar-open "Created Entry"]]
                [:dispatch [:common/message-snackbar-open "Updated Entry"]])
-           ;; Need to reload categories, groups and list data on an entry insert/update
+             ;; Need to reload categories, groups and list data on an entry insert/update
              [:dispatch [:entry-category/load-categories-to-show]]
              [:dispatch [:groups/load]]
              [:dispatch [:entry-list/reload-selected-entry-items]]
              [:dispatch [:search/reload]]
              [:dispatch [:common/message-modal-hide]]
-           ;; Entry update is due to restoring from history
+             ;; Entry update is due to restoring from history
              (when restored?
                [:dispatch [:history-entry-restore-complete]])]})))
 
@@ -1146,7 +1149,7 @@
                                           (on-ok
                                            api-response
                                            #(dispatch [:key-file-pick-error %]))]
-                                ;; User picked a key file and needs to be uploaded
+                                 ;; User picked a key file and needs to be uploaded
                                  (bg/upload-attachment
                                   db-key
                                   full-file-name
@@ -1218,7 +1221,7 @@
                                      temp-file-name name
                                      (fn [api-response]
                                        (when-not (on-error api-response #(dispatch [:pick-save-attachment-to-cancelled %]))
-                                         (dispatch [:common/message-snackbar-open 'attachmentFileSaved ])))
+                                         (dispatch [:common/message-snackbar-open 'attachmentFileSaved])))
                                      #_(fn [api-response]
                                          (on-error api-response #(dispatch [:pick-save-attachment-to-cancelled %])))))))))
 

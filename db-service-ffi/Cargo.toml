@@ -20,19 +20,18 @@ crate-type = ["lib", "staticlib","cdylib"]
 [dependencies]
 uniffi = "0.28.2"
 
-once_cell = "1.18.0"
-thiserror = "1.0"
+once_cell = "1"
+thiserror = "2.0.12"
 log = "0.4.17"
-##uuid = { version = "0.8.2", features = ["serde", "v4"] }
-uuid = { version = "1.7.0", features = ["serde", "v4","macro-diagnostics"] }
+uuid = { version = "1.16.0", features = ["serde", "v4","macro-diagnostics"] }
 regex = "1.7.1"
 secstr = "0.5.1"
 hex = "0.4.3"
 
-serde = { version = "1.0.215", features = [ "derive" ]}
-serde_json = "1.0.133"
+serde = { version = "1.0.219", features = [ "derive" ]}
+serde_json = "1"
 
-url="2.5.2"
+url="2.5.4"
 urlencoding = "2.1.2"
 nom = "7.1.3"
 
@@ -43,12 +42,14 @@ tokio = { version = "1", features = [ "time" ,"rt", "rt-multi-thread","sync"] }
 
 enum_dispatch = "0.3.13"
 
+cfg-if = "1.0"
+
 ## derive_builder = "0.20.2"
 
 ## SFTP
-russh-sftp = "2.0.5"
-russh = "0.45"
-russh-keys = "0.45"
+russh-sftp = "2.0.8"
+russh = "0.49"
+russh-keys = "0.49"
 async-trait = "0.1"
 
 ## WebDav 
@@ -61,12 +62,12 @@ async-trait = "0.1"
 
 
 ## This works for ios and android as it uses rustls 
-reqwest_dav = {version = "0.1.13", default-features = false,features = ["rustls-tls"]}
+reqwest_dav = {version = "0.1.15", default-features = false,features = ["rustls-tls"]}
 
 ## using from the local crate 
-## onekeepass-core = {path = "../../onekeepass-core", version = "0.17.0"}
+## onekeepass-core = {path = "../../onekeepass-core", version = "0.18.0"}
 
-onekeepass-core = {git = "https://github.com/OneKeePass/onekeepass-core.git" , tag="v0.17.0" }
+onekeepass-core = {git = "https://github.com/OneKeePass/onekeepass-core.git" , tag="v0.18.0" }
 
 [target.'cfg(target_os = "android")'.dependencies]
 android_logger = "0.13.1"

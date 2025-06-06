@@ -1,6 +1,7 @@
 package com.onekeepassmobile
 
 import android.net.Uri
+import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import androidx.fragment.app.FragmentActivity
@@ -14,10 +15,11 @@ import java.util.concurrent.Executors
 
 private const val TAG = "DbServiceModule"  //TAG can only be max 23 characters
 
-class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
+class DbServiceModule(reactContext: ReactApplicationContext) :
+    ReactContextBaseJavaModule(reactContext) {
     private val contentResolver = reactContext.contentResolver
     private val executorService: ExecutorService = Executors.newFixedThreadPool(4)
-    private val biometricService:BiometricService = BiometricService(reactContext)
+    private val biometricService: BiometricService = BiometricService(reactContext)
     override fun getName() = "OkpDbService"
 
     // IMPORTANT: This call should have been made before any API Calls
@@ -38,6 +40,7 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
     }
 
     override fun getConstants(): MutableMap<String, String?> {
+
         val locale = getLocale()
         val sdCardDir = try {
             // Search via env may not be reliable. Recent Android versions
@@ -48,15 +51,19 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
         }
 
         return hashMapOf(
-                "CacheDir" to reactApplicationContext.cacheDir.absolutePath,
-                "DatabaseDir" to reactApplicationContext.getDatabasePath("FileAccessProbe").parent,
-                "DocumentDir" to reactApplicationContext.filesDir.absolutePath,
-                "MainBundleDir" to reactApplicationContext.applicationInfo.dataDir,
-                "SDCardDir" to sdCardDir,
-                "Country" to locale.country,  // Device country
-                "Language" to locale.language, // Device level language
-                "BiometricAvailable" to biometricService.biometricAuthenticationAvailbale().toString()
-        )
+            "CacheDir" to reactApplicationContext.cacheDir.absolutePath,
+            "DatabaseDir" to reactApplicationContext.getDatabasePath("FileAccessProbe").parent,
+            "DocumentDir" to reactApplicationContext.filesDir.absolutePath,
+            "MainBundleDir" to reactApplicationContext.applicationInfo.dataDir,
+            "SDCardDir" to sdCardDir,
+            "Country" to locale.country,  // Device country
+            "Language" to locale.language, // Device level language
+            "BiometricAvailable" to biometricService.biometricAuthenticationAvailbale().toString(),
+
+            // See https://developer.android.com/reference/android/os/Build.VERSION
+            "AndroidRelease" to Build.VERSION.RELEASE,
+            "AndroidSdkApi" to Build.VERSION.SDK_INT.toString(),
+            )
     }
 
     // UI layer needs to call to see if the app is opened by pressing a .kdbx file and
@@ -86,7 +93,10 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
     @ReactMethod
     fun androidInvokeCommand(commandName: String, args: String, promise: Promise) {
         executorService.execute {
-            Log.d(TAG, "androidInvokeCommand is called with command name $commandName and args $args")
+            Log.d(
+                TAG,
+                "androidInvokeCommand is called with command name $commandName and args $args"
+            )
             val response = DbServiceAPI.androidInvokeCommand(commandName, args)
             promise.resolve(response)
         }
@@ -104,7 +114,10 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
                     if (fd != null) {
                         // detachFd call should be used so that the file is closed in the rust code automatically
                         // However in CreateKdbx and saveKdbx, kotlin side is responsible for closing the file
-                        resolveResponse(DbServiceAPI.readKdbx(fd.detachFd().toULong(), args), promise)
+                        resolveResponse(
+                            DbServiceAPI.readKdbx(fd.detachFd().toULong(), args),
+                            promise
+                        )
                         // Log.d(TAG, "File created using fd with response $response")
                     } else {
                         // Do we need to ask the user select the kdbx again to read ?
@@ -114,7 +127,10 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
                     // Here the url is the full internal file path from the app sandbox itself
                     // At this time, all db files are used from the storages that are external to this app
                     // and accordingly those uris always start with content:// and this is not used
-                    Log.i(TAG, "API readKdbx is called  with Internal file path fullFileNameUri $fullFileNameUri  ")
+                    Log.i(
+                        TAG,
+                        "API readKdbx is called  with Internal file path fullFileNameUri $fullFileNameUri  "
+                    )
                     resolveResponse(DbServiceAPI.readKdbx(fullFileNameUri, args), promise)
                 }
 
@@ -139,17 +155,17 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
     }
 
     @ReactMethod
-    fun saveKdbx(fullFileNameUri: String, overwrite:Boolean,promise: Promise) {
+    fun saveKdbx(fullFileNameUri: String, overwrite: Boolean, promise: Promise) {
         executorService.execute {
             val uri = Uri.parse(fullFileNameUri);
             try {
-                if (!overwrite  && (verifyDbFileChanged(fullFileNameUri,promise))) {
-                    Log.d(TAG,"Db contents have changed and saving is not done")
+                if (!overwrite && (verifyDbFileChanged(fullFileNameUri, promise))) {
+                    Log.d(TAG, "Db contents have changed and saving is not done")
                     // Store the db file with changed data to backup for later offline use
                     DbServiceAPI.writeToBackupOnError(fullFileNameUri)
                     return@execute
                 }
-                Log.d(TAG,"Db contents have not changed and continuing with saving")
+                Log.d(TAG, "Db contents have not changed and continuing with saving")
 
                 // Here it is assumed the fileNameUri starts with content:// for which there will be
                 // a resolver. If we use internal file path, we need to do something similar to readKdbx
@@ -160,11 +176,17 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
                 if (fd != null) {
                     // fd.detachFd() is not used so that Save works without any issues in case of
                     // google drive
-                    when (val response = DbServiceAPI.saveKdbx(fd.fd.toULong(), fullFileNameUri, fileName,overwrite)) {
+                    when (val response = DbServiceAPI.saveKdbx(
+                        fd.fd.toULong(),
+                        fullFileNameUri,
+                        fileName,
+                        overwrite
+                    )) {
                         is ApiResponse.Success -> {
                             //Log.d(TAG, "File created using fd with SUCCESS response ${response.result}")
                             promise.resolve(response.result)
                         }
+
                         is ApiResponse.Failure -> {
                             //Log.d(TAG, "File created using fd with FAILURE response $response.result")
                             promise.resolve(response.result)
@@ -236,7 +258,10 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
 
                 } else {
                     // Do we need to ask the user select the kdbx again to read ?
-                    promise.reject(E_CREATE_FIE_DESCRIPTOR_ERROR, "Invalid file descriptor in createKdbx")
+                    promise.reject(
+                        E_CREATE_FIE_DESCRIPTOR_ERROR,
+                        "Invalid file descriptor in createKdbx"
+                    )
                 }
             } catch (e: SecurityException) {
                 // This will happen, if we try to create the kdbx file without proper read and write permissions
@@ -257,7 +282,12 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
     }
 
     @ReactMethod
-    fun completeSaveAsOnError(oldFullFileNameUri: String,newFullFileNameUri: String,fileName: String,promise: Promise) {
+    fun completeSaveAsOnError(
+        oldFullFileNameUri: String,
+        newFullFileNameUri: String,
+        fileName: String,
+        promise: Promise
+    ) {
         executorService.execute {
             Log.i(TAG, "Received fullFileName is $newFullFileNameUri")
             val uri = Uri.parse(newFullFileNameUri);
@@ -269,7 +299,12 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
                 if (fd != null) {
                     // Rust side the file should not be closed. So fd.detachFd() is not used.
                     // if we use fd.detachFd(), then 'create db file' for google drive did not work
-                    val response = DbServiceAPI.completeSaveAsOnError(fd.fd.toULong(), oldFullFileNameUri,newFullFileNameUri,fileName);
+                    val response = DbServiceAPI.completeSaveAsOnError(
+                        fd.fd.toULong(),
+                        oldFullFileNameUri,
+                        newFullFileNameUri,
+                        fileName
+                    );
                     resolveResponse(response, promise)
                     // IMPORTANT:
                     // The caller is responsible for closing the file using its file descriptor
@@ -277,7 +312,10 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
                     fd.close()
                 } else {
                     // Do we need to ask the user select the kdbx again to read ?
-                    promise.reject(E_CREATE_FIE_DESCRIPTOR_ERROR, "Invalid file descriptor in createKdbx")
+                    promise.reject(
+                        E_CREATE_FIE_DESCRIPTOR_ERROR,
+                        "Invalid file descriptor in createKdbx"
+                    )
                 }
             } catch (e: SecurityException) {
                 // This will happen, if we try to create the kdbx file without proper read and write permissions
@@ -300,18 +338,18 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
     @ReactMethod
     fun authenticateWithBiometric(promise: Promise) {
         // BiometricPrompt should be called in the UI thread
-        UiThreadUtil.runOnUiThread( {
+        UiThreadUtil.runOnUiThread({
             val executor = Executors.newSingleThreadExecutor()
-            Log.d(TAG,"Calling showPrompt....")
-            biometricService.showPrompt(currentActivity as FragmentActivity, executor,promise)
-            Log.d(TAG,"Called showPrompt")
+            Log.d(TAG, "Calling showPrompt....")
+            biometricService.showPrompt(currentActivity as FragmentActivity, executor, promise)
+            Log.d(TAG, "Called showPrompt")
         })
 
         // BiometricPrompt should be called in the UI thread. The following did not work and threw
         // java.lang.IllegalStateException: Must be called from main thread of fragment host
 
-         // val executor = ContextCompat.getMainExecutor(this.reactApplicationContext)
-         // biometricService.showPrompt(currentActivity as FragmentActivity, executor,promise)
+        // val executor = ContextCompat.getMainExecutor(this.reactApplicationContext)
+        // biometricService.showPrompt(currentActivity as FragmentActivity, executor,promise)
     }
 
     // This is a follow up method that is called after user picks a file using document picker service
@@ -327,7 +365,13 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
                 //fd will be null if the provider recently crashed
                 if (fd != null) {
                     // detachFd call should be used so that the file is closed in the rust code automatically
-                    promise.resolve(DbServiceAPI.copyPickedKeyFile(fd.detachFd().toULong(),fullKeyFileNameUri,fileName))
+                    promise.resolve(
+                        DbServiceAPI.copyPickedKeyFile(
+                            fd.detachFd().toULong(),
+                            fullKeyFileNameUri,
+                            fileName
+                        )
+                    )
                 } else {
                     promise.reject(E_READ_FIE_DESCRIPTOR_ERROR, "Invalid file descriptor")
                 }
@@ -355,8 +399,11 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
     // This is a follow up method that is called after user picks a file using document picker service
     // To be replaced by the generic handlePickedFile
     @ReactMethod
-    fun uploadAttachment(fullKeyFileNameUri: String, jsonArgs:String,promise: Promise) {
-        Log.d(TAG, "uploadAttachment is called with fullFileNameUri $fullKeyFileNameUri and jsonArgs $jsonArgs ")
+    fun uploadAttachment(fullKeyFileNameUri: String, jsonArgs: String, promise: Promise) {
+        Log.d(
+            TAG,
+            "uploadAttachment is called with fullFileNameUri $fullKeyFileNameUri and jsonArgs $jsonArgs "
+        )
         executorService.execute {
             val uri = Uri.parse(fullKeyFileNameUri);
             try {
@@ -365,7 +412,14 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
                 //fd will be null if the provider recently crashed
                 if (fd != null) {
                     // detachFd call should be used so that the file is closed in the rust code automatically
-                    promise.resolve(DbServiceAPI.uploadAttachment(fd.detachFd().toULong(),fullKeyFileNameUri,fileName,jsonArgs))
+                    promise.resolve(
+                        DbServiceAPI.uploadAttachment(
+                            fd.detachFd().toULong(),
+                            fullKeyFileNameUri,
+                            fileName,
+                            jsonArgs
+                        )
+                    )
                 } else {
                     promise.reject(E_READ_FIE_DESCRIPTOR_ERROR, "Invalid file descriptor")
                 }
@@ -393,8 +447,11 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
     // This is a follow up method that is called after user picks a file using document picker service
     // TODO: Replace copyKeyFile,uploadAttachment to use this common fn after making required changes in rust side
     @ReactMethod
-    fun handlePickedFile(fullKeyFileNameUri: String, jsonArgs:String,promise: Promise) {
-        Log.d(TAG, "The handlePickedFile is called with fullFileNameUri $fullKeyFileNameUri and jsonArgs $jsonArgs ")
+    fun handlePickedFile(fullKeyFileNameUri: String, jsonArgs: String, promise: Promise) {
+        Log.d(
+            TAG,
+            "The handlePickedFile is called with fullFileNameUri $fullKeyFileNameUri and jsonArgs $jsonArgs "
+        )
         executorService.execute {
             val uri = Uri.parse(fullKeyFileNameUri);
             try {
@@ -403,7 +460,14 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
                 //fd will be null if the provider recently crashed
                 if (fd != null) {
                     // detachFd call should be used so that the file is closed in the rust code automatically
-                    promise.resolve(DbServiceAPI.handlePickedFile(fd.detachFd().toULong(),fullKeyFileNameUri,fileName,jsonArgs))
+                    promise.resolve(
+                        DbServiceAPI.handlePickedFile(
+                            fd.detachFd().toULong(),
+                            fullKeyFileNameUri,
+                            fileName,
+                            jsonArgs
+                        )
+                    )
                 } else {
                     promise.reject(E_READ_FIE_DESCRIPTOR_ERROR, "Invalid file descriptor")
                 }
@@ -434,6 +498,7 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
                 //Log.d(TAG, "File created using fd with SUCCESS response ${response.result}")
                 promise.resolve(response.result)
             }
+
             is ApiResponse.Failure -> {
                 //Log.d(TAG, "File created using fd with FAILURE response $response.result")
                 promise.resolve(response.result)
@@ -447,12 +512,14 @@ class DbServiceModule(reactContext: ReactApplicationContext) : ReactContextBaseJ
         // Will throw exception
         val fd: ParcelFileDescriptor? = contentResolver.openFileDescriptor(uri, "r");
         if (fd != null) {
-            return when (val response = DbServiceAPI.verifyDbFileChecksum(fd.detachFd().toULong(), fullFileNameUri)) {
+            return when (val response =
+                DbServiceAPI.verifyDbFileChecksum(fd.detachFd().toULong(), fullFileNameUri)) {
                 is ApiResponse.Success -> {
                     //Log.d(TAG, "File created using fd with SUCCESS response ${response.result}")
                     // promise.resolve(response.result)
                     false // no promise call done
                 }
+
                 is ApiResponse.Failure -> {
                     Log.d(TAG, "verifyDbFileChanged with FAILURE response $response.result")
                     promise.resolve(response.result)

@@ -1,5 +1,5 @@
 (ns onekeepass.mobile.events.save
-  (:require 
+  (:require
    [clojure.string :as str]
    [onekeepass.mobile.background :as bg]
    [onekeepass.mobile.constants :as const]
@@ -28,29 +28,33 @@
   error and take appropriate action
   The arg error may be a string or a map with keys: code,message
   "
-  [error error-title]
+  [{:keys [error error-title merge-save-called]}]
   ;;(println "Error " error error-title)
   (cond
     (= error "DbFileContentChangeDetected")
     (dispatch [:save-error-modal-show {:error-type :content-change-detected
-                                       :error-title error-title}]) ;;title error-type message
-    
+                                       :error-title error-title
+                                       :merge-save-called merge-save-called}]) ;;title error-type message
+
     (= error "NoRemoteStorageConnection")
     (dispatch [:save-error-modal-show {:error-type :no-remote-storage-connection
-                                       :error-title error-title}])
+                                       :error-title error-title
+                                       :merge-save-called merge-save-called}])
 
     ;; This happens when the file is removed or cloud service changes the reference after 
     ;; syncing from remote source. This invalidates the reference held by the app internally
     (= const/FILE_NOT_FOUND (:code error))
     (dispatch [:save-error-modal-show {:error-type :file-not-found
                                        :message (:message error)
-                                       :error-title error-title}])
+                                       :error-title error-title
+                                       :merge-save-called merge-save-called}])
 
     ;; Any error or exception that might have happend while saving
     (= const/SAVE_CALL_FAILED (:code error))
     (dispatch [:save-error-modal-show {:error-type :save-call-failled
                                        :message (:message error)
-                                       :error-title error-title}])
+                                       :error-title error-title
+                                       :merge-save-called merge-save-called}])
 
     ;; This is iOS specific errors. Need to find a way how to test this
     (or (= const/COORDINATOR_CALL_FAILED (:code error))
@@ -58,12 +62,13 @@
         (= const/BOOK_MARK_NOT_FOUND (:code error)))
     (dispatch [:save-error-modal-show {:error-type :ios-bookmark-error
                                        :message (:message error)
-                                       :error-title error-title}])
+                                       :error-title error-title
+                                       :merge-save-called merge-save-called}])
     ;; This happened in iOS simulator when the database file name was changed after
     ;; that was loaded and edited and tried to save. Not sure whether this will happen in device and 
     ;; in case of android
     ;; It seems the bookmark resolve gets the renamed uri whereas we continue to hold to the old uri (db-key)
-    ;; TODO: Needs to find a way to change the db-key from old to the new one from the bookmarks  
+    ;; TODO: Need to find a way to change the db-key from old to the new one from the bookmarks  
     ;; resolution and continue to proceed saving
     (and (bg/is-iOS) (= error "DbKeyNotFound"))
     (dispatch [:common/default-error "Invalid reference" "It appears the database file might have been moved or renamed. Please remove the database and reopen the moved or renamed file"])
@@ -77,18 +82,21 @@
     :else
     (dispatch [:save-error-modal-show {:error-type :unnown-error
                                        :message (:message error)
-                                       :error-title error-title}])))
+                                       :error-title error-title
+                                       :merge-save-called merge-save-called}])))
 
 (defn save-api-response-handler
-  [{:keys [error-title on-save-ok on-save-error]} api-response]
+  [{:keys [error-title merge-save-called on-save-ok on-save-error]} api-response]
   ;; (println "api-response " api-response)
   ;; api-response :ok value is a map corresponding to struct KdbxSaved
   ;; Here we are checking only the :error key and :ok value is ignored
   (when-not (on-error api-response
                       (fn [error]
-                        (handle-save-error error error-title)
-                         ;; on-save-error is not yet used
-                         ;; Need to review its use and remove this
+                        (handle-save-error {:error error
+                                            :merge-save-called merge-save-called
+                                            :error-title error-title})
+                        ;; on-save-error is not yet used
+                        ;; Need to review its use required or not
                         (when on-save-error (on-save-error error))))
     (dispatch [:common/message-modal-hide])
     (when on-save-ok (on-save-ok))))
@@ -101,9 +109,9 @@
      (if save-enabled
        ;; m-data is a map with keys :save-message and :error-title
        (let [handler-fn (partial save-api-response-handler m-data)]
-                   ;; We need to hold on to the 'handler-fn' in :save-api-response-handler
-                   ;; as we may need to use when we need to call overwrite after 'Save error' resolution by user
-                   ;; See event ':overwrite-on-save-error' how this handler-fn is used
+         ;; We need to hold on to the 'handler-fn' in :save-api-response-handler
+         ;; as we may need to use when we need to call overwrite after 'Save error' resolution by user
+         ;; See event ':overwrite-on-save-error' how this handler-fn is used
          {:db (-> db (assoc-in-key-db  [:save-api-response-handler] handler-fn))
           :fx [[:dispatch [:common/message-modal-show nil (if-not (nil? save-message) save-message 'saving)]]
                [:bg-save-kdbx [(active-db-key db) false handler-fn]]]})
@@ -147,10 +155,10 @@
 (reg-fx
  :bg-ios-complete-save-as-on-error
  (fn [[db-key new-db-key file-name]]
-   (println "db-key new-db-key file-name are " db-key new-db-key file-name)
+   ;; (println "db-key new-db-key file-name are " db-key new-db-key file-name)
    (bg/ios-complete-save-as-on-error db-key new-db-key file-name (fn [api-reponse]
-                                                         (when-let [kdbx-loaded (on-ok api-reponse)]
-                                                           (dispatch [:save-as-on-error-finished kdbx-loaded]))))))
+                                                                   (when-let [kdbx-loaded (on-ok api-reponse)]
+                                                                     (dispatch [:save-as-on-error-finished kdbx-loaded]))))))
 
 ;; Used for both  iOS and Abdroid
 (reg-event-fx
@@ -198,8 +206,8 @@
  (fn [[db-key new-db-key file-name]]
    ;;(println "db-key new-db-key are " db-key new-db-key)
    (bg/android-complete-save-as-on-error db-key new-db-key file-name (fn [api-reponse]
-                                                             (when-let [kdbx-loaded (on-ok api-reponse)]
-                                                               (dispatch [:save-as-on-error-finished kdbx-loaded]))))))
+                                                                       (when-let [kdbx-loaded (on-ok api-reponse)]
+                                                                         (dispatch [:save-as-on-error-finished kdbx-loaded]))))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -226,7 +234,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;; Save error modal ;;;;;;;;;;;;;;;;
 
 #_(defn save-error-modal-hide []
-  (dispatch [:save-error-modal-hide]))
+    (dispatch [:save-error-modal-hide]))
 
 (defn save-error-modal-cancel []
   (dispatch [:save-error-modal-cancel]))
@@ -236,7 +244,7 @@
 
 (reg-event-fx
  :save-error-modal-show
- (fn [{:keys [db]} [_event-id {:keys [title error-type message]
+ (fn [{:keys [db]} [_event-id {:keys [title error-type message merge-save-called]
                                :or {title "Save Error"}}]]
    (let [file-name (current-database-file-name db)]
      {:db (-> db
@@ -244,14 +252,16 @@
               (assoc-in [:save-error-modal :title] title)
               (assoc-in [:save-error-modal :error-type] error-type)
               (assoc-in [:save-error-modal :error-message] message)
-              (assoc-in [:save-error-modal :file-name] file-name))
+              (assoc-in [:save-error-modal :file-name] file-name)
+              (assoc-in [:save-error-modal :merge-save-called] merge-save-called))
 
       :fx [[:dispatch [:common/message-modal-hide]]]})))
 
 (reg-event-fx
  :save-error-modal-cancel
  (fn [{:keys [db]} [_event-id]]
-   {:fx [[:bg-save-conflict-resolution-cancel [(active-db-key db)]]
+   {:fx [;; Called to remove any backup files created during this save kdbx call. Needs removal as the save is cancelled
+         [:bg-save-conflict-resolution-cancel [(active-db-key db)]]
          [:dispatch [:save-error-modal-hide]]]}))
 
 (reg-fx
@@ -269,3 +279,9 @@
  :save-error-modal
  (fn [db _query-vec]
    (-> db :save-error-modal)))
+
+
+(comment
+  (in-ns 'onekeepass.mobile.events.save)
+  (def db-key (-> @re-frame.db/app-db :current-db-file-name))
+  (-> @re-frame.db/app-db (get db-key) keys))

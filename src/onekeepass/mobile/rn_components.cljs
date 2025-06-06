@@ -2,24 +2,21 @@
  onekeepass.mobile.rn-components
   (:require-macros [onekeepass.mobile.okp-macros
                     :refer  [declare-comp-classes]])
-  (:require ["@date-io/date-fns" :as DateAdapter]
-            ["@react-native-community/slider" :as rnc-slider]
-            #_["react-i18next" :as ri18n]
-            ["react-native-circular-progress" :as rn-circular-progress]
-            ["react-native-gesture-handler" :as gh]
-            ["react-native-modal-selector" :as rnms]
-            ["react-native-paper" :as rnp]
-            ["react-native-safe-area-context" :as sa-context]
-            ["react-native-vector-icons" :as vec-icons]
-            ["react-native-vision-camera" :as rn-vision-camera]
-            
-            [onekeepass.mobile.background :refer [is-iOS]]
-            [onekeepass.mobile.constants :refer [DEFAULT-SYSTEM-THEME]]
-            
-            [react]
-            [react-native :as rn]
-            [reagent.core :as r]
-            [onekeepass.mobile.constants :as const]))
+  (:require
+   ["@date-io/date-fns" :as DateAdapter]
+   ["@react-native-community/slider" :as rnc-slider]
+   ["react-native-circular-progress" :as rn-circular-progress]
+   ["react-native-gesture-handler" :as gh]
+   ["react-native-modal-selector" :as rnms]
+   ["react-native-paper" :as rnp]
+   ["react-native-safe-area-context" :as sa-context]
+   ["react-native-vector-icons" :as vec-icons]
+   ["react-native-vision-camera" :as rn-vision-camera]
+   [onekeepass.mobile.background :refer [get-constants is-Android is-iOS]]
+   [onekeepass.mobile.constants :as const :refer [DEFAULT-SYSTEM-THEME]]
+   [react]
+   [react-native :as rn]
+   [reagent.core :as r]))
 
 (set! *warn-on-infer* true)
 
@@ -27,7 +24,6 @@
 ;; ./target/npm_deps.js and ./target/krell_npm_deps.js generated
 ;; All the require calls above of NPM packages will have an entry in npm_deps.js
 ;; All (js/require "../js/.....") calls will result an entry in krell_npm_deps.js
-
 
 ;; Also this defined again in background as rn-components is not refered in background module to avoid circular references
 (def rn-native-linking ^js/RNLinking rn/Linking)
@@ -41,12 +37,12 @@
 
 (def appearance ^js/RNAppearance rn/Appearance)
 
-(defn theme-to-use [prefered-theme] 
+(defn theme-to-use [prefered-theme]
   (let [theme (if (= prefered-theme DEFAULT-SYSTEM-THEME)
                 (do
                   (.setColorScheme appearance nil)
                   (.getColorScheme appearance))
-                prefered-theme)] 
+                prefered-theme)]
     theme))
 
 ;; At this moment, these are not used
@@ -117,6 +113,7 @@
                        Snackbar
                        Searchbar
                        SegmentedButtons
+                       Surface
                        Switch
                        ;;TextInput
                        TextInput.Icon
@@ -139,16 +136,23 @@
 
 ;; In case of iOS, any dialog with text input will be hidden partially by the Virtual Keyboard popup 
 ;; Could not make the Dialog work with KeyboardAvoidingView as generally used for other cases
-;; It seems no support is vailable for this in react native paper 
+;; It seems no support is available for this in react native paper 
 ;; Finally the solution is based on https://github.com/callstack/react-native-paper/issues/2172
 
+;;;;;;;;;;  This no more works for android - See comments below  ;;;;;;;;;;;;
 ;; In Android, the overlapping of Keyboard over Dialog does not happen. We need to do 
 ;; add android:windowSoftInputMode="adjustResize" in ' AndroidManifest.xml' for this
 
-(def cust-dialog
-  (if (is-iOS)
-    (r/adapt-react-class (.-default ^js/CustD (js/require "../js/components/KeyboardAvoidingDialog.js")))
-    rnp-dialog))
+#_(def cust-dialog
+    (if (is-iOS)
+      (r/adapt-react-class (.-default ^js/CustD (js/require "../js/components/KeyboardAvoidingDialog.js")))
+      rnp-dialog))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; After Android 'compileSdkVersion = 35 introduction
+;; Also see comments in js/components/KeyboardAvoidingDialog.js
+(def cust-dialog (r/adapt-react-class (.-default ^js/CustD (js/require "../js/components/KeyboardAvoidingDialog.js"))))
 
 ;; All react native paper customizations
 (def rnp-customization ^js/RNPC (js/require "../js/components/RNPCustomization.js"))
@@ -237,25 +241,46 @@
     (reset! on-background-color (.-onBackground colors))
     (reset! tertiary-color (.-tertiary colors))
     (reset! outline-color (.-outline colors))
-    
+
     (reset! error-color (.-error colors))
     (reset! error-container-color (.-errorContainer colors))
     (reset! on-error-container-color (.-onErrorContainer colors))
-    
+
     (reset! inverse-onsurface-color (.-inverseOnSurface colors))
     (reset! surface-variant (.-surfaceVariant colors))
     (reset! outline-variant (.-outlineVariant colors))
-    
+
 
     (reset! custom-color0 (.-custom0 colors))
     (reset! custom-color0-ontainer (.-custom0Container colors))
-    
+
     (reset! custom-color1 (.-custom1 colors))
-    (reset! custom-color1-ontainer (.-custom1Container colors))
-    ))
+    (reset! custom-color1-ontainer (.-custom1Container colors))))
 
 (defn is-light-theme? []
   (= const/LIGHT-THEME @current-theme))
+
+
+(def ^:private insets (r/atom nil))
+
+;; Called from a functional component found inside 'rn-safe-area-view'
+;; It makes use of calling the useSafeAreaInsets hook 
+(defn set-insets [insets-val]
+  (reset! insets (js->clj insets-val :keywordize-keys true)))
+
+(defn- get-insets []
+  @insets)
+
+;; Inset bottom value is used maily in android and it is 0 for iOS
+(defn get-inset-bottom []
+  (if (is-Android)
+    (let [{:keys [bottom]} (get-insets)
+          bottom (if (nil? bottom) 0 bottom)
+          api-ver (.-AndroidSdkApi (get-constants))]
+      (if (<= api-ver 31)
+        bottom
+        0))
+    0))
 
 ;;;;;;;;;;
 
@@ -275,11 +300,11 @@
 ;; TODO: Need to add getting the language code from the backend - from the exported constants in 'okp-db-service' (yet to be added)
 
 #_(defn setup-i18n []
-  (let [device-language (.-Language ^js/OkpDbService (.-OkpDbService rn/NativeModules))
-        ;; device-language may be 'en' or 'es-US' ...
-        device-language (-> device-language (str/split #"-") first)]
-    ;; (println "Device language .." device-language)
-    (init-i18n device-language)))
+    (let [device-language (.-Language ^js/OkpDbService (.-OkpDbService rn/NativeModules))
+          ;; device-language may be 'en' or 'es-US' ...
+          device-language (-> device-language (str/split #"-") first)]
+      ;; (println "Device language .." device-language)
+      (init-i18n device-language)))
 
 ;; IMPORTANT: Needs to be called before set-translator in any component
 #_(setup-i18n)
@@ -287,21 +312,21 @@
 #_(def ^:private translator (atom nil)) ;; (Object.keys  @translator) => #js ["0" "1" "2" "t" "i18n" "ready"]
 
 #_(defn set-translator
-  " Needs to be called as hook in a functional react/reagent component"
-  []
-  ;; (println "set-translator is called")
-  (reset! translator (ri18n/useTranslation)))
+    " Needs to be called as hook in a functional react/reagent component"
+    []
+    ;; (println "set-translator is called")
+    (reset! translator (ri18n/useTranslation)))
 
 #_(defn lstr
-  "Called to get the language specific text based 
+    "Called to get the language specific text based 
    if any translation is available for the current active language
    IMPORTANT:
       This fn should be called only within a reagent component
    "
-  [s]
-  ;; translator should have been set before the first calling of this fn in any component
-  (t/lstr s)
-  #_((.-t ^js/Translator @translator) s))
+    [s]
+    ;; translator should have been set before the first calling of this fn in any component
+    (t/lstr s)
+    #_((.-t ^js/Translator @translator) s))
 
 
 ;; Additional colors that are specifc to MD3/MD2 

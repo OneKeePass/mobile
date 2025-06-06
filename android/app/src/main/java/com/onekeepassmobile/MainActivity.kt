@@ -47,7 +47,7 @@ class MainActivity : ReactActivity() {
         Log.d("MainActivity", "onCreate is called...with intent ${intent}")
         // initialize the splash screen and need to call hide with duration in UI side
         // See the use of react-use-effect in onekeepass.mobile.core.main fn
-        RNBootSplash.init(this)
+        RNBootSplash.init(this, R.style.BootTheme);
 
         super.onCreate(savedInstanceState)
         

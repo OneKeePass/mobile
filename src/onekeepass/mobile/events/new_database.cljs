@@ -30,7 +30,7 @@
   ;; to send back the selected key file 
   (dispatch [:key-file-form/show :new-database-key-file-selected show-generate-option?]))
 
-(defn new-database-validate-before-create-action 
+(defn new-database-validate-before-create-action
   "This is called before showing the select storage options to ensure all required fields are entered
    If validation is successful, then the callback-fn is called 
    "
@@ -40,6 +40,7 @@
 (defn dialog-data []
   (subscribe [:new-database-dialog-data]))
 
+;; All fields matching 'NewDatabase' struct 
 (def newdb-fields [:database-name
                    :database-description
                    :password
@@ -49,13 +50,16 @@
                    :kdf
                    :key-file-name])
 
-(def blank-new-db  {;;All fields matching 'NewDatabase' struct
-                    :database-name nil
+(def blank-new-db  {:database-name nil
                     :database-description nil
                     :password nil
                     :database-file-name nil
+
                     :cipher-id "Aes256"
-                    :kdf {:Argon2  {:iterations 10 :memory 64 :parallelism 2}}
+                    ;; algorithm and variant need to be set to these values so that 
+                    ;; kdf map is serialized to enum KdfAlgorithm::Argon2d
+                    :kdf {:algorithm "Argon2d" :iterations 10 :memory 64 :parallelism 2 :variant 0}
+
                     :key-file-name nil
                     :file-name nil
 
@@ -139,7 +143,7 @@
                                 (if (vector? kw-field-name)
                                   kw-field-name
                                   [kw-field-name])) value)
-                        ;; Hide any previous api-error-text
+                ;; Hide any previous api-error-text
                 (assoc-in [:new-database :api-error-text] nil))
          error-fields (validate-required-fields db kw-field-name)
          db (-> db (assoc-in [:new-database :error-fields] error-fields))]
@@ -213,17 +217,23 @@
                             (dispatch [:new-database-create-kdbx-error error])))]
     (dispatch [:new-database-created kdbx-loaded])))
 
+(defn- convert-kdf-value
+  "Need to ensure that all kdf parameters are in proper type and in proper expected values"
+  [new-db]
+  (-> new-db
+      (update-in [:kdf :iterations] str->int)
+      (update-in [:kdf :parallelism] str->int)
+      (update-in [:kdf :memory] str->int)
+      ;; Need to make sure memory value is in MB 
+      (update-in [:kdf :memory] * 1048576)))
+
 ;; Used for android and for creating a new db in a remote storage location 
 ;; See :document-to-create-picked-ios for iOS
 (reg-fx
  :bg-create-kdbx
  (fn [[full-file-name new-db]]
    (bg/create-kdbx full-file-name (-> new-db
-                                      (update-in [:kdf :Argon2 :iterations] str->int)
-                                      (update-in [:kdf :Argon2 :parallelism] str->int)
-                                      (update-in [:kdf :Argon2 :memory] str->int)
-                                      ;; Need to make sure memory value is in MB 
-                                      (update-in [:kdf :Argon2 :memory] * 1048576)
+                                      convert-kdf-value
                                       (select-keys newdb-fields)) on-database-creation-completed)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -264,16 +274,9 @@
 (reg-fx
  :bg-pick-and-save-new-kdbxFile
  (fn [[file-name new-db]]
-   #_(let [sf (select-keys new-db newdb-fields)]
-       (println "(select-keys newdb-fields):  " sf)
-       (println "Password type and count is " (type (:password sf)) ", " (count (:password sf))))
    (bg/pick-and-save-new-kdbxFile file-name
                                   (-> new-db
-                                      (update-in [:kdf :Argon2 :iterations] str->int)
-                                      (update-in [:kdf :Argon2 :parallelism] str->int)
-                                      (update-in [:kdf :Argon2 :memory] str->int)
-                                      ;; Need to make sure memory value is in MB 
-                                      (update-in [:kdf :Argon2 :memory] * 1048576)
+                                      convert-kdf-value
                                       (select-keys newdb-fields)) on-database-new-database-save-completed)))
 
 (reg-event-fx

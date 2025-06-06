@@ -1,7 +1,7 @@
 (ns onekeepass.mobile.events.dialogs
   "All common dialog events that are used across many pages"
   (:require-macros [onekeepass.mobile.okp-macros
-                    :refer  [def-generic-dialog-events as-map]])
+                    :refer  [defn-generic-dialog-disp-events defn-generic-dialog-subs-events  as-map]])
   (:require [clojure.string :as str]
             [onekeepass.mobile.constants :refer [OTP_KEY_DECODE_ERROR]]
             [onekeepass.mobile.events.common :refer [on-ok]]
@@ -21,34 +21,33 @@
 
 ;; Creates wrapper functions confirm-delete-otp-field-dialog-show, confirm-delete-otp-field-dialog-close
 ;; confirm-delete-otp-field-dialog-on-ok, confirm-delete-otp-field-dialog-show,confirm-delete-otp-field-dialog-show-with-state
-(def-generic-dialog-events confirm-delete-otp-field-dialog  [[show nil]
-                                                             [close nil]
-                                                             [on-ok nil]
-                                                             [show-with-state state-m]] false)
+(defn-generic-dialog-disp-events confirm-delete-otp-field-dialog  [[show nil]
+                                                                   [close nil]
+                                                                   [on-ok nil]
+                                                                   [show-with-state state-m]])
 
 ;; Creates the subscribe event wrapper fn 'confirm-delete-otp-field-dialog-data'
-;; Last argument 'true' means this macro is called to generate a subscribe event wrapper
-(def-generic-dialog-events confirm-delete-otp-field-dialog [[data nil]] true)
+(defn-generic-dialog-subs-events confirm-delete-otp-field-dialog [[data nil]])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  setup-otp-action-dialog   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def-generic-dialog-events setup-otp-action-dialog  [[show nil] [close nil] [show-with-state state-m]] false)
+(defn-generic-dialog-disp-events setup-otp-action-dialog  [[show nil] [close nil] [show-with-state state-m]])
 
-(def-generic-dialog-events setup-otp-action-dialog [[data nil]] true)
+(defn-generic-dialog-subs-events setup-otp-action-dialog [[data nil]])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  otp-settings-dialog    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; fields-value is a vector of [kws-v value] [[:data :some-field] value] or [:some-field value]
-(def-generic-dialog-events otp-settings-dialog  [[show nil]
-                                                 [show-with-state state-m]
-                                                 ;; e.g fields-value =  [kws-v value]
-                                                 ;; kws-v is a vec or kw
-                                                 ;; See :generic-dialog-update
-                                                 [update fields-value]
-                                                 [close nil]] false)
+(defn-generic-dialog-disp-events otp-settings-dialog  [[show nil]
+                                                       [show-with-state state-m]
+                                                       ;; e.g fields-value =  [kws-v value]
+                                                       ;; kws-v is a vec or kw
+                                                       ;; See :generic-dialog-update
+                                                       [update fields-value]
+                                                       [close nil]])
 
-(def-generic-dialog-events otp-settings-dialog [[data nil]] true)
+(defn-generic-dialog-subs-events otp-settings-dialog [[data nil]])
 
 (defn otp-settings-dialog-complete-ok []
   (dispatch [:otp-settings-dialog-complete-ok]))
@@ -57,14 +56,14 @@
 
 ;; dialog-identifier-kw start-page-storage-selection-dialog
 
-(def-generic-dialog-events start-page-storage-selection-dialog  [#_[init state-m]
-                                                                 #_[update-and-show state-m]
-                                                                 #_[show nil]
-                                                                 [close nil]
-                                                                 [show-with-state state-m]] false)
+(defn-generic-dialog-disp-events :start-page-storage-selection-dialog  [#_[init state-m]
+                                                                        #_[update-and-show state-m]
+                                                                        #_[show nil]
+                                                                        [close nil]
+                                                                        [show-with-state state-m]])
 
 ;; a subscribe event wrapper
-(def-generic-dialog-events start-page-storage-selection-dialog [[data nil]] true)
+(defn-generic-dialog-subs-events :start-page-storage-selection-dialog [[data nil]])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; auto-open-key-file-pick-required-info-dialog ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; 
 
@@ -72,46 +71,64 @@
 
 ;; dialog-identifier-kw :auto-open-key-file-pick-required-info-dialog
 
-(def-generic-dialog-events auto-open-key-file-pick-required-info-dialog  [[close nil]] false)
+(defn-generic-dialog-disp-events auto-open-key-file-pick-required-info-dialog [[close nil]])
 
-(def-generic-dialog-events auto-open-key-file-pick-required-info-dialog  [[data nil]] true)
+(defn-generic-dialog-subs-events auto-open-key-file-pick-required-info-dialog [[data nil]])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; auto-open-db-file-required-info-dialog ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; dialog-identifier-kw is :auto-open-db-file-required-info-dialog
 
-(def-generic-dialog-events auto-open-db-file-required-info-dialog [[close nil]] false)
+(defn-generic-dialog-disp-events auto-open-db-file-required-info-dialog [[close nil]])
 
 ;; a subscribe event wrapper
-(def-generic-dialog-events auto-open-db-file-required-info-dialog [[data nil]] true)
+(defn-generic-dialog-subs-events auto-open-db-file-required-info-dialog [[data nil]])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   before-storage-selection-info-dialog   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def-generic-dialog-events before-storage-selection-info-dialog [[close nil] [show-with-state state-m]] false)
+(defn-generic-dialog-disp-events before-storage-selection-info-dialog [[close nil] [show-with-state state-m]])
 
-(def-generic-dialog-events before-storage-selection-info-dialog [[data nil]] true)
+(defn-generic-dialog-subs-events before-storage-selection-info-dialog [[data nil]])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   app-pin-lock-settings-dialog   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def-generic-dialog-events app-pin-lock-settings-dialog [[show-with-state state-m]
-                                                ;; e.g fields-value-vec =  [kws-v value]
-                                                ;; kws-v is a vec or kw
-                                                ;; See :generic-dialog-update
-                                                         #_[update fields-value-vec]
-                                                         [update-with-map state-m]
-                                                         [close nil]] false)
+(defn-generic-dialog-disp-events app-pin-lock-settings-dialog [[show-with-state state-m]
+                                                               ;; e.g fields-value-vec =  [kws-v value]
+                                                               ;; kws-v is a vec or kw
+                                                               ;; See :generic-dialog-update
+                                                               #_[update fields-value-vec]
+                                                               [update-with-map state-m]
+                                                               [close nil]])
 
-(def-generic-dialog-events app-pin-lock-settings-dialog [[data nil]] true)
+(defn-generic-dialog-subs-events app-pin-lock-settings-dialog [[data nil]])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   locked-app-log-in-dialog   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; dialog-identifier-kw is :locked-app-log-in-dialog
-(def-generic-dialog-events locked-app-log-in-dialog [[show nil]
-                                                     [update-with-map state-m]
-                                                     [close nil]] false)
+(defn-generic-dialog-disp-events locked-app-log-in-dialog [[show nil]
+                                                           [update-with-map state-m]
+                                                           [close nil]])
 
-(def-generic-dialog-events locked-app-log-in-dialog [[data nil]] true)
+(defn-generic-dialog-subs-events locked-app-log-in-dialog [[data nil]])
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   merge-result-dialog   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn-generic-dialog-disp-events :merge-result-dialog [[show-with-state state-m] [close nil]])
+
+(defn-generic-dialog-subs-events :merge-result-dialog [[data nil]])
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   merge-result-dialog   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn-generic-dialog-disp-events :move-group-or-entry-dialog  [[close nil]
+                                                               [show-with-state state-m]
+                                                               [update-with-map state-m]])
+
+;; a subscribe event wrapper
+(defn-generic-dialog-subs-events :move-group-or-entry-dialog [[data nil]])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -176,9 +193,10 @@
 ;; if the arg 'state' has key ':dialog-show true', then the dialog will be shown
 (reg-event-fx
  :generic-dialog-update-with-map
- (fn [{:keys [db]} [_event-id dialog-identifier-kw state]]
-   (let [dialog-state (get-in db [dialog-identifier-kw])
+ (fn [{:keys [db]} [_event-id dialog-identifier-kw state]] 
+   (let [dialog-state (get-in db [dialog-identifier-kw]) 
          dialog-state (u/deep-merge dialog-state state)]
+     
      {:db (-> db (assoc dialog-identifier-kw dialog-state))})))
 
 ;; The event arg is a vec  - [kws-v value]

@@ -33,7 +33,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn save-error-modal [{:keys [dialog-show file-name error-type error-message]}]
+(defn save-error-modal [{:keys [dialog-show file-name error-type error-message merge-save-called]}]
   [rnp-modal {:style {:margin-right 25
                       :margin-left 25}
               :visible dialog-show
@@ -99,12 +99,14 @@
            "This database will overwrite the target database with your changes"]]])
 
       [rnp-divider]
-      [rn-view {:style {:margin-top 10 :margin-bottom 10 :align-items "center"}}
-       [rnp-button {:style {:width "70%"}
-                    :labelStyle {:fontWeight "bold"}
-                    :mode "text"
-                    :on-press save-events/save-error-modal-cancel} "Cancel"]
-       [rnp-text {:style {:textAlign "justify"}} ""]]]]]
+      ;; Hide the cancel button for any save error happened during merge save call
+      (when-not merge-save-called
+        [rn-view {:style {:margin-top 10 :margin-bottom 10 :align-items "center"}}
+         [rnp-button {:style {:width "70%"}
+                      :labelStyle {:fontWeight "bold"}
+                      :mode "text"
+                      :on-press save-events/save-error-modal-cancel} "Cancel"]
+         [rnp-text {:style {:textAlign "justify"}} ""]])]]]
 
    ;; Anchoring the overwrite confirm dialog to this modal 
    [rnp-portal

@@ -91,8 +91,8 @@
        [select-field {:text-label (lstr-l 'wordList)
                       :options all-wl
                       :disabled false
-                      ;; This is used as initValue for modal selector and also as value prop of  the inner rnp-text-input
-                      :value (find-matching-label all-wl  wl-source)
+                      ;; This is used as initValue for modal selector and also as value prop of the inner rnp-text-input
+                      :value (find-matching-label all-wl wl-source)
                       :on-change  (select-on-change-factory-1 :word-list-source)}]]]
      [rn-view {:style (get-form-style)}
 
@@ -216,6 +216,8 @@
 
 (defn content []
   [rn-keyboard-avoiding-view {:style {:flex 1}
-                              :behavior (if (is-iOS) "padding" nil)}
+                              ;; After Android 'compileSdkVersion = 35 introduction
+                              ;; Also see comments in js/components/KeyboardAvoidingDialog.js
+                              :behavior "padding" #_(if (is-iOS) "padding" nil)}
    [rn-scroll-view {:contentContainerStyle {:flexGrow 1 :background-color @page-background-color}}
     [main-content]]])

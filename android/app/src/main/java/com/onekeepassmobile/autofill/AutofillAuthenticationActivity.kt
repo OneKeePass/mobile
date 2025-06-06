@@ -9,6 +9,7 @@ import com.facebook.react.ReactApplication
 import com.facebook.react.ReactInstanceManager
 import com.facebook.react.ReactRootView
 import com.facebook.react.modules.core.DefaultHardwareBackBtnHandler
+import com.facebook.react.soloader.OpenSourceMergedSoMapping
 import com.facebook.soloader.SoLoader
 
 
@@ -31,11 +32,11 @@ import com.facebook.soloader.SoLoader
 class AutofillAuthenticationActivity : Activity(), DefaultHardwareBackBtnHandler {
 
     private lateinit var reactRootView: ReactRootView
-    private lateinit var reactInstanceManager: ReactInstanceManager
+        private lateinit var reactInstanceManager: ReactInstanceManager
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        SoLoader.init(this, false)
+        SoLoader.init(this, OpenSourceMergedSoMapping)
         reactRootView = ReactRootView(this)
 
         reactInstanceManager = (application as ReactApplication).reactNativeHost.reactInstanceManager
