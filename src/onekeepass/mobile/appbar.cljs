@@ -173,6 +173,7 @@
                       :onPress (header-menu-action cmn-events/close-current-kdbx-db)}]
       [cust-rnp-divider]
       [rnp-menu-item {:title (lstr-ml "mergeDatabases")
+                      :disabled  @(cmn-events/current-db-disable-edit)
                       :onPress (header-menu-action merging-events/merging-databases-page)}]
       [cust-rnp-divider]
       [rnp-menu-item {:title (lstr-ml "settings")

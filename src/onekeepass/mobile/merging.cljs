@@ -1,6 +1,6 @@
 (ns onekeepass.mobile.merging
   (:require
-   [onekeepass.mobile.common-components  :refer [list-header]]
+   [onekeepass.mobile.common-components :as cc :refer [list-header]]
    [onekeepass.mobile.constants :as const]
    [onekeepass.mobile.rn-components
     :as rnc
@@ -40,7 +40,7 @@
                   :right (fn [_props] (r/as-element
                                        [rnp-text {:variant "titleMedium"} items-count]))}])
 
-(defn merge-result-content [merge-result] 
+(defn merge-result-content [merge-result]
   (let [{:keys [added-entries
                 updated-entries
                 added-groups
@@ -197,4 +197,5 @@
    [rnp-portal
     [merge-result-dialog @(dlg-events/merge-result-dialog-data)]
     [start-page/start-page-storage-selection-dialog]
-    [start-page/open-db-dialog]]])
+    [start-page/open-db-dialog]
+    [cc/message-dialog]]])
