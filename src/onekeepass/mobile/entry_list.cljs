@@ -18,7 +18,7 @@
                                                              rn-safe-area-view
                                                              rn-section-list
                                                              rn-view
-                                                             rnp-bottom-navigation-bar
+                                                             ;;rnp-bottom-navigation-bar
                                                              rnp-button
                                                              rnp-dialog-actions
                                                              rnp-dialog-content
@@ -172,7 +172,7 @@
          :x (-> event .-nativeEvent .-pageX) :y (-> event .-nativeEvent .-pageY)))
 
 (defn- sort-menus [{:keys [show x y]
-                   {:keys [key-name direction]} :sort-criteria}]
+                    {:keys [key-name direction]} :sort-criteria}]
   [rnp-menu {:visible show :onDismiss hide-sort-menu :anchor (clj->js {:x x :y y})}
    [rnp-menu-item {:title (lstr-ml 'title)
                    :leadingIcon (if (= key-name const/TITLE) ICON-CHECKBOX-OUTLINE ICON-CHECKBOX-BLANK-OUTLINE)
@@ -396,17 +396,22 @@
                                           (elist-events/delete-all-entries-permanently))}
                              {:label (lstr-bl "no")
                               :on-press #(reset! delete-all-entries-permanent-confirm false)}]}])
+;; Relevant for Android only
+(defn adjust-inset-view []
+  (fn []
+    (when (is-Android)
+      (let [bottom (rnc/get-inset-bottom)]
+        ;; (println "bottom is..." bottom)
+        [rn-view {:style {:height bottom}}]))))
 
 (defn- bottom-nav-bar
   "A functional reagent componnent that returns the custom bottom bar"
   []
   (fn []
-    (let [insets (rnc/use-safe-area-insets)
-          insets (js->clj insets :keywordize-keys true)
-          selected-category-key @(elist-events/selected-category-key)
+    (let [selected-category-key @(elist-events/selected-category-key)
           selected-category-detail @(elist-events/selected-category-detail)
           sort-criteria @(elist-events/entry-list-sort-criteria)]
-      
+
       [rn-view {:style {:width "100%"
                         ;; Need to use the same background-color as the entry list content to make it opaque
                         :background-color @page-background-color
@@ -415,18 +420,21 @@
                         :borderTopWidth 1
                         :borderTopColor  @rnc/outline-variant
                         :min-height 50
-                        
+
                         ;;:position "absolute"
-                        
+
                         ;; In adndroid when we use absolute position, this bottom bar hides
                         ;; the entries list content - particularly when the list has more entries
                         ;; and even using the scroll does not work and it scrolls behind this component 
-                        
+
                         ;; Not using absolute position works for both android in iOS
-                        
+
                         ;; After Android 'compileSdkVersion = 35 introduction, adding insets hides the entries list content
                         ;; Also see comments in js/components/KeyboardAvoidingDialog.js
-                        :bottom 0 #_(if (is-Android) (:bottom insets) 0)}}
+
+                        ;; Instead of setting bottom value from inset, we are using a dummy view 'adjust-inset-view'
+
+                        :bottom 0}}
 
        [rn-view {:flexDirection "row" :justifyContent "space-between"}
         [rn-view {:align-items "center"}
@@ -450,50 +458,6 @@
                     :text-align "center"}
           (lstr-l 'add)]]]])))
 
-(def idx (r/atom -1))
-
-(defn- bottom-nav-bar1 []
-  (let [routes [{:key "sort" :title "Sort" :focusedIcon "heart" :unfocusedIcon "heart-outline"}
-                {:key "settings" :title "Settings" :focusedIcon "bell" :unfocusedIcon "bell-outline"}]
-
-        states {:index @idx
-                :routes routes}]
-
-    [rnp-bottom-navigation-bar {:safeAreaInsets {:bottom 0}
-                                :navigationState (clj->js states :keywordize-keys true)
-                                :onTabPress (fn [props]
-                                              (let [{:keys [route] :as p} (js->clj props :keywordize-keys true)
-                                                    _ (println "route is " route)
-                                                    {:keys [key preventDefault]} route]
-                                                (println "key is " key)
-                                                (println "p is " p)
-
-                                                (if (= key "sort")
-                                                  (reset! idx 0)
-                                                  (reset! idx 1)))
-                                              #_(println props))}]))
-
-(defn- bottom-nav-bar2 []
-  (let [routes [{:key "sort" :title "Sort" :focusedIcon "heart" :unfocusedIcon "heart-outline"}
-                {:key "settings" :title "Settings" :focusedIcon "bell" :unfocusedIcon "bell-outline"}]
-
-        states {:index @idx
-                :routes routes}]
-
-    [rnp-bottom-navigation-bar {:safeAreaInsets {:bottom 0}
-                                :navigationState (clj->js states :keywordize-keys true)
-                                :onTabPress (fn [props]
-                                              (let [{:keys [route] :as p} (js->clj props :keywordize-keys true)
-                                                    _ (println "route is " route)
-                                                    {:keys [key preventDefault]} route]
-                                                (println "key is " key)
-                                                (println "p is " p)
-
-                                                (if (= key "sort")
-                                                  (reset! idx 0)
-                                                  (reset! idx 1)))
-                                              #_(println props))}]))
-
 (defn entry-list-content []
   [rn-safe-area-view {:style {:flex 1 :background-color @page-background-color}}
 
@@ -504,8 +468,11 @@
 
    [rnc/rn-scroll-view {:style {} :contentContainerStyle {:flexGrow 1 :background-color @page-background-color}}
     [main-content]]
-
    [:f> bottom-nav-bar]
+   ;; Provides a dummy height component mainly to push the rn-scroll-view + bottom-nav-bar 
+   ;; above the android built-in bottom bar when Android API level is below 32. It is nil comp for iOS 
+   ;; and view with height of 0 in other Android API level 
+   [adjust-inset-view]
 
    #_[bottom-nav-bar1]
 
@@ -518,13 +485,50 @@
    [permanent-delete-dialog]
    [delete-all-entries-permanent-confirm-dialog]
    [cc/entry-delete-confirm-dialog elist-events/delete-entry]
-   [cc/group-delete-confirm-dialog elist-events/delete-group]
+   [cc/group-delete-confirm-dialog elist-events/delete-group]])
 
-   #_(let [selected-category-key @(elist-events/selected-category-key)
-           selected-category-detail @(elist-events/selected-category-detail)]
-       (when (contains-val? [const/TYPE_SECTION_TITLE
-                             const/GROUP_SECTION_TITLE
-                             const/CAT_SECTION_TITLE] selected-category-key)
-         [rnp-fab {:style {:position "absolute" :margin 16 :right 0 :bottom 0} :icon const/ICON-PLUS
-                   :onPress (fn [e]
-                              (show-fab-action-menu e selected-category-key selected-category-detail))}]))])
+;;;;;;;;;;; Few other ideas of using bottom bar ;;;;;;
+
+#_(def idx (r/atom -1))
+
+#_(defn- bottom-nav-bar1 []
+    (let [routes [{:key "sort" :title "Sort" :focusedIcon "heart" :unfocusedIcon "heart-outline"}
+                  {:key "settings" :title "Settings" :focusedIcon "bell" :unfocusedIcon "bell-outline"}]
+
+          states {:index @idx
+                  :routes routes}]
+
+      [rnp-bottom-navigation-bar {:safeAreaInsets {:bottom 0}
+                                  :navigationState (clj->js states :keywordize-keys true)
+                                  :onTabPress (fn [props]
+                                                (let [{:keys [route] :as p} (js->clj props :keywordize-keys true)
+                                                      _ (println "route is " route)
+                                                      {:keys [key preventDefault]} route]
+                                                  (println "key is " key)
+                                                  (println "p is " p)
+
+                                                  (if (= key "sort")
+                                                    (reset! idx 0)
+                                                    (reset! idx 1)))
+                                                #_(println props))}]))
+
+#_(defn- bottom-nav-bar2 []
+    (let [routes [{:key "sort" :title "Sort" :focusedIcon "heart" :unfocusedIcon "heart-outline"}
+                  {:key "settings" :title "Settings" :focusedIcon "bell" :unfocusedIcon "bell-outline"}]
+
+          states {:index @idx
+                  :routes routes}]
+
+      [rnp-bottom-navigation-bar {:safeAreaInsets {:bottom 0}
+                                  :navigationState (clj->js states :keywordize-keys true)
+                                  :onTabPress (fn [props]
+                                                (let [{:keys [route] :as p} (js->clj props :keywordize-keys true)
+                                                      _ (println "route is " route)
+                                                      {:keys [key preventDefault]} route]
+                                                  (println "key is " key)
+                                                  (println "p is " p)
+
+                                                  (if (= key "sort")
+                                                    (reset! idx 0)
+                                                    (reset! idx 1)))
+                                                #_(println props))}]))

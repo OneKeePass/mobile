@@ -213,36 +213,9 @@ fn rs_read_file(json_args: &str) -> OkpResult<KdbxLoadedEx> {
         info!("Connection to remote server is not available and read only mode from backup. The remote call error details:{}", e);
 
         // If the db file is read earlier, then we should have at least one backup. Otherwise an error is returned
-        return read_latest_backup_db_arg(&db_file_name, &password, &key_file_name);
-
-        /*
-        let path = latest_backup_file_path(&db_file_name).ok_or(error::Error::UnexpectedError(
-            format!(
-                "Getting latest backup file failed and error details:{}",
-                e
-            ),
-        ))?;
-        debug!(
-            "No remote connection: Reading the latest backup file {:?}",
-            &path
-        );
-
-        let mut reader = fs::File::open(path)?;
-
-        // Kdbx content from backup is loaded, parsed and decrypted
-        let kdbx_loaded = db_service::read_kdbx(
-            &mut reader,
-            &db_file_name,
-            password.as_deref(),
-            key_file_name.as_deref(),
-            None,
-        )?;
-
-        let k: KdbxLoadedEx = kdbx_loaded.into();
-        // We return the no connection info so that we can show read only mode
-        return Ok(k.set_no_read_connection());
-
-        */
+        
+        let file_name = rs_operation_type.file_name().map(|v| v.to_string());
+        return read_latest_backup_db_arg(&db_file_name, &password, &key_file_name,&file_name);
     }
 
     debug!("Remote server connected");

@@ -57,12 +57,12 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#_(defn get-constants []
+(defn get-constants []
     (.getConstants okp-db-service))
 
 (defn is-biometric-available []
   ;; Valid values expected for BiometricAvailable are "true" or "false" for both iOS and Android
-  (= (-> okp-db-service .getConstants .-BiometricAvailable) "true"))
+  (=  (-> okp-db-service .getConstants .-BiometricAvailable) "true"))
 
 (defn open-https-url
   "Called to open a valid web url using the built-in browser

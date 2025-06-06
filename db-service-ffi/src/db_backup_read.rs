@@ -1,5 +1,6 @@
 use std::fs;
 
+use crate::app_state::AppState;
 use crate::backup::latest_backup_file_path;
 use crate::CommandArg;
 use crate::{parse_command_args_or_err, OkpError, OkpResult};
@@ -63,14 +64,15 @@ pub(crate) fn read_latest_backup(json_args: &str) -> OkpResult<KdbxLoadedEx> {
             biometric_auth_used
         }
     );
-
-    read_latest_backup_db_arg(&db_file_name, &password, &key_file_name)
+    let file_name = AppState::file_name_in_recently_used(&db_file_name);
+    read_latest_backup_db_arg(&db_file_name, &password, &key_file_name, &file_name)
 }
 
 pub(crate) fn read_latest_backup_db_arg(
     db_file_name: &str,
     password: &Option<String>,
     key_file_name: &Option<String>,
+    file_name: &Option<String>,
 ) -> OkpResult<KdbxLoadedEx> {
     let path = latest_backup_file_path(&db_file_name).ok_or(error::Error::UnexpectedError(
         format!("Getting latest backup file failed and read only db call failed"),
@@ -85,7 +87,7 @@ pub(crate) fn read_latest_backup_db_arg(
         &db_file_name,
         password.as_deref(),
         key_file_name.as_deref(),
-        None,
+        file_name.as_deref(),
     )?;
 
     let k: KdbxLoadedEx = kdbx_loaded.into();

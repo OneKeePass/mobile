@@ -5,6 +5,7 @@
                                                      on-ok
                                                      opened-db-file-name
                                                      active-db-key
+                                                     drop-rs-pages
                                                      opened-db-list]]
             [re-frame.core :refer [dispatch reg-event-fx reg-fx
                                    reg-sub subscribe]]))
@@ -83,7 +84,7 @@
  (fn [[target-db-key source-db-key]]
    (bg-merging/merge-databases target-db-key
                                source-db-key
-                               (fn [api-response] 
+                               (fn [api-response]
                                  (when-some [{:keys [merge-done] :as merge-result} (on-ok api-response)]
                                    ;; IMPORTANT: This flag should be reset for normal open db dialog to work. Otherwise merging handler is called which we do not want to happen
                                    (dispatch [:open-database/new-merging-source-db-wanted false])
@@ -94,7 +95,7 @@
 ;; Merged target database is saved. In mobile, we always save after any db content changes
 (reg-event-fx
  :merge-databases-save
- (fn [{:keys [_db]} [_event-id merge-result]] 
+ (fn [{:keys [_db]} [_event-id merge-result]]
    {:fx [[:dispatch [:save/save-current-kdbx
                      {:error-title "Save after databases merging"
                       :save-message "Merging and saving..."
@@ -105,11 +106,16 @@
 (reg-event-fx
  :merge-databases-completed
  (fn [{:keys [db]} [_event-id merge-result]]
-   (let [kdbx-loaded (get-in db [:merging :kdbx-loaded])]
-     {:fx [[:dispatch [:common/refresh-forms]]
+   (let [kdbx-loaded (get-in db [:merging :kdbx-loaded])
+         ;; There is a possibility that user might have opened the source db 
+         ;; from Sftp or webdav location. In that case we need to skip all remote server pages
+         ;; after the merge is completed and make sure that MERGE_DATABASE_PAGE_ID is top in the page stack
+         db (drop-rs-pages db)]
+     {:db db
+      :fx [[:dispatch [:common/refresh-forms]]
            (when-not (nil? kdbx-loaded)
              ;; The opened db is closed as it is opened only as a merging source db
-             [:common/bg-close-kdbx [(:db-key kdbx-loaded) #(on-error %)]])
+             [:common/bg-close-kdbx [(:db-key kdbx-loaded) #(on-error %)]]) 
            [:dispatch [:common/message-modal-hide]]
            [:dispatch [:generic-dialog-show-with-state :merge-result-dialog {:data merge-result}]]]})))
 
@@ -117,7 +123,7 @@
  :merging-databases-opened-db-list
  (fn [db [_event-id]]
    (let [source-db-file-name (get-in db [:merging :target-db-file-name])
-         dbs (-> db opened-db-list)
+         dbs (-> db opened-db-list) 
          dbs (mapv (fn [m] (select-keys m [:db-key :database-name :file-name])) dbs)
          dbs (filterv (fn [{:keys [file-name]}] (not= file-name source-db-file-name)) dbs)]
      dbs)))

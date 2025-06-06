@@ -2,23 +2,21 @@
  onekeepass.mobile.rn-components
   (:require-macros [onekeepass.mobile.okp-macros
                     :refer  [declare-comp-classes]])
-  (:require ["@date-io/date-fns" :as DateAdapter]
-            ["@react-native-community/slider" :as rnc-slider]
-            #_["react-i18next" :as ri18n]
-            ["react-native-circular-progress" :as rn-circular-progress]
-            ["react-native-gesture-handler" :as gh]
-            ["react-native-modal-selector" :as rnms]
-            ["react-native-paper" :as rnp]
-            ["react-native-safe-area-context" :as sa-context]
-            ["react-native-vector-icons" :as vec-icons]
-            ["react-native-vision-camera" :as rn-vision-camera]
-
-            [onekeepass.mobile.background :refer [is-iOS]]
-            [onekeepass.mobile.constants :as const :refer [DEFAULT-SYSTEM-THEME]]
-
-            [react]
-            [react-native :as rn]
-            [reagent.core :as r]))
+  (:require
+   ["@date-io/date-fns" :as DateAdapter]
+   ["@react-native-community/slider" :as rnc-slider]
+   ["react-native-circular-progress" :as rn-circular-progress]
+   ["react-native-gesture-handler" :as gh]
+   ["react-native-modal-selector" :as rnms]
+   ["react-native-paper" :as rnp]
+   ["react-native-safe-area-context" :as sa-context]
+   ["react-native-vector-icons" :as vec-icons]
+   ["react-native-vision-camera" :as rn-vision-camera]
+   [onekeepass.mobile.background :refer [get-constants is-Android is-iOS]]
+   [onekeepass.mobile.constants :as const :refer [DEFAULT-SYSTEM-THEME]]
+   [react]
+   [react-native :as rn]
+   [reagent.core :as r]))
 
 (set! *warn-on-infer* true)
 
@@ -26,7 +24,6 @@
 ;; ./target/npm_deps.js and ./target/krell_npm_deps.js generated
 ;; All the require calls above of NPM packages will have an entry in npm_deps.js
 ;; All (js/require "../js/.....") calls will result an entry in krell_npm_deps.js
-
 
 ;; Also this defined again in background as rn-components is not refered in background module to avoid circular references
 (def rn-native-linking ^js/RNLinking rn/Linking)
@@ -262,6 +259,28 @@
 
 (defn is-light-theme? []
   (= const/LIGHT-THEME @current-theme))
+
+
+(def ^:private insets (r/atom nil))
+
+;; Called from a functional component found inside 'rn-safe-area-view'
+;; It makes use of calling the useSafeAreaInsets hook 
+(defn set-insets [insets-val]
+  (reset! insets (js->clj insets-val :keywordize-keys true)))
+
+(defn- get-insets []
+  @insets)
+
+;; Inset bottom value is used maily in android and it is 0 for iOS
+(defn get-inset-bottom []
+  (if (is-Android)
+    (let [{:keys [bottom]} (get-insets)
+          bottom (if (nil? bottom) 0 bottom)
+          api-ver (.-AndroidSdkApi (get-constants))]
+      (if (<= api-ver 31)
+        bottom
+        0))
+    0))
 
 ;;;;;;;;;;
 

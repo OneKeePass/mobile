@@ -89,7 +89,7 @@
                           :right 0
                           :align-self "center"
                           :width 200
-                          :bottom 0}
+                          :bottom (rnc/get-inset-bottom)}
                   :on-press (fn [] (rs-events/remote-storage-folder-picked-for-new-db-file connection-id dir-entries))
                   :mode "flat"
                   :label (lstr-bl 'selectFolder)}]

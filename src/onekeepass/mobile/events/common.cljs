@@ -4,7 +4,7 @@
    [cljs.core.async :refer [<! go timeout]]
    [clojure.string :as str]
    [onekeepass.mobile.background :as bg :refer [is-Android]]
-   [onekeepass.mobile.constants :refer [HOME_PAGE_ID]]
+   [onekeepass.mobile.constants :as const :refer [HOME_PAGE_ID]]
    [onekeepass.mobile.utils :as u :refer [str->int tags->vec]]
    [re-frame.core :refer [dispatch dispatch-sync reg-event-db reg-event-fx
                           reg-fx reg-sub subscribe]]))
@@ -843,6 +843,22 @@
          ;; The following rest call removes the first item and returns the remaining pages
          pages-stack (rest pages-stack)]
      (assoc-in db [:pages-stack] pages-stack))))
+
+(def ^:private rs-pages [const/RS_CONNECTIONS_LIST_PAGE_ID const/RS_FILES_FOLDERS_PAGE_ID])
+
+;; Currently it is called only after merging
+;; TODO: Call this after regular opening of db from Sftp/WebDav locations
+(defn drop-rs-pages
+  "Called to remove all Sftp/WebDav pages that user might have navigated before opening a database. 
+   It updates the :pages-stack list accordingly and returns the updated app-db
+
+   It does not change :pages-stack if there is no such pages found on the top
+   "
+  [db]
+  (let [pages-stack (get-in db [:pages-stack])
+        final-pages-stack  (drop-while (fn [{:keys [page]}]
+                                         (u/contains-val? rs-pages page)) pages-stack)]
+    (assoc-in db [:pages-stack] final-pages-stack)))
 
 ;; Gets the current page info 
 ;; This is the first item in the pages-stack list

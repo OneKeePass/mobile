@@ -604,9 +604,13 @@
          (fn []
            (println "start page rnc/react-use-effect clean up is called")))
 
-         ;; Need to pass the list of all reactive values (dependencies) referenced inside of the setup code or empty list
+       ;; Need to pass the list of all reactive values (dependencies) referenced inside of the setup code or empty list
        (clj->js []))
 
+    ;; Calls the useSafeAreaInsets hook 
+    ;; TODO: Avoid calling this more than once
+    (rnc/set-insets (rnc/use-safe-area-insets))
+    
     [rn-view {:style {:flex 1 :justify-content "center" :align-items "center" :margin-top "10%"}}
      [rn-view {:style {:flex .1 :justify-content "center" :width "90%"}}
       [rnp-button {:mode "contained" :onPress (fn [] (ndb-events/new-database-dialog-show))}
