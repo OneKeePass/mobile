@@ -5,5 +5,15 @@ module.exports = {
         ios: null,
       },
     },
+    'react-native-device-info': {
+      platforms: {
+        android: null,
+      },
+    },
+    'react-native-vision-camera': {
+      platforms: {
+        android: null,
+      },
+    },
   },
 };
