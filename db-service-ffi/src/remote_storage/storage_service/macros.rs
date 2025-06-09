@@ -58,7 +58,7 @@ macro_rules! receive_from_async_fn {
     ($path:ident::$aync_fn_name:ident ($($arg:tt),*),$channel_ret_val:ty) => {{
         let (tx, rx) = oneshot::channel::<Result<$channel_ret_val>>();
         
-        //log::debug!("One shot channel is created for aync_fn_name {} with args {} ", &stringify!($aync_fn_name),stringify!(($($arg),*)));
+        // log::debug!("One shot channel is created for aync_fn_name {} with args {} ", &stringify!($aync_fn_name),stringify!(($($arg),*)));
         
         async_runtime().spawn($path::$aync_fn_name(tx, $($arg),*));
         let s = rx.blocking_recv().map_err(|e| {

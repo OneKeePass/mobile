@@ -1,11 +1,13 @@
-use async_trait::async_trait;
 use log::{debug, info};
 use once_cell::sync::Lazy;
 use russh::{
     client::{self, Handle},
     ChannelId,
 };
-use russh_keys::*;
+
+use russh_keys;
+
+use russh;
 use russh_sftp::client::SftpSession;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, sync::Arc};
@@ -216,7 +218,7 @@ struct Client;
 
 // This macro is to make async fn in traits work with dyn traits
 // See https://docs.rs/async-trait/latest/async_trait/
-#[async_trait]
+// #[async_trait]
 impl client::Handler for Client {
     // our error::Error can also be used
     // Also in the example anyhow::Error was used
@@ -225,7 +227,7 @@ impl client::Handler for Client {
 
     async fn check_server_key(
         &mut self,
-        server_public_key: &ssh_key::public::PublicKey,
+        server_public_key: &russh::keys::PublicKey,
     ) -> std::result::Result<bool, Self::Error> {
         info!("check_server_key: {:?}", server_public_key);
         Ok(true)
@@ -419,17 +421,17 @@ impl SftpConnection {
 
             // Note load_secret_key calls the fn decode_secret_key(&secret, password)
             // where secret is a String that has the text of the private key
-            let key = load_secret_key(full_file_path, password.as_ref().map(|x| x.as_str()))
+            let key = russh::keys::load_secret_key(full_file_path, password.as_ref().map(|x| x.as_str()))
                 .map_err(convert_russh_keys_error)?;
             client_handle
-                .authenticate_publickey(user_name, key::PrivateKeyWithHashAlg::new(Arc::new(key),Some(HashAlg::Sha256))?)
+                .authenticate_publickey(user_name, russh::keys::PrivateKeyWithHashAlg::new(Arc::new(key),Some(russh::keys::HashAlg::Sha256)))
                 .await
-                .map_err(convert_error)?
+                .map_err(convert_error)?.success()
         } else if let Some(pwd) = password {
             client_handle
                 .authenticate_password(user_name, pwd)
                 .await
-                .map_err(convert_error)?
+                .map_err(convert_error)?.success()
         } else {
             false
         };
@@ -702,9 +704,9 @@ fn convert_error(inner_error: russh::Error) -> error::Error {
     }
 }
 
-fn convert_russh_keys_error(inner_error: russh_keys::Error) -> error::Error {
+fn convert_russh_keys_error(inner_error: russh::keys::Error) -> error::Error {
     match inner_error {
-        russh_keys::Error::SshKey(x) => {
+        russh::keys::Error::SshKey(x) => {
             debug!("russh_keys::Error::SshKey is {}", x);
 
             // Typically we get the error text as "cryptographic error"
@@ -713,7 +715,7 @@ fn convert_russh_keys_error(inner_error: russh_keys::Error) -> error::Error {
             ))
         }
 
-        russh_keys::Error::SshEncoding(e) => {
+        russh::keys::Error::SshEncoding(e) => {
             debug!("Unhandled russh_keys::Error::SshEncoding {} ", e);
             error::Error::RemoteStorageCallError(format!("Valid private key file is requied"))
         }
