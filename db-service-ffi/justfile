@@ -154,8 +154,9 @@ android-lib-output-dir := "target/jniLibs"
 ## Also see "Botan notes" below 
 
 ndk_version := "26.1.10909125"
-ndk_botan_build_home :=env_var('HOME')+"/Library/Android/sdk/ndk/" + ndk_version
+ndk_botan_build_home := env_var('HOME')+"/Library/Android/sdk/ndk/" + ndk_version
 ndk_ar := ndk_botan_build_home + "/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ar"
+## android31 here means API level 31 and the same value is passed as -p 31 to cargo-ndk
 ndk_cxx := ndk_botan_build_home + "/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android31-clang++"
 
 ## cargo build --target aarch64-linux-android did not work and cargo-ndk works nice
@@ -183,6 +184,8 @@ generate-kotlin:
 # Using ndk option -p 31  - means use NDK API 31
 # Using RUST_LOG=debug specifies the log levels to be used by env_logger (of cargo-ndk)
 
+# ANDROID_NDK_HOME is used by cargo-ndk
+
 ## Need to ensure to use 'crate-type = ["lib", "staticlib","cdylib"]' in Cargo.toml
 build-android-lib-aarch64 release="":
     #!/usr/bin/env bash
@@ -197,7 +200,9 @@ build-android-lib-aarch64 release="":
     export AR_aarch64_linux_android={{ndk_ar}}
     export CXX_aarch64_linux_android={{ndk_cxx}}
 
-    RUST_LOG=debug cargo ndk -t aarch64-linux-android -o ./target/jniLibs build {{ if release == "true" {"--release" } else {""} }} 
+    export ANDROID_NDK_HOME={{ndk_botan_build_home}}
+
+    RUST_LOG=debug cargo ndk -p 31 -t aarch64-linux-android -o ./target/jniLibs build {{ if release == "true" {"--release" } else {""} }} 
 
 build-android-lib-all release="":
     just build-android-lib-aarch64 {{release}}
