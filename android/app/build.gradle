@@ -111,7 +111,7 @@ android {
     ////////////////////  APK Only ///////////////////
     //TODO: (Custom-Jey) Added for APK release time only
     // needs to be commented out for play store release
-    /* 
+    
     dependenciesInfo {
         // Disables dependency metadata when building APKs.
         includeInApk = false
@@ -130,7 +130,7 @@ android {
             useLegacyPackaging true
         }
     }
-    */
+    
     ////////////////////////////////////////  APK Only ///////////////////
     
     namespace "com.onekeepassmobile"
@@ -139,8 +139,8 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // Need to use next increment in 'versionCode' as it needs to be unique for each release
-        versionCode 14
-        versionName "0.17.0"
+        versionCode 15
+        versionName "0.17.1"
     }
 
     signingConfigs {
@@ -167,7 +167,7 @@ android {
 
         //TODO: (Custom-Jey) Added for release time APK build key
         // Uncomment this release only for APK build
-        /*
+        /*  */
         release {
             if (project.hasProperty('OKP_APP_APK_STORE_FILE')) {
                 storeFile file(OKP_APP_APK_STORE_FILE)
@@ -176,7 +176,7 @@ android {
                 keyPassword OKP_APP_APK_KEY_PASSWORD
             }
         }
-        */
+       
 
     }
     buildTypes {
@@ -185,7 +185,7 @@ android {
             signingConfig signingConfigs.debug
         }
 
-        /*
+        /* */
         release {
             // Caution! In production, you need to generate your own keystore file.
             // see https://reactnative.dev/docs/signed-apk-android.
@@ -195,7 +195,7 @@ android {
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }
-        */
+
     }
 }
 

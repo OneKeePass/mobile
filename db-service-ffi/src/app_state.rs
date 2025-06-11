@@ -87,8 +87,8 @@ pub struct AppState {
 static APP_STATE: OnceCell<AppState> = OnceCell::new();
 
 impl AppState {
-    //
-    const APP_VERSION: &str = "0.16.0";
+    // Not yet used
+    const APP_VERSION: &str = "0.17.1";
 
     pub fn shared() -> &'static AppState {
         // Panics if no global state object was set. ??

@@ -64,9 +64,9 @@ russh-keys = "0.49.2"
 reqwest_dav = {version = "0.1.15", default-features = false,features = ["rustls-tls"]}
 
 ## using from the local crate during dev time
-onekeepass-core = {path = "../../onekeepass-core", version = "0.18.1"}
+## onekeepass-core = {path = "../../onekeepass-core", version = "0.18.1"}
 
-## onekeepass-core = {git = "https://github.com/OneKeePass/onekeepass-core.git" , tag="v0.18.0" }
+onekeepass-core = {git = "https://github.com/OneKeePass/onekeepass-core.git" , tag="v0.18.1" }
 
 [target.'cfg(target_os = "android")'.dependencies]
 android_logger = "0.13.1"
