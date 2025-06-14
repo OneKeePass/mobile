@@ -143,33 +143,36 @@ android-db-service-src-dir  := "../android/app/src/main/java"
 android-db-service-lib-dir  := "../android/app/src/main"
 android-lib-output-dir := "target/jniLibs"
 
-## env ANDROID_NDK_HOME is not used for ndk path
-
-## Using 27.1.12297006, compile step goes through (need to comment out "export BOTAN_CONFIGURE_CC_ABI_FLAGS='-arch arm64'" to compile), 
-## but linking failed. So continued using ndk 26.1.10909125 for now
-
-## 26.1.10909125 (ndk version used with RN 0.74.5)
-
-## Ref https://developer.android.com/ndk/guides/other_build_systems
-## Also see "Botan notes" below 
-
-
-## android31 in aarch64-linux-android31-clang++ here means API level 31 and the same value is passed as -p 31 to cargo-ndk
-## -p 31 ensures that cargo-ndk sets env with
-## CFLAGS_AARCH64_LINUX_ANDROID="--target=aarch64-linux-android31" and CXXFLAGS_AARCH64_LINUX_ANDROID="--target=aarch64-linux-android31"
-
-ndk_version := "26.1.10909125"
-ndk_api_level := "31"
-ndk_cxx_ver := "aarch64-linux-android31-clang++"
-ndk_botan_build_home := env_var('HOME')+"/Library/Android/sdk/ndk/" + ndk_version
-ndk_ar := ndk_botan_build_home + "/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ar"
-ndk_cxx := ndk_botan_build_home + "/toolchains/llvm/prebuilt/darwin-x86_64/bin/" + ndk_cxx_ver
 
 ## cargo build --target aarch64-linux-android did not work and cargo-ndk works nice
 ## Needs to do one time 'cargo install cargo-ndk' or 'cargo binstall cargo-ndk' 
 ## and use that instead of cargo build directly for this target
 ## See https://github.com/bbqsrc/cargo-ndk
 ## 'cargo ndk --version' prints 'cargo-ndk 3.5.6'
+
+
+## 27.1.12297006 (ndk version used with RN 0.78.2)
+## 27.2.12479018
+## 26.1.10909125 (ndk version used with RN 0.74.5)
+## 28.1.13356709 (16KB Page)
+
+## Ref https://developer.android.com/ndk/guides/other_build_systems
+## Also see "Botan notes" below and in local docs
+## BOTAN_CONFIGURE_EXTRA_CXXFLAGS="-fPIC" requires to compile and link with 27.1.12297006 and above
+## PIC stands for Position-Independent Code
+
+
+## android31 in aarch64-linux-android31-clang++ here means API level 31 and the same value is passed as -p 31 to cargo-ndk
+## -p 31 ensures that cargo-ndk sets env with
+## CFLAGS_AARCH64_LINUX_ANDROID="--target=aarch64-linux-android31" and CXXFLAGS_AARCH64_LINUX_ANDROID="--target=aarch64-linux-android31"
+
+ndk_version := "27.1.12297006"
+ndk_api_level := "31"
+ndk_cxx_ver :=  "aarch64-linux-android"+ndk_api_level+"-clang++"  
+ndk_botan_build_home := env_var('HOME')+"/Library/Android/sdk/ndk/" + ndk_version
+ndk_ar := ndk_botan_build_home + "/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ar"
+ndk_cxx := ndk_botan_build_home + "/toolchains/llvm/prebuilt/darwin-x86_64/bin/" + ndk_cxx_ver
+
 
 # This uses only the udl file
 # generate-kotlin:
@@ -197,15 +200,16 @@ build-android-lib-aarch64 release="":
     #!/usr/bin/env bash
     set -euxo pipefail
     export BOTAN_CONFIGURE_OS='android'
-    ## export BOTAN_CONFIGURE_CC_ABI_FLAGS='-arch arm64'
     export BOTAN_CONFIGURE_CC='clang'
     export BOTAN_CONFIGURE_CPU='arm64'
     export BOTAN_CONFIGURE_DISABLE_MODULES='tls,pkcs11,sodium,filters'
+    export BOTAN_CONFIGURE_EXTRA_CXXFLAGS="-fPIC"
+
+    ## cargp-ndk sepecific
     export AR={{ndk_ar}}
     export CXX={{ndk_cxx}}
     export AR_aarch64_linux_android={{ndk_ar}}
     export CXX_aarch64_linux_android={{ndk_cxx}}
-
     export ANDROID_NDK_HOME={{ndk_botan_build_home}}
 
     RUST_LOG=debug cargo ndk -p {{ndk_api_level}} -t aarch64-linux-android -o ./target/jniLibs build {{ if release == "true" {"--release" } else {""} }} 
@@ -290,5 +294,3 @@ test-env:
 # *  - Compiler: clang++ -fstack-protector -pthread -stdlib=libc++ -arch arm64 -std=c++20 -D_REENTRANT -O3
 # *  - Arch: arm64
 # *  - OS: ios
-
-
