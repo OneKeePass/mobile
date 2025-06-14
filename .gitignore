@@ -21,6 +21,8 @@ docs/.clj-kondo/.cache
 .rebel_readline_history
 ios/OneKeePassMobile/Translations/.clj-kondo
 
+*/.clj-kondo
+
 
 /target
 /target-ios-autofill-extension

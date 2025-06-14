@@ -47,10 +47,9 @@ cfg-if = "1.0"
 ## derive_builder = "0.20.2"
 
 ## SFTP
-russh-sftp = "2.0.8"
-russh = "0.49"
-russh-keys = "0.49"
-async-trait = "0.1"
+russh-sftp = "2.1.1"
+russh = "0.52.1"
+russh-keys = "0.49.2"
 
 ## WebDav 
 ## reqwest_dav = "0.1.13"  - This did not build for android because of Openssl dependency
@@ -64,10 +63,10 @@ async-trait = "0.1"
 ## This works for ios and android as it uses rustls 
 reqwest_dav = {version = "0.1.15", default-features = false,features = ["rustls-tls"]}
 
-## using from the local crate 
-## onekeepass-core = {path = "../../onekeepass-core", version = "0.18.0"}
+## using from the local crate during dev time
+onekeepass-core = {path = "../../onekeepass-core", version = "0.18.1"}
 
-onekeepass-core = {git = "https://github.com/OneKeePass/onekeepass-core.git" , tag="v0.18.0" }
+## onekeepass-core = {git = "https://github.com/OneKeePass/onekeepass-core.git" , tag="v0.18.0" }
 
 [target.'cfg(target_os = "android")'.dependencies]
 android_logger = "0.13.1"
