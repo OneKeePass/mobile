@@ -1,4 +1,7 @@
 #![allow(dead_code, unused_imports)]
+
+uniffi::include_scaffolding!("db_service");
+
 mod android;
 mod app_lock;
 mod app_preference;
@@ -229,7 +232,7 @@ fn extract_file_provider(full_file_name_uri: String) -> String {
 
 // #[cfg(any(target_os = "ios", target_os = "android"))] - see the above comments
 
-uniffi::include_scaffolding!("db_service");
+// uniffi::include_scaffolding!("db_service");
 
 // As per uniffi doc, this should only be used when we use only the macros based udl definitions and not udl file
 //uniffi::setup_scaffolding!("db_service");

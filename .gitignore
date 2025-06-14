@@ -8,6 +8,7 @@
 .cpcache/
 cljs-ios-autofill-extension/.cpcache/
 
+
 # clj related
 target/
 node_modules/
@@ -20,6 +21,8 @@ src/.clj-kondo/.cache
 docs/.clj-kondo/.cache
 .rebel_readline_history
 ios/OneKeePassMobile/Translations/.clj-kondo
+
+*/.clj-kondo
 
 
 /target

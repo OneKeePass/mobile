@@ -1891,6 +1891,7 @@ public interface AndroidApiService {
     
     companion object
 }
+
 open class AndroidApiServiceImpl: Disposable, AutoCloseable, AndroidApiService {
 
     constructor(pointer: Pointer) {
@@ -2262,6 +2263,7 @@ public interface AndroidSupportServiceExtraInterface {
     
     companion object
 }
+
 open class AndroidSupportServiceExtra: Disposable, AutoCloseable, AndroidSupportServiceExtraInterface {
 
     constructor(pointer: Pointer) {
@@ -2539,6 +2541,7 @@ public interface CommonDeviceServiceEx {
     
     companion object
 }
+
 open class CommonDeviceServiceExImpl: Disposable, AutoCloseable, CommonDeviceServiceEx {
 
     constructor(pointer: Pointer) {
@@ -2815,6 +2818,7 @@ public interface EventDispatch {
     
     companion object
 }
+
 open class EventDispatchImpl: Disposable, AutoCloseable, EventDispatch {
 
     constructor(pointer: Pointer) {
@@ -3127,6 +3131,7 @@ public interface JsonServiceInterface {
     
     companion object
 }
+
 open class JsonService: Disposable, AutoCloseable, JsonServiceInterface {
 
     constructor(pointer: Pointer) {
@@ -3420,6 +3425,7 @@ public interface SecureEnclaveCbService {
     
     companion object
 }
+
 open class SecureEnclaveCbServiceImpl: Disposable, AutoCloseable, SecureEnclaveCbService {
 
     constructor(pointer: Pointer) {
@@ -4181,6 +4187,7 @@ public interface CommonDeviceService {
 }
 
 
+
 // Put the implementation in an object so we don't pollute the top-level namespace
 internal object uniffiCallbackInterfaceCommonDeviceService {
     internal object `appHomeDir`: UniffiCallbackInterfaceCommonDeviceServiceMethod0 {
@@ -4327,6 +4334,7 @@ public interface SecureKeyOperation {
     
     companion object
 }
+
 
 
 // Put the implementation in an object so we don't pollute the top-level namespace

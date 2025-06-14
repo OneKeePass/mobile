@@ -145,18 +145,29 @@ android-lib-output-dir := "target/jniLibs"
 
 ## env ANDROID_NDK_HOME is not used for ndk path
 
-## Using 27.1.12297006, compile step goes through (need to comment out "export BOTAN_CONFIGURE_CC_ABI_FLAGS='-arch arm64'" to compile), 
+## Using 27.1.12297006 , compile step goes through (need to comment out "export BOTAN_CONFIGURE_CC_ABI_FLAGS='-arch arm64'" to compile), 
 ## but linking failed. So continued using ndk 26.1.10909125 for now
 
+## 27.2.12479018
 ## 26.1.10909125 (ndk version used with RN 0.74.5)
 
 ## Ref https://developer.android.com/ndk/guides/other_build_systems
 ## Also see "Botan notes" below 
 
-ndk_version := "26.1.10909125"
-ndk_botan_build_home :=env_var('HOME')+"/Library/Android/sdk/ndk/" + ndk_version
+
+## android31 in aarch64-linux-android31-clang++ here means API level 31 and the same value is passed as -p 31 to cargo-ndk
+## -p 31 ensures that cargo-ndk sets env with
+## CFLAGS_AARCH64_LINUX_ANDROID="--target=aarch64-linux-android31" and CXXFLAGS_AARCH64_LINUX_ANDROID="--target=aarch64-linux-android31"
+
+ndk_version := "27.2.12479018"
+ndk_api_level := "31"
+ndk_cxx_ver :=  "aarch64-linux-android"+ndk_api_level+"-clang++"  
+## "aarch64-linux-android35-clang++"
+ndk_botan_build_home := env_var('HOME')+"/Library/Android/sdk/ndk/" + ndk_version
 ndk_ar := ndk_botan_build_home + "/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ar"
-ndk_cxx := ndk_botan_build_home + "/toolchains/llvm/prebuilt/darwin-x86_64/bin/aarch64-linux-android31-clang++"
+ndk_cxx := ndk_botan_build_home + "/toolchains/llvm/prebuilt/darwin-x86_64/bin/" + ndk_cxx_ver
+
+ndk_cc := "/Users/jeyasankar/Library/Android/sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang"
 
 ## cargo build --target aarch64-linux-android did not work and cargo-ndk works nice
 ## Needs to do one time 'cargo install cargo-ndk' or 'cargo binstall cargo-ndk' 
@@ -180,24 +191,31 @@ generate-kotlin:
 ## https://github.com/bbqsrc/cargo-ndk/compare/v3.2.1...v3.2.2
 ## https://docs.rs/cc/latest/cc/#external-configuration-via-environment-variables
 
-# Using ndk option -p 31  - means use NDK API 31
+# Using ndk option -p 31  - means use NDK API 31. Otherwise the lowest API level will be used
 # Using RUST_LOG=debug specifies the log levels to be used by env_logger (of cargo-ndk)
+# ANDROID_NDK_HOME is used by cargo-ndk. If this is not done, then cargo-ndk uses the latest ndk version
+# We can use 'just cargo-ndk-env' to see these
 
 ## Need to ensure to use 'crate-type = ["lib", "staticlib","cdylib"]' in Cargo.toml
 build-android-lib-aarch64 release="":
     #!/usr/bin/env bash
     set -euxo pipefail
     export BOTAN_CONFIGURE_OS='android'
-    ## export BOTAN_CONFIGURE_CC_ABI_FLAGS='-arch arm64'
     export BOTAN_CONFIGURE_CC='clang'
     export BOTAN_CONFIGURE_CPU='arm64'
     export BOTAN_CONFIGURE_DISABLE_MODULES='tls,pkcs11,sodium,filters'
+    export BOTAN_CONFIGURE_EXTRA_CXXFLAGS="-fPIC"
+
     export AR={{ndk_ar}}
     export CXX={{ndk_cxx}}
     export AR_aarch64_linux_android={{ndk_ar}}
     export CXX_aarch64_linux_android={{ndk_cxx}}
 
-    RUST_LOG=debug cargo ndk -t aarch64-linux-android -o ./target/jniLibs build {{ if release == "true" {"--release" } else {""} }} 
+    export CC_aarch64_linux_android={{ndk_cc}}
+
+    export ANDROID_NDK_HOME={{ndk_botan_build_home}}
+
+    RUST_LOG=debug cargo -vv ndk -p {{ndk_api_level}} -t aarch64-linux-android -o ./target/jniLibs build {{ if release == "true" {"--release" } else {""} }} 
 
 build-android-lib-all release="":
     just build-android-lib-aarch64 {{release}}
@@ -211,6 +229,23 @@ build-android-lib-cp-src release="":(build-android-lib-all release) generate-kot
     cp -R {{android-lib-output-dir}} {{android-db-service-lib-dir}}
 
 build-android-lib-cp-src-release:(build-android-lib-cp-src "true")
+
+cargo-ndk-env:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+    export BOTAN_CONFIGURE_OS='android'
+    ## export BOTAN_CONFIGURE_CC_ABI_FLAGS='-arch arm64'
+    export BOTAN_CONFIGURE_CC='clang'
+    export BOTAN_CONFIGURE_CPU='arm64'
+    export BOTAN_CONFIGURE_DISABLE_MODULES='tls,pkcs11,sodium,filters'
+    export AR={{ndk_ar}}
+    export CXX={{ndk_cxx}}
+    export AR_aarch64_linux_android={{ndk_ar}}
+    export CXX_aarch64_linux_android={{ndk_cxx}}
+
+    export ANDROID_NDK_HOME={{ndk_botan_build_home}}
+
+    cargo ndk-env -p {{ndk_api_level}}
 
 test-env:
     #!/usr/bin/env bash
@@ -262,5 +297,4 @@ test-env:
 # *  - Compiler: clang++ -fstack-protector -pthread -stdlib=libc++ -arch arm64 -std=c++20 -D_REENTRANT -O3
 # *  - Arch: arm64
 # *  - OS: ios
-
 
