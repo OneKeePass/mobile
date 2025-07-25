@@ -134,7 +134,7 @@
 
 ;; Called when user picks a db on the start page database list 
 ;; As compared to main app event, here we need to use :org-db-file-path as db-key to 
-;; get the stored crdentials if this db opening supports biometric 
+;; get the stored credentials if this db opening supports biometric 
 (reg-event-fx
  :open-database/database-file-picked-1
  (fn [{:keys [db]} [_event-id {:keys [full-file-name-uri] :as kdbx-file-info-m}]]

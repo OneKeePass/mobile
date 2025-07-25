@@ -297,14 +297,16 @@ impl Preference {
 
         // Ensure that version is updated if required
         let final_pref = if pref.version == PREFERENCE_JSON_FILE_VERSION {
-            debug!("Version Checked: Returning the current pref as version is the latest");
+            // debug!("Version Checked: Returning the current pref as version is the latest");
             pref
         } else {
             // If the new field added are only Option<> type in Preference,
             // then parsing goes through with new Preference itself, but the version will be old
             pref.version = PREFERENCE_JSON_FILE_VERSION.into();
             pref.write(preference_home_dir.as_ref());
-            debug!("Returning the current pref after conversion from old pref as versions are not the same");
+            
+            // debug!("Returning the current pref after conversion from old pref as versions are not the same");
+            
             pref
         };
 

@@ -207,7 +207,8 @@
     :as kvm}]
   (let [cust-color @page-background-color
         is-password-edit? (and edit (= key PASSWORD))
-        non-edit-kdbx-url (and (not edit) (= key URL) (ef-ao/is-kdbx-url value))
+        ;; kdbx:// or https:// or http
+        non-edit-kdbx-url (and (not edit) (= key URL))
         custom-field-edit-focused? (if (is-iOS)
                                      (and
                                       edit
@@ -241,9 +242,9 @@
                            ;; This function is called when the generated password is selected in Generator page
                            :onPress #(pg-events/generate-password on-change-text)}]])
 
-     ;; An icon to show custom field edit menus
-     ;; In Android, when we press this dot-icon, the custom field first loses focus and the keyborad dimiss takes place 
-     ;; and then menu pops up only when we press second time the dot-icon
+      ;; An icon to show custom field edit menus
+      ;; In Android, when we press this dot-icon, the custom field first loses focus and the keyborad dimiss takes place 
+      ;; and then menu pops up only when we press second time the dot-icon
       (when custom-field-edit-focused?
         [rn-view {:style {:margin-left -5 :backgroundColor cust-color}}
          [rnp-icon-button {:style {:margin-right 0}
@@ -257,7 +258,7 @@
          [rnp-icon-button {:style {:margin-right 0}
                            :icon const/ICON-LAUNCH
                            :onPress (fn [] 
-                                      (ef-ao/entry-form-open-kdbx-url value))}]])]
+                                      (ef-ao/entry-form-open-url value))}]])]
 
      ;; Any error text below the field
      (when (and edit (not (nil? error-text)))

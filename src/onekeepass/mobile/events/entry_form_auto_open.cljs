@@ -19,12 +19,6 @@
                                                   UUID_OF_ENTRY_TYPE_AUTO_OPEN
                                                   IFDEVICE]]))
 
-(defn is-kdbx-url [url-field-value]
-  (if (nil? url-field-value) false
-      (str/starts-with? url-field-value "kdbx:")))
-
-(defn entry-form-open-kdbx-url [url-field-value]
-  (dispatch [:entry-form-open-kdbx-url url-field-value]))
 
 (defn show-key-file-form []
   (dispatch [:key-file-form/show nil nil]))
@@ -33,16 +27,47 @@
   "Called from the dialog 'auto-open-db-file-required-info-dialog' 
    The arg 'auto-open-props' is map see comments in the event ':entry-form-auto-open-db-key-not-found'
    "
-  [auto-open-props] 
+  [auto-open-props]
   (dispatch [:open-database/auto-open-show-select-storage auto-open-props]))
 
+(defn entry-form-open-url [url-field-value]
+  (dispatch [:entry-form-open-url url-field-value]))
+
+;;;;;;;;;  To be removed ;;;;;;;;;;;;;;
+#_(defn is-kdbx-url [url-field-value]
+    (if (nil? url-field-value) false
+        (str/starts-with? url-field-value "kdbx:")))
+
+#_(defn entry-form-open-kdbx-url [url-field-value]
+    (dispatch [:entry-form-open-kdbx-url url-field-value]))
+
 ;; Called when user presses the url field 
+#_(reg-event-fx
+   :entry-form-open-kdbx-url
+   (fn [{:keys [_db]} [_event-id url-value]]
+     (if (str/starts-with? url-value "kdbx:")
+       {:fx [[:dispatch [:entry-form-auto-open-resolve-properties]]]}
+       {})))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (reg-event-fx
- :entry-form-open-kdbx-url
+ :entry-form-open-url
  (fn [{:keys [_db]} [_event-id url-value]]
-   (if (str/starts-with? url-value "kdbx:")
-     {:fx [[:dispatch [:entry-form-auto-open-resolve-properties]]]}
-     {})))
+   (let [l-url-value (str/lower-case url-value)]
+     (cond
+
+       (str/starts-with? l-url-value "kdbx:")
+       {:fx [[:dispatch [:entry-form-auto-open-resolve-properties]]]}
+
+       (or (str/starts-with? l-url-value "https://") (str/starts-with? url-value "http://"))
+       {:fx [[:common/bg-open-https-url [url-value]]]}
+
+       (str/starts-with? l-url-value "file://")
+       {}
+
+       ;; Otherwise we assume it is a web url without the protocol prefix. Just add the prefix and open
+       :else
+       {:fx [[:common/bg-open-https-url [(str "https://" l-url-value)]]]}))))
 
 (defn auto-open-properties-dispatch-fn
   "The arg 'auto-open-props' is passed to the dispatch response handler fn"
@@ -93,12 +118,12 @@
                      {:keys [key-file-path] :as _auto-open-props}
                      {:keys [db-key _db-file-name key-file-full-path key-file-name] :as auto-open-props-resolved}]]
    (cond
-     
+
      ;; key-file-path (from form data's UserName field) is a non nil value 
      ;; But the 'key-file-full-path' is not available as user has not yet uploaded the key file yet 
      (and (not (str/blank? key-file-path)) (str/blank? key-file-full-path))
      {:fx [[:dispatch [:entry-form-auto-open-pick-key-file key-file-name]]]}
-     
+
      (str/blank? db-key)
      {:fx [[:dispatch [:entry-form-auto-open-db-key-not-found auto-open-props-resolved]]]}
 
@@ -231,11 +256,11 @@
    :entry-form-auto-open-load-child-database
    (fn [{:keys [db]} [_event_id {:keys [] :as auto-open-props-resolved}]]
      (let [args (include-password db auto-open-props-resolved)
-          ;;  form-data (get-form-data db)
-          ;;  parsed-fields (:parsed-fields form-data)
-          ;;  {:keys [value]} (form-data-kv-data form-data PASSWORD)
-          ;;  password (place-holder-resolved-value parsed-fields PASSWORD value)
-          ;;  args (as-map [db-key db-file-name password key-file-full-path key-file-name]) 
+           ;;  form-data (get-form-data db)
+           ;;  parsed-fields (:parsed-fields form-data)
+           ;;  {:keys [value]} (form-data-kv-data form-data PASSWORD)
+           ;;  password (place-holder-resolved-value parsed-fields PASSWORD value)
+           ;;  args (as-map [db-key db-file-name password key-file-full-path key-file-name]) 
            ]
        {:fx [[:dispatch [:common/to-home-page]]
              [:dispatch [:open-database/database-file-picked-in-auto-open args]]]})))
@@ -247,7 +272,7 @@
     (and (not (str/blank? key-file-path)) (str/blank? key-file-full-path))
     {:fx [[:dispatch [:entry-form-auto-open-pick-key-file]]]}
 
-                  ;; Open the child database
+    ;; Open the child database
     (not (nil? db-key))
     (do
       (println " in else clause")

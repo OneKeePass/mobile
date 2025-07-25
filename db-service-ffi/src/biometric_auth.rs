@@ -131,14 +131,11 @@ impl KeyStoreServiceImpl {
 
         let ops = AppState::secure_key_operation();
 
-        log::debug!(
-            "Storing in key chain / key store for the store_key {}",
-            &data_key
-        );
+        // log::debug!( "Storing in key chain / key store for the store_key {}",&data_key);
 
         let _stored = match ops.store_key(data_key.to_string(), enc_key.clone()) {
             Ok(()) => {
-                log::info!("Encrypted key is stored in key chain");
+                // log::info!("Encrypted key is stored in key chain");
                 true
             }
             Err(e) => {
@@ -147,7 +144,7 @@ impl KeyStoreServiceImpl {
                 if let SecureKeyOperationError::StoringKeyDuplicateItemError = e {
                     if ops.delete_key(data_key.to_string()).is_ok() {
                         let r = ops.store_key(data_key.to_string(), enc_key);
-                        log::info!("Second time call store key called and result is {:?}", r);
+                        log::info!("Second time call store key is called after deleting an existing key and result is {:?}", r);
                         match r {
                             Ok(_) => true,
                             Err(_) => false,
@@ -174,7 +171,7 @@ impl KeyStoreServiceImpl {
             }
         };
 
-        log::debug!("Get key returned {:?}", &key_str_opt);
+        // log::debug!("Get key returned {:?}", &key_str_opt);
 
         let val = key_str_opt.and_then(|v| match hex::decode(&v) {
             Ok(v) => Some(v),

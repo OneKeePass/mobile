@@ -113,12 +113,11 @@ fn app_extension_root() -> OkpResult<PathBuf> {
         ));
     };
 
-    //temp_delete_old_af_files(); // Need to be removed
-
     let full_path_dir = Path::new(app_group_home_dir).join(EXTENSION_ROOT_DIR);
     Ok(full_path_dir.to_path_buf())
 }
 
+// Creates a sub dir with the given name under the app group root
 fn app_group_root_sub_dir(sub_dir_name: &str) -> OkpResult<PathBuf> {
     let app_group_home_dir = app_extension_root()?;
     let p = util::create_sub_dir(app_group_home_dir.to_string_lossy().as_ref(), sub_dir_name);
@@ -227,13 +226,14 @@ impl AutoFillMeta {
             return Self::default();
         };
 
-        debug!("AutoFillMeta is {:?} ", &pref_file_name);
+        // debug!("AutoFillMeta is {:?} ", &pref_file_name);
 
         let json_str = fs::read_to_string(pref_file_name).unwrap_or("".into());
-        debug!("AutoFillMeta json_str is {}", &json_str);
+        
+        // debug!("AutoFillMeta json_str is {}", &json_str);
 
         let mut af_meta = if json_str.is_empty() {
-            log::info!("AutoFillMeta is empty and default used ");
+            // log::info!("AutoFillMeta is empty and default used ");
             Self::default()
         } else {
             serde_json::from_str(&json_str).unwrap_or_else(|_| {
@@ -241,13 +241,11 @@ impl AutoFillMeta {
                 match serde_json::from_str(&json_str) {
                     // Prior version
                     Ok(prev_af_meta @ AutoFillMetaV100 { .. }) => {
-                        debug!(
-                            "Returning the new AutoFillMeta with old values from AutoFillMeta100"
-                        );
+                        // debug!( "Returning the new AutoFillMeta with old values from AutoFillMeta100");
 
                         let new_af_meta: Self = prev_af_meta.into();
 
-                        debug!("Converted new_af is {:?}", &new_af_meta);
+                        // debug!("Converted new_af is {:?}", &new_af_meta);
 
                         // Write the AutoFillMeta json with the copied values from old AutoFillMeta
                         new_af_meta.write_to_app_group_dir();
@@ -269,7 +267,7 @@ impl AutoFillMeta {
 
         // Ensure that version is updated if required
         let final_af_meta = if af_meta.version == META_JSON_FILE_VERSION {
-            debug!("Version Checked: Returning the current af_meta as version is the latest");
+            // debug!("Version Checked: Returning the current af_meta as version is the latest");
             af_meta
         } else {
             // If the new field added are only Option<> type in AutoFillMeta,
@@ -286,14 +284,13 @@ impl AutoFillMeta {
         if let Some(pref_file_name) = autofill_meta_json_file() {
             let json_str_result = serde_json::to_string_pretty(self);
             if let Ok(json_str) = json_str_result {
-                log::debug!("Writing AutoFillMeta file");
+                // log::debug!("Writing AutoFillMeta file");
                 if let Err(err) = fs::write(pref_file_name, json_str.as_bytes()) {
                     log::error!(
                         "AutoFillMeta file write failed and error is {}",
                         err.to_string()
                     );
                 }
-
             }
         };
     }
@@ -453,7 +450,6 @@ impl IosAppGroupSupportService {
     }
 
     fn pin_verify(&self, json_args: &str) -> ResponseJson {
-    
         let inner_fn = || -> OkpResult<bool> {
             let (pin,) = parse_command_args_or_err!(json_args, AppLockCredentialArg { pin });
             app_lock::pin_verify(pin)
@@ -480,7 +476,7 @@ impl IosAppGroupSupportService {
     //     result_json_str(Ok(v))
     // }
 
-    // Gets the list of key files that may be used to authenticate a selected database in autofill extension
+    // Gets the list of key files (full file path) that may be used to authenticate a selected database in autofill extension
     fn list_of_key_files(&self) -> ResponseJson {
         let inner_fn = || -> OkpResult<Vec<String>> {
             let app_group_key_file_dir = app_group_root_sub_dir(AG_KEY_FILES_DIR)?;
@@ -504,6 +500,33 @@ impl IosAppGroupSupportService {
                 }
             );
 
+            // TODO: 
+            // Need to share key files between main app and autofill app under agg_group_root/okpshared/key_files
+            // instead of app_root/key_files
+            // Then we need not adjust the key file path as done here.
+            // When we do that, we may need to remove this but add a similar logic in main app
+            // to use proper key file path when biometric is used. 
+            // Or we may need to update the stored credentials to use the new key files path
+            let adjusted_key_file_full_name = if biometric_auth_used && key_file_name.is_some() {
+                // We can use unwrap here as key_file_name has some value
+                let incoming_kfn = key_file_name.as_ref().unwrap();
+
+                // log::debug!("The incoming full key file name is {} ", &incoming_kfn);
+
+                let key_file_name_part = AppState::common_device_service()
+                    .uri_to_file_name(incoming_kfn.clone())
+                    .map_or(String::default(), |s| s);
+
+                let app_group_key_file_dir = app_group_root_sub_dir(AG_KEY_FILES_DIR)?;
+
+                let key_file_path = app_group_key_file_dir.join(&key_file_name_part);
+
+                Some(key_file_path.to_string_lossy().to_string())
+            } else {
+                // When biometric_auth_used is not used, the passed key_file_name value is used as such which may be None or Some value
+                key_file_name
+            };
+
             let mut file = File::open(&util::url_to_unix_file_name(&db_file_name))?;
             let file_name = AppState::uri_to_file_name(&db_file_name);
 
@@ -512,7 +535,8 @@ impl IosAppGroupSupportService {
                 &mut file,
                 &db_file_name,
                 password.as_deref(),
-                key_file_name.as_deref(),
+                adjusted_key_file_full_name.as_deref(),
+                // key_file_name.as_deref(),
                 Some(&file_name),
             )
             .map_err(|e| match e {
