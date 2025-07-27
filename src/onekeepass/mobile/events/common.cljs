@@ -1277,6 +1277,11 @@
 (defn open-https-url [https-url]
   (bg/open-https-url https-url  (fn [api-response] (on-error api-response))))
 
+(reg-fx
+ :common/bg-open-https-url
+ (fn [[https-url]]
+   (bg/open-https-url https-url  (fn [api-response] (on-error api-response)))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (comment

@@ -50,8 +50,7 @@
             [onekeepass.mobile.translation :refer [lstr-bl lstr-l lstr-pt lstr-field-name
                                                    lstr-section-name]]
             [onekeepass.mobile.utils :as u]
-            [reagent.core :as r]
-            [onekeepass.mobile.events.entry-form-auto-open :as ef-ao]))
+            [reagent.core :as r]))
 
 ;;(set! *warn-on-infer* true)
 

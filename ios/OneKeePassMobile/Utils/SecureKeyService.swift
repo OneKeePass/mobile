@@ -44,7 +44,7 @@ class SecureKeyOperationImpl: SecureKeyOperation {
         throw SecureKeyOperationError.StoringKeyError(message: error.description)
       }
     }
-    cmnLogger.debug("Stored key suucessfully in Keychain")
+    // cmnLogger.debug("Stored key suucessfully in Keychain")
   }
 
   func deleteKey(_ dbKey: String) throws {
@@ -67,7 +67,7 @@ class SecureKeyOperationImpl: SecureKeyOperation {
       throw SecureKeyOperationError.DeleteKeyError(message: error.description)
     }
 
-    cmnLogger.debug("Delete Key call completed successfully")
+    // cmnLogger.debug("Delete Key call completed successfully")
   }
 
   func getKey(_ dbKey: String) throws -> String? {
@@ -116,7 +116,7 @@ class SecureKeyOperationImpl: SecureKeyOperation {
       // using NSUTF8StringEncoding
       if let retrievedData = itemCopy as? NSData {
         let contentsOfKeychain = NSString(data: retrievedData as Data, encoding: NSUTF8StringEncoding)
-        cmnLogger.info("contentsOfKeychain  \(String(describing: contentsOfKeychain))")
+        // cmnLogger.info("contentsOfKeychain  \(String(describing: contentsOfKeychain))")
         return contentsOfKeychain as? String
         // return SRString(contentsOfKeychain as? String ??  "Error:StringConversion error" )
       } else {

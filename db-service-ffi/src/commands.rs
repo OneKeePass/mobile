@@ -905,10 +905,10 @@ impl Commands {
 
     fn load_language_translations(language_ids: Vec<String>) -> OkpResult<TranslationResource> {
         let current_locale_language = util::current_locale_language();
-        debug!("current_locale is {}", &current_locale_language);
+        // debug!("current_locale is {}", &current_locale_language);
 
         let prefered_language = AppState::language(); //current_locale_language.clone();
-        debug!("prefered_language is {}", &prefered_language);
+        // debug!("prefered_language is {}", &prefered_language);
 
         let language_ids_to_load = if !language_ids.is_empty() {
             language_ids
@@ -937,16 +937,12 @@ impl Commands {
             if let Some(data) =
                 AppState::common_device_service().load_language_translation(lng.clone())
             {
-                debug!(
-                    "Got translations json from resources for language id {}",
-                    &lng
-                );
+                // debug!( "Got translations json from resources for language id {}", &lng);
+
                 translations.insert(lng.clone(), data);
             } else {
-                debug!(
-                    "No translations json found in resources for language id {}",
-                    &lng
-                );
+                // debug!("No translations json found in resources for language id {}", &lng);
+
                 translations.insert(lng.clone(), "{}".into());
             }
         }

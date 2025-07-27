@@ -13,7 +13,7 @@ pub unsafe fn get_file_from_fd(fd: u64) -> File {
     File::from_raw_fd(fd as i32)
 }
 
-// Gets the unix file path from the platform specif file uri which may be url encoded
+// Gets the unix file path from the platform specific file uri which may be url encoded
 pub fn url_to_unix_file_name(url_str: &str) -> String {
     // e.g uri file:///Users/jeyasankar/Library/Developer/CoreSimulator/Devices/A45B3252-1AA4-4D50-9E6E-89AB1E873B1F/data/Containers/Shared/AppGroup/6CFFA9FC-169B-482E-A817-9C0D2A6F5241/File%20Provider%20Storage/TJ-fixit.kdbx
     // Note the encoding in the uri

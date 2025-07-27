@@ -87,8 +87,10 @@ pub struct AppState {
 static APP_STATE: OnceCell<AppState> = OnceCell::new();
 
 impl AppState {
-    //
-    const APP_VERSION: &str = "0.16.0";
+    // TODO: 
+    // Need to use this instead of relying on the one in onekeepass/mobile/about.cljs
+    // This is not yet used
+    const APP_VERSION: &str = "0.17.2";
 
     pub fn shared() -> &'static AppState {
         // Panics if no global state object was set. ??
