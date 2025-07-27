@@ -90,7 +90,7 @@ impl AppState {
     // TODO: 
     // Need to use this instead of relying on the one in onekeepass/mobile/about.cljs
     // This is not yet used
-    const APP_VERSION: &str = "0.17.1";
+    const APP_VERSION: &str = "0.17.2";
 
     pub fn shared() -> &'static AppState {
         // Panics if no global state object was set. ??
