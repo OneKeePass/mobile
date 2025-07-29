@@ -28,11 +28,9 @@ use crate::{
 
 use super::IosApiCallbackImpl;
 
-const EXTENSION_ROOT_DIR: &str = "okp";
+pub(crate) const EXTENSION_ROOT_DIR: &str = "okp";
 
 pub(crate) const AG_DATA_FILES_DIR: &str = "db_files";
-
-pub(crate) const AG_KEY_FILES_DIR: &str = "key_files";
 
 const META_JSON_FILE_NAME: &str = "autofill_meta.json";
 
@@ -53,15 +51,7 @@ pub(crate) fn delete_copied_autofill_details(db_key: &str) -> OkpResult<()> {
         r
     );
 
-    if util::is_dir_empty(&db_file_root) {
-        let app_group_key_file_dir = app_group_root_sub_dir(AG_KEY_FILES_DIR)?;
-        let r = fs::remove_dir_all(&app_group_key_file_dir);
-        log::debug!(
-            "Delete key files dir {:?} result {:?}",
-            &group_db_file_dir,
-            r
-        );
-    }
+
     AutoFillMeta::read().remove_copied_db_info(&db_key);
     Ok(())
 }
@@ -92,9 +82,6 @@ pub(crate) fn remove_all_app_extension_contents() {
         let _ = remove_dir_contents(path);
     }
 
-    if let Ok(path) = app_group_root_sub_dir(AG_KEY_FILES_DIR) {
-        let _ = remove_dir_contents(path);
-    }
 
     if let Some(path) = autofill_meta_json_file() {
         let _ = fs::remove_file(path);
@@ -165,10 +152,6 @@ fn copy_files_to_app_group(db_key: &str) -> OkpResult<CopiedDbFileInfo> {
     let copied_db_info = CopiedDbFileInfo::new(file_name, db_file_path, db_key.to_string());
     AutoFillMeta::read().add_copied_db_info(copied_db_info.clone());
 
-    let app_group_key_file_dir = app_group_root_sub_dir(AG_KEY_FILES_DIR)?;
-
-    // Copies all the key files available
-    util::copy_files(&AppState::key_files_dir_path(), &app_group_key_file_dir);
 
     Ok(copied_db_info)
 }
@@ -479,7 +462,7 @@ impl IosAppGroupSupportService {
     // Gets the list of key files (full file path) that may be used to authenticate a selected database in autofill extension
     fn list_of_key_files(&self) -> ResponseJson {
         let inner_fn = || -> OkpResult<Vec<String>> {
-            let app_group_key_file_dir = app_group_root_sub_dir(AG_KEY_FILES_DIR)?;
+            let app_group_key_file_dir = AppState::key_files_dir_path();
             let v = util::list_dir_files(&app_group_key_file_dir);
             Ok(v)
         };
@@ -500,32 +483,6 @@ impl IosAppGroupSupportService {
                 }
             );
 
-            // TODO: 
-            // Need to share key files between main app and autofill app under agg_group_root/okpshared/key_files
-            // instead of app_root/key_files
-            // Then we need not adjust the key file path as done here.
-            // When we do that, we may need to remove this but add a similar logic in main app
-            // to use proper key file path when biometric is used. 
-            // Or we may need to update the stored credentials to use the new key files path
-            let adjusted_key_file_full_name = if biometric_auth_used && key_file_name.is_some() {
-                // We can use unwrap here as key_file_name has some value
-                let incoming_kfn = key_file_name.as_ref().unwrap();
-
-                // log::debug!("The incoming full key file name is {} ", &incoming_kfn);
-
-                let key_file_name_part = AppState::common_device_service()
-                    .uri_to_file_name(incoming_kfn.clone())
-                    .map_or(String::default(), |s| s);
-
-                let app_group_key_file_dir = app_group_root_sub_dir(AG_KEY_FILES_DIR)?;
-
-                let key_file_path = app_group_key_file_dir.join(&key_file_name_part);
-
-                Some(key_file_path.to_string_lossy().to_string())
-            } else {
-                // When biometric_auth_used is not used, the passed key_file_name value is used as such which may be None or Some value
-                key_file_name
-            };
 
             let mut file = File::open(&util::url_to_unix_file_name(&db_file_name))?;
             let file_name = AppState::uri_to_file_name(&db_file_name);
@@ -535,8 +492,7 @@ impl IosAppGroupSupportService {
                 &mut file,
                 &db_file_name,
                 password.as_deref(),
-                adjusted_key_file_full_name.as_deref(),
-                // key_file_name.as_deref(),
+                key_file_name.as_deref(),
                 Some(&file_name),
             )
             .map_err(|e| match e {
