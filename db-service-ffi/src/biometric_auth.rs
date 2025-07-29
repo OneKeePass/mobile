@@ -110,10 +110,10 @@ impl StoredCredential {
     }
 
     // iOS specific
-    // Called to remove the dir part from the full key file name before storing to secure enclave
+    // Called to remove the dir part from the full key file name before storing it to the secure enclave.
     // We need to do this as each installation of an iOS app generates a unique identifier (UUID) that is used in the path found in Containers/Data/Application
-    // Then the key file path will point to an invalid path. By keeping only the key file name, we can form
-    // this to get the full path
+    // Because of this, after each installation of the app, the the key file path will point to an invalid path. 
+    // By keeping only the key file name, we can avoid this issue. The full path is formed after reading this stored key file name
     fn remove_key_file_root_path(&mut self){
         #[cfg(target_os = "ios")]
         {
