@@ -185,7 +185,7 @@
                   ;; When Backend api 'stored-db-credentials-on-biometric-authentication' results in error 
                   ;; for whatever reason. Ideally should not happen!
                  (dispatch [:open-database/database-file-picked kdbx-file-info-m])))]
-    (println "stored-credentials returned is " stored-credentials)
+    #_(println "stored-credentials returned is " stored-credentials)
     (if (nil? stored-credentials)
 
       ;; Handles the situation when the stored-crdentials returned from backend api is 'None'
