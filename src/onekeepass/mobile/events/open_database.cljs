@@ -268,6 +268,7 @@
                                     ;; When Backend api 'stored-db-credentials-on-biometric-authentication' results in error 
                                     ;; for whatever reason. Ideally should not happen!
                                     (dispatch [:open-database-dialog-show kdbx-file-info-m])))]
+    #_(println "Received stored-credentials " stored-credentials)
     (if (nil? stored-credentials)
       ;; Handles the situation the stored-credentials returned from backend api is None
       ;; This happens when user presses the db on db list first time after enabling Biometric in the settings 

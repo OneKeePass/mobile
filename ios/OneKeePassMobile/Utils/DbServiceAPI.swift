@@ -193,8 +193,11 @@ class CommonDeviceServiceImpl: CommonDeviceService {
   }
   
   func uriToFileName(_ fullFileNameUri: String) -> String? {
+    // cmnLogger.debug("Going to get the file name part of fullFileNameUri passed \(fullFileNameUri) ")
+    
     let file_url = URL(string: fullFileNameUri)
     return file_url?.lastPathComponent
+    
   }
 
   func uriToFileInfo(_ fullFileNameUri: String) -> FileInfo? {

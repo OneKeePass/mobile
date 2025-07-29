@@ -178,15 +178,15 @@
   "A dispatch fn handler that is called when the backend api 
    stored-db-credentials-on-biometric-authentication for db open returns with credential info"
   [kdbx-file-info-m api-response]
-  (let [stored-crdentials
+  (let [stored-credentials
         (on-ok api-response
                (fn [error]
                  (println "The bg/stored-db-credentials-on-biometric-authentication call returned error " error)
                   ;; When Backend api 'stored-db-credentials-on-biometric-authentication' results in error 
                   ;; for whatever reason. Ideally should not happen!
                  (dispatch [:open-database/database-file-picked kdbx-file-info-m])))]
-    
-    (if (nil? stored-crdentials)
+    (println "stored-credentials returned is " stored-credentials)
+    (if (nil? stored-credentials)
 
       ;; Handles the situation when the stored-crdentials returned from backend api is 'None'
       ;; This happens when user presses the db on db list first time after enabling Biometric in the settings 
@@ -194,7 +194,7 @@
       (dispatch [:open-database-db-open-with-credentials kdbx-file-info-m])
 
       ;; Found some stored-crdentials value
-      (dispatch [:open-database-db-open-credentials-retrieved stored-crdentials kdbx-file-info-m]))))
+      (dispatch [:open-database-db-open-credentials-retrieved stored-credentials kdbx-file-info-m]))))
 
 ;; Call this when both flags 'biometric-available' and 'biometric-enabled-db?' are true
 (reg-fx

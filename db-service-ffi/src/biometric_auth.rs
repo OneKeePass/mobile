@@ -27,12 +27,12 @@ impl StoredCredential {
         key_file_name: &Option<String>,
         biometric_auth_used: bool,
     ) -> OkpResult<()> {
-
         let bio_enabled = AppState::db_open_biometeric_enabled(db_key);
-        debug!("Flags are {}, {}",bio_enabled,!biometric_auth_used);
+
+        // debug!("Flags are {}, {}", bio_enabled, !biometric_auth_used);
 
         if bio_enabled && !biometric_auth_used {
-            let sc = StoredCredential {
+            let mut sc = StoredCredential {
                 password: password.clone(),
                 key_file_name: key_file_name.clone(),
             };
@@ -40,15 +40,18 @@ impl StoredCredential {
             let r = sc.store_credentials(db_key).inspect_err(|e| {
                 log::debug!("Storing credentials failed with eroor {e}");
             });
-            debug!("store_credentials_on_check done {:?}",&r);
+            // debug!("store_credentials_on_check done {:?}", &r);
             return r;
         } else {
-            debug!("No crdentials stored for this key {}",&db_key);
+            // debug!("No credentials stored for this key {} as bio_enabled {} and biometric_auth_used {}", &db_key, bio_enabled, biometric_auth_used);
             Ok(())
         }
     }
 
-    pub(crate) fn store_credentials(&self, db_key: &str) -> OkpResult<()> {
+    fn store_credentials(&mut self, db_key: &str) -> OkpResult<()> {
+
+        self.remove_key_file_root_path(); 
+
         let plain_data = serde_json::to_string(&self)?;
 
         let ks_key = key_store_formatted_key(db_key);
@@ -56,21 +59,16 @@ impl StoredCredential {
         let encrypted_data = AppState::secure_enclave_cb_service()
             .encrypt_bytes(OKP_DB_OPEN_TAG.to_string(), plain_data.as_bytes().to_vec())?;
 
-        log::debug!(
-            "Encrypted and size is {} and will write this data",
-            &encrypted_data.len()
-        );
+        // log::debug!( "Encrypted and size is {} and will write this data",&encrypted_data.len());
 
         KeyStoreServiceImpl {}.store_key(&ks_key, encrypted_data)?;
 
-        log::debug!(
-            "The credentials are stored in the key store after encryption for the db_key {db_key}"
-        );
+        // log::debug!("The credentials are stored in the key store after encryption for the db_key {db_key}");
 
         Ok(())
     }
 
-    // Any previously stored credentials are retrieved if found. It is expected this is called 
+    // Any previously stored credentials are retrieved if found. It is expected this is called
     // after a successful biometric authentication from the UI side
     pub(crate) fn get_credentials(db_key: &str) -> Option<Self> {
         let ks_key = key_store_formatted_key(db_key);
@@ -94,7 +92,7 @@ impl StoredCredential {
 
             let decrypted_data_str = String::from_utf8_lossy(&decrypted_data);
 
-            let Ok(stored_credential) =
+            let Ok(mut stored_credential) =
                 serde_json::from_str::<StoredCredential>(&decrypted_data_str).map_err(|e| {
                     log::error!("Serde json parsing failed with error {}", e);
                     e
@@ -103,9 +101,48 @@ impl StoredCredential {
                 return None;
             };
 
+            stored_credential.adjust_key_file_path(); 
+            
             Some(stored_credential)
         } else {
             None
+        }
+    }
+
+    // iOS specific
+    // Called to remove the dir part from the full key file name before storing to secure enclave
+    // We need to do this as each installation of an iOS app generates a unique identifier (UUID) that is used in the path found in Containers/Data/Application
+    // Then the key file path will point to an invalid path. By keeping only the key file name, we can form
+    // this to get the full path
+    fn remove_key_file_root_path(&mut self){
+        #[cfg(target_os = "ios")]
+        {
+            if let Some(stored_kf_full_name) = self.key_file_name.as_ref() {
+                let p = std::path::Path::new(stored_kf_full_name);
+                // On Unix, a path has a root if it begins with /
+                if p.has_root() {
+                    let key_file_name_part = AppState::common_device_service()
+                        .uri_to_file_name(stored_kf_full_name.clone())
+                        .map_or(String::default(), |s| s);
+                    self.key_file_name = Some(key_file_name_part);
+                }
+            }
+        }
+    }
+
+    // iOS specific
+    // Called to remove any previous dir part from the full key file name
+    // and then form the new full key file path using the app group root 
+    fn adjust_key_file_path(&mut self) {
+        #[cfg(target_os = "ios")]
+        {
+            // This call ensures that key_file_name is just the file name part and not the full path
+            self.remove_key_file_root_path();
+            if let Some(kf_name_part) = self.key_file_name.as_ref() {
+                // Form the full path
+                let path = AppState::key_files_dir_path().join(kf_name_part);
+                self.key_file_name = path.to_str().map(|s| s.to_string());
+            }
         }
     }
 

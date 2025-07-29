@@ -35,6 +35,10 @@ pub(crate) const REMOTE_STORAGE_DIR: &str = "remote_storage";
 
 pub(crate) const REMOTE_STORAGE_SFTP_SUB_DIR: &str = "sftp";
 
+pub(crate) const OKP_SHARED_DIR: &str = "okp_shared";
+
+pub(crate) const KEY_FILES_DIR: &str = "key_files";
+
 // Any mutable field needs to be behind Mutex
 pub struct AppState {
     app_home_dir: String,
@@ -87,7 +91,7 @@ pub struct AppState {
 static APP_STATE: OnceCell<AppState> = OnceCell::new();
 
 impl AppState {
-    // TODO: 
+    // TODO:
     // Need to use this instead of relying on the one in onekeepass/mobile/about.cljs
     // This is not yet used
     const APP_VERSION: &str = "0.17.2";
@@ -130,7 +134,7 @@ impl AppState {
             util::create_sub_dirs(&app_dir, vec![BACKUPS_DIR, BACKUPS_HIST_DIR]);
         log::debug!("backup_history_dir_path is {:?}", &backup_history_dir_path);
 
-        let key_files_dir_path = util::create_sub_dir(&app_dir, "key_files");
+        let key_files_dir_path = Self::form_key_file_path(&app_dir, &app_group_home_dir);
         log::debug!("key_files_dir_path is {:?}", &key_files_dir_path);
 
         // All remote storage related dirs
@@ -170,11 +174,60 @@ impl AppState {
         }
     }
 
+    #[allow(unused_variables)]
+    fn form_key_file_path(app_dir: &String, app_group_dir: &Option<String>) -> PathBuf {
+        // log::debug!("AppState form_key_file_path is called");
+
+        cfg_if::cfg_if! {
+          if #[cfg(target_os="ios")] {
+            // in iOS, we should have a valid app group dir by this time and will panic! otherwise
+
+            // e.g dir /private/var/mobile/Containers/Shared/AppGroup/DD57ED77-97ED-4851-88F3-06EAEF19EBCD/
+            let app_group_root_dir = app_group_dir.as_ref().unwrap();
+
+            let app_group_key_file_dir =
+                util::create_sub_dirs(app_group_root_dir, vec![OKP_SHARED_DIR, KEY_FILES_DIR]);
+
+            // app_dir is something like /var/mobile/Containers/Data/Application/9E0D75F4-4172-429B-9177-E4633F7B96FB/Documents
+            let app_root_key_file_dir = Path::new(app_dir).join(KEY_FILES_DIR);
+
+            // log::debug!( "Old app key file dir {:?} and the new app group key files dir {:?} ",&app_root_key_file_dir, &app_group_key_file_dir);
+
+            // Copy all key files from dir like
+            // /var/mobile/Containers/Data/Application/9E0D75F4-4172-429B-9177-E4633F7B96FB/Documents/key_files/
+            // to
+            // /private/var/mobile/Containers/Shared/AppGroup/DD57ED77-97ED-4851-88F3-06EAEF19EBCD/okp_shared/key_files/
+            if app_root_key_file_dir.exists() {
+                util::copy_files(&app_root_key_file_dir, &app_group_key_file_dir);
+
+                // log::debug!( "Copied key files from app key file dir {:?} to app group key files dir {:?} ", &app_root_key_file_dir, &app_group_key_file_dir);
+
+                let _r = fs::remove_dir_all(&app_root_key_file_dir);
+                
+                // log::debug!("Removed key files from old app level key root dir {:?} with result  {:?} ",&app_root_key_file_dir, r );
+
+                let old_autofill_key_file_dir = Path::new(app_group_root_dir).join(crate::ios::autofill_app_group::EXTENSION_ROOT_DIR).join(KEY_FILES_DIR);
+
+                let _r = fs::remove_dir_all(&old_autofill_key_file_dir);
+                
+                // log::debug!("Removed key files from old Autofill key root dir {:?} with result  {:?}", &old_autofill_key_file_dir,r);
+
+            }
+
+            // Both main app and auto fill app share this key_files dir
+            app_group_key_file_dir
+          } else {
+            // For android no changes in the key files dir location
+            util::create_sub_dir(&app_dir, KEY_FILES_DIR)
+          }
+        }
+    }
+
     fn create_preference_dir_path(app_dir: &String, app_group_dir: &Option<String>) -> PathBuf {
         if cfg!(target_os = "ios") {
             // in iOS, we should have a valid app group dir
             let gd = app_group_dir.as_ref().unwrap();
-            let new_pref_file_home_dir = util::create_sub_dir(gd, "okp_shared");
+            let new_pref_file_home_dir = util::create_sub_dir(gd, OKP_SHARED_DIR);
 
             // debug!("Ios: Created preference_dir_path {:?}", &new_pref_file_home_dir);
 
@@ -488,7 +541,9 @@ impl AppState {
     }
 
     pub fn add_recently_used_with_file_info(db_key: &str, file_info: &Option<FileInfo>) {
-        debug!("add_recently_used_with_file_info is called with file_info {:?}",&file_info);
+        
+        // debug!( "add_recently_used_with_file_info is called with file_info {:?}",&file_info);
+        
         let file_info = if file_info.is_none() {
             Self::uri_to_file_info(db_key)
         } else {
@@ -594,3 +649,50 @@ fn _temp_move_documents_to_okp_app_dir(_app_dir: &str, _app_group_dir: &Option<S
 
     // Return app_dir,app_group_dir where app_dir = app_group_dir
 }
+
+/*
+fn form_key_file_path_1(app_dir: &String, app_group_dir: &Option<String>) -> PathBuf {
+        log::debug!("AppState form_key_file_path is called");
+
+        if cfg!(target_os = "ios") {
+            // in iOS, we should have a valid app group dir and will panic! otherwise
+
+            let app_group_root_dir = app_group_dir.as_ref().unwrap();
+
+            let app_group_key_file_dir =
+                util::create_sub_dirs(app_group_root_dir, vec![OKP_SHARED_DIR, KEY_FILES_DIR]);
+
+            let app_root_key_file_dir = Path::new(app_dir).join(KEY_FILES_DIR);
+
+            log::debug!(
+                "Old app key file dir {:?} and the new app group key files dir {:?} ",
+                &app_root_key_file_dir,
+                &app_group_key_file_dir
+            );
+
+            // Copy all key files from dir like
+            // /var/mobile/Containers/Data/Application/9E0D75F4-4172-429B-9177-E4633F7B96FB/Documents/key_files/
+            // to
+            // /private/var/mobile/Containers/Shared/AppGroup/DD57ED77-97ED-4851-88F3-06EAEF19EBCD/okp_shared/key_files/
+            if app_root_key_file_dir.exists() {
+                util::copy_files(&app_root_key_file_dir, &app_group_key_file_dir);
+
+                log::debug!(
+                    "Copied key files from app key file dir {:?} to app group key files dir {:?} ",
+                    &app_root_key_file_dir,
+                    &app_group_key_file_dir
+                );
+
+                let r = fs::remove_dir_all(&app_root_key_file_dir);
+                log::debug!("Removed key files from old app level key root dir {:?} ", r);
+
+                // let old_autofill_key_file_dir = Path::new(app_group_root_dir).join("").join(KEY_FILES_DIR);
+            }
+
+            // Both main app and Auto Fill app share this key_files dir
+            app_group_key_file_dir
+        } else {
+            util::create_sub_dir(&app_dir, KEY_FILES_DIR)
+        }
+    }
+*/

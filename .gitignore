@@ -138,3 +138,4 @@ buck-out/
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+.clj-kondo/imports/reagent/reagent/config.edn
