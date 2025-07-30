@@ -1,7 +1,10 @@
 (ns onekeepass.mobile.core
-  (:require ;; When we build iOS production main bundle, we can comment out this ns
+  (:require
+   ;; When we build iOS production main bundle, we can comment out this ns
    ;; and this will ensure that all android autofill related code are excluded
-   [onekeepass.mobile.android.autofill.core :as android-core] ;;;;;;; ;;;;;;; ;;;;;;; ;;;;;;;
+   ;; [onekeepass.mobile.android.autofill.core :as android-core]
+   ;;;;;;; ;;;;;;; ;;;;;;; ;;;;;;;
+   
    [onekeepass.mobile.appbar :refer [appbar-main-content
                                      hardware-back-pressed]]
    [onekeepass.mobile.background :as bg]
@@ -110,7 +113,7 @@
 ;; Make sure that either iOS or Android '-main' fn is available 
 
 ;; Entry root for iOS
-#_(defn ^:export -main
+(defn ^:export -main
     [_args]
 
     (init-calls)
@@ -122,7 +125,7 @@
 ;; This '-main' fn will work with iOS app also. Only things the main bundle size will be more 
 ;; than required and all android-af events are registered needlessly
 
-(defn ^:export -main
+#_(defn ^:export -main
   [args]
   (let [{:keys [androidAutofill] :as options} (js->clj args :keywordize-keys true)]
     (println "The options from main args are ." options)
