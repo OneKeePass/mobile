@@ -12,7 +12,8 @@ All created database files are encrypted using the best and most secure encrypti
 You can install OneKeePass for Android from Google Play store and OneKeePass for iOS from Apple app store
 
 <a href="https://apps.apple.com/us/app/onekeepass-password-manager/id6448712640" target="_blank"><img alt="Get it on App Store" src="https://imgur.com/GdGqPMY.png" width="153" height="46"></a>
-<a href="https://play.google.com/store/apps/details?id=com.onekeepassmobile" target="_blank"><img alt="Get it on Google Play" src="https://imgur.com/YQzmZi9.png" width="153" height="46"></a> 
+<a href="https://play.google.com/store/apps/details?id=com.onekeepassmobile" target="_blank"><img alt="Get it on Google Play" src="https://imgur.com/YQzmZi9.png" width="153" height="46"></a>
+<a href="https://apt.izzysoft.de/packages/com.onekeepassmobile" target="_blank"><img alt="Get it at IzzyOnDroid" src="https://gitlab.com/IzzyOnDroid/repo/-/raw/master/assets/IzzyOnDroidButtonGreyBorder_nofont.png" height="46"></a>
 
 | iOS  | Android |
 | ------------- | ------------- |
