@@ -1,8 +1,8 @@
 {:deps {;; krell uses old clojurescript v 1.10.844
         ;; To use latest clojurescript, we need include the org.clojure/data.json as per this issue
         ;; https://github.com/vouch-opensource/krell/issues/149
-        ;; org.clojure/clojurescript   {:mvn/version "1.11.132"}
-        ;; org.clojure/data.json {:mvn/version "2.5.1"}
+        org.clojure/clojurescript   {:mvn/version "1.12.42"}
+        org.clojure/data.json {:mvn/version "2.5.1"}
         
         ;; krell uses this cljs version
         ;; org.clojure/clojurescript   {:mvn/version "1.10.844"}

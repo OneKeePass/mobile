@@ -470,6 +470,7 @@
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				E235C05ADACE081382539298 /* [CP] Copy Pods Resources */,
 				F9F81C092C1227D900E1FE8C /* Embed Foundation Extensions */,
+				E81D89A1F29E7B6534D46905 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -628,13 +629,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-OneKeePassAutoFill/Pods-OneKeePassAutoFill-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-OneKeePassAutoFill/Pods-OneKeePassAutoFill-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -671,17 +668,30 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-OneKeePassMobile/Pods-OneKeePassMobile-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-OneKeePassMobile/Pods-OneKeePassMobile-resources-${CONFIGURATION}-output-files.xcfilelist",
 			);
-			outputPaths = (
-			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-OneKeePassMobile/Pods-OneKeePassMobile-resources.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		E81D89A1F29E7B6534D46905 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-OneKeePassMobile/Pods-OneKeePassMobile-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-OneKeePassMobile/Pods-OneKeePassMobile-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-OneKeePassMobile/Pods-OneKeePassMobile-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		F9F81C642C1512E000E1FE8C /* Bundle React Native code and images */ = {
@@ -829,6 +839,7 @@
 					"$(inherited)",
 					"-lc++",
 					"-ObjC",
+					"-lz",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.onekeepass.ios;
 				PRODUCT_NAME = OneKeePassMobile;
@@ -966,7 +977,7 @@
 				"REEXPORTED_LIBRARY_PATHS[arch=*]" = "";
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
-				USE_HERMES = false;
+				USE_HERMES = true;
 			};
 			name = Debug;
 		};
@@ -1037,7 +1048,7 @@
 				OTHER_LDFLAGS = "$(inherited)";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
-				USE_HERMES = false;
+				USE_HERMES = true;
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
@@ -1084,7 +1095,7 @@
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
-					"-lc++",
+					"-lz",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.onekeepass.ios.OneKeePassAutoFill;
 				PRODUCT_NAME = "$(TARGET_NAME)";

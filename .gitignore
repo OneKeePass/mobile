@@ -4,6 +4,8 @@
 *.keystore
 !debug.keystore
 
+uniffi-bindgen/.clj-kondo/.cache
+
 .bundle/
 .cpcache/
 cljs-ios-autofill-extension/.cpcache/
@@ -21,8 +23,21 @@ docs/.clj-kondo/.cache
 .rebel_readline_history
 ios/OneKeePassMobile/Translations/.clj-kondo
 
-*/.clj-kondo
+/src-cljs/js-components/.clj-kondo/.cache
+/src-cljs/.clj-kondo/.cache 
+/src-cljs/cljs-main-app-src/.clj-kondo/.cache 
+/src-cljs/cljs-ios-autofill-src/.clj-kondo/.cache
 
+#*/.clj-kondo
+
+*/.shadow-cljs
+/src-cljs/cljs-main-app-out
+/src-cljs/cljs-ios-autofill-out
+
+## Only temp
+# /src-cljs/cljs-main-app-src 
+# /src-cljs/cljs-ios-autofill-src 
+# /src-cljs/js-components
 
 /target
 /target-ios-autofill-extension

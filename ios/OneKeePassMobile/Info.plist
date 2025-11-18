@@ -2,8 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>DEVELOPMENT_TEAM</key>
-	<string>$(DEVELOPMENT_TEAM)</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
@@ -40,6 +38,8 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>DEVELOPMENT_TEAM</key>
+	<string>$(DEVELOPMENT_TEAM)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
@@ -53,12 +53,14 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>$(PRODUCT_NAME) needs access to your Camera.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>This app wants to use your Face ID. Plaese Hit OK to activate Face ID</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>This app does not use any location information</string>
-	<key>NSCameraUsageDescription</key>
-	<string>$(PRODUCT_NAME) needs access to your Camera.</string>
+	<key>RCTNewArchEnabled</key>
+	<false/>
 	<key>UIAppFonts</key>
 	<array>
 		<string>FontAwesome.ttf</string>
