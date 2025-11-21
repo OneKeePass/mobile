@@ -129,6 +129,9 @@ object ViewAutofillParser {
     private fun FillRequest?.getInlinePresentationSpecs(
             isInlineAutofillEnabled: Boolean,
     ): List<InlinePresentationSpec>?  {
+
+        Log.d(TAG,"====== this in FillRequest?.getInlinePresentationSpecs is   ${this}")
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             Log.d(TAG,"this?.inlineSuggestionsRequest  ${this?.inlineSuggestionsRequest}")
             Log.d(TAG,"this?.inlineSuggestionsRequest?.inlinePresentationSpecs is ${this?.inlineSuggestionsRequest?.inlinePresentationSpecs}")
@@ -139,7 +142,7 @@ object ViewAutofillParser {
             // must be returned.
             null
         } else if (isInlineAutofillEnabled) {
-            this?.inlineSuggestionsRequest?.inlinePresentationSpecs.orEmpty()
+            this?.inlineSuggestionsRequest?.inlinePresentationSpecs?.orEmpty()
         } else {
             emptyList()
         }

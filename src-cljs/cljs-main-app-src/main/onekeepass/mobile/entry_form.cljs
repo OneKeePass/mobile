@@ -591,7 +591,7 @@
   [rn-keyboard-avoiding-view {:style {:flex 1 } 
                               ;; After Android 'compileSdkVersion = 35 introduction
                               ;; Also see comments in js/components/KeyboardAvoidingDialog.js
-                              :behavior "padding" #_(if (is-iOS) "padding" nil)}
+                              :behavior (if (is-iOS) "padding" "height")}
    [rn-scroll-view {:contentContainerStyle {:flexGrow 1 :background-color  @page-background-color}}
     [main-content]]])
 

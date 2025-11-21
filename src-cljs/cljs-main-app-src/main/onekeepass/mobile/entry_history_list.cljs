@@ -35,7 +35,7 @@
 
 ;; TODO: Add Restore menu item. This requires backend api works
 (defn entry-long-press-menu [{:keys [show x y]}]
-  [rnp-menu {:visible show :onDismiss hide-entry-long-press-menu :anchor (clj->js {:x x :y y})}
+  [rnp-menu {:visible show :key (str show) :onDismiss hide-entry-long-press-menu :anchor (clj->js {:x x :y y})}
    [rnp-menu-item {:title (lstr-ml "delete")
                    :disabled  @(cmn-events/current-db-disable-edit)
                    :onPress (fn [_e]

@@ -68,17 +68,19 @@
                                        _non-edit-kdbx-url] :as kv}]
   (let [label (to-field-label kv)
         val (to-field-value kv)] 
+
+    (println "Lable is " label)
     ;; We need to use this ^:key so that text-input field is unique 
     ;; Otherwise :defaultValue will show old value when we change from non edit to edit
     ^{:key (str edit key protected)} [rnp-text-input {:label label
                                                       :defaultValue val
-                                                 ;; :value val
-                                                 ;;:editable edit
+                                                      ;; :value val
+                                                      ;;:editable edit
                                                       :showSoftInputOnFocus edit
                                                       :ref (fn [^js/Ref ref]
                                                              (when (and (not (nil? ref)) (str/blank? value)) (.clear ref)))
                                                       :autoCapitalize "none"
-                                                      :keyboardType (if-not protected "email-address" "default")
+                                                      :keyboardType "default" #_(if-not protected "email-address" "default")
                                                       :autoComplete "off"
                                                       :autoCorrect false
                                                       :style {:width (if icon-space-required  "90%" "100%") :min-height 70}
@@ -95,7 +97,7 @@
                                                                        :value val})
                                                                     nil)
                                                       :secureTextEntry (if (or (not protected) visible) false true)
-                                                     ;; It looks like we can have only one icon
+                                                      ;; It looks like we can have only one icon
                                                       :right (when protected
                                                                (if visible
                                                                  (r/as-element [rnp-text-input-icon

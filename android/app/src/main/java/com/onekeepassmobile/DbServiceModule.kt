@@ -341,7 +341,7 @@ class DbServiceModule(reactContext: ReactApplicationContext) :
         UiThreadUtil.runOnUiThread({
             val executor = Executors.newSingleThreadExecutor()
             Log.d(TAG, "Calling showPrompt....")
-            biometricService.showPrompt(currentActivity as FragmentActivity, executor, promise)
+            biometricService.showPrompt(reactApplicationContext.currentActivity as FragmentActivity, executor, promise)
             Log.d(TAG, "Called showPrompt")
         })
 
@@ -495,12 +495,12 @@ class DbServiceModule(reactContext: ReactApplicationContext) :
     private fun resolveResponse(response: ApiResponse, promise: Promise) {
         when (response) {
             is ApiResponse.Success -> {
-                //Log.d(TAG, "File created using fd with SUCCESS response ${response.result}")
+                Log.d(TAG, "File created using fd with SUCCESS response ${response.result}")
                 promise.resolve(response.result)
             }
 
             is ApiResponse.Failure -> {
-                //Log.d(TAG, "File created using fd with FAILURE response $response.result")
+                Log.d(TAG, "File created using fd with FAILURE response $response.result")
                 promise.resolve(response.result)
             }
         }

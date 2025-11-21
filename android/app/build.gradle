@@ -80,11 +80,12 @@ def enableProguardInReleaseBuilds = false
  */
 
 //TODO: (Custom-Jey)
+// Not used as Hermes is enabled by default in RN 0.81.5
 // Enabled Intl jscFlavor to support the use of react i18next package's compatibilityJSON "v4" mode
 // and use of i18next::pluralResolver
 
 // def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
-def jscFlavor = 'io.github.react-native-community:jsc-android-intl:2026004.+'
+// def jscFlavor = 'io.github.react-native-community:jsc-android-intl:2026004.+'
 
 android {
     ndkVersion rootProject.ext.ndkVersion
@@ -202,7 +203,7 @@ android {
 dependencies {
     // TODO:(Custom-Jey)
     // Important: Required to use rust built libs through JNA
-    implementation "net.java.dev.jna:jna:5.16.0@aar"
+    implementation "net.java.dev.jna:jna:5.18.1@aar"
     def work_version = "2.8.0"
     implementation "androidx.work:work-runtime-ktx:$work_version"
     // To use AndroidKeystore

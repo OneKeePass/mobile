@@ -2,25 +2,26 @@
  onekeepass.ios.autofill.rn-components
   (:require-macros [onekeepass.ios.autofill.okp-macros
                     :refer  [declare-comp-classes]])
-  (:require #_["@date-io/date-fns" :as DateAdapter]
+  (:require 
+   ["@formatjs/intl-pluralrules/polyfill-force" :as polyfill-force]
    ["@react-native-community/slider" :as rnc-slider]
-            #_["react-i18next" :as ri18n]
-            ["react-native-circular-progress" :as rn-circular-progress]
-            ["react-native-gesture-handler" :as gh]
-            ["react-native-modal-selector" :as rnms]
-            ["react-native-paper" :as rnp]
-            ["react-native-safe-area-context" :as sa-context]
-            ["react-native-vector-icons" :as vec-icons]
-            #_["react-native-vision-camera" :as rn-vision-camera]
-            ["/components/RNPCustomization" :as rnp-customization]
-            ["/components/KeyboardAvoidingDialog" :as kb-dialog]
+   ["react-native-circular-progress" :as rn-circular-progress]
+   ["react-native-gesture-handler" :as gh]
+   ["react-native-modal-selector" :as rnms]
+   ["react-native-paper" :as rnp]
+   ["react-native-safe-area-context" :as sa-context]
+   ["react-native-vector-icons" :as vec-icons]
+   
+   ;; Local js components
+   ["/components/RNPCustomization" :as rnp-customization]
+   ["/components/KeyboardAvoidingDialog" :as kb-dialog]
 
-            #_[onekeepass.mobile.background :refer [is-iOS]]
-            [onekeepass.ios.autofill.constants :refer [DEFAULT-SYSTEM-THEME]]
+   #_[onekeepass.mobile.background :refer [is-iOS]]
+   [onekeepass.ios.autofill.constants :refer [DEFAULT-SYSTEM-THEME]]
 
-            [react]
-            [react-native :as rn]
-            [reagent.core :as r]))
+   [react]
+   [react-native :as rn]
+   [reagent.core :as r]))
 
 (set! *warn-on-infer* true)
 

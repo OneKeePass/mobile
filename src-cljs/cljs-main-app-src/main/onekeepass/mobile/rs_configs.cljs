@@ -81,7 +81,7 @@
 (def list-menu-action-factory-fn (menu-action-factory hide-list-action-menu))
 
 (defn list-action-menu [{:keys [show x y connection-id]}]
-  [rnp-menu {:visible show :onDismiss hide-list-action-menu :anchor (clj->js {:x x :y y})}
+  [rnp-menu {:visible show :key (str show) :onDismiss hide-list-action-menu :anchor (clj->js {:x x :y y})}
 
    [rnp-menu-item {:title (lstr-ml "view")
                    :onPress (list-menu-action-factory-fn rs-events/remote-storage-config-view connection-id)}]

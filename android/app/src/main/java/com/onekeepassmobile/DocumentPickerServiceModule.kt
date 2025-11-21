@@ -22,7 +22,7 @@ class DocumentPickerServiceModule(reactContext: ReactApplicationContext) : React
     // TODO: Need to make a singleton
     private val activityEventListener =
             object : BaseActivityEventListener() {
-                override fun onActivityResult(activity: Activity?, requestCode: Int, resultCode: Int, intent: Intent?) {
+                override fun onActivityResult(activity: Activity, requestCode: Int, resultCode: Int, intent: Intent?) {
                     Log.d(TAG, "requestCode code is $requestCode resultCode $resultCode intent $intent for activity $activity")
                     when (requestCode) {
 
@@ -140,7 +140,7 @@ class DocumentPickerServiceModule(reactContext: ReactApplicationContext) : React
 
     @ReactMethod
     fun pickDirectory(promise: Promise) {
-        val currentActivity = currentActivity
+        val currentActivity = reactApplicationContext.currentActivity
         if (currentActivity == null) {
             promise.reject(E_ACTIVITY_DOES_NOT_EXIST, "Current activity does not exist")
             return
@@ -148,7 +148,7 @@ class DocumentPickerServiceModule(reactContext: ReactApplicationContext) : React
         pickerPromise = promise
         try {
             val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
-            currentActivity.startActivityForResult(intent, PICK_DIR_REQUEST_CODE, null)
+            reactApplicationContext.currentActivity?.startActivityForResult(intent, PICK_DIR_REQUEST_CODE, null)
         } catch (e: Exception) {
             promise.reject(E_FAILED_TO_SHOW_PICKER, "Failed to create directory picker", e)
         }
@@ -164,7 +164,7 @@ class DocumentPickerServiceModule(reactContext: ReactApplicationContext) : React
     // by ACTION_OPEN_DOCUMENT to open the db
     @ReactMethod
     fun pickKdbxFileToCreate(fileName: String, promise: Promise) {
-        val currentActivity = currentActivity
+        val currentActivity = reactApplicationContext.currentActivity
         if (currentActivity == null) {
             promise.reject(E_ACTIVITY_DOES_NOT_EXIST, "Current activity does not exist")
             return
@@ -193,7 +193,7 @@ class DocumentPickerServiceModule(reactContext: ReactApplicationContext) : React
      */
     @ReactMethod
     fun pickKdbxFileToOpen(promise: Promise) {
-        val currentActivity = currentActivity
+        val currentActivity = reactApplicationContext.currentActivity
         //Log.d(TAG, "pickKdbxFileToOpen is called for activity $currentActivity")
         if (currentActivity == null) {
             promise.reject(E_ACTIVITY_DOES_NOT_EXIST, "Current activity does not exist")
@@ -235,7 +235,7 @@ class DocumentPickerServiceModule(reactContext: ReactApplicationContext) : React
      */
     @ReactMethod
     fun pickKeyFileToCopy(promise: Promise) {
-        val currentActivity = currentActivity
+        val currentActivity = reactApplicationContext.currentActivity
         if (currentActivity == null) {
             promise.reject(E_ACTIVITY_DOES_NOT_EXIST, "Current activity does not exist")
             return
@@ -266,7 +266,7 @@ class DocumentPickerServiceModule(reactContext: ReactApplicationContext) : React
         // Needs to save the original 'fullKeyFileName' to use in 'PICK_KEY_FILE_SAVE_AS_REQUEST_CODE'
         // handler
         fullKeyFileToSave = fullKeyFileName
-        val currentActivity = currentActivity
+        val currentActivity = reactApplicationContext.currentActivity
         if (currentActivity == null) {
             promise.reject(E_ACTIVITY_DOES_NOT_EXIST, "Current activity does not exist")
             return

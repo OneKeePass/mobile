@@ -31,7 +31,7 @@
 
 (defn entry-long-press-menu []
   (let [{:keys [show x y]} @(el-events/entry-list-long-press-data)] 
-    [rnp-menu {:visible show :onDismiss el-events/long-press-menu-hide :anchor (clj->js {:x x :y y})}
+    [rnp-menu {:visible show :key (str show) :onDismiss el-events/long-press-menu-hide :anchor (clj->js {:x x :y y})}
      ;; TODO: Disable this menuitem if the both USERNAME and PASSWORD are nil
      [rnp-menu-item {:title "Autofill"
                      :onPress (entry-long-press-menu-action el-events/complete-login-autofill)}]

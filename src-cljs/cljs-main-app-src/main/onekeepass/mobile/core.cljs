@@ -1,9 +1,11 @@
 (ns onekeepass.mobile.core
   (:require
-   [shadow.react-native :refer (render-root)]
+   #_["@formatjs/intl-pluralrules/polyfill-force" :as polyfill-force]
+   #_[shadow.react-native :refer (render-root)]
+   [onekeepass.mobile.react-native :refer [render-root]]
    ;; When we build iOS production main bundle, we can comment out this ns
    ;; and this will ensure that all android autofill related code are excluded
-   #_[onekeepass.mobile.android.autofill.core :as android-core] ;;;;;;; ;;;;;;; ;;;;;;; ;;;;;;;
+   [onekeepass.mobile.android.autofill.core :as android-core] ;;;;;;; ;;;;;;; ;;;;;;; ;;;;;;;
    [onekeepass.mobile.appbar :refer [appbar-main-content
                                      hardware-back-pressed]]
    [onekeepass.mobile.background :as bg]
@@ -149,11 +151,21 @@
   {:dev/after-load true}
   []
   (init-calls)
-  (render-root "OneKeePassMobile" (r/as-element [app-root])))
 
-(defn init [args]
-  (js/console.log "Args passed " args)
-  (js/console.log "Constants from bg/get-constants " (bg/get-constants))
+  ;; iOS
+  #_(render-root "OneKeePassMobile" (r/as-element [app-root]))
+
+  ;; Andoid 
+  (render-root "OneKeePassMobile" (fn [props]
+                                    (js/console.log "In main core render-root props is " props)
+                                    (let [{:keys [androidAutofill] :as _options} (js->clj props :keywordize-keys true)]
+                                      (if androidAutofill
+                                        (r/as-element [android-core/app-root])
+                                        (r/as-element [app-root]))))))
+
+(defn init []
+  ;; (js/console.log "Args passed " args)
+  ;; (js/console.log "Constants from bg/get-constants " (bg/get-constants))
   (start))
 
 (comment

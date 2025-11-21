@@ -66,7 +66,7 @@
 (def fab-menu-action (menu-action-factory hide-fab-action-menu))
 
 (defn fab-action-menu [{:keys [show x y]} root-group]
-  [rnp-menu {:visible show :onDismiss hide-fab-action-menu :anchor (clj->js {:x x :y y})}
+  [rnp-menu {:visible show :key (str show) :onDismiss hide-fab-action-menu :anchor (clj->js {:x x :y y})}
    [rnp-menu-item {:title (lstr-ml "addEntry")
                    :disabled @(cmn-events/current-db-disable-edit)
                    :onPress (fab-menu-action ecat-events/add-new-entry (select-keys root-group [:name :uuid]) UUID_OF_ENTRY_TYPE_LOGIN)}]
@@ -92,7 +92,7 @@
          :root-group root-group))
 
 (defn category-long-press-menu [{:keys [show x y category-detail category-key]}]
-  [rnp-menu {:visible show :onDismiss hide-category-long-press-menu :anchor (clj->js {:x x :y y})}
+  [rnp-menu {:visible show :key (str show) :onDismiss hide-category-long-press-menu :anchor (clj->js {:x x :y y})}
    (cond
      
     ;;  @(cmn-events/current-db-disable-edit)
@@ -154,7 +154,7 @@
   (hide-group-by-menu))
 
 (defn group-by-menu [{:keys [show group-by x y]}]
-  [rnp-menu {:visible show :onDismiss hide-group-by-menu :anchor (clj->js {:x x :y y})}
+  [rnp-menu {:visible show :key (str show) :onDismiss hide-group-by-menu :anchor (clj->js {:x x :y y})}
    [rnp-menu-item {:title (lstr-ml "types")
                    :leadingIcon (if (= group-by :type) ICON-CHECKBOX-OUTLINE ICON-CHECKBOX-BLANK-OUTLINE)
                    :onPress #(change-entries-grouping-method :type)}]

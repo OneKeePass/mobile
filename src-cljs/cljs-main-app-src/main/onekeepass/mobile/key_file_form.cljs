@@ -67,7 +67,7 @@
 (def list-menu-action-factory (menu-action-factory hide-list-action-menu))
 
 (defn- list-action-menu [{:keys [show x y key-file-info]}]
-  [rnp-menu {:visible show :onDismiss hide-list-action-menu :anchor (clj->js {:x x :y y})}
+  [rnp-menu {:visible show :key (str show) :onDismiss hide-list-action-menu :anchor (clj->js {:x x :y y})}
    [rnp-menu-item {:title (lstr-ml "select")
                    :onPress (list-menu-action-factory
                              kf-events/set-selected-key-file-info key-file-info)}]

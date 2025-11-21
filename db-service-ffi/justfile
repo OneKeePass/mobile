@@ -85,6 +85,9 @@ build-ios-sim-lib-release: (build-ios-sim-lib "true")
 
 build-ios-sim-lib-debug:build-ios-sim-lib
 
+# All botan env passed here are based on https://botan.randombit.net/handbook/dev_ref/configure.html
+# https://github.com/randombit/botan/blob/3.7.1/configure.py#L709
+
 build-ios-sim-lib release="":
     #!/usr/bin/env bash
     set -euxo pipefail
@@ -151,10 +154,11 @@ android-lib-output-dir := "target/jniLibs"
 ## 'cargo ndk --version' prints 'cargo-ndk 3.5.6'
 
 
-## 27.1.12297006 (ndk version used with RN 0.78.2)
-## 27.2.12479018
+## 27.1.12297006 (ndk version used with RN 0.78.2, 0.81.5)
 ## 26.1.10909125 (ndk version used with RN 0.74.5)
 ## 28.1.13356709 (16KB Page)
+## Use NDK version/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-objdump -p db-service-ffi/target/jniLibs/arm64-v8a/libdb_service_ffi.so | grep LOAD
+## Look for an align value of 2**14 or greater for 16KB page size
 
 ## Ref https://developer.android.com/ndk/guides/other_build_systems
 ## Also see "Botan notes" below and in local docs
@@ -166,7 +170,9 @@ android-lib-output-dir := "target/jniLibs"
 ## -p 31 ensures that cargo-ndk sets env with
 ## CFLAGS_AARCH64_LINUX_ANDROID="--target=aarch64-linux-android31" and CXXFLAGS_AARCH64_LINUX_ANDROID="--target=aarch64-linux-android31"
 
-ndk_version := "27.1.12297006"
+#"27.1.12297006"
+#28.2.13676358
+ndk_version := "28.2.13676358/android-ndk-r28c" 
 ndk_api_level := "31"
 ndk_cxx_ver :=  "aarch64-linux-android"+ndk_api_level+"-clang++"  
 ndk_botan_build_home := env_var('HOME')+"/Library/Android/sdk/ndk/" + ndk_version
@@ -195,6 +201,9 @@ generate-kotlin:
 # ANDROID_NDK_HOME is used by cargo-ndk. If this is not done, then cargo-ndk uses the latest ndk version
 # We can use 'just cargo-ndk-env' to see these
 
+# All botan env passed here are based on https://botan.randombit.net/handbook/dev_ref/configure.html
+# https://github.com/randombit/botan/blob/3.7.1/configure.py#L709
+
 ## Need to ensure to use 'crate-type = ["lib", "staticlib","cdylib"]' in Cargo.toml
 build-android-lib-aarch64 release="":
     #!/usr/bin/env bash
@@ -204,6 +213,7 @@ build-android-lib-aarch64 release="":
     export BOTAN_CONFIGURE_CPU='arm64'
     export BOTAN_CONFIGURE_DISABLE_MODULES='tls,pkcs11,sodium,filters'
     export BOTAN_CONFIGURE_EXTRA_CXXFLAGS="-fPIC"
+    #export BOTAN_CONFIGURE_LDFLAGS="-Wl,-z,max-page-size=16384"
 
     ## cargp-ndk sepecific
     export AR={{ndk_ar}}

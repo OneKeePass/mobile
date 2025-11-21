@@ -58,7 +58,7 @@
 (def fab-menu-action (menu-action-factory hide-fab-action-menu))
 
 (defn fab-action-menu [{:keys [show x y selected-category-key selected-category-detail]}]
-  [rnp-menu {:visible show :onDismiss hide-fab-action-menu :anchor (clj->js {:x x :y y})}
+  [rnp-menu {:visible show :key (str show) :onDismiss hide-fab-action-menu :anchor (clj->js {:x x :y y})}
    [rnp-menu-item {:title (lstr-ml "addEntry")
                    :onPress (fab-menu-action elist-events/add-entry)}]
    (when (= const/GROUP_SECTION_TITLE selected-category-key)
@@ -85,7 +85,7 @@
   (let [deleted-cat @(elist-events/deleted-category-showing)
         {:keys [uuid parent-group-uuid]} entry-summary]
     (if-not deleted-cat
-      [rnp-menu {:visible show :onDismiss hide-entry-long-press-menu :anchor (clj->js {:x x :y y})}
+      [rnp-menu {:visible show :key (str show) :onDismiss hide-entry-long-press-menu :anchor (clj->js {:x x :y y})}
        ;; TODO: Need to add a rust api to toggle an entry as Favorites or not and then enable this 
        #_[rnp-menu-item {:title "Favorites" :onPress #()  :trailingIcon "check"}]
        [rnp-menu-item {:title (lstr-ml "move")
@@ -104,7 +104,7 @@
        #_[rnp-divider]
        #_[rnp-menu-item {:title "History"  :onPress #()}]]
 
-      [rnp-menu {:visible show :onDismiss hide-entry-long-press-menu :anchor (clj->js {:x x :y y})}
+      [rnp-menu {:visible show :key (str show) :onDismiss hide-entry-long-press-menu :anchor (clj->js {:x x :y y})}
        [rnp-menu-item {:title (lstr-ml "putback")
                        :disabled @(cmn-events/current-db-disable-edit)
                        :onPress (entry-long-press-menu-action
@@ -134,7 +134,7 @@
 (defn group-long-press-menu [{:keys [show x y category-detail]}]
   (let [group-uuid (:uuid category-detail)
         parent-group-uuid (:parent-group-uuid category-detail)]
-    [rnp-menu {:visible show :onDismiss hide-group-long-press-menu :anchor (clj->js {:x x :y y})}
+    [rnp-menu {:visible show :key (str show) :onDismiss hide-group-long-press-menu :anchor (clj->js {:x x :y y})}
      [rnp-menu-item {:title (lstr-ml "edit")
                      :disabled @(cmn-events/current-db-disable-edit)
                      :onPress (group-long-press-menu-action elist-events/find-group-by-id group-uuid)}]
@@ -173,7 +173,7 @@
 
 (defn- sort-menus [{:keys [show x y]
                     {:keys [key-name direction]} :sort-criteria}]
-  [rnp-menu {:visible show :onDismiss hide-sort-menu :anchor (clj->js {:x x :y y})}
+  [rnp-menu {:visible show :key (str show) :onDismiss hide-sort-menu :anchor (clj->js {:x x :y y})}
    [rnp-menu-item {:title (lstr-ml 'title)
                    :leadingIcon (if (= key-name const/TITLE) ICON-CHECKBOX-OUTLINE ICON-CHECKBOX-BLANK-OUTLINE)
                    :onPress (sort-menu-action elist-events/entry-list-sort-key-changed const/TITLE)}]

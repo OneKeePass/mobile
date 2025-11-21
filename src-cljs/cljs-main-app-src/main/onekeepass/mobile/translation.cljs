@@ -1,10 +1,14 @@
 (ns onekeepass.mobile.translation
-  (:require ["i18next" :as i18n]
-            [camel-snake-kebab.core :as csk]
-            [camel-snake-kebab.extras :as cske]
-            [cljs.core.async :refer [go]]
-            [cljs.core.async.interop :refer-macros [<p!]]
-            [onekeepass.mobile.events.translation :as tr-events]))
+  (:require 
+   
+  ;;  ["@formatjs/intl-pluralrules/locale-data/en" :as intl-pluralrules-locale-en]
+  ;;  ["@formatjs/intl-pluralrules/locale-data/fr" :as intl-pluralrules-locale-fr]
+   ["i18next" :as i18n]
+   [camel-snake-kebab.core :as csk]
+   [camel-snake-kebab.extras :as cske]
+   [cljs.core.async :refer [go]]
+   [cljs.core.async.interop :refer-macros [<p!]]
+   [onekeepass.mobile.events.translation :as tr-events]))
 
 (set! *warn-on-infer* true)
 

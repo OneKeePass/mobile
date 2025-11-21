@@ -27,7 +27,7 @@
   ;; anchor coordinates can be obtained in the icon button's onPrees. This is called with 'PressEvent Object Type'
   ;; (-> event .-nativeEvent .-pageY) and (-> event .-nativeEvent .-pageX) and use that 
   ;; in achor's coordinate 
-  [rnp-menu {:visible show :onDismiss #(swap! section-menu-dialog-data assoc :show false)
+  [rnp-menu {:visible show :key (str show) :onDismiss #(swap! section-menu-dialog-data assoc :show false)
              :anchor (clj->js {:x x :y y})} ;;:contentStyle {:backgroundColor  "red"}
    [rnp-menu-item {:title (lstr-ml "changeName") :disabled is-standard-section
                    :onPress (fn []
@@ -58,7 +58,7 @@
   (swap! custom-field-menu-data assoc :show false))
 
 (defn custom-field-menu [{:keys [show x y section-name field-name protected required]}]
-  [rnp-menu {:visible show
+  [rnp-menu {:visible show :key (str show)
              :onDismiss custom-field-menu-action-on-dismiss
              :anchor (clj->js {:x x :y y})}
    [rnp-menu-item {:title (lstr-ml "modifyCustomField")
@@ -98,7 +98,7 @@
 
 (defn attachment-long-press-menu 
   [{:keys [show x y edit name data-hash]}]
-  [rnp-menu {:visible show
+  [rnp-menu {:visible show :key (str show)
              :onDismiss dismiss-attachment-long-press-menu
              :anchor (clj->js {:x x :y y})}
 

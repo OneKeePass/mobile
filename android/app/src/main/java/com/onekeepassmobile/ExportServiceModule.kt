@@ -31,7 +31,7 @@ class ExportServiceModule(reactContext: ReactApplicationContext) : ReactContextB
 
     private val activityEventListener =
             object : BaseActivityEventListener() {
-                override fun onActivityResult(activity: Activity?, requestCode: Int, resultCode: Int, intent: Intent?) {
+                override fun onActivityResult(activity: Activity, requestCode: Int, resultCode: Int, intent: Intent?) {
                     Log.d(TAG, "requestCode code is $requestCode resultCode $resultCode intent $intent for activity $activity")
                     if (requestCode == EXPORT_DATA_REQUEST_CODE) {
                         modulePromise?.let { promise ->
@@ -55,7 +55,7 @@ class ExportServiceModule(reactContext: ReactApplicationContext) : ReactContextB
     fun exportKdbx(fullFileNameUri: String, promise: Promise) {
         Log.d(TAG, "exportKdbx is called with fullFileNameUri $fullFileNameUri")
 
-        val currentActivity = currentActivity
+        val currentActivity = reactApplicationContext.currentActivity
         if (currentActivity == null) {
             promise.reject("ExportServiceModule", "Current activity does not exist")
             return

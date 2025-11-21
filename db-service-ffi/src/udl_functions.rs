@@ -3,6 +3,7 @@ use onekeepass_core::{
     db_service::{self, db_checksum_hash, AttachmentUploadInfo},
     error,
 };
+//use reqwest_dav::re_exports::serde_xml_rs::de;
 
 use crate::{
     backup::{self, matching_backup_exists},
@@ -167,7 +168,11 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
         _ => e,
     })?;
 
+    // debug!("internal_read_kdbx kdbx_loaded  is {:?}", &kdbx_loaded);
+
     let read_db_checksum = db_service::db_checksum_hash(&db_file_name)?;
+
+    // debug!("Read db file checksum for {} is {:?}",&db_file_name, &read_db_checksum);
 
     // Note:  The db file 'file' object is read two times
     // 1. in 'read_kdbx' call
@@ -186,6 +191,8 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
         // Ensure that we are at the begining of the db file stream
         let _rr = file.rewind();
 
+        // debug!("internal_read_kdbx: Copying to backup file {:?}",&backup_file_name);
+
         // Copy from db file to backup file
         std::io::copy(file, &mut backup_file)
             .and(backup_file.sync_all())
@@ -200,8 +207,8 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
             // debug!("Before setting mtime {:?}", Path::new(&bp).metadata());
 
             let _r = filetime::set_file_mtime(&bp, filetime::FileTime::from_unix_time(mtime, 0));
-
             // debug!("Setting modified time of backup file status is {:?}", r);
+            
             // debug!("After setting mtime {:?}", Path::new(&bp).metadata());
         }
     } else {
@@ -218,6 +225,8 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
         // iOS specific copying when we read a database if this db is used in Autofill extension
         crate::ios::autofill_app_group::copy_files_to_app_group_on_save_or_read(&db_file_name);
     }
+
+    // debug!("In read_kdbx: Added to recent db use list and going to store biometric credentials if needed");
 
     // Store the credentials if we will be using biometric
     let _r = biometric_auth::StoredCredential::store_credentials_on_check(

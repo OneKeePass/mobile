@@ -137,7 +137,12 @@
 (def header-menu-action (menu-action-factory header-menu-hide))
 
 (defn header-menu [{:keys [show x y]} {:keys [page]}]
+  
+  ;; https://github.com/callstack/react-native-paper/issues/4807
+  ;; Workaround to make menu popup work always by adding :key (str show)
+  ;; See rn_components.cljs where rnp-menu is defined
   [rnp-menu {:visible show
+             :key (str show)
              :onDismiss header-menu-hide
              :anchor (clj->js {:x x :y y})}
    (cond

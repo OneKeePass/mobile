@@ -283,7 +283,7 @@
     [cust-dialog {:style {}
                   :visible dialog-show
                   :dismissable false
-                   ;;:onDismiss opndb-events/cancel-on-press
+                  ;;:onDismiss opndb-events/cancel-on-press
                   }
      [rnp-dialog-title dlg-title]
      [rnp-dialog-content
@@ -408,9 +408,11 @@
                                             :locked false}))
 
 (defn hide-db-action-menu []
+  #_(println "Hiding db action menu")
   (swap! db-action-menu-data assoc :show false))
 
 (defn show-db-action-menu [^js/PEvent event file-name db-file-path opened? locked?]
+  #_(println "Showing db action menu for file " file-name " at " db-file-path" opened? " opened? " locked? " locked?)
   (swap! db-action-menu-data assoc :show true
          :db-file-path db-file-path
          :file-name file-name
@@ -431,7 +433,7 @@
 
 (defn db-action-menu [{:keys [show x y file-name db-file-path opened locked]}]
   ;; db-file-path is the full-file-name-uri and used as db-key
-  [rnp-menu {:visible show :onDismiss hide-db-action-menu :anchor (clj->js {:x x :y y})}
+  [rnp-menu {:visible show :key (str show) :onDismiss hide-db-action-menu :anchor (clj->js {:x x :y y})}
    [rnp-menu-item {:title (lstr-ml "settings")
                    :disabled (or (not opened) locked)
                    :onPress (db-action-menu-action

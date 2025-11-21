@@ -3,6 +3,12 @@
   (:require-macros [onekeepass.mobile.okp-macros
                     :refer  [declare-comp-classes]])
   (:require
+   ;; We need this as the default Hermes engine in RN does not support Intl API fully
+   ;; If we use the previous JSC engine, this polyfill is not be needed
+   ;; This needs to be the first require to ensure polyfill is loaded first
+   ;; before any other intl usage. If calling here does not work, need to call this in the core.cljs itself
+   ;; See https://formatjs.github.io/docs/polyfills/intl-pluralrules#react-native
+   ["@formatjs/intl-pluralrules/polyfill-force" :as polyfill-force]
    ["@date-io/date-fns" :as DateAdapter]
    ["@react-native-community/slider" :as rnc-slider]
    ["react-native-circular-progress" :as rn-circular-progress]
@@ -12,6 +18,12 @@
    ["react-native-safe-area-context" :as sa-context]
    ["react-native-vector-icons" :as vec-icons]
    ["react-native-vision-camera" :as rn-vision-camera]
+   ;; Local js components. 
+   ;; Note the use of path relative to cljs-main-app-src/src/gen
+   ;; which is included in the :source-paths in shadow-cljs.edn
+   ;; These are transpiled by babel(one time) from js-components to cljs-main-app-src/gen
+   ;; using the command
+   ;; cd src-cljs ;  ../node_modules/.bin/babel js-components --out-dir cljs-main-app-src/gen
    ["/components/RNPCustomization" :as rnp-customization]
    ["/components/KeyboardAvoidingDialog" :as kb-dialog]
    [onekeepass.mobile.background :refer [get-constants is-Android is-iOS]]
@@ -55,6 +67,11 @@
 
 (def use-safe-area-insets (.-useSafeAreaInsets ^js/SAInsets sa-context))
 
+;; As per https://reactnative.dev/blog/2025/08/12/react-native-0.81, we need to deprecate the built-in SafeAreaView
+;; with this one from 'react-native-safe-area-context' package
+;; TODO: need to replace rn-safe-area-view with rnsa-safe-area-view in all places
+(def rn-safe-area-view (r/adapt-react-class (.-SafeAreaView ^js/SASafeAreaView sa-context)))
+
 ;; https://github.com/dmtrKovalenko/date-io
 ;;DateAdapter is #object[DateFnsUtils] 
 ;; (Object.keys date-fns-utils) will give all available fuctions from this util
@@ -69,7 +86,7 @@
 ;; React native components
 (declare-comp-classes [ActivityIndicator
                        Button
-                       SafeAreaView
+                       ;;SafeAreaView
                        FlatList
                        KeyboardAvoidingView
                        Pressable
@@ -162,6 +179,9 @@
 ;; All react native paper customizations
 #_(def rnp-customization ^js/RNPC (js/require "../js/components/RNPCustomization.js"))
 
+;; After 0.81.5 upgrade, menu popup works onetime and then does not remain open when second time it is opened
+;; Luckily the workaround disscused here https://github.com/callstack/react-native-paper/issues/4807
+;; worked. Added :key (str show) to the rnp-menu component in all places where it is used
 (def rnp-menu (r/adapt-react-class (.-RNPMenu rnp-customization)))
 (def rnp-text-input (r/adapt-react-class (.-RNPTextInput rnp-customization)))
 (def cust-rnp-divider (r/adapt-react-class (.-RNPDivider rnp-customization)))

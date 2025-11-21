@@ -1005,23 +1005,155 @@ internal open class UniffiVTableCallbackInterfaceSecureEnclaveCbService(
 
 
 
+// For large crates we prevent `MethodTooLargeException` (see #2340)
+// N.B. the name of the extension is very misleading, since it is 
+// rather `InterfaceTooLargeException`, caused by too many methods 
+// in the interface for large crates.
+//
+// By splitting the otherwise huge interface into two parts
+// * UniffiLib 
+// * IntegrityCheckingUniffiLib (this)
+// we allow for ~2x as many methods in the UniffiLib interface.
+// 
+// The `ffi_uniffi_contract_version` method and all checksum methods are put 
+// into `IntegrityCheckingUniffiLib` and these methods are called only once,
+// when the library is loaded.
+internal interface IntegrityCheckingUniffiLib : Library {
+    // Integrity check functions only
+    fun uniffi_db_service_ffi_checksum_func_copy_picked_key_file(
+): Short
+fun uniffi_db_service_ffi_checksum_func_create_temp_kdbx(
+): Short
+fun uniffi_db_service_ffi_checksum_func_db_service_enable_logging(
+): Short
+fun uniffi_db_service_ffi_checksum_func_extract_file_provider(
+): Short
+fun uniffi_db_service_ffi_checksum_func_invoke_command(
+): Short
+fun uniffi_db_service_ffi_checksum_func_read_kdbx(
+): Short
+fun uniffi_db_service_ffi_checksum_func_save_kdbx(
+): Short
+fun uniffi_db_service_ffi_checksum_func_upload_attachment(
+): Short
+fun uniffi_db_service_ffi_checksum_func_verify_db_file_checksum(
+): Short
+fun uniffi_db_service_ffi_checksum_func_write_to_backup_on_error(
+): Short
+fun uniffi_db_service_ffi_checksum_func_android_callback_service_initialize(
+): Short
+fun uniffi_db_service_ffi_checksum_func_db_service_initialize(
+): Short
+fun uniffi_db_service_ffi_checksum_func_handle_picked_file(
+): Short
+fun uniffi_db_service_ffi_checksum_method_eventdispatch_send_otp_update(
+): Short
+fun uniffi_db_service_ffi_checksum_method_eventdispatch_send_tick_update(
+): Short
+fun uniffi_db_service_ffi_checksum_method_jsonservice_error_json_string(
+): Short
+fun uniffi_db_service_ffi_checksum_method_jsonservice_form_with_file_name(
+): Short
+fun uniffi_db_service_ffi_checksum_method_jsonservice_map_as_error_json_string(
+): Short
+fun uniffi_db_service_ffi_checksum_method_jsonservice_map_as_ok_json_string(
+): Short
+fun uniffi_db_service_ffi_checksum_method_jsonservice_ok_json_string(
+): Short
+fun uniffi_db_service_ffi_checksum_method_androidapiservice_clipboard_copy_string(
+): Short
+fun uniffi_db_service_ffi_checksum_method_androidapiservice_autofill_client_app_url_info(
+): Short
+fun uniffi_db_service_ffi_checksum_method_androidapiservice_complete_autofill(
+): Short
+fun uniffi_db_service_ffi_checksum_method_androidsupportserviceextra_complete_save_as_on_error(
+): Short
+fun uniffi_db_service_ffi_checksum_method_androidsupportserviceextra_create_kdbx(
+): Short
+fun uniffi_db_service_ffi_checksum_method_androidsupportserviceextra_invoke(
+): Short
+fun uniffi_db_service_ffi_checksum_method_androidsupportserviceextra_save_key_file(
+): Short
+fun uniffi_db_service_ffi_checksum_method_commondeviceserviceex_clipboard_copy_string(
+): Short
+fun uniffi_db_service_ffi_checksum_method_secureenclavecbservice_encrypt_bytes(
+): Short
+fun uniffi_db_service_ffi_checksum_method_secureenclavecbservice_decrypt_bytes(
+): Short
+fun uniffi_db_service_ffi_checksum_method_secureenclavecbservice_remove_key(
+): Short
+fun uniffi_db_service_ffi_checksum_constructor_jsonservice_new(
+): Short
+fun uniffi_db_service_ffi_checksum_constructor_androidsupportserviceextra_new(
+): Short
+fun uniffi_db_service_ffi_checksum_method_commondeviceservice_app_home_dir(
+): Short
+fun uniffi_db_service_ffi_checksum_method_commondeviceservice_app_group_home_dir(
+): Short
+fun uniffi_db_service_ffi_checksum_method_commondeviceservice_cache_dir(
+): Short
+fun uniffi_db_service_ffi_checksum_method_commondeviceservice_temp_dir(
+): Short
+fun uniffi_db_service_ffi_checksum_method_commondeviceservice_uri_to_file_name(
+): Short
+fun uniffi_db_service_ffi_checksum_method_commondeviceservice_uri_to_file_info(
+): Short
+fun uniffi_db_service_ffi_checksum_method_commondeviceservice_load_language_translation(
+): Short
+fun uniffi_db_service_ffi_checksum_method_commondeviceservice_load_resource_wordlist(
+): Short
+fun uniffi_db_service_ffi_checksum_method_securekeyoperation_store_key(
+): Short
+fun uniffi_db_service_ffi_checksum_method_securekeyoperation_get_key(
+): Short
+fun uniffi_db_service_ffi_checksum_method_securekeyoperation_delete_key(
+): Short
+fun ffi_db_service_ffi_uniffi_contract_version(
+): Int
+
+}
+
 // A JNA Library to expose the extern-C FFI definitions.
 // This is an implementation detail which will be called internally by the public API.
-
 internal interface UniffiLib : Library {
     companion object {
         internal val INSTANCE: UniffiLib by lazy {
-            loadIndirect<UniffiLib>(componentName = "db_service")
-            .also { lib: UniffiLib ->
-                uniffiCheckContractApiVersion(lib)
-                uniffiCheckApiChecksums(lib)
-                uniffiCallbackInterfaceAndroidApiService.register(lib)
-                uniffiCallbackInterfaceCommonDeviceServiceEx.register(lib)
-                uniffiCallbackInterfaceEventDispatch.register(lib)
-                uniffiCallbackInterfaceSecureEnclaveCbService.register(lib)
-                uniffiCallbackInterfaceCommonDeviceService.register(lib)
-                uniffiCallbackInterfaceSecureKeyOperation.register(lib)
+            val componentName = "db_service"
+            // For large crates we prevent `MethodTooLargeException` (see #2340)
+            // N.B. the name of the extension is very misleading, since it is 
+            // rather `InterfaceTooLargeException`, caused by too many methods 
+            // in the interface for large crates.
+            //
+            // By splitting the otherwise huge interface into two parts
+            // * UniffiLib (this)
+            // * IntegrityCheckingUniffiLib
+            // And all checksum methods are put into `IntegrityCheckingUniffiLib`
+            // we allow for ~2x as many methods in the UniffiLib interface.
+            // 
+            // Thus we first load the library with `loadIndirect` as `IntegrityCheckingUniffiLib`
+            // so that we can (optionally!) call `uniffiCheckApiChecksums`...
+            loadIndirect<IntegrityCheckingUniffiLib>(componentName)
+                .also { lib: IntegrityCheckingUniffiLib ->
+                    uniffiCheckContractApiVersion(lib)
+                    uniffiCheckApiChecksums(lib)
                 }
+            // ... and then we load the library as `UniffiLib`
+            // N.B. we cannot use `loadIndirect` once and then try to cast it to `UniffiLib`
+            // => results in `java.lang.ClassCastException: com.sun.proxy.$Proxy cannot be cast to ...`
+            // error. So we must call `loadIndirect` twice. For crates large enough
+            // to trigger this issue, the performance impact is negligible, running on
+            // a macOS M1 machine the `loadIndirect` call takes ~50ms.
+            val lib = loadIndirect<UniffiLib>(componentName)
+            // No need to check the contract version and checksums, since 
+            // we already did that with `IntegrityCheckingUniffiLib` above.
+            uniffiCallbackInterfaceAndroidApiService.register(lib)
+            uniffiCallbackInterfaceCommonDeviceServiceEx.register(lib)
+            uniffiCallbackInterfaceEventDispatch.register(lib)
+            uniffiCallbackInterfaceSecureEnclaveCbService.register(lib)
+            uniffiCallbackInterfaceCommonDeviceService.register(lib)
+            uniffiCallbackInterfaceSecureKeyOperation.register(lib)
+            // Loading of library with integrity check done.
+            lib
         }
         
         // The Cleaner for the whole library
@@ -1030,325 +1162,235 @@ internal interface UniffiLib : Library {
         }
     }
 
+    // FFI functions
     fun uniffi_db_service_ffi_fn_clone_eventdispatch(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
-    ): Pointer
-    fun uniffi_db_service_ffi_fn_free_eventdispatch(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
-    ): Unit
-    fun uniffi_db_service_ffi_fn_init_callback_vtable_eventdispatch(`vtable`: UniffiVTableCallbackInterfaceEventDispatch,
-    ): Unit
-    fun uniffi_db_service_ffi_fn_method_eventdispatch_send_otp_update(`ptr`: Pointer,`jsonString`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): Unit
-    fun uniffi_db_service_ffi_fn_method_eventdispatch_send_tick_update(`ptr`: Pointer,`jsonString`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): Unit
-    fun uniffi_db_service_ffi_fn_clone_jsonservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
-    ): Pointer
-    fun uniffi_db_service_ffi_fn_free_jsonservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
-    ): Unit
-    fun uniffi_db_service_ffi_fn_constructor_jsonservice_new(uniffi_out_err: UniffiRustCallStatus, 
-    ): Pointer
-    fun uniffi_db_service_ffi_fn_method_jsonservice_error_json_string(`ptr`: Pointer,`error`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    fun uniffi_db_service_ffi_fn_method_jsonservice_form_with_file_name(`ptr`: Pointer,`fullFileNameUri`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    fun uniffi_db_service_ffi_fn_method_jsonservice_map_as_error_json_string(`ptr`: Pointer,`info`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    fun uniffi_db_service_ffi_fn_method_jsonservice_map_as_ok_json_string(`ptr`: Pointer,`info`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    fun uniffi_db_service_ffi_fn_method_jsonservice_ok_json_string(`ptr`: Pointer,`info`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    fun uniffi_db_service_ffi_fn_clone_androidapiservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
-    ): Pointer
-    fun uniffi_db_service_ffi_fn_free_androidapiservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
-    ): Unit
-    fun uniffi_db_service_ffi_fn_init_callback_vtable_androidapiservice(`vtable`: UniffiVTableCallbackInterfaceAndroidApiService,
-    ): Unit
-    fun uniffi_db_service_ffi_fn_method_androidapiservice_clipboard_copy_string(`ptr`: Pointer,`clipData`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): Unit
-    fun uniffi_db_service_ffi_fn_method_androidapiservice_autofill_client_app_url_info(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    fun uniffi_db_service_ffi_fn_method_androidapiservice_complete_autofill(`ptr`: Pointer,`autoFillData`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): Unit
-    fun uniffi_db_service_ffi_fn_clone_androidsupportserviceextra(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
-    ): Pointer
-    fun uniffi_db_service_ffi_fn_free_androidsupportserviceextra(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
-    ): Unit
-    fun uniffi_db_service_ffi_fn_constructor_androidsupportserviceextra_new(uniffi_out_err: UniffiRustCallStatus, 
-    ): Pointer
-    fun uniffi_db_service_ffi_fn_method_androidsupportserviceextra_complete_save_as_on_error(`ptr`: Pointer,`fileDescriptor`: Long,`oldFullFileNameUri`: RustBuffer.ByValue,`newFullFileNameUri`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    fun uniffi_db_service_ffi_fn_method_androidsupportserviceextra_create_kdbx(`ptr`: Pointer,`fileDescriptor`: Long,`jsonArgs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    fun uniffi_db_service_ffi_fn_method_androidsupportserviceextra_invoke(`ptr`: Pointer,`commandName`: RustBuffer.ByValue,`jsonArgs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    fun uniffi_db_service_ffi_fn_method_androidsupportserviceextra_save_key_file(`ptr`: Pointer,`fileDescriptor`: Long,`fullKeyFileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    fun uniffi_db_service_ffi_fn_clone_commondeviceserviceex(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
-    ): Pointer
-    fun uniffi_db_service_ffi_fn_free_commondeviceserviceex(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
-    ): Unit
-    fun uniffi_db_service_ffi_fn_init_callback_vtable_commondeviceserviceex(`vtable`: UniffiVTableCallbackInterfaceCommonDeviceServiceEx,
-    ): Unit
-    fun uniffi_db_service_ffi_fn_method_commondeviceserviceex_clipboard_copy_string(`ptr`: Pointer,`clipData`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): Unit
-    fun uniffi_db_service_ffi_fn_clone_secureenclavecbservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
-    ): Pointer
-    fun uniffi_db_service_ffi_fn_free_secureenclavecbservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
-    ): Unit
-    fun uniffi_db_service_ffi_fn_init_callback_vtable_secureenclavecbservice(`vtable`: UniffiVTableCallbackInterfaceSecureEnclaveCbService,
-    ): Unit
-    fun uniffi_db_service_ffi_fn_method_secureenclavecbservice_encrypt_bytes(`ptr`: Pointer,`identifier`: RustBuffer.ByValue,`plainData`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    fun uniffi_db_service_ffi_fn_method_secureenclavecbservice_decrypt_bytes(`ptr`: Pointer,`identifier`: RustBuffer.ByValue,`encryptedData`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    fun uniffi_db_service_ffi_fn_method_secureenclavecbservice_remove_key(`ptr`: Pointer,`identifier`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): Byte
-    fun uniffi_db_service_ffi_fn_init_callback_vtable_commondeviceservice(`vtable`: UniffiVTableCallbackInterfaceCommonDeviceService,
-    ): Unit
-    fun uniffi_db_service_ffi_fn_init_callback_vtable_securekeyoperation(`vtable`: UniffiVTableCallbackInterfaceSecureKeyOperation,
-    ): Unit
-    fun uniffi_db_service_ffi_fn_func_copy_picked_key_file(`fileArgs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    fun uniffi_db_service_ffi_fn_func_create_temp_kdbx(`fileArgs`: RustBuffer.ByValue,`jsonArgs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    fun uniffi_db_service_ffi_fn_func_db_service_enable_logging(uniffi_out_err: UniffiRustCallStatus, 
-    ): Unit
-    fun uniffi_db_service_ffi_fn_func_extract_file_provider(`fullFileNameUri`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    fun uniffi_db_service_ffi_fn_func_invoke_command(`commandName`: RustBuffer.ByValue,`args`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    fun uniffi_db_service_ffi_fn_func_read_kdbx(`fileArgs`: RustBuffer.ByValue,`jsonArgs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    fun uniffi_db_service_ffi_fn_func_save_kdbx(`fileArgs`: RustBuffer.ByValue,`overwrite`: Byte,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    fun uniffi_db_service_ffi_fn_func_upload_attachment(`fileArgs`: RustBuffer.ByValue,`jsonArgs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    fun uniffi_db_service_ffi_fn_func_verify_db_file_checksum(`fileArgs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    fun uniffi_db_service_ffi_fn_func_write_to_backup_on_error(`fullFileNameUri`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    fun uniffi_db_service_ffi_fn_func_android_callback_service_initialize(`androidApiService`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
-    ): Unit
-    fun uniffi_db_service_ffi_fn_func_db_service_initialize(`commonDeviceService`: Long,`secureKeyOperation`: Long,`eventDispatcher`: Pointer,`commonDeviceServiceEx`: Pointer,`secureEnclaveCbService`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
-    ): Unit
-    fun uniffi_db_service_ffi_fn_func_handle_picked_file(`fileArgs`: RustBuffer.ByValue,`jsonArgs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    fun ffi_db_service_ffi_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    fun ffi_db_service_ffi_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    fun ffi_db_service_ffi_rustbuffer_free(`buf`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
-    ): Unit
-    fun ffi_db_service_ffi_rustbuffer_reserve(`buf`: RustBuffer.ByValue,`additional`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    fun ffi_db_service_ffi_rust_future_poll_u8(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_cancel_u8(`handle`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_free_u8(`handle`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_complete_u8(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): Byte
-    fun ffi_db_service_ffi_rust_future_poll_i8(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_cancel_i8(`handle`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_free_i8(`handle`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_complete_i8(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): Byte
-    fun ffi_db_service_ffi_rust_future_poll_u16(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_cancel_u16(`handle`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_free_u16(`handle`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_complete_u16(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): Short
-    fun ffi_db_service_ffi_rust_future_poll_i16(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_cancel_i16(`handle`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_free_i16(`handle`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_complete_i16(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): Short
-    fun ffi_db_service_ffi_rust_future_poll_u32(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_cancel_u32(`handle`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_free_u32(`handle`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_complete_u32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): Int
-    fun ffi_db_service_ffi_rust_future_poll_i32(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_cancel_i32(`handle`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_free_i32(`handle`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_complete_i32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): Int
-    fun ffi_db_service_ffi_rust_future_poll_u64(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_cancel_u64(`handle`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_free_u64(`handle`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_complete_u64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): Long
-    fun ffi_db_service_ffi_rust_future_poll_i64(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_cancel_i64(`handle`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_free_i64(`handle`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_complete_i64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): Long
-    fun ffi_db_service_ffi_rust_future_poll_f32(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_cancel_f32(`handle`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_free_f32(`handle`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_complete_f32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): Float
-    fun ffi_db_service_ffi_rust_future_poll_f64(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_cancel_f64(`handle`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_free_f64(`handle`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_complete_f64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): Double
-    fun ffi_db_service_ffi_rust_future_poll_pointer(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_cancel_pointer(`handle`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_free_pointer(`handle`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_complete_pointer(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): Pointer
-    fun ffi_db_service_ffi_rust_future_poll_rust_buffer(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_cancel_rust_buffer(`handle`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_free_rust_buffer(`handle`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_complete_rust_buffer(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): RustBuffer.ByValue
-    fun ffi_db_service_ffi_rust_future_poll_void(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_cancel_void(`handle`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_free_void(`handle`: Long,
-    ): Unit
-    fun ffi_db_service_ffi_rust_future_complete_void(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
-    ): Unit
-    fun uniffi_db_service_ffi_checksum_func_copy_picked_key_file(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_func_create_temp_kdbx(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_func_db_service_enable_logging(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_func_extract_file_provider(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_func_invoke_command(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_func_read_kdbx(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_func_save_kdbx(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_func_upload_attachment(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_func_verify_db_file_checksum(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_func_write_to_backup_on_error(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_func_android_callback_service_initialize(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_func_db_service_initialize(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_func_handle_picked_file(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_method_eventdispatch_send_otp_update(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_method_eventdispatch_send_tick_update(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_method_jsonservice_error_json_string(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_method_jsonservice_form_with_file_name(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_method_jsonservice_map_as_error_json_string(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_method_jsonservice_map_as_ok_json_string(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_method_jsonservice_ok_json_string(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_method_androidapiservice_clipboard_copy_string(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_method_androidapiservice_autofill_client_app_url_info(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_method_androidapiservice_complete_autofill(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_method_androidsupportserviceextra_complete_save_as_on_error(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_method_androidsupportserviceextra_create_kdbx(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_method_androidsupportserviceextra_invoke(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_method_androidsupportserviceextra_save_key_file(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_method_commondeviceserviceex_clipboard_copy_string(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_method_secureenclavecbservice_encrypt_bytes(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_method_secureenclavecbservice_decrypt_bytes(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_method_secureenclavecbservice_remove_key(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_constructor_jsonservice_new(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_constructor_androidsupportserviceextra_new(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_method_commondeviceservice_app_home_dir(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_method_commondeviceservice_app_group_home_dir(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_method_commondeviceservice_cache_dir(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_method_commondeviceservice_temp_dir(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_method_commondeviceservice_uri_to_file_name(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_method_commondeviceservice_uri_to_file_info(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_method_commondeviceservice_load_language_translation(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_method_commondeviceservice_load_resource_wordlist(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_method_securekeyoperation_store_key(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_method_securekeyoperation_get_key(
-    ): Short
-    fun uniffi_db_service_ffi_checksum_method_securekeyoperation_delete_key(
-    ): Short
-    fun ffi_db_service_ffi_uniffi_contract_version(
-    ): Int
-    
+): Pointer
+fun uniffi_db_service_ffi_fn_free_eventdispatch(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+fun uniffi_db_service_ffi_fn_init_callback_vtable_eventdispatch(`vtable`: UniffiVTableCallbackInterfaceEventDispatch,
+): Unit
+fun uniffi_db_service_ffi_fn_method_eventdispatch_send_otp_update(`ptr`: Pointer,`jsonString`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+fun uniffi_db_service_ffi_fn_method_eventdispatch_send_tick_update(`ptr`: Pointer,`jsonString`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+fun uniffi_db_service_ffi_fn_clone_jsonservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): Pointer
+fun uniffi_db_service_ffi_fn_free_jsonservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+fun uniffi_db_service_ffi_fn_constructor_jsonservice_new(uniffi_out_err: UniffiRustCallStatus, 
+): Pointer
+fun uniffi_db_service_ffi_fn_method_jsonservice_error_json_string(`ptr`: Pointer,`error`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_db_service_ffi_fn_method_jsonservice_form_with_file_name(`ptr`: Pointer,`fullFileNameUri`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_db_service_ffi_fn_method_jsonservice_map_as_error_json_string(`ptr`: Pointer,`info`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_db_service_ffi_fn_method_jsonservice_map_as_ok_json_string(`ptr`: Pointer,`info`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_db_service_ffi_fn_method_jsonservice_ok_json_string(`ptr`: Pointer,`info`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_db_service_ffi_fn_clone_androidapiservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): Pointer
+fun uniffi_db_service_ffi_fn_free_androidapiservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+fun uniffi_db_service_ffi_fn_init_callback_vtable_androidapiservice(`vtable`: UniffiVTableCallbackInterfaceAndroidApiService,
+): Unit
+fun uniffi_db_service_ffi_fn_method_androidapiservice_clipboard_copy_string(`ptr`: Pointer,`clipData`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+fun uniffi_db_service_ffi_fn_method_androidapiservice_autofill_client_app_url_info(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_db_service_ffi_fn_method_androidapiservice_complete_autofill(`ptr`: Pointer,`autoFillData`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+fun uniffi_db_service_ffi_fn_clone_androidsupportserviceextra(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): Pointer
+fun uniffi_db_service_ffi_fn_free_androidsupportserviceextra(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+fun uniffi_db_service_ffi_fn_constructor_androidsupportserviceextra_new(uniffi_out_err: UniffiRustCallStatus, 
+): Pointer
+fun uniffi_db_service_ffi_fn_method_androidsupportserviceextra_complete_save_as_on_error(`ptr`: Pointer,`fileDescriptor`: Long,`oldFullFileNameUri`: RustBuffer.ByValue,`newFullFileNameUri`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_db_service_ffi_fn_method_androidsupportserviceextra_create_kdbx(`ptr`: Pointer,`fileDescriptor`: Long,`jsonArgs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_db_service_ffi_fn_method_androidsupportserviceextra_invoke(`ptr`: Pointer,`commandName`: RustBuffer.ByValue,`jsonArgs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_db_service_ffi_fn_method_androidsupportserviceextra_save_key_file(`ptr`: Pointer,`fileDescriptor`: Long,`fullKeyFileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_db_service_ffi_fn_clone_commondeviceserviceex(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): Pointer
+fun uniffi_db_service_ffi_fn_free_commondeviceserviceex(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+fun uniffi_db_service_ffi_fn_init_callback_vtable_commondeviceserviceex(`vtable`: UniffiVTableCallbackInterfaceCommonDeviceServiceEx,
+): Unit
+fun uniffi_db_service_ffi_fn_method_commondeviceserviceex_clipboard_copy_string(`ptr`: Pointer,`clipData`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+fun uniffi_db_service_ffi_fn_clone_secureenclavecbservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): Pointer
+fun uniffi_db_service_ffi_fn_free_secureenclavecbservice(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+fun uniffi_db_service_ffi_fn_init_callback_vtable_secureenclavecbservice(`vtable`: UniffiVTableCallbackInterfaceSecureEnclaveCbService,
+): Unit
+fun uniffi_db_service_ffi_fn_method_secureenclavecbservice_encrypt_bytes(`ptr`: Pointer,`identifier`: RustBuffer.ByValue,`plainData`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_db_service_ffi_fn_method_secureenclavecbservice_decrypt_bytes(`ptr`: Pointer,`identifier`: RustBuffer.ByValue,`encryptedData`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_db_service_ffi_fn_method_secureenclavecbservice_remove_key(`ptr`: Pointer,`identifier`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Byte
+fun uniffi_db_service_ffi_fn_init_callback_vtable_commondeviceservice(`vtable`: UniffiVTableCallbackInterfaceCommonDeviceService,
+): Unit
+fun uniffi_db_service_ffi_fn_init_callback_vtable_securekeyoperation(`vtable`: UniffiVTableCallbackInterfaceSecureKeyOperation,
+): Unit
+fun uniffi_db_service_ffi_fn_func_copy_picked_key_file(`fileArgs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_db_service_ffi_fn_func_create_temp_kdbx(`fileArgs`: RustBuffer.ByValue,`jsonArgs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_db_service_ffi_fn_func_db_service_enable_logging(uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+fun uniffi_db_service_ffi_fn_func_extract_file_provider(`fullFileNameUri`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_db_service_ffi_fn_func_invoke_command(`commandName`: RustBuffer.ByValue,`args`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_db_service_ffi_fn_func_read_kdbx(`fileArgs`: RustBuffer.ByValue,`jsonArgs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_db_service_ffi_fn_func_save_kdbx(`fileArgs`: RustBuffer.ByValue,`overwrite`: Byte,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_db_service_ffi_fn_func_upload_attachment(`fileArgs`: RustBuffer.ByValue,`jsonArgs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_db_service_ffi_fn_func_verify_db_file_checksum(`fileArgs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_db_service_ffi_fn_func_write_to_backup_on_error(`fullFileNameUri`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_db_service_ffi_fn_func_android_callback_service_initialize(`androidApiService`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+fun uniffi_db_service_ffi_fn_func_db_service_initialize(`commonDeviceService`: Long,`secureKeyOperation`: Long,`eventDispatcher`: Pointer,`commonDeviceServiceEx`: Pointer,`secureEnclaveCbService`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+fun uniffi_db_service_ffi_fn_func_handle_picked_file(`fileArgs`: RustBuffer.ByValue,`jsonArgs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun ffi_db_service_ffi_rustbuffer_alloc(`size`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun ffi_db_service_ffi_rustbuffer_from_bytes(`bytes`: ForeignBytes.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun ffi_db_service_ffi_rustbuffer_free(`buf`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+fun ffi_db_service_ffi_rustbuffer_reserve(`buf`: RustBuffer.ByValue,`additional`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun ffi_db_service_ffi_rust_future_poll_u8(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_cancel_u8(`handle`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_free_u8(`handle`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_complete_u8(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Byte
+fun ffi_db_service_ffi_rust_future_poll_i8(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_cancel_i8(`handle`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_free_i8(`handle`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_complete_i8(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Byte
+fun ffi_db_service_ffi_rust_future_poll_u16(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_cancel_u16(`handle`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_free_u16(`handle`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_complete_u16(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Short
+fun ffi_db_service_ffi_rust_future_poll_i16(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_cancel_i16(`handle`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_free_i16(`handle`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_complete_i16(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Short
+fun ffi_db_service_ffi_rust_future_poll_u32(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_cancel_u32(`handle`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_free_u32(`handle`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_complete_u32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Int
+fun ffi_db_service_ffi_rust_future_poll_i32(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_cancel_i32(`handle`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_free_i32(`handle`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_complete_i32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Int
+fun ffi_db_service_ffi_rust_future_poll_u64(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_cancel_u64(`handle`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_free_u64(`handle`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_complete_u64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Long
+fun ffi_db_service_ffi_rust_future_poll_i64(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_cancel_i64(`handle`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_free_i64(`handle`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_complete_i64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Long
+fun ffi_db_service_ffi_rust_future_poll_f32(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_cancel_f32(`handle`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_free_f32(`handle`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_complete_f32(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Float
+fun ffi_db_service_ffi_rust_future_poll_f64(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_cancel_f64(`handle`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_free_f64(`handle`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_complete_f64(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Double
+fun ffi_db_service_ffi_rust_future_poll_pointer(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_cancel_pointer(`handle`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_free_pointer(`handle`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_complete_pointer(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Pointer
+fun ffi_db_service_ffi_rust_future_poll_rust_buffer(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_cancel_rust_buffer(`handle`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_free_rust_buffer(`handle`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_complete_rust_buffer(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun ffi_db_service_ffi_rust_future_poll_void(`handle`: Long,`callback`: UniffiRustFutureContinuationCallback,`callbackData`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_cancel_void(`handle`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_free_void(`handle`: Long,
+): Unit
+fun ffi_db_service_ffi_rust_future_complete_void(`handle`: Long,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+
 }
 
-private fun uniffiCheckContractApiVersion(lib: UniffiLib) {
+private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
     // Get the bindings contract version from our ComponentInterface
-    val bindings_contract_version = 26
+    val bindings_contract_version = 29
     // Get the scaffolding contract version by calling the into the dylib
     val scaffolding_contract_version = lib.ffi_db_service_ffi_uniffi_contract_version()
     if (bindings_contract_version != scaffolding_contract_version) {
         throw RuntimeException("UniFFI contract version mismatch: try cleaning and rebuilding your project")
     }
 }
-
 @Suppress("UNUSED_PARAMETER")
-private fun uniffiCheckApiChecksums(lib: UniffiLib) {
+private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_db_service_ffi_checksum_func_copy_picked_key_file() != 35177.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1442,7 +1484,7 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     if (lib.uniffi_db_service_ffi_checksum_method_secureenclavecbservice_remove_key() != 60936.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_db_service_ffi_checksum_constructor_jsonservice_new() != 13724.toShort()) {
+    if (lib.uniffi_db_service_ffi_checksum_constructor_jsonservice_new() != 33984.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_ffi_checksum_constructor_androidsupportserviceextra_new() != 20320.toShort()) {
@@ -1483,6 +1525,13 @@ private fun uniffiCheckApiChecksums(lib: UniffiLib) {
     }
 }
 
+/**
+ * @suppress
+ */
+public fun uniffiEnsureInitialized() {
+    UniffiLib.INSTANCE
+}
+
 // Async support
 
 // Public interface members begin here.
@@ -1500,8 +1549,33 @@ interface Disposable {
     fun destroy()
     companion object {
         fun destroy(vararg args: Any?) {
-            args.filterIsInstance<Disposable>()
-                .forEach(Disposable::destroy)
+            for (arg in args) {
+                when (arg) {
+                    is Disposable -> arg.destroy()
+                    is ArrayList<*> -> {
+                        for (idx in arg.indices) {
+                            val element = arg[idx]
+                            if (element is Disposable) {
+                                element.destroy()
+                            }
+                        }
+                    }
+                    is Map<*, *> -> {
+                        for (element in arg.values) {
+                            if (element is Disposable) {
+                                element.destroy()
+                            }
+                        }
+                    }
+                    is Iterable<*> -> {
+                        for (element in arg) {
+                            if (element is Disposable) {
+                                element.destroy()
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -1526,7 +1600,102 @@ inline fun <T : Disposable?, R> T.use(block: (T) -> R) =
  *
  * @suppress
  * */
-object NoPointer
+object NoPointer// Magic number for the Rust proxy to call using the same mechanism as every other method,
+// to free the callback once it's dropped by Rust.
+internal const val IDX_CALLBACK_FREE = 0
+// Callback return codes
+internal const val UNIFFI_CALLBACK_SUCCESS = 0
+internal const val UNIFFI_CALLBACK_ERROR = 1
+internal const val UNIFFI_CALLBACK_UNEXPECTED_ERROR = 2
+
+/**
+ * @suppress
+ */
+public abstract class FfiConverterCallbackInterface<CallbackInterface: Any>: FfiConverter<CallbackInterface, Long> {
+    internal val handleMap = UniffiHandleMap<CallbackInterface>()
+
+    internal fun drop(handle: Long) {
+        handleMap.remove(handle)
+    }
+
+    override fun lift(value: Long): CallbackInterface {
+        return handleMap.get(value)
+    }
+
+    override fun read(buf: ByteBuffer) = lift(buf.getLong())
+
+    override fun lower(value: CallbackInterface) = handleMap.insert(value)
+
+    override fun allocationSize(value: CallbackInterface) = 8UL
+
+    override fun write(value: CallbackInterface, buf: ByteBuffer) {
+        buf.putLong(lower(value))
+    }
+}
+/**
+ * The cleaner interface for Object finalization code to run.
+ * This is the entry point to any implementation that we're using.
+ *
+ * The cleaner registers objects and returns cleanables, so now we are
+ * defining a `UniffiCleaner` with a `UniffiClenaer.Cleanable` to abstract the
+ * different implmentations available at compile time.
+ *
+ * @suppress
+ */
+interface UniffiCleaner {
+    interface Cleanable {
+        fun clean()
+    }
+
+    fun register(value: Any, cleanUpTask: Runnable): UniffiCleaner.Cleanable
+
+    companion object
+}
+
+// The fallback Jna cleaner, which is available for both Android, and the JVM.
+private class UniffiJnaCleaner : UniffiCleaner {
+    private val cleaner = com.sun.jna.internal.Cleaner.getCleaner()
+
+    override fun register(value: Any, cleanUpTask: Runnable): UniffiCleaner.Cleanable =
+        UniffiJnaCleanable(cleaner.register(value, cleanUpTask))
+}
+
+private class UniffiJnaCleanable(
+    private val cleanable: com.sun.jna.internal.Cleaner.Cleanable,
+) : UniffiCleaner.Cleanable {
+    override fun clean() = cleanable.clean()
+}
+
+
+// We decide at uniffi binding generation time whether we were
+// using Android or not.
+// There are further runtime checks to chose the correct implementation
+// of the cleaner.
+private fun UniffiCleaner.Companion.create(): UniffiCleaner =
+    try {
+        // For safety's sake: if the library hasn't been run in android_cleaner = true
+        // mode, but is being run on Android, then we still need to think about
+        // Android API versions.
+        // So we check if java.lang.ref.Cleaner is there, and use that…
+        java.lang.Class.forName("java.lang.ref.Cleaner")
+        JavaLangRefCleaner()
+    } catch (e: ClassNotFoundException) {
+        // … otherwise, fallback to the JNA cleaner.
+        UniffiJnaCleaner()
+    }
+
+private class JavaLangRefCleaner : UniffiCleaner {
+    val cleaner = java.lang.ref.Cleaner.create()
+
+    override fun register(value: Any, cleanUpTask: Runnable): UniffiCleaner.Cleanable =
+        JavaLangRefCleanable(cleaner.register(value, cleanUpTask))
+}
+
+private class JavaLangRefCleanable(
+    val cleanable: java.lang.ref.Cleaner.Cleanable
+) : UniffiCleaner.Cleanable {
+    override fun clean() = cleanable.clean()
+}
 
 /**
  * @suppress
@@ -1818,69 +1987,6 @@ public object FfiConverterByteArray: FfiConverterRustBuffer<ByteArray> {
 //
 
 
-/**
- * The cleaner interface for Object finalization code to run.
- * This is the entry point to any implementation that we're using.
- *
- * The cleaner registers objects and returns cleanables, so now we are
- * defining a `UniffiCleaner` with a `UniffiClenaer.Cleanable` to abstract the
- * different implmentations available at compile time.
- *
- * @suppress
- */
-interface UniffiCleaner {
-    interface Cleanable {
-        fun clean()
-    }
-
-    fun register(value: Any, cleanUpTask: Runnable): UniffiCleaner.Cleanable
-
-    companion object
-}
-
-// The fallback Jna cleaner, which is available for both Android, and the JVM.
-private class UniffiJnaCleaner : UniffiCleaner {
-    private val cleaner = com.sun.jna.internal.Cleaner.getCleaner()
-
-    override fun register(value: Any, cleanUpTask: Runnable): UniffiCleaner.Cleanable =
-        UniffiJnaCleanable(cleaner.register(value, cleanUpTask))
-}
-
-private class UniffiJnaCleanable(
-    private val cleanable: com.sun.jna.internal.Cleaner.Cleanable,
-) : UniffiCleaner.Cleanable {
-    override fun clean() = cleanable.clean()
-}
-
-// We decide at uniffi binding generation time whether we were
-// using Android or not.
-// There are further runtime checks to chose the correct implementation
-// of the cleaner.
-private fun UniffiCleaner.Companion.create(): UniffiCleaner =
-    try {
-        // For safety's sake: if the library hasn't been run in android_cleaner = true
-        // mode, but is being run on Android, then we still need to think about
-        // Android API versions.
-        // So we check if java.lang.ref.Cleaner is there, and use that…
-        java.lang.Class.forName("java.lang.ref.Cleaner")
-        JavaLangRefCleaner()
-    } catch (e: ClassNotFoundException) {
-        // … otherwise, fallback to the JNA cleaner.
-        UniffiJnaCleaner()
-    }
-
-private class JavaLangRefCleaner : UniffiCleaner {
-    val cleaner = java.lang.ref.Cleaner.create()
-
-    override fun register(value: Any, cleanUpTask: Runnable): UniffiCleaner.Cleanable =
-        JavaLangRefCleanable(cleaner.register(value, cleanUpTask))
-}
-
-private class JavaLangRefCleanable(
-    val cleanable: java.lang.ref.Cleaner.Cleanable
-) : UniffiCleaner.Cleanable {
-    override fun clean() = cleanable.clean()
-}
 public interface AndroidApiService {
     
     fun `clipboardCopyString`(`clipData`: AppClipboardCopyData)
@@ -1892,7 +1998,8 @@ public interface AndroidApiService {
     companion object
 }
 
-open class AndroidApiServiceImpl: Disposable, AutoCloseable, AndroidApiService {
+open class AndroidApiServiceImpl: Disposable, AutoCloseable, AndroidApiService
+{
 
     constructor(pointer: Pointer) {
         this.pointer = pointer
@@ -2017,38 +2124,7 @@ open class AndroidApiServiceImpl: Disposable, AutoCloseable, AndroidApiService {
     companion object
     
 }
-// Magic number for the Rust proxy to call using the same mechanism as every other method,
-// to free the callback once it's dropped by Rust.
-internal const val IDX_CALLBACK_FREE = 0
-// Callback return codes
-internal const val UNIFFI_CALLBACK_SUCCESS = 0
-internal const val UNIFFI_CALLBACK_ERROR = 1
-internal const val UNIFFI_CALLBACK_UNEXPECTED_ERROR = 2
 
-/**
- * @suppress
- */
-public abstract class FfiConverterCallbackInterface<CallbackInterface: Any>: FfiConverter<CallbackInterface, Long> {
-    internal val handleMap = UniffiHandleMap<CallbackInterface>()
-
-    internal fun drop(handle: Long) {
-        handleMap.remove(handle)
-    }
-
-    override fun lift(value: Long): CallbackInterface {
-        return handleMap.get(value)
-    }
-
-    override fun read(buf: ByteBuffer) = lift(buf.getLong())
-
-    override fun lower(value: CallbackInterface) = handleMap.insert(value)
-
-    override fun allocationSize(value: CallbackInterface) = 8UL
-
-    override fun write(value: CallbackInterface, buf: ByteBuffer) {
-        buf.putLong(lower(value))
-    }
-}
 
 // Put the implementation in an object so we don't pollute the top-level namespace
 internal object uniffiCallbackInterfaceAndroidApiService {
@@ -2264,7 +2340,8 @@ public interface AndroidSupportServiceExtraInterface {
     companion object
 }
 
-open class AndroidSupportServiceExtra: Disposable, AutoCloseable, AndroidSupportServiceExtraInterface {
+open class AndroidSupportServiceExtra: Disposable, AutoCloseable, AndroidSupportServiceExtraInterface
+{
 
     constructor(pointer: Pointer) {
         this.pointer = pointer
@@ -2542,7 +2619,8 @@ public interface CommonDeviceServiceEx {
     companion object
 }
 
-open class CommonDeviceServiceExImpl: Disposable, AutoCloseable, CommonDeviceServiceEx {
+open class CommonDeviceServiceExImpl: Disposable, AutoCloseable, CommonDeviceServiceEx
+{
 
     constructor(pointer: Pointer) {
         this.pointer = pointer
@@ -2819,7 +2897,8 @@ public interface EventDispatch {
     companion object
 }
 
-open class EventDispatchImpl: Disposable, AutoCloseable, EventDispatch {
+open class EventDispatchImpl: Disposable, AutoCloseable, EventDispatch
+{
 
     constructor(pointer: Pointer) {
         this.pointer = pointer
@@ -3132,7 +3211,8 @@ public interface JsonServiceInterface {
     companion object
 }
 
-open class JsonService: Disposable, AutoCloseable, JsonServiceInterface {
+open class JsonService: Disposable, AutoCloseable, JsonServiceInterface
+{
 
     constructor(pointer: Pointer) {
         this.pointer = pointer
@@ -3426,7 +3506,8 @@ public interface SecureEnclaveCbService {
     companion object
 }
 
-open class SecureEnclaveCbServiceImpl: Disposable, AutoCloseable, SecureEnclaveCbService {
+open class SecureEnclaveCbServiceImpl: Disposable, AutoCloseable, SecureEnclaveCbService
+{
 
     constructor(pointer: Pointer) {
         this.pointer = pointer
