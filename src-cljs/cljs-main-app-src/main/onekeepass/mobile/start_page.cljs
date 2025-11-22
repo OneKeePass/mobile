@@ -611,9 +611,13 @@
 
     ;; Calls the useSafeAreaInsets hook 
     ;; TODO: Avoid calling this more than once
-    (rnc/set-insets (rnc/use-safe-area-insets))
+    #_(rnc/set-insets (rnc/use-safe-area-insets))
     
-    [rn-view {:style {:flex 1 :justify-content "center" :align-items "center" :margin-top "10%"}}
+    [rn-view {:style {:flex 1
+                      :justify-content "center"
+                      ;; :background-color "green"
+                      :margin-top "10%"
+                      :align-items "center"}}
      [rn-view {:style {:flex 0.1 :justify-content "center" :width "90%"}}
       [rnp-button {:mode "contained" :onPress (fn [] (ndb-events/new-database-dialog-show))}
        (lstr-bl "newdb")]] ;;
@@ -632,7 +636,11 @@
       [databases-list-content recent-uses]]]))
 
 (defn open-page-content []
-  [rn-safe-area-view {:style {:flex 1 :background-color @rnc/page-background-color}}
+  [rn-safe-area-view {:style {:flex 1 
+                              ;;:background-color "red" #_
+                              :background-color @rnc/page-background-color}
+                      
+                      :edges ["right" "bottom" "left"]}
    
    [:f> main-content]
 

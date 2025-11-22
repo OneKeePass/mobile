@@ -22,10 +22,10 @@
    ;; Note the use of path relative to cljs-main-app-src/src/gen
    ;; which is included in the :source-paths in shadow-cljs.edn
    ;; These are transpiled by babel(one time) from js-components to cljs-main-app-src/gen
-   ;; using the command
-   ;; cd src-cljs ;  ../node_modules/.bin/babel js-components --out-dir cljs-main-app-src/gen
+   ;; using the command shown (in a comment) in the shadow-cljs.edn file
    ["/components/RNPCustomization" :as rnp-customization]
    ["/components/KeyboardAvoidingDialog" :as kb-dialog]
+   ["/components/CustomSafeAreaView" :as cust-safe-area-view]
    [onekeepass.mobile.background :refer [get-constants is-Android is-iOS]]
    [onekeepass.mobile.constants :as const :refer [DEFAULT-SYSTEM-THEME]]
    [react]
@@ -70,7 +70,9 @@
 ;; As per https://reactnative.dev/blog/2025/08/12/react-native-0.81, we need to deprecate the built-in SafeAreaView
 ;; with this one from 'react-native-safe-area-context' package
 ;; TODO: need to replace rn-safe-area-view with rnsa-safe-area-view in all places
-(def rn-safe-area-view (r/adapt-react-class (.-SafeAreaView ^js/SASafeAreaView sa-context)))
+#_(def rn-safe-area-view (r/adapt-react-class (.-SafeAreaView ^js/SASafeAreaView sa-context)))
+
+(def rn-safe-area-view (r/adapt-react-class (.-RNPSafeAreaView cust-safe-area-view)))
 
 ;; https://github.com/dmtrKovalenko/date-io
 ;;DateAdapter is #object[DateFnsUtils] 

@@ -1,7 +1,7 @@
 {:source-paths
  ["cljs-main-app-src/main"
   ;; All JSX or js modules from js-components will be transpiled by babel 
-  ;; ./node_modules/.bin/babel js-components --out-dir cljs-main-app-src/gen
+  ;; In mobile dir ./node_modules/.bin/babel src-cljs/js-components --out-dir src-cljs/cljs-main-app-src/gen
   "cljs-main-app-src/gen"
 
   "cljs-ios-autofill-src/main"]

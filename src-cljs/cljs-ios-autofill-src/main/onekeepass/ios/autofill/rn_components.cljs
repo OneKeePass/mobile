@@ -2,7 +2,13 @@
  onekeepass.ios.autofill.rn-components
   (:require-macros [onekeepass.ios.autofill.okp-macros
                     :refer  [declare-comp-classes]])
-  (:require 
+  (:require
+   ;; We need this as the default Hermes engine in RN does not support Intl API fully
+   ;; If we use the previous JSC engine, this polyfill is not be needed
+   ;; This needs to be the first require to ensure polyfill is loaded first
+   ;; before any other intl usage. If calling here does not work, need to call this in the core.cljs itself
+   ;; See https://formatjs.github.io/docs/polyfills/intl-pluralrules#react-native
+   
    ["@formatjs/intl-pluralrules/polyfill-force" :as polyfill-force]
    ["@react-native-community/slider" :as rnc-slider]
    ["react-native-circular-progress" :as rn-circular-progress]
@@ -11,11 +17,11 @@
    ["react-native-paper" :as rnp]
    ["react-native-safe-area-context" :as sa-context]
    ["react-native-vector-icons" :as vec-icons]
-   
+
    ;; Local js components
    ["/components/RNPCustomization" :as rnp-customization]
    ["/components/KeyboardAvoidingDialog" :as kb-dialog]
-
+   ["/components/CustomSafeAreaView" :as cust-safe-area-view]
    #_[onekeepass.mobile.background :refer [is-iOS]]
    [onekeepass.ios.autofill.constants :refer [DEFAULT-SYSTEM-THEME]]
 
@@ -25,11 +31,12 @@
 
 (set! *warn-on-infer* true)
 
+;;;;;; TO_BE_REMOVED: Krell is no more used to build the project
 ;; When cljs files are compiled using Krell during development, we can see 
 ;; ./target/npm_deps.js and ./target/krell_npm_deps.js generated
 ;; All the require calls above of NPM packages will have an entry in npm_deps.js
 ;; All (js/require "../js/.....") calls will result an entry in krell_npm_deps.js
-
+;;;;;;;;;;;;;
 
 ;; Also this defined again in background as rn-components is not refered in background module to avoid circular references
 (def rn-native-linking ^js/RNLinking rn/Linking)
@@ -59,6 +66,10 @@
 
 (def use-safe-area-insets (.-useSafeAreaInsets ^js/SAInsets sa-context))
 
+;; As per https://reactnative.dev/blog/2025/08/12/react-native-0.81, we need to deprecate the built-in SafeAreaView
+;; with this one from 'react-native-safe-area-context' package
+;; TODO: need to replace rn-safe-area-view with rnsa-safe-area-view in all places
+(def rn-safe-area-view (r/adapt-react-class (.-RNPSafeAreaView cust-safe-area-view)))
 
 (def rn-keyboard ^js/RNKeyboard rn/Keyboard)
 
@@ -67,7 +78,8 @@
 ;; React native components
 (declare-comp-classes [ActivityIndicator
                        Button
-                       SafeAreaView
+                       ;; See comments above about SafeAreaView
+                       ;; SafeAreaView
                        FlatList
                        KeyboardAvoidingView
                        Pressable
@@ -243,7 +255,7 @@
 
 (def animated-circular-progress (r/adapt-react-class (.-AnimatedCircularProgress ^js/RNCircularProgress rn-circular-progress)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  All example components ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  TO_BE_REMOVED: All example Krell based build time components ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Following are some sample React Native components in Javascript based examples that
 ;; can be loaded here using Krell's js/require feature and create cljs reagent component and use 
