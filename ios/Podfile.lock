@@ -2466,7 +2466,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
-  - RNSVG (15.11.2):
+  - RNSVG (15.15.0):
     - React-Core
   - SocketRocket (0.7.1)
   - VisionCamera (4.7.3):
@@ -2806,7 +2806,7 @@ SPEC CHECKSUMS:
   RNFileViewer: 4b5d83358214347e4ab2d4ca8d5c1c90d869e251
   RNGestureHandler: 12a436b5074378be95468a57b62c165a1e24cfc9
   RNReanimated: 9282065c1fb748d2d1945ba46d6592c2cf4e5cc8
-  RNSVG: fadb7945eadf2c9f0b9c705d7fdae347045f7d69
+  RNSVG: 7c0130308bacee76b280102b2d8c66c277d95ba7
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   VisionCamera: 7187b3dac1ff3071234ead959ce311875748e14f
   Yoga: d7064c22f7ba5890471d32dd95e72c77ec911f26
