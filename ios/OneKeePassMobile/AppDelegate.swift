@@ -8,6 +8,33 @@
 import Foundation
 import UIKit
 
+// After uograding RN 0.81.5, creating a new React View is moved to a
+// separate clas ReactViewController.swift' and used directly in SceneDelegate.swift
+
+// This simple AppDelegate is based on the example here
+// https://github.com/athombv/ReactNativeSceneDelegate/tree/52957bfabc8bd0bf261c7bb3cd61704d5143e45c/ReproducerApp/ios/ReproducerApp
+// https://github.com/athombv/ReactNativeSceneDelegate/blob/52957bfabc8bd0bf261c7bb3cd61704d5143e45c/ReproducerApp/ios/ReproducerApp/AppDelegate.swift
+
+
+@main
+class AppDelegate: UIResponder, UIApplicationDelegate {
+  func application(
+    _ application: UIApplication,
+    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+  ) -> Bool {
+    return true
+  }
+}
+
+// ------------------------------------------------------
+
+// Following AppDelegate way of implementation was used from RN 0.74.x to  RN 0.78.2
+// Also worked with RN 0.81.5. 
+// To make sure we use the new way of RN sample app uses AppDelegate implemetation, the above simple AppDelegate is used
+// and along with the new class ReactViewController.swift is used to create the React Native view
+
+//--------------------------------------------------------
+
 // We need to implement this class instead of using RN created AppDelegate.mm so that we can use 'SceneDelegate'
 // We use 'SceneDelegate' so that our app can be opened when user presses *.kdbx file on iOS File explorer
 
@@ -21,6 +48,10 @@ import UIKit
 // This is based on 'Integration with Existing Apps' https://reactnative.dev/docs/integration-with-existing-apps?language=swift
 
 // When we decide to use new architecture -  the new native module system (TurboModules) and the new renderer (Fabric) etc, we need to make more changes here
+
+// Old implementation kept for reference
+
+/*
 
 // This class provides the entry point 'main'
 @main
@@ -84,6 +115,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, RCTBridgeDelegate {
    }
    */
 }
+ */
 
 // Few resources referred and may be outdated ones
 /**

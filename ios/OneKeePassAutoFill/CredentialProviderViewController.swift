@@ -110,6 +110,11 @@ class CredentialProviderViewController: ASCredentialProviderViewController, RCTB
     getBundleURL()
   }
 
+  // Using a ViewController similar to ReactViewController instead of creating RCTBridge etc here
+  // did not work as expected as the build failed because of some conflicsts with various
+  // React Native imports when trying to use ReactViewController.  
+  // So using this approach. 
+  
   func prepareUI() {
     let bridge = RCTBridge(delegate: self, launchOptions: nil)!
 

@@ -44,15 +44,23 @@ class SceneDelegate: NSObject, UIWindowSceneDelegate {
       SceneDelegate.openUrl = urlContext.url
     }
 
-    let rootViewController = UIViewController()
-    rootViewController.view = AppDelegate.rctRootView!
+    // Old way of setting rootViewController using AppDelegate's rctRootView
+    // let rootViewController = UIViewController()
+    // rootViewController.view = AppDelegate.rctRootView!
+
+    
+    let rootViewController = ReactViewController()
 
     if let windowScene = scene as? UIWindowScene {
       let window = UIWindow(windowScene: windowScene)
       window.rootViewController = rootViewController
       self.window = window // any use ? - It may be required because of UIWindowSceneDelegate
       window.makeKeyAndVisible()
-      RNBootSplash.initWithStoryboard("BootSplash", rootView: AppDelegate.rctRootView!)
+
+      // Old way of initializing RNBootSplash using AppDelegate's rctRootView
+      // RNBootSplash.initWithStoryboard("BootSplash", rootView: AppDelegate.rctRootView!)
+      
+      RNBootSplash.initWithStoryboard("BootSplash", rootView: rootViewController.view)
     }
   }
   
