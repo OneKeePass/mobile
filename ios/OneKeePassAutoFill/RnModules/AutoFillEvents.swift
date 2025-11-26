@@ -6,6 +6,8 @@
 //
 
 import Foundation
+// Added when RN 0.81.5 time. Otherwise build failed with conflicting imports
+import React
 
 
 @objc(AutoFillEvents)

@@ -10,18 +10,27 @@
 import AuthenticationServices
 import Foundation
 
+// Need to add this if we include 'OkpAutofillReactViewController.swift' in the project even if
+// we are  using RCTBridge only. Otherwise the build fails not seeing 'RCTBridgeDelegate'
+// import React_RCTAppDelegate
+
+
+// class CredentialProviderViewController: ASCredentialProviderViewController, RCTBridgeDelegate
+
 @objc
-class CredentialProviderViewController: ASCredentialProviderViewController, RCTBridgeDelegate {
-  
+class CredentialProviderViewController: ASCredentialProviderViewController {
+
   static let logger1 = OkpLogger(tag: "CredentialProviderViewController")
   
   static var extContext: ASCredentialProviderExtensionContext?
   
-  static var serviceIdentifierDomain:String?
-  static var serviceIdentifierUrl:String?
+  static var serviceIdentifierDomain: String?
+  static var serviceIdentifierUrl: String?
   
   private let logger = logger1
   
+  //==============================================================================================================//
+  /*
   // Need this inner class so that we can handle viewDidDisappear call and cancel the CredentialProviderViewController sheet
   class OkpViewController: UIViewController {
     override func viewDidLoad() {
@@ -31,11 +40,32 @@ class CredentialProviderViewController: ASCredentialProviderViewController, RCTB
     override func viewDidDisappear(_ animated: Bool) {
       super.viewDidDisappear(animated)
       debugPrint("OkpViewController viewDidDisappear is called \(animated)")
-      CredentialProviderViewController.cancelExtension()
+      // The following will be called in the CredentialProviderViewController's viewDidDisappear fn when its view
+      // is set directly instead of the 'present' call.
+      // If this UIViewController is used, then uncomment this and comment the other one
+      //CredentialProviderViewController.cancelExtension()
     }
   }
   
-  // ================================== //
+  // RCTBridgeDelegate implementation
+  // This class needs to extend RCTBridgeDelegate so that we use RCTBridge to create the RCTRootView (Legacy architecture)
+  func getBundleURL() -> URL! {
+    #if DEBUG
+      // index.ios.autofill.extension.js is the extension specific entry file
+      return RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: "index.ios.autofill.extension")
+    #else
+      // Same as return [[NSBundle mainBundle] URLForResource:@"main" withExtension:@"jsbundle"];
+      return Bundle.main.url(forResource: "main", withExtension: "jsbundle")
+    #endif
+  }
+
+  // This fn implementation is to conform to the protocol 'RCTBridgeDelegate'
+  func sourceURL(for bridge: RCTBridge) -> URL? {
+    getBundleURL()
+  }
+  */
+  
+  // ====================================================================================================== //
   
   static func cancelExtension() {
     if extContext != nil {
@@ -55,8 +85,7 @@ class CredentialProviderViewController: ASCredentialProviderViewController, RCTB
     extContext!.completeRequest(withSelectedCredential: passwordCredential, completionHandler: nil)
   }
  
-  
-  static func serviceIdentifiersReceived() -> [String: String]{
+  static func serviceIdentifiersReceived() -> [String: String] {
     var dict: [String: String] = [:]
     
     dict["domain"] = serviceIdentifierDomain
@@ -65,7 +94,7 @@ class CredentialProviderViewController: ASCredentialProviderViewController, RCTB
     return dict
   }
   
-  // ================================== //
+  // ====================================================================================================== //
   
   override func viewDidLoad() {
     super.viewDidLoad()
@@ -80,13 +109,19 @@ class CredentialProviderViewController: ASCredentialProviderViewController, RCTB
   
   override func viewDidDisappear(_ animated: Bool) {
     super.viewDidDisappear(animated)
-    debugPrint("viewDidDisappear is called \(animated)")
+    debugPrint("CredentialProviderViewController viewDidDisappear is called \(animated)")
+    // This needs to be added here when use this class's view directly
+    CredentialProviderViewController.cancelExtension()
   }
   
   override func viewWillAppear(_ animated: Bool) {
     super.viewWillAppear(animated)
     logger.debug("viewWillAppear is called")
-    prepareUI()
+    // This was used when we used the inner clsss 'OkpViewController' till RN 0.78.2
+    // Here it is commented out as we set this class controllers's view directly
+    // See prepareCredentialList where this is called when we set the view directly instead of using the custom OkpViewController
+    // prepareUI()
+    
   }
 
   override func didReceiveMemoryWarning() {
@@ -94,41 +129,55 @@ class CredentialProviderViewController: ASCredentialProviderViewController, RCTB
     logger.debug("didReceiveMemoryWarning is called")
   }
   
+  // Following used till RN 0.78.2
+  // This also worked with RN 0.81.5. But only leagacy architecture
   
-  func getBundleURL() -> URL! {
-    #if DEBUG
-      // index.ios.autofill.extension.js is the extension specific entry file
-    return RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: "index.ios.autofill.extension")
-    #else
-      // Same as return [[NSBundle mainBundle] URLForResource:@"main" withExtension:@"jsbundle"];
-      return Bundle.main.url(forResource: "main", withExtension: "jsbundle")
-    #endif
-  }
-
-  // This fn implementation is to conform to the protocol 'RCTBridgeDelegate'
-  func sourceURL(for bridge: RCTBridge) -> URL? {
-    getBundleURL()
-  }
-
-  // Using a ViewController similar to ReactViewController instead of creating RCTBridge etc here
-  // did not work as expected as the build failed because of some conflicsts with various
-  // React Native imports when trying to use ReactViewController.  
-  // So using this approach. 
-  
-  func prepareUI() {
-    let bridge = RCTBridge(delegate: self, launchOptions: nil)!
-
-    let rootView = RCTRootView(
-      bridge: bridge,
-      moduleName: "OneKeePassMobile",
-      initialProperties: nil
-    )
+  /*
+   func prepareUI() {
+     let bridge = RCTBridge(delegate: self, launchOptions: nil)!
     
-    let vc = OkpViewController() // UIViewController()
-    vc.view = rootView
+     let rootView = RCTRootView(
+       bridge: bridge,
+       moduleName: "OneKeePassMobile",
+       initialProperties: nil
+     )
+    
+     let vc = OkpViewController() // UIViewController()
+     vc.view = rootView
+     present(vc, animated: true, completion: nil)
+   }
+   */
+  
+  // This works with RN 0.81.5. But only with leagacy architecture
+  /*
+  func prepareUI() {
+
+    let vc = OkpViewController()
+    vc.view = OKpReactView.createOkpAutofillReactView()
+
+  //    let vc = OkpViewController()
+  //    vc.view = OkpReactViewController().view
+
     present(vc, animated: true, completion: nil)
   }
-
+  */
+  
+  // This is another way of adding the RN view directly as a sub view
+  // This was checked with RN 0.81.5 and works with only with Legacy architecture
+  func directUI() {
+    let rnView = OKpReactView.createOkpAutofillReactView()
+    rnView.frame = view.bounds
+    rnView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+    // rnView.backgroundColor = .black
+    // This class is a sub class of UIViewController. So we can use the ReactView created as its view
+    view.addSubview(rnView)
+  }
+  
+  func prepareUI() {
+    // This class is a sub class of UIViewController. So we can use the ReactView created as its view
+    view = OKpReactView.createOkpAutofillReactView()
+  }
+  
   /*
     Prepare your UI to list available credentials for the user to choose from. The items in
     'serviceIdentifiers' describe the service the user is logging in to, so your extension can
@@ -148,7 +197,8 @@ class CredentialProviderViewController: ASCredentialProviderViewController, RCTB
         logger.debug("Unknown identifier \(si.type)")
       }
     }
-    // prepareUI()
+    // directUI()
+    prepareUI()
   }
 
   /*
@@ -197,6 +247,39 @@ class CredentialProviderViewController: ASCredentialProviderViewController, RCTB
    }
    */
 }
+
+//  func prepareUI() {
+//    let bridge = RCTBridge(delegate: self, launchOptions: nil)!
+//
+//    let rootView = RCTAppSetupDefaultRootView(bridge, "OneKeePassMobile",nil,false)
+//    rootView?.backgroundColor = .systemBackground
+//    // let vc = OkpViewController()
+//    self.view = rootView
+//    // present(self, animated: true, completion: nil)
+//  }
+  
+//  func prepareUI() {
+//    let bridge = RCTBridge(delegate: self, launchOptions: nil)!
+//
+//
+//
+//    let cf = RCTRootViewFactoryConfiguration(bundleURL:self.getBundleURL(), newArchEnabled: true )
+//    let rc = RCTRootViewFactory(configuration: cf)
+//
+//
+//
+//    // let rc = RCTRootViewFactory()
+//    // rc.bridge = bridge
+//
+//    let rootView = rc.view(withModuleName: "OneKeePassMobile", initialProperties: nil)
+//
+//    //let rootView = RCTAppSetupDefaultRootView(bridge, "OneKeePassMobile",nil,false)
+//    //rootView?.backgroundColor = .systemBackground
+//    // let vc = OkpViewController()
+//
+//    self.view = rootView
+//    // present(self, animated: true, completion: nil)
+//  }
 
 /*** ========== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== =====  **/
 /*
