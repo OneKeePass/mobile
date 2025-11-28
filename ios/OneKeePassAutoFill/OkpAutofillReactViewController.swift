@@ -9,6 +9,7 @@ import React
 import React_RCTAppDelegate
 import ReactAppDependencyProvider
 import UIKit
+//import ReactJSC
 
 
 class OKpReactView {

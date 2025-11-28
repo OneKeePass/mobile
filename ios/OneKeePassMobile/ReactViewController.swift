@@ -9,6 +9,7 @@ import React
 import React_RCTAppDelegate
 import ReactAppDependencyProvider
 import UIKit
+// import ReactJSC
 
 
 // This is based on https://reactnative.dev/docs/0.81/integration-with-existing-apps#create-the-reactviewcontroller
@@ -50,6 +51,12 @@ class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {
     #else
       return Bundle.main.url(forResource: "main", withExtension: "jsbundle")
     #endif
+  }
+  
+  override func createJSRuntimeFactory() -> JSRuntimeFactoryRef {
+    debugPrint("Creating JSRuntimeFactory")
+    return super.createJSRuntimeFactory()
+    //return jsrt_create_jsc_factory() // Use JavaScriptCore runtime
   }
 
 // Need to figure out to use for both app and extension and share this class bewtween them 
