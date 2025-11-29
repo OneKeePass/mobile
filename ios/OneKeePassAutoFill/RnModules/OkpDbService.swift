@@ -64,7 +64,7 @@ class OkpDbService: NSObject {
   @objc
   func cancelExtension(_ resolve:@escaping RCTPromiseResolveBlock, reject _: @escaping RCTPromiseRejectBlock) {
     
-    logger.debug("cancelExtension is called")
+    logger.debug("OkpDbService: cancelExtension is called")
     CredentialProviderViewController.cancelExtension()
     resolve("{}")
   }

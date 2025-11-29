@@ -52,10 +52,9 @@ class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {
 
 // This is based on https://reactnative.dev/docs/0.81/integration-with-existing-apps#create-the-reactviewcontroller
 
-// Using the 'view' from this UIViewController in CredentialProviderViewController's view did not work
 
-/*
  class OkpReactViewController: UIViewController {
+   let logger = OkpLogger(tag: "OkpReactViewController")
    var reactNativeFactory: RCTReactNativeFactory?
    var reactNativeFactoryDelegate: RCTReactNativeFactoryDelegate?
 
@@ -66,5 +65,12 @@ class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {
      reactNativeFactory = RCTReactNativeFactory(delegate: reactNativeFactoryDelegate!)
      view = reactNativeFactory!.rootViewFactory.view(withModuleName: "OneKeePassMobile", initialProperties: [:])
    }
+   
+   override func viewDidDisappear(_ animated: Bool) {
+     super.viewDidDisappear(animated)
+     logger.debug("OkpReactViewController viewDidDisappear is called and CredentialProviderViewController will be cancelled")
+     
+     CredentialProviderViewController.cancelExtension()
+   }
  }
- */
+ 

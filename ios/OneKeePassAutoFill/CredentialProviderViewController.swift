@@ -14,12 +14,10 @@ import Foundation
 // we are  using RCTBridge only. Otherwise the build fails not seeing 'RCTBridgeDelegate'
 // import React_RCTAppDelegate
 
-
 // class CredentialProviderViewController: ASCredentialProviderViewController, RCTBridgeDelegate
 
 @objc
 class CredentialProviderViewController: ASCredentialProviderViewController {
-
   static let logger1 = OkpLogger(tag: "CredentialProviderViewController")
   
   static var extContext: ASCredentialProviderExtensionContext?
@@ -27,52 +25,55 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
   static var serviceIdentifierDomain: String?
   static var serviceIdentifierUrl: String?
   
+  static var cancelled: Bool = false
+  
   private let logger = logger1
   
   //==============================================================================================================//
   /*
-  // Need this inner class so that we can handle viewDidDisappear call and cancel the CredentialProviderViewController sheet
-  class OkpViewController: UIViewController {
-    override func viewDidLoad() {
-      debugPrint("OkpViewController viewDidLoad is called")
-    }
+   // Need this inner class so that we can handle viewDidDisappear call and cancel the CredentialProviderViewController sheet
+   class OkpViewController: UIViewController {
+     override func viewDidLoad() {
+       debugPrint("OkpViewController viewDidLoad is called")
+     }
     
-    override func viewDidDisappear(_ animated: Bool) {
-      super.viewDidDisappear(animated)
-      debugPrint("OkpViewController viewDidDisappear is called \(animated)")
-      // The following will be called in the CredentialProviderViewController's viewDidDisappear fn when its view
-      // is set directly instead of the 'present' call.
-      // If this UIViewController is used, then uncomment this and comment the other one
-      //CredentialProviderViewController.cancelExtension()
-    }
-  }
+     override func viewDidDisappear(_ animated: Bool) {
+       super.viewDidDisappear(animated)
+       debugPrint("OkpViewController viewDidDisappear is called \(animated)")
+       // The following will be called in the CredentialProviderViewController's viewDidDisappear fn when its view
+       // is set directly instead of the 'present' call.
+       // If this UIViewController is used, then uncomment this and comment the other one
+       //CredentialProviderViewController.cancelExtension()
+     }
+   }
   
-  // RCTBridgeDelegate implementation
-  // This class needs to extend RCTBridgeDelegate so that we use RCTBridge to create the RCTRootView (Legacy architecture)
-  func getBundleURL() -> URL! {
-    #if DEBUG
-      // index.ios.autofill.extension.js is the extension specific entry file
-      return RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: "index.ios.autofill.extension")
-    #else
-      // Same as return [[NSBundle mainBundle] URLForResource:@"main" withExtension:@"jsbundle"];
-      return Bundle.main.url(forResource: "main", withExtension: "jsbundle")
-    #endif
-  }
+   // RCTBridgeDelegate implementation
+   // This class needs to extend RCTBridgeDelegate so that we use RCTBridge to create the RCTRootView (Legacy architecture)
+   func getBundleURL() -> URL! {
+     #if DEBUG
+       // index.ios.autofill.extension.js is the extension specific entry file
+       return RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: "index.ios.autofill.extension")
+     #else
+       // Same as return [[NSBundle mainBundle] URLForResource:@"main" withExtension:@"jsbundle"];
+       return Bundle.main.url(forResource: "main", withExtension: "jsbundle")
+     #endif
+   }
 
-  // This fn implementation is to conform to the protocol 'RCTBridgeDelegate'
-  func sourceURL(for bridge: RCTBridge) -> URL? {
-    getBundleURL()
-  }
-  */
+   // This fn implementation is to conform to the protocol 'RCTBridgeDelegate'
+   func sourceURL(for bridge: RCTBridge) -> URL? {
+     getBundleURL()
+   }
+   */
   
   // ====================================================================================================== //
   
   static func cancelExtension() {
-    if extContext != nil {
+    if extContext != nil, !cancelled {
       logger1.debug("Going to cancel the extension view...")
       extContext!.cancelRequest(withError: NSError(domain: ASExtensionErrorDomain, code: ASExtensionError.userCanceled.rawValue))
+      cancelled = true
+      logger1.debug("Extension view is cancelled")
     }
-    debugPrint("Extension view is cancelled")
   }
   
   static func credentialSelected(_ user: String, _ password: String) {
@@ -109,28 +110,27 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
   
   override func viewDidDisappear(_ animated: Bool) {
     super.viewDidDisappear(animated)
-    debugPrint("CredentialProviderViewController viewDidDisappear is called \(animated)")
+    logger.debug("CredentialProviderViewController viewDidDisappear is called \(animated)")
     // This needs to be added here when use this class's view directly
-    CredentialProviderViewController.cancelExtension()
+    // CredentialProviderViewController.cancelExtension()
   }
   
   override func viewWillAppear(_ animated: Bool) {
     super.viewWillAppear(animated)
     logger.debug("viewWillAppear is called")
     // This was used when we used the inner clsss 'OkpViewController' till RN 0.78.2
-    // Here it is commented out as we set this class controllers's view directly
-    // See prepareCredentialList where this is called when we set the view directly instead of using the custom OkpViewController
-    // prepareUI()
-    
+    // This is commented out if  we set this class controllers's view directly
+    // See prepareCredentialList where this is called when we set the view directly instead of using the custom controller
+    prepareUI()
   }
 
   override func didReceiveMemoryWarning() {
     super.didReceiveMemoryWarning()
-    logger.debug("didReceiveMemoryWarning is called")
+    logger.info("didReceiveMemoryWarning is called")
   }
   
   // Following used till RN 0.78.2
-  // This also worked with RN 0.81.5. But only leagacy architecture
+  // This also worked with RN 0.81.5. But will work only leagacy architecture as RCTBridge is supported only for leagacy architecture
   
   /*
    func prepareUI() {
@@ -142,41 +142,41 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
        initialProperties: nil
      )
     
-     let vc = OkpViewController() // UIViewController()
+     let vc = OkpViewController() // a custom UIViewController
      vc.view = rootView
      present(vc, animated: true, completion: nil)
    }
    */
   
-  // This works with RN 0.81.5. But only with leagacy architecture
-  /*
+  // This works with RN 0.81.5. But only with leagacy architecture and with new architecture the texts and buttons do not show
+  // Issue may be something similar to the one raised here
+  // https://github.com/facebook/react-native/issues/54642
+  
   func prepareUI() {
-
-    let vc = OkpViewController()
-    vc.view = OKpReactView.createOkpAutofillReactView()
-
-  //    let vc = OkpViewController()
-  //    vc.view = OkpReactViewController().view
-
+    let vc = OkpReactViewController()
     present(vc, animated: true, completion: nil)
   }
-  */
   
   // This is another way of adding the RN view directly as a sub view
   // This was checked with RN 0.81.5 and works with only with Legacy architecture
-  func directUI() {
-    let rnView = OKpReactView.createOkpAutofillReactView()
-    rnView.frame = view.bounds
-    rnView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-    // rnView.backgroundColor = .black
-    // This class is a sub class of UIViewController. So we can use the ReactView created as its view
-    view.addSubview(rnView)
-  }
+  /*
+   func directUI() {
+     let rnView = OKpReactView.createOkpAutofillReactView()
+     rnView.frame = view.bounds
+     rnView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+     // rnView.backgroundColor = .black
+     // This class is a sub class of UIViewController. So we can use the ReactView created as its view
+     view.addSubview(rnView)
+   }
+   */
   
-  func prepareUI() {
-    // This class is a sub class of UIViewController. So we can use the ReactView created as its view
-    view = OKpReactView.createOkpAutofillReactView()
-  }
+  // This works with RN 0.81.5 legacy architecture but shows blank screen when new architecture is enabled
+  /*
+   func prepareUI() {
+     // This class is a sub class of UIViewController. So we can use the ReactView created as its view
+     view = OKpReactView.createOkpAutofillReactView()
+   }
+   */
   
   /*
     Prepare your UI to list available credentials for the user to choose from. The items in
@@ -185,6 +185,7 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
    */
   override func prepareCredentialList(for serviceIdentifiers: [ASCredentialServiceIdentifier]) {
     logger.debug("prepareCredentialList is called")
+    Self.cancelled = false
     for si in serviceIdentifiers {
       switch si.type {
       case .domain:
@@ -197,8 +198,9 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
         logger.debug("Unknown identifier \(si.type)")
       }
     }
+    // Calling these from here also worked. See viewWillAppear where the view is called
     // directUI()
-    prepareUI()
+    // prepareUI()
   }
 
   /*
