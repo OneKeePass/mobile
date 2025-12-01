@@ -21,7 +21,7 @@
       false - the system's default back action to be executed
    "
   [{:keys [page]}]
-  (println "back-action is called for page " page)
+  ;; (println "back-action is called for page " page)
   (if
    (= page HOME_PAGE_ID)
     false

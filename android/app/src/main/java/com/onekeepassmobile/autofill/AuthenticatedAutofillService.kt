@@ -1,23 +1,25 @@
 package com.onekeepassmobile.autofill
 
-import android.R
-import android.annotation.SuppressLint
-import android.app.PendingIntent
 import android.app.assist.AssistStructure
-import android.content.Intent
-import android.content.IntentSender
+import android.os.Build
 import android.os.CancellationSignal
 import android.service.autofill.AutofillService
 import android.service.autofill.FillCallback
 import android.service.autofill.FillContext
 import android.service.autofill.FillRequest
-import android.service.autofill.FillResponse
 import android.service.autofill.SaveCallback
 import android.service.autofill.SaveRequest
 import android.util.Log
-import android.view.autofill.AutofillId
-import android.widget.RemoteViews
+import androidx.annotation.RequiresApi
 
+// @TargetApi - Indicates that Lint should treat this type as targeting a given API level, no matter what the project target is.
+// @RequiresApi - Denotes that the annotated element should only be called on the given API level or higher.
+
+// Using this as we are using minSdkVersion=24 and should be removed if minSdkVersion >= 26
+
+// @TargetApi(26)
+
+@RequiresApi(Build.VERSION_CODES.O)
 class AuthenticatedAutofillService : AutofillService() {
     override fun onFillRequest(request: FillRequest, cancellationSignal: CancellationSignal, callback: FillCallback) {
         authAutoFillResponse(request,cancellationSignal,callback)

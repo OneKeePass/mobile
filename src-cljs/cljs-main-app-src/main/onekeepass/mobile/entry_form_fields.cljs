@@ -69,7 +69,7 @@
   (let [label (to-field-label kv)
         val (to-field-value kv)] 
 
-    (println "Lable is " label)
+    ;; (println "Lable is " label)
     ;; We need to use this ^:key so that text-input field is unique 
     ;; Otherwise :defaultValue will show old value when we change from non edit to edit
     ^{:key (str edit key protected)} [rnp-text-input {:label label

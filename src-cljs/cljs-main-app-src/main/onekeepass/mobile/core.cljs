@@ -1,5 +1,7 @@
 (ns onekeepass.mobile.core
   (:require
+   ;; Moved to to rn_components.cljs. If there is any issue, we can move it back to here so that the polyfill is loaded
+   ;; very early in the app startup   
    #_["@formatjs/intl-pluralrules/polyfill-force" :as polyfill-force]
    #_[shadow.react-native :refer (render-root)]
    [onekeepass.mobile.react-native :refer [render-root]]
@@ -7,7 +9,7 @@
    ;; and this will ensure that all android autofill related code are excluded
    ;; Though this will also work for ios, the main bundle size will be more
    ;; than required as all android autofill related code will be included needlessly
-   #_[onekeepass.mobile.android.autofill.core :as android-core] ;;;;;;; ;;;;;;; ;;;;;;; ;;;;;;;
+   [onekeepass.mobile.android.autofill.core :as android-core] ;;;;;;; ;;;;;;; ;;;;;;; ;;;;;;;
    [onekeepass.mobile.appbar :refer [appbar-main-content
                                      hardware-back-pressed]]
    [onekeepass.mobile.background :as bg]
@@ -120,11 +122,11 @@
   (init-calls)
 
   ;; iOS
-  (render-root "OneKeePassMobile" (r/as-element [app-root]))
+  #_(render-root "OneKeePassMobile" (r/as-element [app-root]))
 
   ;; Andoid 
-  #_(render-root "OneKeePassMobile" (fn [props]
-                                    (js/console.log "In main core render-root props is " props)
+  (render-root "OneKeePassMobile" (fn [props]
+                                    (js/console.log "Android app entry: In main core render-root props is " props)
                                     (let [{:keys [androidAutofill] :as _options} (js->clj props :keywordize-keys true)]
                                       (if androidAutofill
                                         (r/as-element [android-core/app-root])
