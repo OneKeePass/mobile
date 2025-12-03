@@ -29,7 +29,8 @@
    [rnp-button {:style {}
                 :textColor @appbar-text-color
                 :mode "text"
-                :onPress cmn-events/to-previous-page} "Cancel"]
+                :onPress cmn-events/to-previous-page} 
+    (lstr-bl "cancel")]
    [rnp-text {:style {:color @appbar-text-color
                       :max-width 100
                       :margin-right 20 :margin-left 20}

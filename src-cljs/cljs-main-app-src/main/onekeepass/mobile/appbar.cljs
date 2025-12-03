@@ -207,7 +207,7 @@
         [rnp-menu-item {:title (lstr-ml "favorite") :trailingIcon (if fav "check" nil)
                         :disabled (not @(ef-events/history-available))
                         :onPress (header-menu-action ef-events/favorite-menu-checked (not fav))}]
-        [rnp-menu-item {:title "History"
+        [rnp-menu-item {:title (lstr-ml 'history)
                         :disabled (not @(ef-events/history-available))
                         :onPress (header-menu-action ef-events/load-history-entries-summary entry-uuid)}]
         ;; [cust-rnp-divider]

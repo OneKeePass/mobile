@@ -1,9 +1,10 @@
 (ns onekeepass.mobile.translation
-  (:require 
-   
-  ;;  ["@formatjs/intl-pluralrules/locale-data/en" :as intl-pluralrules-locale-en]
-  ;;  ["@formatjs/intl-pluralrules/locale-data/fr" :as intl-pluralrules-locale-fr]
+  (:require
+
+   ;;  ["@formatjs/intl-pluralrules/locale-data/en" :as intl-pluralrules-locale-en]
+   ;;  ["@formatjs/intl-pluralrules/locale-data/fr" :as intl-pluralrules-locale-fr]
    ["i18next" :as i18n]
+   [react-native :as rn]
    [camel-snake-kebab.core :as csk]
    [camel-snake-kebab.extras :as cske]
    [cljs.core.async :refer [go]]
@@ -192,6 +193,8 @@
 
 (declare ^:private create-back-end)
 
+(def ^:private prefered-language-val (atom nil))
+
 (defn- translations-loaded-callback [ok-response]
   ;; ok-response may be nil on error. Then no translation will be available  
   (let [{:keys [_current-locale-language prefered-language translations]} ok-response
@@ -202,6 +205,7 @@
     ;; (println "res is  " res)
     #_(println "current-locale-language prefered-language are " current-locale-language prefered-language)
 
+    (reset! prefered-language-val prefered-language)
     ;; Type of 'parsed-translations' is  cljs.core/PersistentArrayMap
     #_(println "Type of 'parsed-translations' is " (type parsed-translations))
 
@@ -230,19 +234,19 @@
 
 
 #_(defn- translations-loaded [api-response]
-  ;; on-ok may return nil on error. Then no translation will be available  
+    ;; on-ok may return nil on error. Then no translation will be available  
     (let [{:keys [_current-locale-language prefered-language translations] :as res} (on-ok api-response)
-        ;; translations is a map where key is the language id and value is a json string and 
-        ;; the json string needs to be parsed. After parsing the string in 'v', the type 
-        ;; of the parsed value is a js object - #object[Object]
+          ;; translations is a map where key is the language id and value is a json string and 
+          ;; the json string needs to be parsed. After parsing the string in 'v', the type 
+          ;; of the parsed value is a js object - #object[Object]
           parsed-translations (reduce (fn [m [k v]] (assoc m k (parse-json v)))  {} translations)]
-    ;; (println "res is  " res)
+      ;; (println "res is  " res)
       #_(println "current-locale-language prefered-language are " current-locale-language prefered-language)
 
-    ;; Type of 'parsed-translations' is  cljs.core/PersistentArrayMap
+      ;; Type of 'parsed-translations' is  cljs.core/PersistentArrayMap
       #_(println "Type of 'parsed-translations' is " (type parsed-translations))
 
-    ;; Type of translations for en is  #object[Object]
+      ;; Type of translations for en is  #object[Object]
       #_(println "Type of value for en key in 'parsed-translations' is " (type (:en parsed-translations)))
 
       (setup-i18n-with-backend prefered-language (create-back-end parsed-translations))))
@@ -254,8 +258,8 @@
      (bg/load-language-translations [] translations-loaded))
 
     ([language-ids]
-   ;; language-ids is a vec of two charater language ids
-   ;; e.g ["en" "fr"]
+     ;; language-ids is a vec of two charater language ids
+     ;; e.g ["en" "fr"]
      (bg/load-language-translations language-ids translations-loaded)))
 
 (defn- create-i18n-init
@@ -325,6 +329,35 @@
         ^js/i18nObj instance (.createInstance i18n-obj)]
     (.use instance (clj->js back-end))
     (create-i18n-init instance m)))
+
+;; (defn dir
+;;   ([language-id]
+;;    ^js/String  (.dir i18n-obj language-id))
+
+;;   ([]
+;;    (dir @prefered-language-val)))
+
+
+;; This is called as part of langugae update feedback page reload
+(defn set-rtl-or-not 
+  "Sets the RTL mode based on the selected prefered language.
+   Returns true if the RTL mode is changed;Otherwise false"
+  []
+  ;; At this time only 'ar' language needs RTL mode
+  (let [lang @prefered-language-val]
+    (cond
+      (and (not (.-isRTL rn/I18nManager)) (= lang "ar"))
+      (do
+        (.forceRTL rn/I18nManager true)
+        true)
+
+      (and (.-isRTL rn/I18nManager) (not= lang "ar"))
+      (do
+        (.forceRTL rn/I18nManager false)
+        true)
+
+      :else
+      false)))
 
 (comment
   (in-ns 'onekeepass.mobile.translation)
