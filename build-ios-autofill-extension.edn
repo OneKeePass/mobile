@@ -1,3 +1,0 @@
-{:main  onekeepass.ios.autofill.core
- :output-to "target-ios-autofill-extension/main.js"
- :output-dir "target-ios-autofill-extension"}

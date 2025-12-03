@@ -1,16 +1,7 @@
 {
 	"folders": [
 		{
-			"path": "../mobile/src"
-		},
-		{
-			"path": "../mobile/js"
-		},
-		{
 			"path": "../mobile"
-		},
-		{
-			"path": "cljs-ios-autofill-extension"
 		}
 	],
 	"settings": {
