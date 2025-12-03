@@ -14,24 +14,65 @@ if linkage != nil
   use_frameworks! :linkage => linkage.to_sym
 end
 
-target 'OneKeePassMobile' do
-  
+## Both OneKeePassMobile and OneKeePassAutoFill targets share many pods.
+## So, using an abstract_target to avoid duplication of pod definitions.
+
+abstract_target 'OneKeePassMobile-Abstract' do
   config = use_native_modules!
 
   use_react_native!(
     :path => config[:reactNativePath],
-    # Hermes is now enabled by default. Disable by setting this flag to false.
-    # hermes_enabled is set false for Cljs compiled code to work - Jey
-    # We can use export USE_HERMES=0 to set hermes_enabled false by env variable 
-    # before running pod install - Jey
-    :hermes_enabled => false,
+    # An absolute path to your application root.
+    :app_path => "#{Pod::Config.instance.installation_root}/..",
+    # :new_arch_enabled => true
+  )
+
+  target 'OneKeePassMobile' do
+    # pod 'React-jsc', :path => '../node_modules/@react-native-community/javascriptcore'
+  end
+
+  target 'OneKeePassAutoFill' do
+    inherit! :complete
+    #pod 'React-jsc', :path => '../node_modules/@react-native-community/javascriptcore'
+  end
+
+  post_install do |installer|
+    react_native_post_install(
+      installer,
+      config[:reactNativePath],
+      :mac_catalyst_enabled => false,
+      # :ccache_enabled => true
+    )
+
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |config|
+        # Allow non app-extension-safe APIs so React Native can compile for the extension
+        config.build_settings['APPLICATION_EXTENSION_API_ONLY'] = 'NO'
+      end
+    end    
+  end
+end
+
+=begin 
+target 'OneKeePassMobile' do
+  
+  config = use_native_modules!
+  
+  use_react_native!(
+    :path => config[:reactNativePath],
+    # Hermes is now enabled by default. 
+    # It seems from 0.79.x onwards, passing :hermes_enabled no longer does anything.
+    # To use JavaScriptCore (JSC) instead of Hermes, we need to use steps as decribed in
+    # https://reactnative.dev/docs/0.81/hermes?platform=ios and in https://github.com/react-native-community/javascriptcore
+    # When tried this, the pod install for this target went through but for OneKeePassAutoFill target, it failed with some errors. 
+    # :hermes_enabled => false,
 
     # An absolute path to your application root.
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
   
   post_install do |installer|
-    # https://github.com/facebook/react-native/blob/main/packages/react-native/scripts/react_native_pods.rb#L197-L202
+    
     react_native_post_install(
       installer,
       # Set `mac_catalyst_enabled` to `true` in order to apply patches
@@ -75,17 +116,21 @@ target 'OneKeePassAutoFill' do
   # The following ENV varable OKP_AUTOFILL_TARGET is used to identify the autofill target so that skipping of the pods
   # are considered for this target only
 
+  # While upgrading to RN 9.81.5, noticed that even without this patch, the OneKeePassAutoFill target works fine.
+  # But keeping this as is for now. Need to check whether excluding few packages will reduce the size of the extension.
+
   ENV['OKP_AUTOFILL_TARGET'] = "true"
   
   config = use_native_modules!
 
   use_react_native!(
     :path => config[:reactNativePath],
-    # to enable hermes on iOS, change `false` to `true` and then install pods
-    :hermes_enabled => false,
-    # :flipper_configuration => flipper_config,
+    # See the comment above regarding Hermes
+    # :hermes_enabled => false,
+    
     # An absolute path to your application root.
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
   
 end
+=end

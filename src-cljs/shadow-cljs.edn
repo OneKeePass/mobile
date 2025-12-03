@@ -1,0 +1,33 @@
+{:source-paths
+ ["cljs-main-app-src/main"
+  ;; All JSX or js modules from js-components will be transpiled by babel 
+  ;; In mobile dir ./node_modules/.bin/babel src-cljs/js-components --out-dir src-cljs/cljs-main-app-src/gen
+  "cljs-main-app-src/gen"
+
+  "cljs-ios-autofill-src/main"]
+ 
+ ;; rm -rf cljs-ios-autofill-out/*
+
+ :dependencies
+ [[reagent "1.3.0"]
+  [re-frame "1.4.3"]
+  [camel-snake-kebab/camel-snake-kebab "0.4.3"]
+  [hickory/hickory "0.7.1"]
+  [org.clojure/core.async "1.5.648"]
+
+  #_[applied-science/js-interop "0.4.2"]]
+
+ :builds
+ {;; Main mobile app
+  :app
+  {:target :react-native
+   :init-fn onekeepass.mobile.core/init
+   :output-dir "cljs-main-app-out"
+   :js-options {:js-package-dirs ["../node_modules"]}}
+  
+  ;; iOS Autofill extension only
+  :ios-autofill
+  {:target :react-native
+   :init-fn onekeepass.ios.autofill.core/init
+   :output-dir "cljs-ios-autofill-out"
+   :js-options {:js-package-dirs ["../node_modules"]}}}}

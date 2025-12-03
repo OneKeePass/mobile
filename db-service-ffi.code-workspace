@@ -25,6 +25,7 @@
 		// "rust-analyzer.cargo.target": "aarch64-linux-android",
 		
 		// Need these for argon2_sys build  
+		
 		/*
 		"rust-analyzer.server.extraEnv": {
         	"CARGO_TARGET_DIR": "target",

@@ -7,15 +7,17 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0C80B921A6F3F58F76C31292 /* libPods-OneKeePassMobile.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5DCACB8F33CDC322A6C60F78 /* libPods-OneKeePassMobile.a */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
+		1FD6228564F5B06421575AB4 /* libPods-OneKeePassMobile-Abstract-OneKeePassMobile.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B1561475BB7496E5250868BC /* libPods-OneKeePassMobile-Abstract-OneKeePassMobile.a */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
-		896315BD024F526F73A3E2FF /* libPods-OneKeePassAutoFill.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 49F98EF93C0158B502C6589B /* libPods-OneKeePassAutoFill.a */; };
 		CF1A5A1211D84E2D8B34BE0A /* Colors.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 55F6F54C0E1E4383B9507791 /* Colors.xcassets */; };
+		F1B09B59CC0823309A014B71 /* libPods-OneKeePassMobile-Abstract-OneKeePassAutoFill.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 029895BC87C6285D42008D64 /* libPods-OneKeePassMobile-Abstract-OneKeePassAutoFill.a */; };
 		F90DF3752A466FF00041F9F5 /* SecureKeyService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F90DF3742A466FF00041F9F5 /* SecureKeyService.swift */; };
 		F92CB0FF28FDCABF00A79F60 /* OkpDocumentPickerServiceBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = F92CB0FE28FDCABF00A79F60 /* OkpDocumentPickerServiceBridge.m */; };
 		F92CB10128FDCBC400A79F60 /* OkpDocumentPickerService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F92CB10028FDCBC400A79F60 /* OkpDocumentPickerService.swift */; };
 		F92CB10328FF7A7500A79F60 /* DbServiceAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = F92CB10228FF7A7500A79F60 /* DbServiceAPI.swift */; };
+		F9325ABB2ED37E5F00BE5310 /* ReactViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9325ABA2ED37E5F00BE5310 /* ReactViewController.swift */; };
+		F9325AC22ED54B9300BE5310 /* OkpAutofillReactViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9325ABF2ED4FB5D00BE5310 /* OkpAutofillReactViewController.swift */; };
 		F944B9EB2CE135D100AC010E /* SecureEnclaveServiceSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = F944B9EA2CE135B600AC010E /* SecureEnclaveServiceSupport.swift */; };
 		F944B9EC2CE2964A00AC010E /* SecureEnclaveServiceSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = F944B9EA2CE135B600AC010E /* SecureEnclaveServiceSupport.swift */; };
 		F955AC0B2C1C978A00D0DFB6 /* BackendEventDispatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = F955AC082C1C978A00D0DFB6 /* BackendEventDispatcher.swift */; };
@@ -105,25 +107,31 @@
 /* Begin PBXFileReference section */
 		00E356F11AD99517003FC87E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		00E356F21AD99517003FC87E /* OneKeePassMobileTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OneKeePassMobileTests.m; sourceTree = "<group>"; };
+		029895BC87C6285D42008D64 /* libPods-OneKeePassMobile-Abstract-OneKeePassAutoFill.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-OneKeePassMobile-Abstract-OneKeePassAutoFill.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07F961A680F5B00A75B9A /* OneKeePassMobile.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OneKeePassMobile.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = OneKeePassMobile/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = OneKeePassMobile/Info.plist; sourceTree = "<group>"; };
 		19F6CBCC0A4E27FBF8BF4A61 /* libPods-OneKeePassMobile-OneKeePassMobileTests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-OneKeePassMobile-OneKeePassMobileTests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		23D279AAF792FCE44D347E54 /* Pods-OneKeePassMobile-Abstract-OneKeePassMobile.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OneKeePassMobile-Abstract-OneKeePassMobile.debug.xcconfig"; path = "Target Support Files/Pods-OneKeePassMobile-Abstract-OneKeePassMobile/Pods-OneKeePassMobile-Abstract-OneKeePassMobile.debug.xcconfig"; sourceTree = "<group>"; };
 		3B4392A12AC88292D35C810B /* Pods-OneKeePassMobile.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OneKeePassMobile.debug.xcconfig"; path = "Target Support Files/Pods-OneKeePassMobile/Pods-OneKeePassMobile.debug.xcconfig"; sourceTree = "<group>"; };
-		49F98EF93C0158B502C6589B /* libPods-OneKeePassAutoFill.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-OneKeePassAutoFill.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		475B0368DD52A7B15D8C93DC /* Pods-OneKeePassMobile-Abstract-OneKeePassAutoFill.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OneKeePassMobile-Abstract-OneKeePassAutoFill.debug.xcconfig"; path = "Target Support Files/Pods-OneKeePassMobile-Abstract-OneKeePassAutoFill/Pods-OneKeePassMobile-Abstract-OneKeePassAutoFill.debug.xcconfig"; sourceTree = "<group>"; };
 		55F6F54C0E1E4383B9507791 /* Colors.xcassets */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = folder.assetcatalog; name = Colors.xcassets; path = OneKeePassMobile/Colors.xcassets; sourceTree = "<group>"; };
 		5709B34CF0A7D63546082F79 /* Pods-OneKeePassMobile.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OneKeePassMobile.release.xcconfig"; path = "Target Support Files/Pods-OneKeePassMobile/Pods-OneKeePassMobile.release.xcconfig"; sourceTree = "<group>"; };
 		5B7EB9410499542E8C5724F5 /* Pods-OneKeePassMobile-OneKeePassMobileTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OneKeePassMobile-OneKeePassMobileTests.debug.xcconfig"; path = "Target Support Files/Pods-OneKeePassMobile-OneKeePassMobileTests/Pods-OneKeePassMobile-OneKeePassMobileTests.debug.xcconfig"; sourceTree = "<group>"; };
-		5DCACB8F33CDC322A6C60F78 /* libPods-OneKeePassMobile.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-OneKeePassMobile.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		758DD2914967DB7E3908F075 /* Pods-OneKeePassAutoFill.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OneKeePassAutoFill.release.xcconfig"; path = "Target Support Files/Pods-OneKeePassAutoFill/Pods-OneKeePassAutoFill.release.xcconfig"; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = OneKeePassMobile/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		89C6BE57DB24E9ADA2F236DE /* Pods-OneKeePassMobile-OneKeePassMobileTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OneKeePassMobile-OneKeePassMobileTests.release.xcconfig"; path = "Target Support Files/Pods-OneKeePassMobile-OneKeePassMobileTests/Pods-OneKeePassMobile-OneKeePassMobileTests.release.xcconfig"; sourceTree = "<group>"; };
+		8CF5F2182EA711DFA605F879 /* Pods-OneKeePassMobile-Abstract-OneKeePassAutoFill.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OneKeePassMobile-Abstract-OneKeePassAutoFill.release.xcconfig"; path = "Target Support Files/Pods-OneKeePassMobile-Abstract-OneKeePassAutoFill/Pods-OneKeePassMobile-Abstract-OneKeePassAutoFill.release.xcconfig"; sourceTree = "<group>"; };
+		934E5280629052F87883573E /* Pods-OneKeePassMobile-Abstract-OneKeePassMobile.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OneKeePassMobile-Abstract-OneKeePassMobile.release.xcconfig"; path = "Target Support Files/Pods-OneKeePassMobile-Abstract-OneKeePassMobile/Pods-OneKeePassMobile-Abstract-OneKeePassMobile.release.xcconfig"; sourceTree = "<group>"; };
 		985FA7B37747D64BDFAF2649 /* Pods-OneKeePassAutoFill.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-OneKeePassAutoFill.debug.xcconfig"; path = "Target Support Files/Pods-OneKeePassAutoFill/Pods-OneKeePassAutoFill.debug.xcconfig"; sourceTree = "<group>"; };
+		B1561475BB7496E5250868BC /* libPods-OneKeePassMobile-Abstract-OneKeePassMobile.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-OneKeePassMobile-Abstract-OneKeePassMobile.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F90DF3742A466FF00041F9F5 /* SecureKeyService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecureKeyService.swift; sourceTree = "<group>"; };
 		F92CB0FE28FDCABF00A79F60 /* OkpDocumentPickerServiceBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OkpDocumentPickerServiceBridge.m; sourceTree = "<group>"; };
 		F92CB10028FDCBC400A79F60 /* OkpDocumentPickerService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OkpDocumentPickerService.swift; sourceTree = "<group>"; };
 		F92CB10228FF7A7500A79F60 /* DbServiceAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DbServiceAPI.swift; sourceTree = "<group>"; };
+		F9325ABA2ED37E5F00BE5310 /* ReactViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ReactViewController.swift; path = OneKeePassMobile/ReactViewController.swift; sourceTree = "<group>"; };
+		F9325ABF2ED4FB5D00BE5310 /* OkpAutofillReactViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OkpAutofillReactViewController.swift; sourceTree = "<group>"; };
 		F944B9EA2CE135B600AC010E /* SecureEnclaveServiceSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecureEnclaveServiceSupport.swift; sourceTree = "<group>"; };
 		F94CD9A82AE7360B00649D28 /* libbotan-3.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libbotan-3.a"; path = "OneKeePassMobile/DbServiceFFILib/libbotan-3.a"; sourceTree = "<group>"; };
 		F955AC082C1C978A00D0DFB6 /* BackendEventDispatcher.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BackendEventDispatcher.swift; sourceTree = "<group>"; };
@@ -191,8 +199,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				0C80B921A6F3F58F76C31292 /* libPods-OneKeePassMobile.a in Frameworks */,
 				F9E4235D29E62B3400A8F366 /* libdb_service_ffi.a in Frameworks */,
+				1FD6228564F5B06421575AB4 /* libPods-OneKeePassMobile-Abstract-OneKeePassMobile.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -201,8 +209,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				F9F81BFD2C1227D900E1FE8C /* AuthenticationServices.framework in Frameworks */,
-				896315BD024F526F73A3E2FF /* libPods-OneKeePassAutoFill.a in Frameworks */,
 				F9F81C252C137C4300E1FE8C /* libdb_service_ffi.a in Frameworks */,
+				F1B09B59CC0823309A014B71 /* libPods-OneKeePassMobile-Abstract-OneKeePassAutoFill.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -246,6 +254,7 @@
 				F9C4EFE92BF6CFB500B7214E /* PrivacyInfo.xcprivacy */,
 				F9713CE52D544953002E3A92 /* wordlists */,
 				55F6F54C0E1E4383B9507791 /* Colors.xcassets */,
+				F9325ABA2ED37E5F00BE5310 /* ReactViewController.swift */,
 			);
 			name = OneKeePassMobile;
 			sourceTree = "<group>";
@@ -255,10 +264,10 @@
 			children = (
 				F94CD9A82AE7360B00649D28 /* libbotan-3.a */,
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				5DCACB8F33CDC322A6C60F78 /* libPods-OneKeePassMobile.a */,
 				19F6CBCC0A4E27FBF8BF4A61 /* libPods-OneKeePassMobile-OneKeePassMobileTests.a */,
 				F9F81BFC2C1227D900E1FE8C /* AuthenticationServices.framework */,
-				49F98EF93C0158B502C6589B /* libPods-OneKeePassAutoFill.a */,
+				029895BC87C6285D42008D64 /* libPods-OneKeePassMobile-Abstract-OneKeePassAutoFill.a */,
+				B1561475BB7496E5250868BC /* libPods-OneKeePassMobile-Abstract-OneKeePassMobile.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -304,6 +313,10 @@
 				89C6BE57DB24E9ADA2F236DE /* Pods-OneKeePassMobile-OneKeePassMobileTests.release.xcconfig */,
 				985FA7B37747D64BDFAF2649 /* Pods-OneKeePassAutoFill.debug.xcconfig */,
 				758DD2914967DB7E3908F075 /* Pods-OneKeePassAutoFill.release.xcconfig */,
+				475B0368DD52A7B15D8C93DC /* Pods-OneKeePassMobile-Abstract-OneKeePassAutoFill.debug.xcconfig */,
+				8CF5F2182EA711DFA605F879 /* Pods-OneKeePassMobile-Abstract-OneKeePassAutoFill.release.xcconfig */,
+				23D279AAF792FCE44D347E54 /* Pods-OneKeePassMobile-Abstract-OneKeePassMobile.debug.xcconfig */,
+				934E5280629052F87883573E /* Pods-OneKeePassMobile-Abstract-OneKeePassMobile.release.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -415,6 +428,7 @@
 				F9F81C042C1227D900E1FE8C /* Info.plist */,
 				F9F81C052C1227D900E1FE8C /* OneKeePassAutoFill.entitlements */,
 				F9F81C0E2C127A4600E1FE8C /* OneKeePassAutoFill-Bridging-Header.h */,
+				F9325ABF2ED4FB5D00BE5310 /* OkpAutofillReactViewController.swift */,
 			);
 			path = OneKeePassAutoFill;
 			sourceTree = "<group>";
@@ -470,6 +484,7 @@
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				E235C05ADACE081382539298 /* [CP] Copy Pods Resources */,
 				F9F81C092C1227D900E1FE8C /* Embed Foundation Extensions */,
+				330355B8D61B3187D744D71C /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -613,7 +628,7 @@
 			outputFileListPaths = (
 			);
 			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-OneKeePassAutoFill-checkManifestLockResult.txt",
+				"$(DERIVED_FILE_DIR)/Pods-OneKeePassMobile-Abstract-OneKeePassAutoFill-checkManifestLockResult.txt",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -626,19 +641,32 @@
 			files = (
 			);
 			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-OneKeePassAutoFill/Pods-OneKeePassAutoFill-resources-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-OneKeePassMobile-Abstract-OneKeePassAutoFill/Pods-OneKeePassMobile-Abstract-OneKeePassAutoFill-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-OneKeePassAutoFill/Pods-OneKeePassAutoFill-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-OneKeePassMobile-Abstract-OneKeePassAutoFill/Pods-OneKeePassMobile-Abstract-OneKeePassAutoFill-resources-${CONFIGURATION}-output-files.xcfilelist",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-OneKeePassAutoFill/Pods-OneKeePassAutoFill-resources.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-OneKeePassMobile-Abstract-OneKeePassAutoFill/Pods-OneKeePassMobile-Abstract-OneKeePassAutoFill-resources.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		330355B8D61B3187D744D71C /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-OneKeePassMobile-Abstract-OneKeePassMobile/Pods-OneKeePassMobile-Abstract-OneKeePassMobile-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-OneKeePassMobile-Abstract-OneKeePassMobile/Pods-OneKeePassMobile-Abstract-OneKeePassMobile-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-OneKeePassMobile-Abstract-OneKeePassMobile/Pods-OneKeePassMobile-Abstract-OneKeePassMobile-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		C38B50BA6285516D6DCD4F65 /* [CP] Check Pods Manifest.lock */ = {
@@ -656,7 +684,7 @@
 			outputFileListPaths = (
 			);
 			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-OneKeePassMobile-checkManifestLockResult.txt",
+				"$(DERIVED_FILE_DIR)/Pods-OneKeePassMobile-Abstract-OneKeePassMobile-checkManifestLockResult.txt",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -669,19 +697,15 @@
 			files = (
 			);
 			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-OneKeePassMobile/Pods-OneKeePassMobile-resources-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-OneKeePassMobile-Abstract-OneKeePassMobile/Pods-OneKeePassMobile-Abstract-OneKeePassMobile-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-OneKeePassMobile/Pods-OneKeePassMobile-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-OneKeePassMobile-Abstract-OneKeePassMobile/Pods-OneKeePassMobile-Abstract-OneKeePassMobile-resources-${CONFIGURATION}-output-files.xcfilelist",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-OneKeePassMobile/Pods-OneKeePassMobile-resources.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-OneKeePassMobile-Abstract-OneKeePassMobile/Pods-OneKeePassMobile-Abstract-OneKeePassMobile-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		F9F81C642C1512E000E1FE8C /* Bundle React Native code and images */ = {
@@ -750,6 +774,7 @@
 				F9E4235929E5F45900A8F366 /* db_service.swift in Sources */,
 				F9A5C9B92D1E2F77001BC9B2 /* XcodeConfiguration.swift in Sources */,
 				F92CB10128FDCBC400A79F60 /* OkpDocumentPickerService.swift in Sources */,
+				F9325ABB2ED37E5F00BE5310 /* ReactViewController.swift in Sources */,
 				F9AE2F41290440380013D9AB /* FileUtils.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -765,6 +790,7 @@
 				F955AC1B2C20C51F00D0DFB6 /* AutoFillEventsBridge.m in Sources */,
 				F955AC0B2C1C978A00D0DFB6 /* BackendEventDispatcher.swift in Sources */,
 				F955AC102C1C983300D0DFB6 /* OkpDbService.swift in Sources */,
+				F9325AC22ED54B9300BE5310 /* OkpAutofillReactViewController.swift in Sources */,
 				F9F81C402C1380A200E1FE8C /* db_service.swift in Sources */,
 				F9A5C9BA2D1E3032001BC9B2 /* XcodeConfiguration.swift in Sources */,
 				F955AC122C1C9B2500D0DFB6 /* OkpDbServiceBridge.m in Sources */,
@@ -800,7 +826,7 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 3B4392A12AC88292D35C810B /* Pods-OneKeePassMobile.debug.xcconfig */;
+			baseConfigurationReference = 23D279AAF792FCE44D347E54 /* Pods-OneKeePassMobile-Abstract-OneKeePassMobile.debug.xcconfig */;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -824,11 +850,12 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/OneKeePassMobile/DbServiceFFILib",
 				);
-				MARKETING_VERSION = 0.17.2;
+				MARKETING_VERSION = 0.18.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lc++",
 					"-ObjC",
+					"-lz",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.onekeepass.ios;
 				PRODUCT_NAME = OneKeePassMobile;
@@ -847,7 +874,7 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 5709B34CF0A7D63546082F79 /* Pods-OneKeePassMobile.release.xcconfig */;
+			baseConfigurationReference = 934E5280629052F87883573E /* Pods-OneKeePassMobile-Abstract-OneKeePassMobile.release.xcconfig */;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -870,11 +897,12 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/OneKeePassMobile/DbServiceFFILib",
 				);
-				MARKETING_VERSION = 0.17.2;
+				MARKETING_VERSION = 0.18.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
 					"-lc++",
+					"-lz",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.onekeepass.ios;
 				PRODUCT_NAME = OneKeePassMobile;
@@ -966,7 +994,7 @@
 				"REEXPORTED_LIBRARY_PATHS[arch=*]" = "";
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
-				USE_HERMES = false;
+				USE_HERMES = true;
 			};
 			name = Debug;
 		};
@@ -1037,14 +1065,14 @@
 				OTHER_LDFLAGS = "$(inherited)";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
-				USE_HERMES = false;
+				USE_HERMES = true;
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
 		};
 		F9F81C0A2C1227D900E1FE8C /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 985FA7B37747D64BDFAF2649 /* Pods-OneKeePassAutoFill.debug.xcconfig */;
+			baseConfigurationReference = 475B0368DD52A7B15D8C93DC /* Pods-OneKeePassMobile-Abstract-OneKeePassAutoFill.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -1078,13 +1106,13 @@
 					"$(PROJECT_DIR)/OneKeePassMobile/DbServiceFFILib",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 0.17.2;
+				MARKETING_VERSION = 0.18.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
-					"-lc++",
+					"-lz",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.onekeepass.ios.OneKeePassAutoFill;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1100,7 +1128,7 @@
 		};
 		F9F81C0B2C1227D900E1FE8C /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 758DD2914967DB7E3908F075 /* Pods-OneKeePassAutoFill.release.xcconfig */;
+			baseConfigurationReference = 8CF5F2182EA711DFA605F879 /* Pods-OneKeePassMobile-Abstract-OneKeePassAutoFill.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -1165,8 +1193,109 @@
 					"$(PROJECT_DIR)/OneKeePassMobile/DbServiceFFILib",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 0.17.2;
+				MARKETING_VERSION = 0.18.0;
 				MTL_FAST_MATH = YES;
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-ObjC",
+					"-lz",
+					"-l\"DoubleConversion\"",
+					"-l\"RCT-Folly\"",
+					"-l\"RCTDeprecation\"",
+					"-l\"RCTTypeSafety\"",
+					"-l\"RNBootSplash\"",
+					"-l\"RNCClipboard\"",
+					"-l\"RNFileViewer\"",
+					"-l\"RNGestureHandler\"",
+					"-l\"RNReanimated\"",
+					"-l\"RNSVG\"",
+					"-l\"React-Core\"",
+					"-l\"React-CoreModules\"",
+					"-l\"React-Fabric\"",
+					"-l\"React-FabricComponents\"",
+					"-l\"React-FabricImage\"",
+					"-l\"React-ImageManager\"",
+					"-l\"React-Mapbuffer\"",
+					"-l\"React-NativeModulesApple\"",
+					"-l\"React-RCTAnimation\"",
+					"-l\"React-RCTAppDelegate\"",
+					"-l\"React-RCTBlob\"",
+					"-l\"React-RCTFBReactNativeSpec\"",
+					"-l\"React-RCTFabric\"",
+					"-l\"React-RCTImage\"",
+					"-l\"React-RCTLinking\"",
+					"-l\"React-RCTNetwork\"",
+					"-l\"React-RCTRuntime\"",
+					"-l\"React-RCTSettings\"",
+					"-l\"React-RCTText\"",
+					"-l\"React-RCTVibration\"",
+					"-l\"React-RuntimeApple\"",
+					"-l\"React-RuntimeCore\"",
+					"-l\"React-RuntimeHermes\"",
+					"-l\"React-cxxreact\"",
+					"-l\"React-debug\"",
+					"-l\"React-defaultsnativemodule\"",
+					"-l\"React-domnativemodule\"",
+					"-l\"React-featureflags\"",
+					"-l\"React-featureflagsnativemodule\"",
+					"-l\"React-graphics\"",
+					"-l\"React-hermes\"",
+					"-l\"React-idlecallbacksnativemodule\"",
+					"-l\"React-jserrorhandler\"",
+					"-l\"React-jsi\"",
+					"-l\"React-jsiexecutor\"",
+					"-l\"React-jsinspector\"",
+					"-l\"React-jsinspectorcdp\"",
+					"-l\"React-jsinspectornetwork\"",
+					"-l\"React-jsinspectortracing\"",
+					"-l\"React-jsitooling\"",
+					"-l\"React-logger\"",
+					"-l\"React-microtasksnativemodule\"",
+					"-l\"React-oscompat\"",
+					"-l\"React-perflogger\"",
+					"-l\"React-performancetimeline\"",
+					"-l\"React-rendererconsistency\"",
+					"-l\"React-renderercss\"",
+					"-l\"React-rendererdebug\"",
+					"-l\"React-runtimeexecutor\"",
+					"-l\"React-runtimescheduler\"",
+					"-l\"React-utils\"",
+					"-l\"ReactAppDependencyProvider\"",
+					"-l\"ReactCodegen\"",
+					"-l\"ReactCommon\"",
+					"-l\"SocketRocket\"",
+					"-l\"VisionCamera\"",
+					"-l\"Yoga\"",
+					"-l\"c++\"",
+					"-l\"c++abi\"",
+					"-l\"fmt\"",
+					"-l\"glog\"",
+					"-l\"icucore\"",
+					"-l\"react-native-safe-area-context\"",
+					"-l\"react-native-slider\"",
+					"-framework",
+					"\"Accelerate\"",
+					"-framework",
+					"\"AudioToolbox\"",
+					"-framework",
+					"\"CFNetwork\"",
+					"-framework",
+					"\"CoreGraphics\"",
+					"-framework",
+					"\"ImageIO\"",
+					"-framework",
+					"\"MobileCoreServices\"",
+					"-framework",
+					"\"QuartzCore\"",
+					"-framework",
+					"\"Security\"",
+					"-framework",
+					"\"UIKit\"",
+					"-framework",
+					"\"hermes\"",
+					"-weak_framework",
+					"\"JavaScriptCore\"",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.onekeepass.ios.OneKeePassAutoFill;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;

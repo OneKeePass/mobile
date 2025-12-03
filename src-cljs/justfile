@@ -1,0 +1,28 @@
+###############################   Shadow-cljs     ######################################
+
+alias shcr := shadow-cljs-clean-watch
+alias shexcr := shadow-cljs-ios-ext-clean-watch 
+
+alias shre := shadow-cljs-clean-release
+alias shexre := shadow-cljs-ios-ext-clean-release
+
+shadow-cljs-clean-watch:
+    rm -rf cljs-main-app-out
+    npx shadow-cljs@3.3.2 watch app  
+
+shadow-cljs-ios-ext-clean-watch:
+    rm -rf cljs-main-app-out
+    npx shadow-cljs@3.3.2 watch ios-autofill
+
+
+shadow-cljs-clean-release:
+    rm -rf cljs-main-app-out
+    npx shadow-cljs@3.3.2 release app  
+
+shadow-cljs-ios-ext-clean-release:
+    rm -rf cljs-main-app-out
+    npx shadow-cljs@3.3.2 release ios-autofill
+   
+
+###############################  End Shadow-cljs  ######################################
+

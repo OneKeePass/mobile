@@ -1,5 +1,92 @@
 package com.onekeepassmobile.autofill
 
+import android.os.Build
+import android.os.Bundle
+import android.util.Log
+import androidx.annotation.RequiresApi
+import com.facebook.react.ReactActivity
+import com.facebook.react.ReactActivityDelegate
+import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
+import com.facebook.react.defaults.DefaultReactActivityDelegate
+
+// Uses Legacy Architecture
+// RN 0.81.5 upgrade time
+// As both 'MainActivity' and 'AutofillAuthenticationActivity' activities are using
+// the same "OneKeePassMobile" as main component name
+// and used by the AppRegistry.registerComponent call in index.js, we can extend
+// this activity from ReactActivity. We use 'initialProperties' during the launch time of Autofill page
+// so that we can distinguish between Main app vs Autofill app
+
+// As this is a subclass of  ReactActivity', all 'DefaultHardwareBackBtnHandler' actions are available for this
+// activity
+
+//@TargetApi(26)
+@RequiresApi(Build.VERSION_CODES.O)
+class AutofillAuthenticationActivity() : ReactActivity() {
+    override fun getMainComponentName(): String? {
+        // This component name declared in /mobile/app.json and used
+        // by AppRegistry.registerComponent call in index.js
+        return "OneKeePassMobile"
+    }
+
+    override fun createReactActivityDelegate(): ReactActivityDelegate {
+        Log.d(TAG, "Creating and returning DefaultReactActivityDelegate")
+
+        val activityDelegate:DefaultReactActivityDelegate = object:DefaultReactActivityDelegate(this,mainComponentName!!,fabricEnabled) {
+            override fun getLaunchOptions(): Bundle? {
+                Log.d(TAG, "AutofillAuthenticationActivity getLaunchOptions is called")
+                val initialProperties = Bundle().apply {
+                    putBoolean("androidAutofill", true)
+                    //putString("anotherKey", "some value")
+                }
+                return initialProperties
+            }
+        }
+        return activityDelegate
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        Log.d("AutofillAuthenticationActivity", "onCreate of AutofillAuthenticationActivity is called ...with intent ${intent}")
+        autofillActivity = this
+        super.onCreate(savedInstanceState)
+    }
+
+    companion object {
+        //private val TAG = "AutofillAuthenticationActivity"
+        private val TAG = "OkpAF AutofillAuthenticationActivity"
+
+        // Keeps a reference of this activity and it is used in  to complete the autofill
+        private var autofillActivity: AutofillAuthenticationActivity? = null
+
+        // Called from OkpFillResponseBuilder.completeLoginAutofill fn
+        fun getActivityToComplteFill(): AutofillAuthenticationActivity? {
+            return autofillActivity
+        }
+    }
+}
+
+
+//===========================================================//
+
+// Legacy Architecture is used
+// The implementation is based on
+// https://reactnative-archive-august-2025.netlify.app/docs/0.74/integration-with-existing-apps#the-magic-reactrootview
+// And was used in RN 0.74 upgrade and in 0.78 upgrade time
+// This also worked with RN 0.81.5 upgarde
+
+// The 'DefaultHardwareBackBtnHandler' use will not work new Android and the following deprecated info is found here
+// https://reactnative.dev/docs/0.81/integration-with-android-fragment#3-make-your-host-activity-implement-defaulthardwarebackbtnhandler
+// Deprecated:
+// Activity.onBackPressed() has been deprecated since API level 33.
+// Android 16 devices with apps targeting API level 36 this will
+// no longer be called and OnBackPressedDispatcher should be used instead.
+
+// Using OnBackPressedDispatcher involves more changes. However, by subclassing AutofillAuthenticationActivity
+// from 'ReactActivity', we can avoid this additional works and accordingly changed as done above
+
+/*
+package com.onekeepassmobile.autofill
+
 import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
@@ -23,7 +110,7 @@ import com.facebook.soloader.SoLoader
 // when the Autofill activity is launched, that instance is shared by both activities
 
 // Alternative method possible:
-// As both activities are using the same "OneKeePassMobile" component(in /mobile/app.json) 
+// As both activities are using the same "OneKeePassMobile" component(in /mobile/app.json)
 // and used by the AppRegistry.registerComponent call in index.js, we can extend
 // this activity from ReactActivity. Then we need not get an instance of ReactInstanceManager
 // and delegate activities call to this manager
@@ -93,7 +180,7 @@ class AutofillAuthenticationActivity : Activity(), DefaultHardwareBackBtnHandler
 
         // As we handle back press event in JS side, do not call 'super.onBackPressed()'
         // invokeDefaultOnBackPressed will be called based on the JS 'hardwareBackPress'
-        
+
         //super.onBackPressed()
     }
 
@@ -123,3 +210,5 @@ class AutofillAuthenticationActivity : Activity(), DefaultHardwareBackBtnHandler
         }
     }
 }
+ */
+

@@ -18,7 +18,7 @@ crate-type = ["lib", "staticlib","cdylib"]
 # Android target requires "cdylib" for to create dynamic lib .so file  
  
 [dependencies]
-uniffi = "0.28.2"
+uniffi = "0.29.5"
 
 once_cell = "1"
 thiserror = "2.0.12"
@@ -64,9 +64,9 @@ russh-keys = "0.49.2"
 reqwest_dav = {version = "0.1.15", default-features = false,features = ["rustls-tls"]}
 
 ## using from the local crate during dev time
-## onekeepass-core = {path = "../../onekeepass-core", version = "0.18.1"}
+## onekeepass-core = {path = "../../onekeepass-core", version = "0.19.0"}
 
-onekeepass-core = {git = "https://github.com/OneKeePass/onekeepass-core.git" , tag="v0.18.1" }
+onekeepass-core = {git = "https://github.com/OneKeePass/onekeepass-core.git" , tag="v0.19.0" }
 
 [target.'cfg(target_os = "android")'.dependencies]
 android_logger = "0.13.1"
@@ -82,7 +82,7 @@ oslog = { version = "0.2.0", default-features = false, features = ["logger"] }
 ## ./uniffi-bindgen is used to generate Swift and Kotin bindings. See he 'just file' how they are used
 
 [build-dependencies]
-uniffi = { version = "0.28.2", features = [ "build" ] }
+uniffi = { version = "0.29.5", features = [ "build" ] }
 
 [dev-dependencies]
 url = "2.3.1"
