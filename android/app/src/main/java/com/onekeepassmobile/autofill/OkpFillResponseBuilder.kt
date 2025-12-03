@@ -22,6 +22,7 @@ import androidx.autofill.inline.UiVersions
 import androidx.autofill.inline.v1.InlineSuggestionUi
 import com.onekeepassmobile.R
 
+@RequiresApi(Build.VERSION_CODES.O)
 object OkpFillResponseBuilder {
 
     private const val TAG = "OkpAF"

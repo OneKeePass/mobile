@@ -9,6 +9,7 @@ import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
 import com.facebook.react.defaults.DefaultReactActivityDelegate
 
+// Uses Legacy Architecture
 // RN 0.81.5 upgrade time
 // As both 'MainActivity' and 'AutofillAuthenticationActivity' activities are using
 // the same "OneKeePassMobile" as main component name

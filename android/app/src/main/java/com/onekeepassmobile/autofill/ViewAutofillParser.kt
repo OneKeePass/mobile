@@ -5,8 +5,10 @@ import android.os.Build
 import android.service.autofill.FillRequest
 import android.util.Log
 import android.widget.inline.InlinePresentationSpec
+import androidx.annotation.RequiresApi
 import com.onekeepassmobile.autofill.util.traverse
 
+@RequiresApi(Build.VERSION_CODES.O)
 object ViewAutofillParser {
 
     private const val TAG = "OkpAF"
@@ -130,7 +132,7 @@ object ViewAutofillParser {
             isInlineAutofillEnabled: Boolean,
     ): List<InlinePresentationSpec>?  {
 
-        Log.d(TAG,"====== this in FillRequest?.getInlinePresentationSpecs is   ${this}")
+        //Log.d(TAG,"====== this in FillRequest?.getInlinePresentationSpecs is   ${this}")
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             Log.d(TAG,"this?.inlineSuggestionsRequest  ${this?.inlineSuggestionsRequest}")
