@@ -16,7 +16,7 @@ shadow-cljs-ios-ext-clean-watch:
 
 
 shadow-cljs-clean-release:
-    rm -rf cljs-main-app-out
+    # rm -rf cljs-main-app-out
     npx shadow-cljs@3.3.2 release app  
 
 shadow-cljs-ios-ext-clean-release:
