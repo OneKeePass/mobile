@@ -126,11 +126,11 @@
 
   ;; Andoid 
   #_(render-root "OneKeePassMobile" (fn [props]
-                                    (js/console.log "Android app entry: In main core render-root props is " props)
-                                    (let [{:keys [androidAutofill] :as _options} (js->clj props :keywordize-keys true)]
-                                      (if androidAutofill
-                                        (r/as-element [android-core/app-root])
-                                        (r/as-element [app-root]))))))
+                                      (js/console.log "Android app entry: In main core render-root props is " props)
+                                      (let [{:keys [androidAutofill] :as _options} (js->clj props :keywordize-keys true)]
+                                        (if androidAutofill
+                                          (r/as-element [android-core/app-root])
+                                          (r/as-element [app-root]))))))
 
 (defn init []
   ;; (js/console.log "Args passed " args)
@@ -175,5 +175,6 @@
         (r/as-element [app-root]))))
 
 
+#_{:clj-kondo/ignore [:unresolved-symbol]}
 (comment
   (in-ns 'onekeepass.mobile.core))

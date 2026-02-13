@@ -177,6 +177,10 @@
 (def ICON-DATABASE-OFF-OUTLINE "database-off-outline")
 (def ICON-DATABASE-ARROW-LEFT  "database-arrow-left")
 
+(def ICON-HOUSE-VARIANT "house-variant")
+(def ICON-HOUSE-VARIANT-OUTLINE "house-variant-outline")
+
+
 (def ICON-COG "cog")
 (def ICON-COG-OUTLINE "cog-outline")
 (def ICON-SORT "sort")

@@ -27,6 +27,7 @@ ios/OneKeePassMobile/Translations/.clj-kondo
 /src-cljs/.clj-kondo/.cache 
 /src-cljs/cljs-main-app-src/.clj-kondo/.cache 
 /src-cljs/cljs-ios-autofill-src/.clj-kondo/.cache
+/src-cljs/Jey_Readme.md
 
 #*/.clj-kondo
 

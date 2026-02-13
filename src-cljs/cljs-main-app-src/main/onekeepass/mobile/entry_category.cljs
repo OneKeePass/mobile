@@ -1,47 +1,42 @@
 (ns onekeepass.mobile.entry-category
-  (:require [onekeepass.mobile.common-components  :refer [menu-action-factory]]
-            [onekeepass.mobile.constants :as const :refer [BANK_ACCOUNT_TYPE_NAME
-                                                           CAT_SECTION_TITLE
-                                                           CATEGORY_ALL_ENTRIES
-                                                           CATEGORY_DELETED_ENTRIES
-                                                           CATEGORY_FAV_ENTRIES
-                                                           CREDIT_DEBIT_CARD_TYPE_NAME
-                                                           AUTO_DB_OPEN_TYPE_NAME
-                                                           GROUP_SECTION_TITLE
-                                                           ICON-CHECKBOX-BLANK-OUTLINE
-                                                           ICON-CHECKBOX-OUTLINE
-                                                           ICON-PLUS ICON-TAGS
-                                                           LOGIN_TYPE_NAME
-                                                           STANDARD_ENTRY_TYPES
-                                                           TAG_SECTION_TITLE
-                                                           TYPE_SECTION_TITLE
-                                                           UUID_OF_ENTRY_TYPE_LOGIN
-                                                           WIRELESS_ROUTER_TYPE_NAME]]
-            [onekeepass.mobile.events.common :as cmn-events]
-            [onekeepass.mobile.events.entry-category :as ecat-events]
-            [onekeepass.mobile.icons-list :refer [icon-id->name]]
-            [onekeepass.mobile.rn-components :as rnc :refer [cust-rnp-divider
-                                                             dots-icon-name
-                                                             icon-color
-                                                             on-primary-color
-                                                             page-background-color
-                                                             primary-container-color
-                                                             rn-safe-area-view
-                                                             rn-section-list
-                                                             rn-view
-                                                             rnp-divider
-                                                             rnp-fab
-                                                             rnp-icon-button
-                                                             rnp-list-icon
-                                                             rnp-list-item
-                                                             rnp-menu
-                                                             rnp-menu-item
-                                                             rnp-text]]
-            [onekeepass.mobile.translation :refer [lstr-cv
-                                                   lstr-entry-type-title
-                                                   lstr-ml]]
-            [onekeepass.mobile.utils :refer [contains-val? str->int]]
-            [reagent.core :as r]))
+  (:require
+   [onekeepass.mobile.common-components  :refer [menu-action-factory]]
+   [onekeepass.mobile.constants :as const :refer [AUTO_DB_OPEN_TYPE_NAME
+                                                  BANK_ACCOUNT_TYPE_NAME
+                                                  CAT_SECTION_TITLE
+                                                  CATEGORY_ALL_ENTRIES
+                                                  CATEGORY_DELETED_ENTRIES
+                                                  CATEGORY_FAV_ENTRIES
+                                                  CREDIT_DEBIT_CARD_TYPE_NAME
+                                                  GROUP_SECTION_TITLE
+                                                  ICON-CHECKBOX-BLANK-OUTLINE
+                                                  ICON-CHECKBOX-OUTLINE
+                                                  ICON-PLUS ICON-TAGS
+                                                  LOGIN_TYPE_NAME
+                                                  STANDARD_ENTRY_TYPES
+                                                  TAG_SECTION_TITLE
+                                                  TYPE_SECTION_TITLE
+                                                  UUID_OF_ENTRY_TYPE_LOGIN
+                                                  WIRELESS_ROUTER_TYPE_NAME]]
+   [onekeepass.mobile.events.common :as cmn-events]
+   [onekeepass.mobile.events.entry-category :as ecat-events]
+   [onekeepass.mobile.icons-list :refer [icon-id->name]]
+   [onekeepass.mobile.rn-components :as rnc :refer [cust-rnp-divider
+                                                    dots-icon-name icon-color
+                                                    on-primary-color
+                                                    page-background-color
+                                                    primary-container-color
+                                                    rn-safe-area-view
+                                                    rn-section-list rn-view
+                                                    rnp-divider rnp-fab
+                                                    rnp-icon-button
+                                                    rnp-list-icon
+                                                    rnp-list-item rnp-menu
+                                                    rnp-menu-item rnp-text]]
+   [onekeepass.mobile.translation :refer [lstr-cv lstr-entry-type-title lstr-l
+                                          lstr-ml]]
+   [onekeepass.mobile.utils :refer [contains-val? str->int]]
+   [reagent.core :as r]))
 
 (set! *warn-on-infer* true)
 
@@ -94,10 +89,10 @@
 (defn category-long-press-menu [{:keys [show x y category-detail category-key]}]
   [rnp-menu {:visible show :key (str show) :onDismiss hide-category-long-press-menu :anchor (clj->js {:x x :y y})}
    (cond
-     
-    ;;  @(cmn-events/current-db-disable-edit)
-    ;;  nil
-     
+
+     ;;  @(cmn-events/current-db-disable-edit)
+     ;;  nil
+
      (= category-key TYPE_SECTION_TITLE)
      [rnp-menu-item {:title (lstr-ml "addEntry")
                      :disabled @(cmn-events/current-db-disable-edit)
@@ -182,8 +177,7 @@
                      BANK_ACCOUNT_TYPE_NAME const/ICON-BANK-OUTLINE
                      WIRELESS_ROUTER_TYPE_NAME const/ICON-ROUTER-WIRELESS
                      CREDIT_DEBIT_CARD_TYPE_NAME const/ICON-CREDIT-CARD-OUTLINE
-                     AUTO_DB_OPEN_TYPE_NAME const/ICON-LAUNCH
-                     })
+                     AUTO_DB_OPEN_TYPE_NAME const/ICON-LAUNCH})
 
 (defn category-icon-name
   "Called to get icon name for General categories or Entry types category or Group as Category or Group "
@@ -257,7 +251,7 @@
                                            [rnp-text {:variant "titleMedium"} items-count]))}])))
 
 ;; title may be one of Types,Groups,Categories, Tags
-(defn category-header [title group-by] 
+(defn category-header [title group-by]
   [rn-view  {:style {:flexDirection "row"
                      :backgroundColor  @primary-container-color
                      :margin-top 5
@@ -314,12 +308,68 @@
                                (when-not (= key GENERAL_KEY)
                                  (r/as-element [category-header title group-by]))))}]))
 
-(defn entry-category-content [] 
+
+(defn- bottom-nav-bar
+  "A functional reagent componnent that returns the custom bottom bar"
+  []
+  (fn []
+    (let []
+
+      [rn-view {:style {:width "100%"
+                        ;; Need to use the same background-color as the entry list content to make it opaque
+                        :background-color @page-background-color
+                        :padding-left 25
+                        :padding-right 25
+                        :borderTopWidth 1
+                        :borderTopColor  @rnc/outline-variant
+                        :min-height 50
+
+                        ;;:position "absolute"
+
+                        ;; In adndroid when we use absolute position, this bottom bar hides
+                        ;; the entries list content - particularly when the list has more entries
+                        ;; and even using the scroll does not work and it scrolls behind this component 
+
+                        ;; Not using absolute position works for both android in iOS
+
+                        ;; After Android 'compileSdkVersion = 35 introduction, adding insets hides the entries list content
+                        ;; Also see comments in js/components/KeyboardAvoidingDialog.js
+
+                        ;; Instead of setting bottom value from inset, we are using a dummy view 'adjust-inset-view'
+
+                        :bottom 0}}
+
+       [rn-view {:flexDirection "row" :justifyContent "space-between"}
+        [rn-view {:align-items "center"}
+         [rnp-icon-button {:size 24
+                           :icon const/ICON-HOUSE-VARIANT
+                           :iconColor @rnc/on-error-container-color
+                           :onPress (fn [e]
+                                      #_(show-sort-menu e sort-criteria))}]
+         [rnp-text {:style {:margin-top -5}
+                    :text-align "center"}
+          "Home"
+          #_(lstr-l 'sort)]]
+
+        [rn-view {:align-items "center"}
+         [rnp-icon-button {:size 24
+                           :icon const/ICON-PLUS
+                           :iconColor @rnc/on-error-container-color
+                           :disabled @(cmn-events/current-db-disable-edit)
+                           :onPress (fn [e]
+                                      #_(show-fab-action-menu e selected-category-key selected-category-detail))}]
+         [rnp-text {:style {:margin-top -5}
+                    :text-align "center"}
+          (lstr-l 'add)]]]])))
+
+
+(defn entry-category-content []
   [rn-safe-area-view {:style {:flex 1 :background-color @page-background-color}}
    [categories-content]
+   [:f> bottom-nav-bar]
    [fab-action-menu @fab-action-menu-data @(ecat-events/root-group)]
    [category-long-press-menu @category-long-press-menu-data]
    [group-by-menu @group-by-menu-data]
-   [rnp-fab {:style {:position "absolute" :margin 16 :right 0 :bottom (rnc/get-inset-bottom)}
+   [rnp-fab {:style {:position "absolute" :margin 16 :right 0 :bottom (+ (rnc/get-inset-bottom) 100)}
              :disabled @(cmn-events/current-db-disable-edit)
              :icon ICON-PLUS :onPress (fn [e] (show-fab-action-menu e))}]])
