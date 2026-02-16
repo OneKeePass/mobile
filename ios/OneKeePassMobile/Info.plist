@@ -63,8 +63,6 @@
 	<false/>
 	<key>UIAppFonts</key>
 	<array>
-		<string>FontAwesome.ttf</string>
-		<string>MaterialIcons.ttf</string>
 		<string>MaterialCommunityIcons.ttf</string>
 	</array>
 	<key>UIApplicationSceneManifest</key>

@@ -31,6 +31,7 @@
                                                              rnp-menu
                                                              rnp-menu-item
                                                              rnp-text]]
+            [onekeepass.mobile.bottom-navigator :as bn]
             [onekeepass.mobile.utils :as u]
             [onekeepass.mobile.translation :refer [lstr-bl lstr-cv
                                                    lstr-dlg-text
@@ -404,59 +405,24 @@
         ;; (println "bottom is..." bottom)
         [rn-view {:style {:height bottom}}]))))
 
-(defn- bottom-nav-bar
-  "A functional reagent componnent that returns the custom bottom bar"
-  []
+(defn- bottom-nav-bar []
   (fn []
-    (let [selected-category-key @(elist-events/selected-category-key)
-          selected-category-detail @(elist-events/selected-category-detail)
-          sort-criteria @(elist-events/entry-list-sort-criteria)]
+    (let [sort-criteria @(elist-events/entry-list-sort-criteria)
+          items [(bn/home-icon-action-item)
+                 (bn/close-db-icon-action-item)
+                 {:icon const/ICON-SORT :label (lstr-l 'sort) :action (fn [e]
+                                                                        (show-sort-menu e sort-criteria))}
+                 (bn/settings-icon-action-item)]]
 
-      [rn-view {:style {:width "100%"
-                        ;; Need to use the same background-color as the entry list content to make it opaque
-                        :background-color @page-background-color
-                        :padding-left 25
-                        :padding-right 25
-                        :borderTopWidth 1
-                        :borderTopColor  @rnc/outline-variant
-                        :min-height 50
+      [bn/bottom-nav-bar-gen items])))
 
-                        ;;:position "absolute"
 
-                        ;; In adndroid when we use absolute position, this bottom bar hides
-                        ;; the entries list content - particularly when the list has more entries
-                        ;; and even using the scroll does not work and it scrolls behind this component 
-
-                        ;; Not using absolute position works for both android in iOS
-
-                        ;; After Android 'compileSdkVersion = 35 introduction, adding insets hides the entries list content
-                        ;; Also see comments in js/components/KeyboardAvoidingDialog.js
-
-                        ;; Instead of setting bottom value from inset, we are using a dummy view 'adjust-inset-view'
-
-                        :bottom 0}}
-
-       [rn-view {:flexDirection "row" :justifyContent "space-between"}
-        [rn-view {:align-items "center"}
-         [rnp-icon-button {:size 24
-                           :icon const/ICON-SORT
-                           :iconColor @rnc/on-error-container-color
-                           :onPress (fn [e]
-                                      (show-sort-menu e sort-criteria))}]
-         [rnp-text {:style {:margin-top -5}
-                    :text-align "center"}
-          (lstr-l 'sort)]]
-
-        [rn-view {:align-items "center"}
-         [rnp-icon-button {:size 24
-                           :icon const/ICON-PLUS
-                           :iconColor @rnc/on-error-container-color
-                           :disabled @(cmn-events/current-db-disable-edit)
-                           :onPress (fn [e]
-                                      (show-fab-action-menu e selected-category-key selected-category-detail))}]
-         [rnp-text {:style {:margin-top -5}
-                    :text-align "center"}
-          (lstr-l 'add)]]]])))
+(defn- show-fab []
+  (let [selected-category-key @(elist-events/selected-category-key)
+        selected-category-detail @(elist-events/selected-category-detail)]
+    [rnc/rnp-fab {:style {:position "absolute" :margin 16 :right 0 :bottom (+ (rnc/get-inset-bottom) 100)}
+                  :disabled @(cmn-events/current-db-disable-edit)
+                  :icon const/ICON-PLUS :onPress (fn [e] (show-fab-action-menu e selected-category-key selected-category-detail))}]))
 
 (defn entry-list-content []
   [rn-safe-area-view {:style {:flex 1 :background-color @page-background-color}}
@@ -474,6 +440,8 @@
    ;; and view with height of 0 in other Android API level 
    [adjust-inset-view]
 
+   [show-fab]
+
    #_[bottom-nav-bar1]
 
    [sort-menus @sort-menu-data]
@@ -486,49 +454,3 @@
    [delete-all-entries-permanent-confirm-dialog]
    [cc/entry-delete-confirm-dialog elist-events/delete-entry]
    [cc/group-delete-confirm-dialog elist-events/delete-group]])
-
-;;;;;;;;;;; Few other ideas of using bottom bar ;;;;;;
-
-#_(def idx (r/atom -1))
-
-#_(defn- bottom-nav-bar1 []
-    (let [routes [{:key "sort" :title "Sort" :focusedIcon "heart" :unfocusedIcon "heart-outline"}
-                  {:key "settings" :title "Settings" :focusedIcon "bell" :unfocusedIcon "bell-outline"}]
-
-          states {:index @idx
-                  :routes routes}]
-
-      [rnp-bottom-navigation-bar {:safeAreaInsets {:bottom 0}
-                                  :navigationState (clj->js states :keywordize-keys true)
-                                  :onTabPress (fn [props]
-                                                (let [{:keys [route] :as p} (js->clj props :keywordize-keys true)
-                                                      _ (println "route is " route)
-                                                      {:keys [key preventDefault]} route]
-                                                  (println "key is " key)
-                                                  (println "p is " p)
-
-                                                  (if (= key "sort")
-                                                    (reset! idx 0)
-                                                    (reset! idx 1)))
-                                                #_(println props))}]))
-
-#_(defn- bottom-nav-bar2 []
-    (let [routes [{:key "sort" :title "Sort" :focusedIcon "heart" :unfocusedIcon "heart-outline"}
-                  {:key "settings" :title "Settings" :focusedIcon "bell" :unfocusedIcon "bell-outline"}]
-
-          states {:index @idx
-                  :routes routes}]
-
-      [rnp-bottom-navigation-bar {:safeAreaInsets {:bottom 0}
-                                  :navigationState (clj->js states :keywordize-keys true)
-                                  :onTabPress (fn [props]
-                                                (let [{:keys [route] :as p} (js->clj props :keywordize-keys true)
-                                                      _ (println "route is " route)
-                                                      {:keys [key preventDefault]} route]
-                                                  (println "key is " key)
-                                                  (println "p is " p)
-
-                                                  (if (= key "sort")
-                                                    (reset! idx 0)
-                                                    (reset! idx 1)))
-                                                #_(println props))}]))

@@ -16,7 +16,8 @@
    ["react-native-modal-selector" :as rnms]
    ["react-native-paper" :as rnp]
    ["react-native-safe-area-context" :as sa-context]
-   ["react-native-vector-icons" :as vec-icons]
+   ["@react-native-vector-icons/material-design-icons"]
+   #_["react-native-vector-icons" :as vec-icons]
    ["react-native-vision-camera" :as rn-vision-camera]
    ;; Local js components. 
    ;; Note the use of path relative to cljs-main-app-src/src/gen

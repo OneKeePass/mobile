@@ -19,6 +19,7 @@
                                                   UUID_OF_ENTRY_TYPE_LOGIN
                                                   WIRELESS_ROUTER_TYPE_NAME]]
    [onekeepass.mobile.events.common :as cmn-events]
+   [onekeepass.mobile.events.settings :as stgs-events]
    [onekeepass.mobile.events.entry-category :as ecat-events]
    [onekeepass.mobile.icons-list :refer [icon-id->name]]
    [onekeepass.mobile.rn-components :as rnc :refer [cust-rnp-divider
@@ -36,6 +37,7 @@
    [onekeepass.mobile.translation :refer [lstr-cv lstr-entry-type-title lstr-l
                                           lstr-ml]]
    [onekeepass.mobile.utils :refer [contains-val? str->int]]
+   [onekeepass.mobile.bottom-navigator :as bn]
    [reagent.core :as r]))
 
 (set! *warn-on-infer* true)
@@ -308,68 +310,17 @@
                                (when-not (= key GENERAL_KEY)
                                  (r/as-element [category-header title group-by]))))}]))
 
-
-(defn- bottom-nav-bar
-  "A functional reagent componnent that returns the custom bottom bar"
-  []
-  (fn []
-    (let []
-
-      [rn-view {:style {:width "100%"
-                        ;; Need to use the same background-color as the entry list content to make it opaque
-                        :background-color @page-background-color
-                        :padding-left 25
-                        :padding-right 25
-                        :borderTopWidth 1
-                        :borderTopColor  @rnc/outline-variant
-                        :min-height 50
-
-                        ;;:position "absolute"
-
-                        ;; In adndroid when we use absolute position, this bottom bar hides
-                        ;; the entries list content - particularly when the list has more entries
-                        ;; and even using the scroll does not work and it scrolls behind this component 
-
-                        ;; Not using absolute position works for both android in iOS
-
-                        ;; After Android 'compileSdkVersion = 35 introduction, adding insets hides the entries list content
-                        ;; Also see comments in js/components/KeyboardAvoidingDialog.js
-
-                        ;; Instead of setting bottom value from inset, we are using a dummy view 'adjust-inset-view'
-
-                        :bottom 0}}
-
-       [rn-view {:flexDirection "row" :justifyContent "space-between"}
-        [rn-view {:align-items "center"}
-         [rnp-icon-button {:size 24
-                           :icon const/ICON-HOUSE-VARIANT
-                           :iconColor @rnc/on-error-container-color
-                           :onPress (fn [e]
-                                      #_(show-sort-menu e sort-criteria))}]
-         [rnp-text {:style {:margin-top -5}
-                    :text-align "center"}
-          "Home"
-          #_(lstr-l 'sort)]]
-
-        [rn-view {:align-items "center"}
-         [rnp-icon-button {:size 24
-                           :icon const/ICON-PLUS
-                           :iconColor @rnc/on-error-container-color
-                           :disabled @(cmn-events/current-db-disable-edit)
-                           :onPress (fn [e]
-                                      #_(show-fab-action-menu e selected-category-key selected-category-detail))}]
-         [rnp-text {:style {:margin-top -5}
-                    :text-align "center"}
-          (lstr-l 'add)]]]])))
-
+(defn- show-fab []
+  [rnp-fab {:style {:position "absolute" :margin 16 :right 0 :bottom (+ (rnc/get-inset-bottom) 100)}
+            :disabled @(cmn-events/current-db-disable-edit)
+            :icon ICON-PLUS :onPress (fn [e] (show-fab-action-menu e))}])
 
 (defn entry-category-content []
   [rn-safe-area-view {:style {:flex 1 :background-color @page-background-color}}
    [categories-content]
-   [:f> bottom-nav-bar]
+   [:f> bn/bottom-common-nav-bar]
+   [show-fab]
+
    [fab-action-menu @fab-action-menu-data @(ecat-events/root-group)]
    [category-long-press-menu @category-long-press-menu-data]
-   [group-by-menu @group-by-menu-data]
-   [rnp-fab {:style {:position "absolute" :margin 16 :right 0 :bottom (+ (rnc/get-inset-bottom) 100)}
-             :disabled @(cmn-events/current-db-disable-edit)
-             :icon ICON-PLUS :onPress (fn [e] (show-fab-action-menu e))}]])
+   [group-by-menu @group-by-menu-data]])

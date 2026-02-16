@@ -163,6 +163,7 @@
 ;; react-native-vector-icons is used to display the icons
 ;; We need to get the name of icons from https://materialdesignicons.com/ ( new url https://pictogrammers.com/library/mdi/)
 ;; Need to use the lower case name with "-" 
+;; Names can also be found in mobile/node_modules/@react-native-vector-icons/material-design-icons/glyphmaps/MaterialDesignIcons.json
 
 ;; Also see onekeepass.mobile.icons-list where the Entry and Group Icons listed
 
@@ -177,9 +178,12 @@
 (def ICON-DATABASE-OFF-OUTLINE "database-off-outline")
 (def ICON-DATABASE-ARROW-LEFT  "database-arrow-left")
 
-(def ICON-HOUSE-VARIANT "house-variant")
-(def ICON-HOUSE-VARIANT-OUTLINE "house-variant-outline")
-
+(def ICON-HOME "home")
+(def ICON-DOTS-SQUARE "dots-square")
+(def ICON-DB-EYE-OFF-OUTLINE "database-eye-off-outline")
+;; May be used for App Lock
+(def ICON-SHILED-LOCK-OUTLINE "shield-lock-outline")
+#_(def ICONS-DB-LOCK-OUTLINE "database-lock-outline")
 
 (def ICON-COG "cog")
 (def ICON-COG-OUTLINE "cog-outline")
