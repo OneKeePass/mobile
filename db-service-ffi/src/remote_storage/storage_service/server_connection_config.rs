@@ -16,7 +16,7 @@ pub fn set_config_reader_writer(reader_writer: ConnectionConfigReaderWriterType)
     ConnectionConfigReaderWriterStore::init(reader_writer);
 }
 
-// TODO: 
+// TODO:
 // As we have moved 'storage' module from onekeepass_core crate to ffi layer
 // need to evaluate whether we need to use CONFIG_READER_WRITER_INSTANCE etc
 
@@ -195,6 +195,29 @@ impl ConnectionConfigs {
         }
     }
 
+    // A new remote config is added or an existing config is updated
+    pub(crate) fn add_or_update_config(request: RemoteStorageTypeConfig) -> Result<()> {
+        // Need to be in a block so that the config_store().lock() is released before next lock call
+        {
+            let mut conns = config_store().lock().unwrap();
+
+            match request {
+                RemoteStorageTypeConfig::Sftp(config) => {
+                    let configs = &mut conns.sftp_connections;
+                    Self::internal_add_or_update_config(configs, config);
+                }
+                RemoteStorageTypeConfig::Webdav(config) => {
+                    let configs = &mut conns.webdav_connections;
+                    Self::internal_add_or_update_config(configs, config);
+                }
+            };
+        }
+        Self::write_config()?;
+
+        Ok(())
+    }
+
+    // Not used anymore. Used till app version 0.18.0
     pub(crate) fn add_config(request: RemoteStorageTypeConfig) -> Result<()> {
         // Need to be in a block so that the config_store().lock() is released before next lock call
         {
@@ -239,6 +262,7 @@ impl ConnectionConfigs {
         Ok(())
     }
 
+    // Not used. Deprecate?
     pub(crate) fn update_config(request: RemoteStorageTypeConfig) -> Result<()> {
         {
             let mut configs = config_store().lock().unwrap();
@@ -257,6 +281,21 @@ impl ConnectionConfigs {
         Self::write_config()?;
 
         Ok(())
+    }
+
+    fn internal_add_or_update_config<T: ConnectionId>(configs: &mut Vec<T>, m_config: T) {
+        let found = configs
+            .iter() // .iter_mut() for mut call
+            .find(|v| v.connection_id() == m_config.connection_id());
+        if found.is_none() {
+            debug!(
+                "Config with id {} is not found in the list and adding to the list ",
+                &m_config.connection_id()
+            );
+            configs.push(m_config);
+        } else {
+            Self::interal_update_config(configs, m_config);
+        }
     }
 
     fn internal_add_config<T: ConnectionId>(configs: &mut Vec<T>, m_config: T) {
@@ -279,6 +318,10 @@ impl ConnectionConfigs {
     fn interal_update_config<T: ConnectionId>(configs: &mut Vec<T>, m_config: T) {
         for x in configs {
             if x.connection_id() == m_config.connection_id() {
+                debug!(
+                    "Config with id {} is  found in the list and updating the config",
+                    &m_config.connection_id()
+                );
                 *x = m_config;
                 break;
             }

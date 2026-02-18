@@ -224,7 +224,11 @@ impl WebdavConnection {
 
         // Need to add to the configs list
         // TODO: Need to update if the existing config is changed
-        ConnectionConfigs::add_config(RemoteStorageTypeConfig::Webdav(connection_info))?;
+        // ConnectionConfigs::add_config(RemoteStorageTypeConfig::Webdav(connection_info))?;
+
+        // We are able to connect to the remote server as the connection config is valid one at this point.
+        // So we add the new or update the existing config
+        ConnectionConfigs::add_or_update_config(RemoteStorageTypeConfig::Webdav(connection_info))?;
 
         Ok(conn_status)
     }

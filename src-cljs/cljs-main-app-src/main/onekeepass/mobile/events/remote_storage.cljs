@@ -82,11 +82,12 @@
   [kw-type field-name-kw value]
   (dispatch [:remote-storage-connection-form-data-update kw-type field-name-kw value]))
 
-(defn remote-storage-new-config-connect-and-save
-  "Called to connect to the remote storage service first time using the entered 
-   config data and saves the new config"
+(defn remote-storage-config-connect-and-save
+  "Called to connect to the remote storage service using the entered 
+   config data (new or edited). 
+   If the connection is successful, the config is saved (this checking and saving is done in the backend rust side)"
   [kw-type]
-  (dispatch [:remote-storage-new-config-connect-and-save kw-type]))
+  (dispatch [:remote-storage-config-connect-and-save kw-type]))
 
 (defn remote-storage-listing-previous
   "Determines whether to use page stack to go the previous page or remain in the same page 
@@ -102,11 +103,15 @@
 (defn remote-storage-config-view
   "Called to show the read only view of a remote storage config form"
   [connection-id]
-  (dispatch [:remote-storage-config-view connection-id]))
+  (dispatch [:remote-storage-config-view-or-edit connection-id false]))
+
+(defn remote-storage-config-edit
+  "Called to edit a remote storage config form"
+  [connection-id]
+  (dispatch [:remote-storage-config-view-or-edit connection-id true]))
 
 (defn remote-storage-file-picked [connection-id parent-dir file-name]
   (dispatch [:remote-storage-file-picked connection-id parent-dir file-name]))
-
 
 (defn remote-storage-folder-picked-for-new-db-file [connection-id dir-entries]
   (dispatch [:remote-storage-folder-picked-for-new-db-file connection-id dir-entries]))
@@ -262,19 +267,48 @@
      {:db (-> db (init-type-data curr-kw-type))
       :fx [[:dispatch [:common/next-page const/RS_CONNECTION_CONFIG_PAGE_ID name]]]})))
 
-; Called from the configs listing page to view a selected remote connection config form details
+;; Called from the configs listing page to view or edit a selected remote connection config form details
 (reg-event-fx
- :remote-storage-config-view
- (fn [{:keys [db]} [_query-id connection-id]]
+ :remote-storage-config-view-or-edit
+ (fn [{:keys [db]} [_query-id connection-id edit?]]
    (let [curr-kw-type (get-current-rs-type db)
          configs-v (get-in db [:remote-storage :configs curr-kw-type])
          ;; Find the matching config data
          {:keys [] :as form-data} (first (filter (fn [m] (= (:connection-id m) connection-id)) configs-v))
-         form-data (merge-type-form-data curr-kw-type form-data false)
+         form-data (merge-type-form-data curr-kw-type form-data edit?)
          name (kw-type-to-enum-tag curr-kw-type)]
 
      {:db (-> db (set-type-form-data curr-kw-type form-data))
       :fx [[:dispatch [:common/next-page const/RS_CONNECTION_CONFIG_PAGE_ID name]]]})))
+
+; Called from the configs listing page to view a selected remote connection config form details
+#_(reg-event-fx
+   :remote-storage-config-view
+   (fn [{:keys [db]} [_query-id connection-id]]
+     (let [curr-kw-type (get-current-rs-type db)
+           configs-v (get-in db [:remote-storage :configs curr-kw-type])
+           ;; Find the matching config data
+           {:keys [] :as form-data} (first (filter (fn [m] (= (:connection-id m) connection-id)) configs-v))
+           form-data (merge-type-form-data curr-kw-type form-data false)
+           name (kw-type-to-enum-tag curr-kw-type)]
+
+       {:db (-> db (set-type-form-data curr-kw-type form-data))
+        :fx [[:dispatch [:common/next-page const/RS_CONNECTION_CONFIG_PAGE_ID name]]]})))
+
+;; This is exactly like :remote-storage-config-view event except we set 'true' for edit
+;; See merge-type-form-data fn call
+#_(reg-event-fx
+   :remote-storage-config-edit
+   (fn [{:keys [db]} [_query-id connection-id]]
+     (let [curr-kw-type (get-current-rs-type db)
+           configs-v (get-in db [:remote-storage :configs curr-kw-type])
+           ;; Find the matching config data
+           {:keys [] :as form-data} (first (filter (fn [m] (= (:connection-id m) connection-id)) configs-v))
+           form-data (merge-type-form-data curr-kw-type form-data true)
+           name (kw-type-to-enum-tag curr-kw-type)]
+
+       {:db (-> db (set-type-form-data curr-kw-type form-data))
+        :fx [[:dispatch [:common/next-page const/RS_CONNECTION_CONFIG_PAGE_ID name]]]})))
 
 ;; Dispatched in bg/handle-picked-file after user picks the private key file and that file is 
 ;; copied to internal location. Only the file name is used in config Sftp only
@@ -288,7 +322,7 @@
 ;; Connects to the remote storage first time using the config entered
 ;; The config is saved when all fields are correct
 (reg-event-fx
- :remote-storage-new-config-connect-and-save
+ :remote-storage-config-connect-and-save
  (fn [{:keys [db]} [_query-id kw-type]]
    (let [errors (validate-fields db kw-type)]
      (if (empty? errors)
@@ -299,17 +333,19 @@
        ;; Errors in data entry
        {:db (-> db (assoc-in [:remote-storage kw-type :form-errors] errors))}))))
 
+;; Called to test the config info entered by connecting to the remote server and if correct the config is stored 
+;; The connection test and savings are handled in the rust side
 (reg-fx
  :bg-rs-connect-and-retrieve-root-dir
  (fn [[kw-type connection-info]]
    (bg-rs/connect-and-retrieve-root-dir
     kw-type connection-info
     (fn [api-response]
-      (when-let [connected-status (on-ok api-response #(dispatch [:remote-storage-new-config-connect-and-save-error kw-type %]))]
+      (when-let [connected-status (on-ok api-response #(dispatch [:remote-storage-config-connect-and-save-error kw-type %]))]
         (dispatch [:remote-storage-connect-save-complete kw-type connected-status]))))))
 
 (reg-event-fx
- :remote-storage-new-config-connect-and-save-error
+ :remote-storage-config-connect-and-save-error
  (fn [{:keys [_db]} [_query-id _kw-type error]]
    {:fx [[:dispatch [:common/message-modal-hide]]
          [:dispatch [:common/error-box-show "Error" error]]]}))

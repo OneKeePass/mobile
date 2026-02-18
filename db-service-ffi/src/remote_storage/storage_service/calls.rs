@@ -8,10 +8,11 @@ use super::{
 use crate::db_service::error::{self, Result};
 
 // See https://crates.io/crates/enum_dispatch
-// Here we use enum_dispatch macros to generate Enum based trait fn call which in  dispatches to the implementing struct
+// Here we use enum_dispatch macros to generate Enum based trait fn call which in turn dispatches to the implementing struct
 
 // Also see https://crates.io/crates/enum_delegate for similar functionalities
 
+// These are called from cljs -> commands.rs and dispatched to the WebDav or Sftp implementation
 #[enum_dispatch::enum_dispatch(RemoteStorageOperationType)]
 pub trait RemoteStorageOperation {
     // requires connection_info
@@ -32,8 +33,10 @@ pub trait RemoteStorageOperation {
 
     // Gets a list of connection configuartaions for Sftp or Webdav
     fn remote_storage_configs(&self) -> Result<RemoteStorageTypeConfigs>;
-    fn update_config(&self) -> Result<()>;
     fn delete_config(&self) -> Result<()> ;
+    // Not used as we use add_or_update in connect and save call
+    // Deprecate?
+    fn update_config(&self) -> Result<()>;
 
     fn file_name(&self) -> Option<&str>;
 
