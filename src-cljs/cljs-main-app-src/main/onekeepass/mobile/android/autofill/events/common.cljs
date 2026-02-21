@@ -1,11 +1,13 @@
 (ns onekeepass.mobile.android.autofill.events.common
   "Only the Android Autofill specific common events. All events should be prefixed with :android-af"
-  (:require [onekeepass.mobile.background :as bg]
-            [onekeepass.mobile.constants :refer [CATEGORY_ALL_ENTRIES]]
-            [onekeepass.mobile.events.common :refer [on-ok]]
-            [onekeepass.mobile.events.open-database :refer [blank-open-db]]
-            [re-frame.core :refer [dispatch reg-event-db reg-event-fx reg-fx
-                                   reg-sub subscribe]]))
+  (:require
+   [onekeepass.mobile.background :as bg]
+   [onekeepass.mobile.constants :refer [CATEGORY_ALL_ENTRIES]]
+   [onekeepass.mobile.events.common :refer [on-ok]]
+   [onekeepass.mobile.events.open-database :refer [blank-open-db]]
+   [re-frame.core :refer [dispatch reg-event-db reg-event-fx reg-fx reg-sub
+                          subscribe]]
+   [re-frame.router :refer [dispatch-sync]]))
 
 ;; IMPORTANT
 ;; All event names and map keys are expected to have prefix :adnroid-af to avoid name and data 
@@ -13,6 +15,17 @@
 ;; will be running in the same process and use the same JS global space
 
 ;;;;;;;;;;;;;;;;;; Conmmon functions specific to android autofill ;;;;;;;;;;;;;;
+
+(defn sync-initialize
+  "Called just before rendering to set all requied values in re-frame db"
+  []
+  (dispatch-sync [:android-af-load-autofill-init-data]))
+
+(reg-event-fx
+ :android-af-load-autofill-init-data
+ (fn [{:keys [_db]} [_event-id]]
+   {:fx [[:bg-android-af-list-key-files]]}))
+
 
 ;; Based on the fn 'db-opened' from the main common 
 ;; We use the main ':opened-db-list' to maintain the list of the recent db list
@@ -31,10 +44,10 @@
     (-> app-db
         (assoc-in [:android-af :current-db-file-name] db-key)
         #_(assoc :current-db-file-name db-key)
-         ;; opened-db-list is a vec of map with keys [db-key database-name file-name user-action-time]
-         ;; :database-name is different from :file-name found in the the map Preference -> RecentlyUsed
-         ;; See ':recently-used' subscription 
-         ;; The latest opened db is last in the vector
+        ;; opened-db-list is a vec of map with keys [db-key database-name file-name user-action-time]
+        ;; :database-name is different from :file-name found in the the map Preference -> RecentlyUsed
+        ;; See ':recently-used' subscription 
+        ;; The latest opened db is last in the vector
         (update-in [:opened-db-list] conj {:db-key db-key
                                            :database-name database-name
                                            :file-name file-name
@@ -109,7 +122,7 @@
    (let [info (first (get-in db [:android-af :pages-stack]))]
      (if (empty? info)
        {:page HOME_PAGE_ID
-        :title home-page-title }
+        :title home-page-title}
        info))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Open db related ;;;;;;;;;;;;;;;;;;;;;;;;
@@ -125,10 +138,9 @@
 (defn cancel-on-press []
   (dispatch [:android-af/open-database-dialog-hide]))
 
-#_(defn show-key-file-form []
-  ;; kw :open-database-key-file-selected is used in events in ns onekeepass.mobile.events.key-file-form
-  ;; to send back the selected key file 
-  #_(dispatch [:key-file-form/show :open-database-key-file-selected]))
+
+(defn open-database-key-file-selected [selected-keyfile-info]
+  (dispatch [:android-af/open-database-key-file-selected selected-keyfile-info]))
 
 (defn database-field-update [kw-field-name value]
   (dispatch [:android-af/open-database-field-update kw-field-name value]))
@@ -164,13 +176,6 @@
  (fn [db [_event-id]]
    (assoc-in  db [:android-af :open-database :dialog-show] false)))
 
-;; An event to be called (from key file related page) after user selects a key file 
-#_(reg-event-fx
- :android-af/open-database-key-file-selected
- (fn [{:keys [db]} [_event-id {:keys [file-name full-file-name] :as m}]]
-   {:db (-> db (assoc-in [:android-af :open-database :key-file-name-part] file-name)
-            (assoc-in [:android-af :open-database :key-file-name] full-file-name))}))
-
 (reg-event-db
  :android-af/open-database-field-update
  (fn [db [_event-id kw-field-name value]] ;; kw-field-name is single kw or a vec of kws
@@ -205,18 +210,18 @@
 
 (reg-event-fx
  :android-af/pick-database-file
- (fn [{:keys [_db]} [_event-id]] 
+ (fn [{:keys [_db]} [_event-id]]
    {:fx [[:android-af/bg-pick-database-file]]}))
 
 (reg-fx
  :android-af/bg-pick-database-file
- (fn [] 
+ (fn []
    (bg/pick-database-to-read-write
-    (fn [api-response] 
+    (fn [api-response]
       (when-let [picked-response (on-ok
                                   api-response
                                   ;; main app's :database-file-pick-error reused 
-                                  (fn [error] 
+                                  (fn [error]
                                     (dispatch [:database-file-pick-error error])))]
         (dispatch [:android-af/database-file-picked picked-response]))))))
 
@@ -241,8 +246,7 @@
         :fx [[:android-af/bg-load-kdbx [(get-in db [:android-af  :open-database :database-full-file-name])
                                         (get-in db [:android-af :open-database :password])
                                         (get-in db [:android-af :open-database :key-file-name])
-                                        false
-                                        ]]]}))))
+                                        false]]]}))))
 
 (reg-fx
  :android-af/bg-load-kdbx
@@ -324,7 +328,7 @@
 ;; For now, the main app event ':close-kdbx-completed' triggers this event 
 (reg-event-fx
  :android-af/main-app-event-happened
- (fn [{:keys [_db]} [_event_id _args]] 
+ (fn [{:keys [_db]} [_event_id _args]]
    {:fx [[:dispatch [:android-af-common/next-page HOME_PAGE_ID "Home"]]]}))
 
 (reg-sub
@@ -342,7 +346,7 @@
   []
   (subscribe [:android-af-search-result-entry-items]))
 
-(defn search-term 
+(defn search-term
   "Gets the search term"
   []
   (subscribe [:android-af-search-term]))
@@ -365,21 +369,20 @@
               (assoc-in  [:android-af :search :error-text] nil)
               (assoc-in  [:android-af :search :not-matched] not-matched))})))
 
-
 #_(reg-event-db
- :android-af-search-term-clear
- (fn [db [_event-id]]
-   (-> db (assoc-in [:android-af :search :term] nil)
-       (assoc-in  [:android-af :search :error-text] nil)
-       (assoc-in [:android-af :search :selected-entry-id] nil)
-       (assoc-in  [:android-af :search :result] []))))
+   :android-af-search-term-clear
+   (fn [db [_event-id]]
+     (-> db (assoc-in [:android-af :search :term] nil)
+         (assoc-in  [:android-af :search :error-text] nil)
+         (assoc-in [:android-af :search :selected-entry-id] nil)
+         (assoc-in  [:android-af :search :result] []))))
 
 (reg-event-db
  :android-af-search-error-text
  (fn [db [_event-id error-text]]
    (-> db (assoc-in  [:android-af :search :error-text] error-text)
-          (assoc-in  [:android-af :search :selected-entry-id] nil)
-          (assoc-in  [:android-af :search :result] []))))
+       (assoc-in  [:android-af :search :selected-entry-id] nil)
+       (assoc-in  [:android-af :search :result] []))))
 
 
 ;; Backend API call 
@@ -404,14 +407,50 @@
        r))))
 
 #_(reg-sub
- :android-af-search-selected-entry-id
- (fn [db _query-vec]
-   (get-in db [:android-af :search :selected-entry-id])))
+   :android-af-search-selected-entry-id
+   (fn [db _query-vec]
+     (get-in db [:android-af :search :selected-entry-id])))
 
 (reg-sub
  :android-af-search-term
  (fn [db _query-vec]
    (get-in db [:android-af :search :term])))
+
+
+;;;;;;;;;;;;;;;;;;;;;  Key files related ;;;;;;;;;;;;;;
+
+(defn key-files-info []
+  (subscribe [:android-af-key-files-info]))
+
+(reg-fx
+ :bg-android-af-list-key-files
+ (fn []
+   (bg/list-key-files (fn [api-response]
+                        (when-let [key-files (on-ok api-response)]
+                          (dispatch [:android-af-key-files-info-loaded key-files]))))))
+
+;; This info is used to form a select options so that user can select a keyfile to use if required
+(reg-event-fx
+ :android-af-key-files-info-loaded
+ (fn [{:keys [db]} [_event-id key-files]]
+   (let [key-files-info (map (fn [{:keys [full-file-name file-name]}]
+                               {:full-file-name  full-file-name
+                                :file-name file-name}) key-files)]
+     {:db (-> db (assoc-in [:android-af :key-files-info] key-files-info))})))
+
+;; User has selected a keyfile name to use 
+(reg-event-fx
+ :android-af/open-database-key-file-selected
+ (fn [{:keys [db]} [_event-id {:keys [key-file-name-part key-file-name] :as _m}]]
+   {:db (-> db (assoc-in [:android-af :open-database :key-file-name-part] key-file-name-part)
+            (assoc-in [:android-af :open-database :key-file-name] key-file-name))}))
+
+(reg-sub
+ :android-af-key-files-info
+ (fn [db _query-vec]
+   (let [r (get-in db [:android-af :key-files-info])]
+     (if-not (nil? r) r  []))))
+
 
 (comment
   (in-ns 'onekeepass.mobile.android.autofill.events.common)

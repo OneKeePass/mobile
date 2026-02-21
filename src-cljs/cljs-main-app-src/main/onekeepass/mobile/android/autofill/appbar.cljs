@@ -1,12 +1,13 @@
 (ns onekeepass.mobile.android.autofill.appbar
   "Only the Android Autofill specific appbar components"
-  (:require [onekeepass.mobile.android.autofill.entry-list :as el]
-            [onekeepass.mobile.android.autofill.entry-form :as ef]
-            [onekeepass.mobile.android.autofill.events.common :as cmn-events :refer [ENTRY_FORM_PAGE_ID
-                                                                                     ENTRY_LIST_PAGE_ID
-                                                                                     HOME_PAGE_ID
-                                                                                     to-previous-page]]
-            [onekeepass.mobile.android.autofill.start-page :refer [open-page-content]]
+  (:require [onekeepass.mobile.android.autofill.entry-list :as android-af-el]
+            [onekeepass.mobile.android.autofill.entry-form :as android-af-ef]
+            [onekeepass.mobile.android.autofill.events.common :as android-af-cmn-events 
+             :refer [ENTRY_FORM_PAGE_ID
+                     ENTRY_LIST_PAGE_ID
+                     HOME_PAGE_ID
+                     to-previous-page]]
+            [onekeepass.mobile.android.autofill.start-page :as android-af-start-page]
             [onekeepass.mobile.rn-components :as rnc :refer [background-color
                                                              primary-color
                                                              rnp-appbar-header
@@ -48,16 +49,16 @@
 (defn appbar-body-content  [{:keys [page]}]
   (cond
     (= page HOME_PAGE_ID)
-    [open-page-content]
+    [android-af-start-page/open-page-content]
 
     (= page ENTRY_LIST_PAGE_ID)
-    [el/content]
+    [android-af-el/content]
 
     (= page ENTRY_FORM_PAGE_ID)
-    [ef/content]
+    [android-af-ef/content]
 
     :else
-    [open-page-content]))
+    [android-af-start-page/open-page-content]))
 
 (defn appbar-header-content
   "The page body content based on the page info set"
@@ -77,5 +78,5 @@
 
 (defn appbar-main-content []
   [rnc/rn-view {:style {:flex 1}}
-   [appbar-header-content @(cmn-events/page-info)]
-   [appbar-body-content   @(cmn-events/page-info)]])
+   [appbar-header-content @(android-af-cmn-events/page-info)]
+   [appbar-body-content   @(android-af-cmn-events/page-info)]])

@@ -29,13 +29,22 @@
                                database-full-file-name
                                password
                                password-visible
-                               _key-file-name-part
+                               key-file-name-part
                                error-fields
                                status]}]
 
   (let [locked? @(cmn-events/locked? database-full-file-name)
         in-progress? (= :in-progress status)
-        dlg-title (if locked? (lstr-dlg-title "unlockDatabase") (lstr-dlg-title "openDatabase"))]
+        dlg-title (if locked? (lstr-dlg-title "unlockDatabase") (lstr-dlg-title "openDatabase"))
+        key-files-info @(android-af-cmn-events/key-files-info)
+        names (mapv (fn [{:keys [full-file-name file-name]}]
+                      {:key full-file-name :label file-name}) key-files-info)
+
+        on-change (fn [^js/SelOption option]
+                    ;; option is the selected member from the names list passed as :options 
+                    (android-af-cmn-events/open-database-key-file-selected
+                     {:key-file-name-part (.-label option)
+                      :key-file-name (.-key option)}))]
 
     [cust-dialog {:style {}
                   :visible dialog-show
@@ -49,7 +58,7 @@
                         :onChangeText #()}]
        [rnp-text-input {:style {:margin-top 10}
                         :label (lstr-l "masterPassword")
-                                 ;;:value password
+                        ;;:value password
                         :defaultValue password
                         :autoComplete "off"
                         :autoCapitalize "none"
@@ -61,32 +70,20 @@
                                   :onPress #(android-af-cmn-events/database-field-update
                                              :password-visible (not password-visible))}])
                         :onChangeText (fn [v]
-                                                 ;; After entering some charaters and delete is used to remove those charaters
-                                                 ;; password will have a string value "" resulting in a non visible password. Need to use nil instead
+                                        ;; After entering some charaters and delete is used to remove those charaters
+                                        ;; password will have a string value "" resulting in a non visible password. Need to use nil instead
                                         (android-af-cmn-events/database-field-update :password (if (empty? v) nil v)))}]
        (when (contains? error-fields :password)
          [rnp-helper-text {:type "error" :visible (contains? error-fields :password)}
           (:password error-fields)])
 
-       [rnp-divider {:style {:margin-top 10 :margin-bottom 10 :backgroundColor "grey"}}]
 
-       ;; TODO: Include keyFile support. For now not used for autofill due to lack of time
-       #_(if  key-file-name-part
-           [rnp-text-input {:style {:margin-top 10}
-                            :label (lstr-l 'keyFile)
-                            :defaultValue key-file-name-part
-                            :readOnly (if (is-iOS) true false)
-                            :onPressIn #(android-af-cmn-events/show-key-file-form)
-                            :onChangeText nil
-                            :right (r/as-element [rnp-text-input-icon
-                                                  {:icon const/ICON-CLOSE
-                                                   :onPress (fn []
-                                                              (android-af-cmn-events/database-field-update :key-file-name-part nil)
-                                                              (android-af-cmn-events/database-field-update :key-file-name nil))}])}]
-           [rnp-text {:style {:margin-top 15
-                              :textDecorationLine "underline"
-                              :text-align "center"}
-                      :onPress #(android-af-cmn-events/show-key-file-form)} (lstr-l 'keyFile)])]
+       ;; Similar to ios autfofill keyfile usage
+       [rn-view {}
+        [cc/select-field-view {:text-label (str (lstr-l 'keyFile) "(Optional)")
+                               :options names
+                               :value key-file-name-part
+                               :on-change on-change}]]]
 
       [rnp-progress-bar {:style {:margin-top 10} :visible in-progress? :indeterminate true}]]
 
@@ -119,8 +116,8 @@
     (let [[title text] (if (= reason-code const/PERMISSION_REQUIRED_TO_READ)
                          [(str (lstr-dlg-title 'reopen) " " file-name),
                           (str (lstr-dlg-text 'reopenReadPermissionrequired) ". " (lstr-dlg-text 'reopenAgain {:file-name file-name}))]
-                       ;; in iOS, seen this happening when we try to open (pressing on the home page dabase list) a database 
-                       ;; file stored in iCloud and file is not synched to the mobile yet  
+                         ;; in iOS, seen this happening when we try to open (pressing on the home page dabase list) a database 
+                         ;; file stored in iCloud and file is not synched to the mobile yet  
                          [(lstr-dlg-title 'reopen)
                           (str (lstr-dlg-text 'reopenNotOldRef) ". " (lstr-dlg-text 'reopenAgain {:file-name file-name}))])]
       [cc/confirm-dialog  {:dialog-show dialog-show
