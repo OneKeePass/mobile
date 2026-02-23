@@ -35,7 +35,9 @@
 
   (let [locked? @(cmn-events/locked? database-full-file-name)
         in-progress? (= :in-progress status)
-        dlg-title (if locked? (lstr-dlg-title "unlockDatabase") (lstr-dlg-title "openDatabase"))
+        ;; User needs to open the db as if it is not yet opened even when it is locked.
+        ;; So we keep the title as openDatabase
+        dlg-title (lstr-dlg-title "openDatabase") #_(if locked? (lstr-dlg-title "unlockDatabase") (lstr-dlg-title "openDatabase"))
         key-files-info @(android-af-cmn-events/key-files-info)
         names (mapv (fn [{:keys [full-file-name file-name]}]
                       {:key full-file-name :label file-name}) key-files-info)
@@ -153,8 +155,8 @@
     :else
     [const/ICON-DATABASE-OUTLINE @rnc/secondary-color]))
 
-(defn row-item-on-press [file-name db-file-path found _locked]
-  (android-af-cmn-events/open-selected-database file-name db-file-path found)
+(defn row-item-on-press [file-name db-file-path found locked?]
+  (android-af-cmn-events/open-selected-database file-name db-file-path found locked?)
   #_(cond
       locked
       (opndb-events/unlock-selected-db file-name db-file-path)

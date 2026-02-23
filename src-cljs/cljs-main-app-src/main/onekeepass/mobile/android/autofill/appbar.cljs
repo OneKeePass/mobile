@@ -27,7 +27,7 @@
    (= page HOME_PAGE_ID)
     false
     (do
-      (to-previous-page)
+      (to-previous-page page)
       true)))
 
 ;; holds additional copy of the current page for android hardware back action handling use
@@ -71,7 +71,7 @@
    (when-not (= page HOME_PAGE_ID)
      [rnp-appbar-back-action {:style {}
                               :color @background-color
-                              :onPress (fn [] (to-previous-page))}])
+                              :onPress (fn [] (to-previous-page page))}])
 
    [positioned-title :title title]])
 

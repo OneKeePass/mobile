@@ -3,7 +3,8 @@
   (:require
    [onekeepass.mobile.background :as bg]
    [onekeepass.mobile.constants :refer [CATEGORY_ALL_ENTRIES]]
-   [onekeepass.mobile.events.common :refer [on-ok]]
+   [onekeepass.mobile.constants :as const]
+   [onekeepass.mobile.events.common :as cmn-events :refer [on-ok]]
    [onekeepass.mobile.events.open-database :refer [blank-open-db]]
    [re-frame.core :refer [dispatch reg-event-db reg-event-fx reg-fx reg-sub
                           subscribe]]
@@ -21,11 +22,11 @@
   []
   (dispatch-sync [:android-af-load-autofill-init-data]))
 
+;; Gets all the keyfiles available to use in a select field if required
 (reg-event-fx
  :android-af-load-autofill-init-data
  (fn [{:keys [_db]} [_event-id]]
    {:fx [[:bg-android-af-list-key-files]]}))
-
 
 ;; Based on the fn 'db-opened' from the main common 
 ;; We use the main ':opened-db-list' to maintain the list of the recent db list
@@ -86,7 +87,13 @@
 
 (defn to-previous-page
   "Called to navigate to the previous page"
-  []
+  [current-page-id]
+  #_(println "current-page-id in to-previous-page is " current-page-id)
+
+  ;; Lock the opened db before navigating back to the home page
+  (when (= current-page-id ENTRY_LIST_PAGE_ID)
+    (dispatch [:android-af-common/lock-kdbx]))
+
   (dispatch [:android-af-common/previous-page]))
 
 (defn page-info []
@@ -128,16 +135,19 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Open db related ;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn open-selected-database
-  "Called to open a database when user presses a row item of the datanases list on the home page"
-  [file-name full-file-name-uri already-opened?]
+  "Called to open a database when user presses a row item of the databases list on the home page"
+  [file-name full-file-name-uri already-opened? locked?]
+  #_(println "already-opened? (not locked?) are " already-opened? (not locked?))
   #_(dispatch [:android-af/database-file-picked {:file-name file-name :full-file-name-uri full-file-name-uri}])
-  (if already-opened?
+  (if (and already-opened? (not locked?))
+    ;; The db is opened in the main app and it is not locked
     (dispatch [:android-af/set-active-db-key full-file-name-uri])
-    (dispatch [:android-af/database-file-picked {:file-name file-name :full-file-name-uri full-file-name-uri}])))
+    ;; The database is opening is called again even when the db is only locked to avoid copying all the main app's 
+    ;; 'unlock' events    
+    (dispatch [:android-af/database-file-picked-1 {:file-name file-name :full-file-name-uri full-file-name-uri}])))
 
 (defn cancel-on-press []
   (dispatch [:android-af/open-database-dialog-hide]))
-
 
 (defn open-database-key-file-selected [selected-keyfile-info]
   (dispatch [:android-af/open-database-key-file-selected selected-keyfile-info]))
@@ -225,10 +235,120 @@
                                     (dispatch [:database-file-pick-error error])))]
         (dispatch [:android-af/database-file-picked picked-response]))))))
 
+;; For now we lock the db once user navigates away from the autofill page either when they autofill from entry form or 
+;; when navigate back to the AF home page
+
+;; If the the main app is opened immediately after autofill or is already opened, then this db 
+;; will remain unlocked status
+
+;;TODO: Should we add a menu option on the homepage to close the db? 
+(reg-event-fx
+ :android-af-common/lock-kdbx
+ (fn [{:keys [db]} [_event-id]]
+   (let [db-key (get-in db [:android-af :open-database :database-full-file-name])]
+     #_(println "Will call lock db for db-key " db-key)
+     (if-not (nil? db-key)
+       {:db (cmn-events/assoc-in-selected-db db db-key [:locked] true)
+        :fx []}
+       {}))))
+
 (reg-sub
  :android-af/open-database-dialog-data
  (fn [db _query-vec]
    (get-in db [:android-af :open-database])))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;  DB open using biometric  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Called when user picks a db on the start page database list
+(reg-event-fx
+ :android-af/database-file-picked-1
+ (fn [{:keys [db]} [_event-id {:keys [_file-name full-file-name-uri] :as kdbx-file-info-m}]]
+   (let [biometric-available (bg/is-biometric-available)
+         biometric-enabled-db? (cmn-events/biometric-enabled-to-open-db db full-file-name-uri)]
+     (println "biometric-available biometric-enabled-db? are " biometric-available biometric-enabled-db?)
+     (if (and biometric-available biometric-enabled-db?)
+       {;; Calls the biometric authentication to get stored credentials
+        :fx [[:android-af/bg-authenticate-with-biometric-before-db-open [kdbx-file-info-m]]]}
+       ;; Calls the regular open db dialog
+       {:fx [[:dispatch [:android-af/database-file-picked kdbx-file-info-m]]]}
+       #_{:db (init-show-open-database-dialog db kdbx-file-info-m)}))))
+
+(defn- handle-db-credentials-response
+  "A dispatch fn handler that is called when the backend api 
+   stored-db-credentials-on-biometric-authentication for db open returns"
+  [kdbx-file-info-m api-response]
+  (let [stored-credentials (on-ok api-response
+                                  (fn [error]
+                                    (println "The bg/stored-db-credentials-on-biometric-authentication call returned error " error)
+                                    ;; When Backend api 'stored-db-credentials-on-biometric-authentication' results in error 
+                                    ;; for whatever reason. Ideally should not happen!
+                                    (dispatch [:android-af/database-file-picked kdbx-file-info-m])))]
+    (println "Received stored-credentials " stored-credentials)
+
+    (if (nil? stored-credentials)
+      ;; Handles the situation the stored-credentials returned from backend api is None
+      ;; This happens when user presses the db on db list first time after enabling Biometric in the settings 
+      (dispatch [:android-af/open-database-db-open-with-credentials kdbx-file-info-m])
+      ;; Found some stored-crdentials value
+      (dispatch [:android-af/open-database-db-open-credentials-retrieved stored-credentials kdbx-file-info-m]))))
+
+;; Called after getting the stored credentials ( a map from struct StoredCredential ) from secure enclave
+(reg-event-fx
+ :android-af/open-database-db-open-credentials-retrieved
+ ;; The args are stored-credentials , kdbx-file-info-m
+ (fn [{:keys [db]} [_event-id {:keys [password key-file-name] :as stored-credentials} {:keys [full-file-name-uri] :as kdbx-file-info-m}]]
+   ;; Set the credentials fields in :open-database fields so that we can reuse the credentisals if repick is used
+   ;; This repick may be asked if 'bg-load-kdbx' call response comes back with error 'FILE_NOT_FOUND' or 'PERMISSION_REQUIRED_TO_READ'
+   ;; Particularly we see 'FILE_NOT_FOUND' error code when iCloud file sync is not yet happened 
+   (println "In  :android-af/open-database-db-open-credentials-retrieved " stored-credentials kdbx-file-info-m)
+   {:db (-> db
+            (assoc-in [:android-af :open-database :password] password)
+            (assoc-in [:android-af :open-database :key-file-name] key-file-name)
+            (assoc-in [:android-af :open-database :database-full-file-name] full-file-name-uri)
+            (assoc-in [:android-af :open-database  :dialog-show] false))
+
+    :fx [#_[:dispatch [:common/message-modal-show nil 'loading]]
+         ;; load-kdbx as we have credentials 
+         #_[:android-af/bg-load-kdbx [(get-in db [:android-af  :open-database :database-full-file-name])
+                                      (get-in db [:android-af :open-database :password])
+                                      (get-in db [:android-af :open-database :key-file-name])
+                                      true]]
+         [:android-af/bg-load-kdbx  [full-file-name-uri password key-file-name true]]]}))
+
+; Called when biometric auth fails. 
+;; This can happen when the user uses FaceId first time after enabling or 
+;; stored credentials are no more valid
+(reg-event-fx
+ :android-af/open-database-db-open-with-credentials
+ (fn [{:keys [_db]} [_event-id kdbx-file-info-m]]
+   {:fx [[:dispatch [:android-af/database-file-picked kdbx-file-info-m]]
+         [:dispatch [:common/error-box-show 'biometricDbOpenFirstTime 'biometricDbOpenFirstTime]]]}))
+
+;; Call this when both flags 'biometric-available' and 'biometric-enabled-db?' are true
+(reg-fx
+ :android-af/bg-authenticate-with-biometric-before-db-open
+ (fn [[{:keys [full-file-name-uri] :as kdbx-file-info-m}]]
+   (println "android-af/bg-authenticate-with-biometric-before-db-open is called")
+   (let [;; Need to use 'partial' to create a backend call response handler 
+         ;; that holds 'kdbx-file-info-m' for later use 
+         cr-response-handler (partial handle-db-credentials-response kdbx-file-info-m)]
+     (println "Going to call  authenticate-with-biometric   " kdbx-file-info-m)
+     (bg/authenticate-with-biometric
+      (fn [api-response]
+        (when-let [result (on-ok api-response
+                                 (fn [error]
+                                   ;; As a fallback if there is any error in using biometric call. Not expected
+                                   (println "The bg/authenticate-with-biometric call returned error " error)
+                                   (dispatch [:android-af/database-file-picked kdbx-file-info-m])))]
+
+          (println "Biometric auth is " result)
+          ;; The variable 'result' will have some valid value when biometric call works 
+          (if (= result const/BIOMETRIC-AUTHENTICATION-SUCCESS)
+            ;; Retrieve the auth info for furthur use
+            (bg/stored-db-credentials-on-biometric-authentication full-file-name-uri cr-response-handler)
+            ;; As biometric matching failed, we need to use credential based one
+            (dispatch [:android-af/database-file-picked kdbx-file-info-m]))))))))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;; Load kdbx ;;;;;;;;;;;;;;;
 
@@ -251,6 +371,7 @@
 (reg-fx
  :android-af/bg-load-kdbx
  (fn [[db-file-name password key-file-name biometric-auth-used]]
+   (println "In android-af/bg-load-kdbx " db-file-name password key-file-name biometric-auth-used)
    (bg/load-kdbx db-file-name password key-file-name biometric-auth-used
                  (fn [api-response]
                    (when-let [kdbx-loaded
