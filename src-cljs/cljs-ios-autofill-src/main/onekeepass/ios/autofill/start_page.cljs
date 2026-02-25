@@ -46,7 +46,7 @@
     [rn-view {:style {:flex 1
                       :flexDirection "column"
                       :width "90%"
-                        ;;:justify-content "center"
+                      ;;:justify-content "center"
                       :margin-top "10%"}}
      [rnp-text-input {:label (lstr-l 'databaseFile)
                       :value database-file-name
@@ -54,7 +54,7 @@
                       :onChangeText #()}]
      [rnp-text-input {:style {:margin-top 10}
                       :label (lstr-l 'masterPassword)
-                               ;;:value password
+                      ;;:value password
                       :defaultValue password
                       :autoComplete "off"
                       :autoCapitalize "none"
@@ -65,8 +65,8 @@
                                {:icon (if password-visible "eye" "eye-off")
                                 :onPress #(opndb-events/database-field-update :password-visible (not password-visible))}])
                       :onChangeText (fn [v]
-                                               ;; After entering some charaters and delete is used to remove those charaters
-                                               ;; password will have a string value "" resulting in a non visible password. Need to use nil instead
+                                      ;; After entering some characters and delete is used to remove those charaters
+                                      ;; password will have a string value "" resulting in a non visible password. Need to use nil instead
                                       (opndb-events/database-field-update :password (if (empty? v) nil v)))}]
 
 
@@ -83,7 +83,7 @@
       [rnp-button {:mode "text"
                    :onPress (fn []
                               (.dismiss rn-keyboard)
-                                ;;^js/RNKeyboard (.dismiss rn-keyboard)
+                              ;;^js/RNKeyboard (.dismiss rn-keyboard)
                               (opndb-events/open-database-read-db-file))}
        (lstr-bl 'continue)]]]))
 
@@ -216,8 +216,8 @@
 
       [rnp-text {:style {:color @appbar-text-color
                          :max-width 200
-                             ;; :margin-right 20 
-                             ;; :margin-left 20
+                         ;; :margin-right 20 
+                         ;; :margin-left 20
                          }
                  :ellipsizeMode "tail"
                  :numberOfLines 1
@@ -227,18 +227,64 @@
                    :mode "text"
                    :onPress #()} ""]]]))
 
+;; https://github.com/OneKeePass/mobile/issues/50
+
+;; When user tries enter text in searchbar the text feedback is slow with ':value term' in a searchbar props.
+;; This appears to be the same issue that was observed in the main app's TextInput use also (entry-form, key-form etc )
+;; Not sure this is problem with react native or with reagent use (most probably this is a reagent issue)
+;; There we had used ':defaultValue term' instead of ':value term' and that solved the issue.
+;; This also worked with 'rnp-searchbar'. But the 'clearIcon' was not showing. 
+;; Going through the source code at https://github.com/callstack/react-native-paper/blob/v5.14.5/src/components/Searchbar.tsx#L258
+;; We see this
+;; const shouldRenderTraileringIcon = isBarMode && traileringIcon &&  !loading &&(!value || right !== undefined);
+;; So the 'clearIcon' will not work when we use defaultValue. The solution is to use :right prop or :traileringIcon 
+;; Using :right (fn [..]), put the icon to the left instead of right - not sure why?
+;; Using traileringIcon with onTraileringIconPress works and input text entry is not sluggish and also we can clear the text entered if required
+
+;; This issue is not seen in the main app's search box. Why?
+
 (defn searchbar []
   (let [term @(cmn-events/search-term)]
     [rn-view {:margin-top 10}
      [rnp-searchbar {;; clearIcon mostly visible when value has some vlaue
-                     :clearIcon "close"
+                     ;; :clearIcon "close"
                      :style {:margin-left 1
                              :margin-right 1
                              :borderWidth 0}
                      :placeholder "Search"
                      :onChangeText (fn [v]
                                      (cmn-events/search-term-update v))
-                     :value term}]]))
+
+                     ;; :value term
+
+                     :defaultValue term
+                     :traileringIcon "close"
+                     :onTraileringIconPress (fn [_e]
+                                              (println "Calling cmn-events/search-term-update in onTraileringIconPress")
+                                              (cmn-events/search-term-clear))
+
+                     ;; This put the icon on the left instead of right side
+                     ;;  :right (fn [props]
+                     ;;           (r/as-element [rnc/rnp-text-input-icon
+                     ;;                          {:icon "close"
+                     ;;                           :style {:right 0}
+                     ;;                           :onPress #(println "Clear is clicked")}])
+                     ;;           )
+                     }]]))
+
+
+#_(defn searchbar []
+    (let [term @(cmn-events/search-term)]
+      [rn-view {:margin-top 10}
+       [rnp-searchbar {;; clearIcon mostly visible when value has some vlaue
+                       :clearIcon "close"
+                       :style {:margin-left 1
+                               :margin-right 1
+                               :borderWidth 0}
+                       :placeholder "Search"
+                       :onChangeText (fn [v]
+                                       (cmn-events/search-term-update v))
+                       :value term}]]))
 
 (defn open-page-content []
   [rn-safe-area-view {:style {:flex 1 :background-color @rnc/page-background-color}}

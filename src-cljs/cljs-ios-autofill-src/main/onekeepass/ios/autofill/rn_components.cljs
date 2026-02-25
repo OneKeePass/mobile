@@ -16,7 +16,7 @@
    ["react-native-modal-selector" :as rnms]
    ["react-native-paper" :as rnp]
    ["react-native-safe-area-context" :as sa-context]
-   ["react-native-vector-icons" :as vec-icons]
+   ["@react-native-vector-icons/material-design-icons"]
 
    ;; Local js components
    ["/components/RNPCustomization" :as rnp-customization]
