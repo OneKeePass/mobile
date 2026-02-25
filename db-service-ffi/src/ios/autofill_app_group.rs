@@ -28,6 +28,11 @@ use crate::{
 
 use super::IosApiCallbackImpl;
 
+// This is autofill extension's root dir and it is different from 'okp_shared' which is
+// a common root dir for both main app and autofill extension
+// Both 'okp' and 'okp_shared' are under the AppGroup dir
+
+// TODO: Shoud we change this root dir name of 'okp' to 'okp_extension' ?
 pub(crate) const EXTENSION_ROOT_DIR: &str = "okp";
 
 pub(crate) const AG_DATA_FILES_DIR: &str = "db_files";
@@ -50,7 +55,6 @@ pub(crate) fn delete_copied_autofill_details(db_key: &str) -> OkpResult<()> {
         &group_db_file_dir,
         r
     );
-
 
     AutoFillMeta::read().remove_copied_db_info(&db_key);
     Ok(())
@@ -81,7 +85,6 @@ pub(crate) fn remove_all_app_extension_contents() {
     if let Ok(path) = app_group_root_sub_dir(AG_DATA_FILES_DIR) {
         let _ = remove_dir_contents(path);
     }
-
 
     if let Some(path) = autofill_meta_json_file() {
         let _ = fs::remove_file(path);
@@ -152,7 +155,6 @@ fn copy_files_to_app_group(db_key: &str) -> OkpResult<CopiedDbFileInfo> {
     let copied_db_info = CopiedDbFileInfo::new(file_name, db_file_path, db_key.to_string());
     AutoFillMeta::read().add_copied_db_info(copied_db_info.clone());
 
-
     Ok(copied_db_info)
 }
 
@@ -212,7 +214,7 @@ impl AutoFillMeta {
         // debug!("AutoFillMeta is {:?} ", &pref_file_name);
 
         let json_str = fs::read_to_string(pref_file_name).unwrap_or("".into());
-        
+
         // debug!("AutoFillMeta json_str is {}", &json_str);
 
         let mut af_meta = if json_str.is_empty() {
@@ -482,7 +484,6 @@ impl IosAppGroupSupportService {
                     biometric_auth_used
                 }
             );
-
 
             let mut file = File::open(&util::url_to_unix_file_name(&db_file_name))?;
             let file_name = AppState::uri_to_file_name(&db_file_name);

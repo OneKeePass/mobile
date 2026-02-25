@@ -2,15 +2,15 @@
   "All common events that are used across many pages"
   (:require [clojure.string :as str]
             [onekeepass.ios.autofill.background :as bg]
-            [onekeepass.ios.autofill.constants :as const :refer [HOME_PAGE_ID ENTRY_FORM_PAGE_ID ]]
+            [onekeepass.ios.autofill.constants :as const :refer [HOME_PAGE_ID ENTRY_FORM_PAGE_ID]]
             [onekeepass.ios.autofill.events.common-dialogs]
             [re-frame.core :refer [dispatch dispatch-sync reg-event-db
                                    reg-event-fx reg-fx reg-sub subscribe]]))
 
 (defn sync-initialize
   "Called just before rendering to set all requied values in re-frame db"
-  [] 
-  (dispatch-sync [:load-autofill-init-data] 
+  []
+  (dispatch-sync [:load-autofill-init-data]
                  #_[:load-autofill-db-files-info]))
 
 ;;;;;;;;;;;;;;;;
@@ -86,23 +86,23 @@
   (subscribe [:key-files-info]))
 
 #_(reg-event-fx
- :load-autofill-db-files-info
- (fn [{:keys [db]} [_event-id]]
-   {:fx [[:bg-list-app-group-db-files]]}))
+   :load-autofill-db-files-info
+   (fn [{:keys [db]} [_event-id]]
+     {:fx [[:bg-list-app-group-db-files]]}))
 
 #_(reg-fx
- :bg-list-app-group-db-files
- (fn []
-   (bg/list-app-group-db-files (fn [api-response]
-                                 (when-let [files-info (on-ok api-response)]
-                                   (dispatch [:autofill-db-files-info-loaded files-info]))))))
+   :bg-list-app-group-db-files
+   (fn []
+     (bg/list-app-group-db-files (fn [api-response]
+                                   (when-let [files-info (on-ok api-response)]
+                                     (dispatch [:autofill-db-files-info-loaded files-info]))))))
 
 #_(reg-event-fx
- :autofill-db-files-info-loaded
- (fn [{:keys [db]} [_event-id files-info]]
-   {:db (-> db (assoc-in [:autofill-db-files-info] files-info))
-    :fx [[:bg-load-database-preferences]
-         [:bg-list-key-files]]}))
+   :autofill-db-files-info-loaded
+   (fn [{:keys [db]} [_event-id files-info]]
+     {:db (-> db (assoc-in [:autofill-db-files-info] files-info))
+      :fx [[:bg-load-database-preferences]
+           [:bg-list-key-files]]}))
 
 (defn app-preference-data
   "Gets the app pref data"
@@ -131,8 +131,8 @@
 
 (reg-event-fx
  :autofill-init-data-loaded
- (fn [{:keys [db]} [_event-id {:keys [copied-dbs-info database-preferences app-lock-preference last-pin-auth-success-time] :as af-init-data}]] 
-   {:db (-> db (assoc-in [:app-preference :data] 
+ (fn [{:keys [db]} [_event-id {:keys [copied-dbs-info database-preferences app-lock-preference last-pin-auth-success-time] :as af-init-data}]]
+   {:db (-> db (assoc-in [:app-preference :data]
                          {:database-preferences database-preferences
                           :app-lock-preference app-lock-preference
                           :last-pin-auth-success-time last-pin-auth-success-time})
@@ -281,6 +281,9 @@
 
 (defn search-term-update [term]
   (dispatch [:search-term-update term]))
+
+(defn search-term-clear []
+  (dispatch [:search-term-clear]))
 
 (defn search-result-entry-items
   "Returns an atom that has a list of all search term matched entry items "

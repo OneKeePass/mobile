@@ -86,6 +86,9 @@
    [rnp-menu-item {:title (lstr-ml "view")
                    :onPress (list-menu-action-factory-fn rs-events/remote-storage-config-view connection-id)}]
 
+   [rnp-menu-item {:title (lstr-ml "edit")
+                   :onPress (list-menu-action-factory-fn rs-events/remote-storage-config-edit connection-id)}]
+   [rnp-divider]
    [rnp-menu-item {:title (lstr-ml "delete")
                    :onPress (list-menu-action-factory-fn show-conf-dlg connection-id)}]])
 

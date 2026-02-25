@@ -1,47 +1,44 @@
 (ns onekeepass.mobile.entry-category
-  (:require [onekeepass.mobile.common-components  :refer [menu-action-factory]]
-            [onekeepass.mobile.constants :as const :refer [BANK_ACCOUNT_TYPE_NAME
-                                                           CAT_SECTION_TITLE
-                                                           CATEGORY_ALL_ENTRIES
-                                                           CATEGORY_DELETED_ENTRIES
-                                                           CATEGORY_FAV_ENTRIES
-                                                           CREDIT_DEBIT_CARD_TYPE_NAME
-                                                           AUTO_DB_OPEN_TYPE_NAME
-                                                           GROUP_SECTION_TITLE
-                                                           ICON-CHECKBOX-BLANK-OUTLINE
-                                                           ICON-CHECKBOX-OUTLINE
-                                                           ICON-PLUS ICON-TAGS
-                                                           LOGIN_TYPE_NAME
-                                                           STANDARD_ENTRY_TYPES
-                                                           TAG_SECTION_TITLE
-                                                           TYPE_SECTION_TITLE
-                                                           UUID_OF_ENTRY_TYPE_LOGIN
-                                                           WIRELESS_ROUTER_TYPE_NAME]]
-            [onekeepass.mobile.events.common :as cmn-events]
-            [onekeepass.mobile.events.entry-category :as ecat-events]
-            [onekeepass.mobile.icons-list :refer [icon-id->name]]
-            [onekeepass.mobile.rn-components :as rnc :refer [cust-rnp-divider
-                                                             dots-icon-name
-                                                             icon-color
-                                                             on-primary-color
-                                                             page-background-color
-                                                             primary-container-color
-                                                             rn-safe-area-view
-                                                             rn-section-list
-                                                             rn-view
-                                                             rnp-divider
-                                                             rnp-fab
-                                                             rnp-icon-button
-                                                             rnp-list-icon
-                                                             rnp-list-item
-                                                             rnp-menu
-                                                             rnp-menu-item
-                                                             rnp-text]]
-            [onekeepass.mobile.translation :refer [lstr-cv
-                                                   lstr-entry-type-title
-                                                   lstr-ml]]
-            [onekeepass.mobile.utils :refer [contains-val? str->int]]
-            [reagent.core :as r]))
+  (:require
+   [onekeepass.mobile.common-components  :refer [menu-action-factory]]
+   [onekeepass.mobile.constants :as const :refer [AUTO_DB_OPEN_TYPE_NAME
+                                                  BANK_ACCOUNT_TYPE_NAME
+                                                  CAT_SECTION_TITLE
+                                                  CATEGORY_ALL_ENTRIES
+                                                  CATEGORY_DELETED_ENTRIES
+                                                  CATEGORY_FAV_ENTRIES
+                                                  CREDIT_DEBIT_CARD_TYPE_NAME
+                                                  GROUP_SECTION_TITLE
+                                                  ICON-CHECKBOX-BLANK-OUTLINE
+                                                  ICON-CHECKBOX-OUTLINE
+                                                  ICON-PLUS ICON-TAGS
+                                                  LOGIN_TYPE_NAME
+                                                  STANDARD_ENTRY_TYPES
+                                                  TAG_SECTION_TITLE
+                                                  TYPE_SECTION_TITLE
+                                                  UUID_OF_ENTRY_TYPE_LOGIN
+                                                  WIRELESS_ROUTER_TYPE_NAME]]
+   [onekeepass.mobile.events.common :as cmn-events]
+   [onekeepass.mobile.events.settings :as stgs-events]
+   [onekeepass.mobile.events.entry-category :as ecat-events]
+   [onekeepass.mobile.icons-list :refer [icon-id->name]]
+   [onekeepass.mobile.rn-components :as rnc :refer [cust-rnp-divider
+                                                    dots-icon-name icon-color
+                                                    on-primary-color
+                                                    page-background-color
+                                                    primary-container-color
+                                                    rn-safe-area-view
+                                                    rn-section-list rn-view
+                                                    rnp-divider rnp-fab
+                                                    rnp-icon-button
+                                                    rnp-list-icon
+                                                    rnp-list-item rnp-menu
+                                                    rnp-menu-item rnp-text]]
+   [onekeepass.mobile.translation :refer [lstr-cv lstr-entry-type-title lstr-l
+                                          lstr-ml]]
+   [onekeepass.mobile.utils :refer [contains-val? str->int]]
+   [onekeepass.mobile.bottom-navigator :as bn]
+   [reagent.core :as r]))
 
 (set! *warn-on-infer* true)
 
@@ -94,10 +91,10 @@
 (defn category-long-press-menu [{:keys [show x y category-detail category-key]}]
   [rnp-menu {:visible show :key (str show) :onDismiss hide-category-long-press-menu :anchor (clj->js {:x x :y y})}
    (cond
-     
-    ;;  @(cmn-events/current-db-disable-edit)
-    ;;  nil
-     
+
+     ;;  @(cmn-events/current-db-disable-edit)
+     ;;  nil
+
      (= category-key TYPE_SECTION_TITLE)
      [rnp-menu-item {:title (lstr-ml "addEntry")
                      :disabled @(cmn-events/current-db-disable-edit)
@@ -182,8 +179,7 @@
                      BANK_ACCOUNT_TYPE_NAME const/ICON-BANK-OUTLINE
                      WIRELESS_ROUTER_TYPE_NAME const/ICON-ROUTER-WIRELESS
                      CREDIT_DEBIT_CARD_TYPE_NAME const/ICON-CREDIT-CARD-OUTLINE
-                     AUTO_DB_OPEN_TYPE_NAME const/ICON-LAUNCH
-                     })
+                     AUTO_DB_OPEN_TYPE_NAME const/ICON-LAUNCH})
 
 (defn category-icon-name
   "Called to get icon name for General categories or Entry types category or Group as Category or Group "
@@ -257,7 +253,7 @@
                                            [rnp-text {:variant "titleMedium"} items-count]))}])))
 
 ;; title may be one of Types,Groups,Categories, Tags
-(defn category-header [title group-by] 
+(defn category-header [title group-by]
   [rn-view  {:style {:flexDirection "row"
                      :backgroundColor  @primary-container-color
                      :margin-top 5
@@ -314,12 +310,17 @@
                                (when-not (= key GENERAL_KEY)
                                  (r/as-element [category-header title group-by]))))}]))
 
-(defn entry-category-content [] 
+(defn- show-fab []
+  [rnp-fab {:style {:position "absolute" :margin 16 :right 0 :bottom (+ (rnc/get-inset-bottom) 100)}
+            :disabled @(cmn-events/current-db-disable-edit)
+            :icon ICON-PLUS :onPress (fn [e] (show-fab-action-menu e))}])
+
+(defn entry-category-content []
   [rn-safe-area-view {:style {:flex 1 :background-color @page-background-color}}
    [categories-content]
+   [:f> bn/bottom-common-nav-bar]
+   [show-fab]
+
    [fab-action-menu @fab-action-menu-data @(ecat-events/root-group)]
    [category-long-press-menu @category-long-press-menu-data]
-   [group-by-menu @group-by-menu-data]
-   [rnp-fab {:style {:position "absolute" :margin 16 :right 0 :bottom (rnc/get-inset-bottom)}
-             :disabled @(cmn-events/current-db-disable-edit)
-             :icon ICON-PLUS :onPress (fn [e] (show-fab-action-menu e))}]])
+   [group-by-menu @group-by-menu-data]])

@@ -162,7 +162,7 @@
         [rnp-button {:style {:width "50%"}
                             ;;:labelStyle {:fontWeight "bold"}
                      :mode "contained"
-                     :on-press #(rs-events/remote-storage-new-config-connect-and-save kw-type)}
+                     :on-press #(rs-events/remote-storage-config-connect-and-save kw-type)}
          (lstr-bl 'connectAndSave)]])]))
 
 (defn webdav-connection-config-form []
@@ -234,7 +234,7 @@
         [rnp-button {:style {:width "50%"}
                                  ;;:labelStyle {:fontWeight "bold"}
                      :mode "contained"
-                     :on-press #(rs-events/remote-storage-new-config-connect-and-save kw-type)}
+                     :on-press #(rs-events/remote-storage-config-connect-and-save kw-type)}
          (lstr-bl 'connectAndSave)]])]))
 
 (defn main-content []

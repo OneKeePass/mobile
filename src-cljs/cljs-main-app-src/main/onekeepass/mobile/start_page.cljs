@@ -1,6 +1,7 @@
 (ns
  onekeepass.mobile.start-page
   (:require [onekeepass.mobile.background :refer [is-iOS]]
+            [onekeepass.mobile.bottom-navigator :as bn]
             [onekeepass.mobile.common-components :as cc  :refer [menu-action-factory
                                                                  message-dialog]]
             [onekeepass.mobile.constants :as const :refer [BROWSE-TYPE-DB-NEW BROWSE-TYPE-DB-OPEN]]
@@ -85,7 +86,7 @@
               :visible dialog-show
               :dismissable false
               :dismissableBackButton false
-                 ;;:onDismiss #() 
+              ;;:onDismiss #() 
               :contentContainerStyle {:borderRadius 15
                                       :height "80%"
                                       :backgroundColor (bg1)
@@ -412,7 +413,7 @@
   (swap! db-action-menu-data assoc :show false))
 
 (defn show-db-action-menu [^js/PEvent event file-name db-file-path opened? locked?]
-  #_(println "Showing db action menu for file " file-name " at " db-file-path" opened? " opened? " locked? " locked?)
+  #_(println "Showing db action menu for file " file-name " at " db-file-path " opened? " opened? " locked? " locked?)
   (swap! db-action-menu-data assoc :show true
          :db-file-path db-file-path
          :file-name file-name
@@ -612,7 +613,7 @@
     ;; Calls the useSafeAreaInsets hook 
     ;; TODO: Avoid calling this more than once
     #_(rnc/set-insets (rnc/use-safe-area-insets))
-    
+
     [rn-view {:style {:flex 1
                       :justify-content "center"
                       ;; :background-color "green"
@@ -636,13 +637,15 @@
       [databases-list-content recent-uses]]]))
 
 (defn open-page-content []
-  [rn-safe-area-view {:style {:flex 1 
+  [rn-safe-area-view {:style {:flex 1
                               ;;:background-color "red" #_
                               :background-color @rnc/page-background-color}
-                      
+
                       :edges ["right" "bottom" "left"]}
-   
+
    [:f> main-content]
+
+   [bn/home-page-bottom-bar]
 
    ;; This absolutely position view works in both android and iOS
    ;; And then may be used for bottom icons panel
@@ -658,5 +661,5 @@
     [before-storage-selection-info-dialog @(dlg-events/before-storage-selection-info-dialog-data)]
     [start-page-storage-selection-dialog]
     [file-info-dialog @(cmn-events/file-info-dialog-data)]
-    [message-repick-database-file-dialog @(opndb-events/repick-confirm-data)] 
+    [message-repick-database-file-dialog @(opndb-events/repick-confirm-data)]
     [message-dialog @(cmn-events/message-dialog-data)]]])

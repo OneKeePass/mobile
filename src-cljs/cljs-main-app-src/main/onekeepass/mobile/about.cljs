@@ -12,7 +12,7 @@
 ;; Android:
 ;; See 'mobile/android/app/build.gradle'  (versionName)
 
-(def app-version "v0.18.0")
+(def app-version "v0.19.0")
 
 (defn link-text [url & opts]
   [rnp-text {:style (merge {:margin-left 5

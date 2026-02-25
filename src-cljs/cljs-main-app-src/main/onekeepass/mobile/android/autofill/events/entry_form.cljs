@@ -12,9 +12,9 @@
                                    reg-sub subscribe]]))
 
 #_(defn entry-form-field-visibility-toggle
-  "Called with the field name as key that is toggled between show/hide"
-  [key]
-  (dispatch [:android-af-entry-form-field-visibility-toggle key]))
+    "Called with the field name as key that is toggled between show/hide"
+    [key]
+    (dispatch [:android-af-entry-form-field-visibility-toggle key]))
 
 (defn entry-form-data-fields
   " 
@@ -28,7 +28,7 @@
   (subscribe [:android-af-entry-form-data-fields fields]))
 
 #_(defn entry-form-uuid []
-  (subscribe [:android-af-entry-form-data-fields :uuid]))
+    (subscribe [:android-af-entry-form-data-fields :uuid]))
 
 (defn entry-form
   "Returns an atom that has the map entry-form"
@@ -150,10 +150,14 @@
    (let [form-data (get-in db [:android-af entry-form-key :data])
          username (-> (find-field form-data USERNAME) :value)
          password (-> (find-field form-data PASSWORD) :value)]
-     ;; Just calls the backend call directly
-     (bg/android-complete-login-autofill username password (fn [api-response]
-                                                             (when-not (on-error api-response)
-                                                               #())))
+     ;; Just calls the backend call directly which copies the selected credentials to the 
+     ;; app that initiated AF service
+     (bg/android-complete-login-autofill username 
+                                         password 
+                                         (fn [api-response]
+                                           (when-not (on-error api-response)
+                                             ;; After autofill, we lock the opened database
+                                             (dispatch [:android-af-common/lock-kdbx]))))
      {})))
 
 ;;;;;;;;;;;;;;;;;;;;; OTP ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

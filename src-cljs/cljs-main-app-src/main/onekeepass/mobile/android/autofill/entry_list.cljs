@@ -30,7 +30,7 @@
   (el-events/long-press-start (-> event .-nativeEvent .-pageX) (-> event .-nativeEvent .-pageY) uuid))
 
 (defn entry-long-press-menu []
-  (let [{:keys [show x y]} @(el-events/entry-list-long-press-data)] 
+  (let [{:keys [show x y]} @(el-events/entry-list-long-press-data)]
     [rnp-menu {:visible show :key (str show) :onDismiss el-events/long-press-menu-hide :anchor (clj->js {:x x :y y})}
      ;; TODO: Disable this menuitem if the both USERNAME and PASSWORD are nil
      [rnp-menu-item {:title "Autofill"
@@ -66,18 +66,47 @@
                       :width "85%" :padding-left 15}
               :variant "titleLarge"} (lstr-cv title)]])
 
+;; https://github.com/OneKeePass/mobile/issues/50
+
+;; When user tries enter text in searchbar the text feedback is slow with ':value term' in a searchbar props.
+;; This appears to be the same issue that was observed in the main app's TextInput use also (entry-form, key-form etc )
+;; Not sure this is problem with react native or with reagent use (most probably this is a reagent issue)
+;; There we had used ':defaultValue term' instead of ':value term' and that solved the issue.
+;; This also worked with 'rnp-searchbar'. But the 'clearIcon' was not showing. 
+;; Going through the source code at https://github.com/callstack/react-native-paper/blob/v5.14.5/src/components/Searchbar.tsx#L258
+;; We see this
+;; const shouldRenderTraileringIcon = isBarMode && traileringIcon &&  !loading &&(!value || right !== undefined);
+;; So the 'clearIcon' will not work when we use defaultValue. The solution is to use :right prop or :traileringIcon 
+;; Using :right (fn [..]), put the icon to the left instead of right - not sure why?
+;; Using traileringIcon with onTraileringIconPress works and input text entry is not sluggish and also we can clear the text entered if required
+
 (defn searchbar []
   (let [term @(android-af-cmn-events/search-term)]
     [rn-view {:margin-top 10}
      [rnp-searchbar {;; clearIcon mostly visible when value has some vlaue
-                     :clearIcon "close"
+                     ;; :clearIcon "close"
                      :style {:margin-left 1
                              :margin-right 1
                              :borderWidth 0}
                      :placeholder "Search"
                      :onChangeText (fn [v]
                                      (android-af-cmn-events/search-term-update v))
-                     :value term}]]))
+                     
+                     ;; :value term
+                     
+                     :defaultValue term
+                     :traileringIcon "close"
+                     :onTraileringIconPress (fn [_e]
+                                              (android-af-cmn-events/search-term-update nil))
+
+                     ;; This put the icon on the left instead of right side
+                     ;;  :right (fn [props]
+                     ;;           (r/as-element [rnc/rnp-text-input-icon
+                     ;;                          {:icon "close"
+                     ;;                           :style {:right 0}
+                     ;;                           :onPress #(println "Clear is clicked")}])
+                     ;;           )
+                     }]]))
 
 (defn main-content []
   (let [entry-items @(el-events/selected-entry-items)

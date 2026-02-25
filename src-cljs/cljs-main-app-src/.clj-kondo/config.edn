@@ -1,7 +1,6 @@
 {:linters
  {:unused-namespace {:exclude [".*@rnp/.*" "react-native-gesture-handler" "react-native-vector-icons"]}
-  :unresolved-symbol {:exclude [
-                                confirm-delete-otp-field-dialog
+  :unresolved-symbol {:exclude [confirm-delete-otp-field-dialog
                                 setup-otp-action-dialog
                                 otp-settings-dialog
                                 start-page-storage-selection-dialog
@@ -15,14 +14,14 @@
                                 dispatch-on-ok
                                 show-with-state
                                 show
-                                close 
-                                on-ok 
-                                data 
-                                state-m 
+                                close
+                                on-ok
+                                data
+                                state-m
                                 fields-value
                                 fields-value-vec
                                 init
-                                
+
                                 ActivityIndicator
                                 Button
                                 SafeAreaView

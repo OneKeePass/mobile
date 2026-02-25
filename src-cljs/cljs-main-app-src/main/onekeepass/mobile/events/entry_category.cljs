@@ -126,7 +126,7 @@
     GROUPING_LABEL_TAGS
 
     (= kw-kind :group-category)
-    GROUPING_LABEL_GROUPS))
+    GROUPING_LABEL_CATEGORIES))
 
 (defn- show-as->grouping-kind
   "Converts the group-by kw to a string that is convertable to enum EntryCategoryGrouping"

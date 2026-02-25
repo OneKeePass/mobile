@@ -54,13 +54,6 @@ react {
     autolinkLibrariesWithApp()
 }
 
-// TODO:(Custom-Jey) - Required to use various icons supported by react-native-vector-icons
-project.ext.vectoricons = [
-        iconFontNames: ['MaterialCommunityIcons.ttf', 'MaterialIcons.ttf', 'FontAwesome.ttf' ] // Name of the font files you want to copy
-]
-apply from: "../../node_modules/react-native-vector-icons/fonts.gradle"
-// TODO:(Custom-Jey)
-
 
 /**
  * Set this to true to Run Proguard on Release builds to minify the Java bytecode.
@@ -140,8 +133,8 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // Need to use next increment in 'versionCode' as it needs to be unique for each release
-        versionCode 16
-        versionName "0.18.0"
+        versionCode 17
+        versionName "0.19.0"
     }
 
     signingConfigs {

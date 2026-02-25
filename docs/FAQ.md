@@ -5,9 +5,15 @@ Here are some common ones. More will be added in due time
 ## Where and how the database is stored?
 OneKeePass stores all your passwords and other details in a single encrypted file in any place supported by the iOS's Files app or Android supported File Manager - typically called "My Files" or just "Files"
 
+## Can one store and use database files from Dropbox, GoogleDrive, OnedDrive, etc?
+
+Yes. But you need to install Dropbox or GoogleDrive or OnedDrive app on your device. This app in turn integrates with the **File App** of iOS or Android. Then OneKeePass app can open from these storages
+
+At this time, there is no remote API based integration to any of these storage services
+
 
 ## What is the format of the OneKeePass database?
-OneKeePass supports the well known [KeePass](https://keepass.info/help/kb/kdbx_4.1.html) database format KDBX 4.
+OneKeePass supports only the well known new [KeePass](https://keepass.info/help/kb/kdbx_4.1.html) database format KDBX 4. You will not able to use any old database format.
 
 ## What is a key file ?
 A key file is a file containing random bytes that is used in addition to your master key for additional security. You can basically use any file you want as a key file. Such a file should have random bytes data and the content of this random data remains the same as long as it is used as key file.

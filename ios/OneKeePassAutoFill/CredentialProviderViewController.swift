@@ -22,8 +22,11 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
   
   static var extContext: ASCredentialProviderExtensionContext?
   
+  // Hold values identified by ASCredentialServiceIdentifier.IdentifierType
   static var serviceIdentifierDomain: String?
   static var serviceIdentifierUrl: String?
+  // This is not yet used
+  static var serviceIdentifierDisplayName: String?
   
   static var cancelled: Bool = false
   
@@ -185,15 +188,30 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
    */
   override func prepareCredentialList(for serviceIdentifiers: [ASCredentialServiceIdentifier]) {
     logger.debug("prepareCredentialList is called")
+    
     Self.cancelled = false
+    
+    CredentialProviderViewController.serviceIdentifierDomain = nil
+    CredentialProviderViewController.serviceIdentifierUrl = nil
+    CredentialProviderViewController.serviceIdentifierDisplayName = nil
+    
     for si in serviceIdentifiers {
       switch si.type {
       case .domain:
         logger.debug("Domain identified \(si.identifier)")
         CredentialProviderViewController.serviceIdentifierDomain = si.identifier
+      
       case .URL:
         logger.debug("Url identified \(si.identifier)")
         CredentialProviderViewController.serviceIdentifierUrl = si.identifier
+      
+      case .app:
+        // Not yet used
+        if #available(iOS 26.2, *) {
+          logger.debug("App displayname \(String(describing: si.displayName))")
+          CredentialProviderViewController.serviceIdentifierDisplayName = si.displayName
+        }
+      
       @unknown default:
         logger.debug("Unknown identifier \(si.type)")
       }

@@ -15,6 +15,7 @@
     "@gorhom/bottom-sheet": "^4",
     "@react-native-clipboard/clipboard": "^1.11.2",
     "@react-native-community/slider": "^4.5.7",
+    "@react-native-vector-icons/material-design-icons": "^12.4.0",
     "date-fns": "^2.29.3",
     "i18next": "^22.4.9",
     "react": "19.1.0",
@@ -29,7 +30,6 @@
     "react-native-reanimated": "^3.19.4",
     "react-native-safe-area-context": "^5.6.2",
     "react-native-svg": "^15.15.0",
-    "react-native-vector-icons": "10.3.0",
     "react-native-vision-camera": "^4.7.3"
   },
   "devDependencies": {

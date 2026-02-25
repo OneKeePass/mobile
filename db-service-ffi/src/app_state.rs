@@ -92,9 +92,10 @@ static APP_STATE: OnceCell<AppState> = OnceCell::new();
 
 impl AppState {
     // TODO:
-    // Need to use this instead of relying on the one in onekeepass/mobile/about.cljs
     // This is not yet used
-    const APP_VERSION: &str = "0.17.2";
+    // Should this be used instead of the one in onekeepass/mobile/about.cljs?
+    // There is a possibility we may have separate release number for iOS and Android
+    const APP_VERSION: &str = "0.19.0";
 
     pub fn shared() -> &'static AppState {
         // Panics if no global state object was set. ??

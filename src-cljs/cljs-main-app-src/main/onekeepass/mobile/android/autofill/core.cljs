@@ -4,6 +4,7 @@
   "
   (:require [onekeepass.mobile.android.autofill.appbar :refer [appbar-main-content
                                                                hardware-back-pressed]]
+            [onekeepass.mobile.android.autofill.events.common :as android-af-cmn-events]
             [onekeepass.mobile.background :as bg]
             [onekeepass.mobile.common-components :refer [message-dialog
                                                          message-snackbar]]
@@ -36,6 +37,9 @@
       (when (bg/is-Android)
         (react-use-effect
          (fn []
+           ;; event to load all available keyfiles to use as options in a select modal dialog
+           (android-af-cmn-events/sync-initialize)
+           
            (reset! back-handler (.addEventListener rnc/rn-back-handler "hardwareBackPress" hardware-back-pressed))
            ;;(println "Android af back-handler is registered ")
            ;; Returns a fn
@@ -43,7 +47,7 @@
              (when-not (nil? @back-handler)
                (.remove ^js/BackHanler @back-handler)
                (reset! back-handler nil))))
-               ;; Empty parameter array to useEffect fn
+         ;; Empty parameter array to useEffect fn
          (clj->js [])))
 
       [rnc/rnp-provider {:theme (if (= DARK-THEME theme-name) rnc/dark-theme rnc/light-theme)}

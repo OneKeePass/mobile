@@ -1778,6 +1778,7 @@ PODS:
     - ReactCommon/turbomodule/core
     - SocketRocket
     - Yoga
+  - react-native-vector-icons-material-design-icons (12.4.0)
   - React-NativeModulesApple (0.81.5):
     - boost
     - DoubleConversion
@@ -2521,6 +2522,7 @@ DEPENDENCIES:
   - React-microtasksnativemodule (from `../node_modules/react-native/ReactCommon/react/nativemodule/microtasks`)
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
   - "react-native-slider (from `../node_modules/@react-native-community/slider`)"
+  - "react-native-vector-icons-material-design-icons (from `../node_modules/@react-native-vector-icons/material-design-icons`)"
   - React-NativeModulesApple (from `../node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios`)
   - React-oscompat (from `../node_modules/react-native/ReactCommon/oscompat`)
   - React-perflogger (from `../node_modules/react-native/ReactCommon/reactperflogger`)
@@ -2651,6 +2653,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-safe-area-context"
   react-native-slider:
     :path: "../node_modules/@react-native-community/slider"
+  react-native-vector-icons-material-design-icons:
+    :path: "../node_modules/@react-native-vector-icons/material-design-icons"
   React-NativeModulesApple:
     :path: "../node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios"
   React-oscompat:
@@ -2771,6 +2775,7 @@ SPEC CHECKSUMS:
   React-microtasksnativemodule: 6c4ee39a36958c39c97b074d28f360246a335e84
   react-native-safe-area-context: 6c8805194166a9d6b3e53ba69ca76756c9bfb052
   react-native-slider: b69ae511bf4affd1fdc0f72a00d373fdfe31cfc2
+  react-native-vector-icons-material-design-icons: 76cd460b3540b80527b4a80fb7f867f7deedb498
   React-NativeModulesApple: ebf2ce72b35870036900d6498b33724386540a71
   React-oscompat: eb0626e8ba1a2c61673c991bf9dc21834898475d
   React-perflogger: 509e1f9a3ee28df71b0a66de806ac515ce951246
@@ -2811,6 +2816,6 @@ SPEC CHECKSUMS:
   VisionCamera: 7187b3dac1ff3071234ead959ce311875748e14f
   Yoga: d7064c22f7ba5890471d32dd95e72c77ec911f26
 
-PODFILE CHECKSUM: 2720b09bdcfa604555fe29177b62e2760fb2a508
+PODFILE CHECKSUM: 5b5ca94563d4835df67a9223967ef79871d23008
 
 COCOAPODS: 1.15.2
