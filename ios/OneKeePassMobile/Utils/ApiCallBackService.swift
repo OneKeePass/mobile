@@ -9,7 +9,16 @@ import Foundation
 
 // This is intialized and set in a global singleton holder in rust
 
-class ApiCallBackService: IosApiService,CommonDeviceServiceEx {
+
+// To fix the warning:
+// Non-final class 'ApiCallBackService' cannot conform to 'Sendable'; use '@unchecked Sendable'; this is an error in the Swift 6 language mode
+// We may need to use the solution as here. We need to do more testing with this
+// class ApiCallBackService:@unchecked Sendable, IosApiService,CommonDeviceServiceEx
+
+// See https://www.avanderlee.com/swift/sendable-protocol-closures/ for some explanation
+
+
+class ApiCallBackService:@unchecked Sendable, IosApiService,CommonDeviceServiceEx {
   
   func ascCredentialServiceIdentifiers() throws -> [String: String] {
     #if OKP_APP_EXTENSION
