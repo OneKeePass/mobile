@@ -1,3 +1,9 @@
 module.exports = {
-  dependencies: {},
+  dependencies: {
+    'react-native-vision-camera': {
+      platforms: {
+        android: null,
+      },
+    },
+  },
 };
