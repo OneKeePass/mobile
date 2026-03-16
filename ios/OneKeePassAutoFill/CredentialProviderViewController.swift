@@ -29,7 +29,12 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
   static var serviceIdentifierDisplayName: String?
   
   static var cancelled: Bool = false
-  
+
+  // Passkey assertion state (iOS 17+)
+  static var pendingPasskeyRpId: String?
+  static var pendingPasskeyCredentialIds: [Data] = []
+  static var pendingPasskeyClientDataHash: Data?
+
   private let logger = logger1
   
   //==============================================================================================================//
@@ -89,6 +94,40 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
     extContext!.completeRequest(withSelectedCredential: passwordCredential, completionHandler: nil)
   }
  
+  @available(iOS 17.0, *)
+  static func completePasskeyAssertion(
+    credentialIdB64url: String,
+    userHandleB64url: String,
+    signatureB64url: String,
+    authenticatorDataB64url: String,
+    rpId: String
+  ) {
+    
+    guard let ctx = extContext,
+          let credentialIdData = Data(base64URLEncoded: credentialIdB64url),
+          let userHandleData = Data(base64URLEncoded: userHandleB64url),
+          let signatureData = Data(base64URLEncoded: signatureB64url),
+          let authData = Data(base64URLEncoded: authenticatorDataB64url),
+          let clientDataHash = pendingPasskeyClientDataHash
+    else {
+      logger1.error("completePasskeyAssertion: missing context or could not decode base64url data")
+      return
+    }
+
+    let credential = ASPasskeyAssertionCredential(
+      userHandle: userHandleData,
+      relyingParty: rpId,
+      signature: signatureData,
+      clientDataHash: clientDataHash,
+      authenticatorData: authData,
+      credentialID: credentialIdData
+    )
+    
+    logger1.debug("ASPasskeyAssertionCredential formed successfully \(credential) and sent to app")
+    
+    ctx.completeAssertionRequest(using: credential)
+  }
+
   static func serviceIdentifiersReceived() -> [String: String] {
     var dict: [String: String] = [:]
     
@@ -221,6 +260,48 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
     // prepareUI()
   }
 
+  // iOS 17+ passkey assertion entry point via the credential list (no pre-registered identities needed).
+  // Called when the user triggers a WebAuthn assertion on a site and iOS presents the credential picker.
+  // Stores the passkey context so the ClojureScript layer can route to the passkey selection page.
+  @available(iOS 17.0, *)
+  override func prepareCredentialList(
+    for serviceIdentifiers: [ASCredentialServiceIdentifier],
+    requestParameters: ASPasskeyCredentialRequestParameters
+  ) {
+    logger.debug("prepareCredentialList(requestParameters:) called — passkey assertion for rpId: \(requestParameters.relyingPartyIdentifier)")
+    Self.cancelled = false
+    Self.pendingPasskeyRpId = requestParameters.relyingPartyIdentifier
+    Self.pendingPasskeyClientDataHash = requestParameters.clientDataHash
+    Self.pendingPasskeyCredentialIds = requestParameters.allowedCredentials
+    prepareUI()
+  }
+
+  /*
+  // iOS 17+ passkey assertion entry point.
+  // The OS pre-computes clientDataHash and passes it here together with the rpId and credentialID.
+  @available(iOS 17.0, *)
+  override func prepareInterfaceToProvideCredential(for credentialRequest: any ASCredentialRequest) {
+    logger.debug("prepareInterfaceToProvideCredential called")
+    Self.cancelled = false
+
+    // Use KVC to read passkey properties without a direct type reference to
+    // ASPasskeyAssertionCredentialRequest, which avoids SDK-version scope issues.
+    // clientDataHash is only present on passkey assertion requests, so it acts as the discriminator.
+    let obj = credentialRequest as AnyObject
+    guard obj.responds(to: NSSelectorFromString("clientDataHash")),
+          let rpId = obj.value(forKey: "relyingPartyIdentifier") as? String,
+          let credId = obj.value(forKey: "credentialID") as? Data,
+          let hash = obj.value(forKey: "clientDataHash") as? Data
+    else { return }
+
+    Self.pendingPasskeyRpId = rpId
+    Self.pendingPasskeyCredentialId = credId
+    Self.pendingPasskeyClientDataHash = hash
+    logger.debug("Passkey assertion requested for rpId: \(rpId)")
+    prepareUI()
+  }
+   */
+
   /*
     Implement this method if your extension supports showing credentials in the QuickType bar.
     When the user selects a credential from your app, this method will be called with the
@@ -300,6 +381,27 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
 //    self.view = rootView
 //    // present(self, animated: true, completion: nil)
 //  }
+
+// Decodes a base64url-encoded string (no padding, using - and _ instead of + and /) into Data.
+extension Data {
+  init?(base64URLEncoded string: String) {
+    var base64 = string
+      .replacingOccurrences(of: "-", with: "+")
+      .replacingOccurrences(of: "_", with: "/")
+    let remainder = base64.count % 4
+    if remainder != 0 {
+      base64 += String(repeating: "=", count: 4 - remainder)
+    }
+    self.init(base64Encoded: base64)
+  }
+
+  func base64URLEncodedString() -> String {
+    return base64EncodedString()
+      .replacingOccurrences(of: "+", with: "-")
+      .replacingOccurrences(of: "/", with: "_")
+      .replacingOccurrences(of: "=", with: "")
+  }
+}
 
 /*** ========== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== =====  **/
 /*

@@ -7,7 +7,10 @@
                                                                  HOME_PAGE_ID
                                                                  LOGIN_PAGE_ID
                                                                  ENTRY_FORM_PAGE_ID
-                                                                 ENTRY_LIST_PAGE_ID]]
+                                                                 ENTRY_LIST_PAGE_ID
+                                                                 PASSKEY_ASSERTION_PAGE_ID]]
+            [onekeepass.ios.autofill.passkey-assertion :as passkey-assertion]
+            [onekeepass.ios.autofill.events.passkey-assertion]
             [onekeepass.ios.autofill.app-lock :as app-lock]
             [onekeepass.ios.autofill.events.app-lock :as app-lock-events]
             [onekeepass.ios.autofill.entry-form :as entry-form]
@@ -310,6 +313,9 @@
 
          ENTRY_FORM_PAGE_ID
          [show-form]
+
+         PASSKEY_ASSERTION_PAGE_ID
+         [passkey-assertion/content]
 
          :else
          [home-page])]])

@@ -74,6 +74,88 @@ class OkpDbService: NSObject {
     logger.debug("credentialSelected is called ")
     CredentialProviderViewController.credentialSelected(user, password)
   }
+
+  // Returns JSON with the pending passkey assertion context (rpId + allowCredentialIds),
+  // or {"ok":null} if this session was not triggered by a passkey assertion request.
+  // Called by ClojureScript at startup to decide whether to show the passkey flow.
+  @objc
+  func getPendingPasskeyContext(_ resolve: @escaping RCTPromiseResolveBlock,
+                                reject _: @escaping RCTPromiseRejectBlock) {
+    guard #available(iOS 17.0, *),
+          let rpId = CredentialProviderViewController.pendingPasskeyRpId else {
+      resolve("{\"ok\":null}")
+      return
+    }
+    let allowIds: [String] = CredentialProviderViewController.pendingPasskeyCredentialIds
+      .map { $0.base64URLEncodedString() }
+    let idsJson = allowIds.isEmpty
+      ? "[]"
+      : "[" + allowIds.map { "\"\($0)\"" }.joined(separator: ",") + "]"
+    resolve("{\"ok\":{\"rp_id\":\"\(rpId)\",\"allow_credential_ids\":\(idsJson)}}")
+  }
+
+  // Returns a JSON array of passkeys matching the given relying-party ID and optional allow-list.
+  @objc
+  func findMatchingPasskeys(_ rpId: String, allowCredentialIds: [String],
+                            resolve: @escaping RCTPromiseResolveBlock,
+                            reject _: @escaping RCTPromiseRejectBlock) {
+    DispatchQueue.global(qos: .userInteractive).async {
+      let idsJson = allowCredentialIds.isEmpty
+        ? "[]"
+        : "[" + allowCredentialIds.map { "\"\($0)\"" }.joined(separator: ",") + "]"
+      let args = "{\"rp_id\":\"\(rpId)\",\"allow_credential_ids\":\(idsJson)}"
+      resolve(AutoFillDbServiceAPI.iosAppGroupSupportService().invoke("passkey_find_matching", args))
+    }
+  }
+
+  // Signs the pending passkey assertion and completes the extension request.
+  @objc
+  func completePasskeyAssertion(_ entryUuid: String, dbKey: String,
+                                resolve: @escaping RCTPromiseResolveBlock,
+                                reject _: @escaping RCTPromiseRejectBlock) {
+    
+    logger.debug("Passkey completePasskeyAssertion is called for entryUuid: \(entryUuid)")
+    
+    guard #available(iOS 17.0, *) else {
+      resolve("{}")
+      return
+    }
+    guard let clientDataHash = CredentialProviderViewController.pendingPasskeyClientDataHash else {
+      resolve("{\"error\":\"No pending passkey request\"}")
+      return
+    }
+    DispatchQueue.global(qos: .userInteractive).async {
+      let hashB64url = clientDataHash.base64URLEncodedString()
+      let args = "{\"db_key\":\"\(dbKey)\",\"entry_uuid\":\"\(entryUuid)\",\"client_data_hash_b64url\":\"\(hashB64url)\"}"
+      
+      self.logger.debug("Invoking passkey_sign_assertion")
+      
+      let resultJson = AutoFillDbServiceAPI.iosAppGroupSupportService().invoke("passkey_sign_assertion", args)
+      
+      self.logger.debug("Rust passkey_sign_assertion returns \(resultJson)")
+      
+      if let data = resultJson.data(using: .utf8),
+         let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+         let ok = dict["ok"] as? [String: Any] {
+
+        let returnedCredId = ok["credential_id_b64url"] as? String ?? ""
+        let expectedIds = CredentialProviderViewController.pendingPasskeyCredentialIds
+          .map { $0.base64URLEncodedString() }
+        self.logger.debug("Rust returned credentialId: \(returnedCredId)")
+        self.logger.debug("iOS allowedCredentialIds: \(expectedIds)")
+        self.logger.debug("OS rpId: \(CredentialProviderViewController.pendingPasskeyRpId ?? "nil"), Rust rpId: \(ok["rp_id"] as? String ?? "nil")")
+
+        CredentialProviderViewController.completePasskeyAssertion(
+          credentialIdB64url: returnedCredId,
+          userHandleB64url: ok["user_handle_b64url"] as? String ?? "",
+          signatureB64url: ok["signature_b64url"] as? String ?? "",
+          authenticatorDataB64url: ok["authenticator_data_b64url"] as? String ?? "",
+          rpId: CredentialProviderViewController.pendingPasskeyRpId ?? ok["rp_id"] as? String ?? ""
+        )
+      }
+      resolve(resultJson)
+    }
+  }
   
   
   

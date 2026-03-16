@@ -17,6 +17,38 @@
 		<string>com.apple.authentication-services-credential-provider-ui</string>
 		<key>NSExtensionPrincipalClass</key>
 		<string>$(PRODUCT_MODULE_NAME).CredentialProviderViewController</string>
+    
+    <key>NSExtensionAttributes</key>
+        <dict>
+            <!-- Existing capabilities for passwords and passkeys -->
+            <key>ASCredentialProviderExtensionCapabilities</key>
+            <dict>
+              <!-- 1. Password AutoFill -->
+                  <key>ProvidesPasswords</key>
+                  <true/>
+
+                  <!-- 2. Passkey Registration -->
+                  <key>ProvidesPasskeys</key>
+                  <true/>
+
+                  <!-- 3. Passkey Assertion (login with existing passkey) -->
+                  <key>ProvidesPasskeyAssertions</key>
+                  <true/>
+
+                  <!-- 4. One-Time Codes (TOTP) — optional but common -->
+<!--                  <key>ProvidesOneTimeCodes</key>-->
+<!--                  <true/>-->
+
+                  <!-- 5. Show config UI without a credential request -->
+<!--                  <key>ProvidesConditionalPasskeys</key>-->
+<!--                  <true/>-->
+
+
+            </dict>
+
+            
+        </dict>
+    
 	</dict>
 	<key>RCTNewArchEnabled</key>
 	<false/>

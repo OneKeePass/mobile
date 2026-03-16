@@ -68,6 +68,7 @@
 (def LOGIN_PAGE_ID :login)
 (def ENTRY_LIST_PAGE_ID :entry-list)
 (def ENTRY_FORM_PAGE_ID :entry-form)
+(def PASSKEY_ASSERTION_PAGE_ID :passkey-assertion)
 
 
 (def FLEX-DIR-ROW "row")

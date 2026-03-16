@@ -3,6 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use data_encoding::BASE64URL_NOPAD;
 use log::debug;
 use onekeepass_core::db_service::{
     self,
@@ -564,6 +565,65 @@ impl IosAppGroupSupportService {
 
         result_json_str(inner_fn())
     }
+
+    // Returns all passkeys in opened databases that match the given relying-party ID
+    // and optional allow-list of credential IDs.
+    fn passkey_find_matching(&self, json_args: &str) -> ResponseJson {
+        let inner = || -> OkpResult<Vec<onekeepass_core::db_service::passkey::PasskeySummary>> {
+            let (rp_id, allow_credential_ids) = parse_command_args_or_err!(
+                json_args,
+                PasskeyFindMatchingArg { rp_id, allow_credential_ids }
+            );
+            let db_keys = onekeepass_core::db_service::all_kdbx_cache_keys()?;
+            let ids = allow_credential_ids.unwrap_or_default();
+            Ok(onekeepass_core::db_service::passkey::find_matching_passkeys(
+                &db_keys, &rp_id, &ids,
+            )?)
+        };
+        result_json_str(inner())
+    }
+
+    // Signs a WebAuthn assertion for the given entry using the pre-computed
+    // clientDataHash supplied by the iOS autofill extension.
+    fn passkey_sign_assertion(&self, json_args: &str) -> ResponseJson {
+        
+        debug!("passkey_sign_assertion is called with json_args {}",json_args);
+
+        let inner =
+            || -> OkpResult<onekeepass_core::passkey_crypto::PasskeyAssertionWithHashResult> {
+                let (db_key, entry_uuid_str, client_data_hash_b64url) =
+                    parse_command_args_or_err!(
+                        json_args,
+                        PasskeySignAssertionArg {
+                            db_key,
+                            entry_uuid,
+                            client_data_hash_b64url
+                        }
+                    );
+                let entry_uuid = uuid::Uuid::parse_str(&entry_uuid_str)
+                    .map_err(|e| OkpError::UnexpectedError(e.to_string()))?;
+
+                debug!("Calling onekeepass_core::db_service::passkey::get_passkey_for_assertion");
+
+                let passkey = onekeepass_core::db_service::passkey::get_passkey_for_assertion(
+                    &db_key, &entry_uuid,
+                )?;
+
+                debug!("Completed onekeepass_core::db_service::passkey::get_passkey_for_assertion");
+
+                let hash_bytes = BASE64URL_NOPAD
+                    .decode(client_data_hash_b64url.as_bytes())
+                    .map_err(|e| OkpError::UnexpectedError(e.to_string()))?;
+                Ok(onekeepass_core::passkey_crypto::sign_assertion_with_hash(
+                    &passkey.credential_id_b64url,
+                    &passkey.rp_id,
+                    &passkey.user_handle_b64url,
+                    &passkey.private_key_pem,
+                    &hash_bytes,
+                )?)
+            };
+        result_json_str(inner())
+    }
 }
 
 // Here we implement all fns of this struct that are exported
@@ -600,6 +660,9 @@ impl IosAppGroupSupportService {
             }
 
             "clipboard_copy" => self.clipboard_copy(json_args),
+
+            "passkey_find_matching" => self.passkey_find_matching(json_args),
+            "passkey_sign_assertion" => self.passkey_sign_assertion(json_args),
 
             x => error_json_str(&format!(
                 "Invalid command or args: Command call {} with args {} failed",

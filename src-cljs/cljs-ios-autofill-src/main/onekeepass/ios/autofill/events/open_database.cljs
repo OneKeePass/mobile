@@ -106,12 +106,18 @@
                                   #_(dispatch [:entry-list/update-selected-entry-items db-key entry-summaries])
                                   (dispatch [:all-entries-loaded db-key entry-summaries]))))))
 
-;; Called after retreiving all entries for the opened database
+;; Called after retreiving all entries for the opened database.
+;; If a passkey assertion context is stored (rp-id), route to passkey page;
+;; otherwise run the normal credential-service-identifier filtering.
 (reg-event-fx
  :all-entries-loaded
- (fn [{:keys [_db]} [_event-id db-key entry-summaries]]
-   {:fx [[:dispatch [:entry-list/update-selected-entry-items db-key entry-summaries]]
-         [:bg-credential-service-identifier-filtering [db-key]]]}))
+ (fn [{:keys [db]} [_event-id db-key entry-summaries]]
+   (let [rp-id (get-in db [:passkey-assertion :rp-id])
+         allow-ids (get-in db [:passkey-assertion :allow-credential-ids] [])]
+     {:fx [[:dispatch [:entry-list/update-selected-entry-items db-key entry-summaries]]
+           (if rp-id
+             [:dispatch [:passkey-assertion/fetch rp-id allow-ids]]
+             [:bg-credential-service-identifier-filtering [db-key]])]})))
 
 ;; Called to load any matching entries based on ios autofill credential identifiers 
 ;; This is called after loading all entries summary - see the above event

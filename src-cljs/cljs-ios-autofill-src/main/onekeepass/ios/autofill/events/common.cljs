@@ -138,7 +138,8 @@
                           :last-pin-auth-success-time last-pin-auth-success-time})
             (assoc-in [:autofill-db-files-info] copied-dbs-info))
     :fx [[:dispatch [:app-lock/app-launched]]
-         [:bg-list-key-files]]}))
+         [:bg-list-key-files]
+         [:dispatch [:passkey-assertion/check-context]]]}))
 
 (reg-sub
  :app-lock-preference

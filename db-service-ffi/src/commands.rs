@@ -223,6 +223,19 @@ pub enum CommandArg {
         auto_open_properties: AutoOpenProperties,
     },
 
+    // Passkey assertion (iOS autofill) — three unique fields; must come before DbKey
+    PasskeySignAssertionArg {
+        db_key: String,
+        entry_uuid: String,
+        client_data_hash_b64url: String,
+    },
+
+    // Passkey lookup — unique rp_id field; must come before GenericArg
+    PasskeyFindMatchingArg {
+        rp_id: String,
+        allow_credential_ids: Option<Vec<String>>,
+    },
+
     // This variant needs to come last so that other variants starting with db_key is matched before this
     // and this will be matched only if db_key is passed. A kind of descending order with the same field names
     // in diffrent variant. If this variant put before any other variant with db_key field,

@@ -246,6 +246,30 @@
 (defn cancel-extension [dispatch-fn]
   (call-api-async (fn [] (.cancelExtension okp-db-service)) dispatch-fn))
 
+(defn get-pending-passkey-context
+  "Returns {:ok {:rp-id ... :allow-credential-ids [...]}} if this session was triggered
+   by a passkey assertion request, or {:ok nil} otherwise."
+  [dispatch-fn]
+  (call-api-async
+   (fn [] (.getPendingPasskeyContext okp-db-service))
+   dispatch-fn))
+
+(defn find-matching-passkeys
+  "Fetches all passkeys matching rpId from open databases.
+   allow-credential-ids is a seq of base64url strings (may be empty).
+   dispatch-fn receives {:ok [...PasskeySummary]} or {:error ...}."
+  [rp-id allow-credential-ids dispatch-fn]
+  (call-api-async
+   (fn [] (.findMatchingPasskeys okp-db-service rp-id (clj->js allow-credential-ids)))
+   dispatch-fn))
+
+(defn complete-passkey-assertion
+  "Signs the pending passkey assertion for the entry and completes the iOS extension request."
+  [entry-uuid db-key dispatch-fn]
+  (call-api-async
+   (fn [] (.completePasskeyAssertion okp-db-service entry-uuid db-key))
+   dispatch-fn))
+
 (defn credentials-selected [user-name password dispatch-fn]
   (call-api-async (fn [] (.credentialSelected okp-db-service user-name password)) dispatch-fn))
 
