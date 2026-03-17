@@ -59,6 +59,7 @@ class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {
    var reactNativeFactoryDelegate: RCTReactNativeFactoryDelegate?
 
    override func viewDidLoad() {
+     logger.debug("OkpReactViewController - viewDidLoad is called")
      super.viewDidLoad()
      reactNativeFactoryDelegate = ReactNativeDelegate()
      reactNativeFactoryDelegate!.dependencyProvider = RCTAppDependencyProvider()
@@ -68,7 +69,7 @@ class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {
    
    override func viewDidDisappear(_ animated: Bool) {
      super.viewDidDisappear(animated)
-     logger.debug("OkpReactViewController viewDidDisappear is called and CredentialProviderViewController will be cancelled")
+     logger.debug("OkpReactViewController - viewDidDisappear is called and CredentialProviderViewController cancelExtension will be called")
      
      CredentialProviderViewController.cancelExtension()
    }

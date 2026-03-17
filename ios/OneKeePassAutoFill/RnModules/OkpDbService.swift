@@ -145,13 +145,19 @@ class OkpDbService: NSObject {
         self.logger.debug("iOS allowedCredentialIds: \(expectedIds)")
         self.logger.debug("OS rpId: \(CredentialProviderViewController.pendingPasskeyRpId ?? "nil"), Rust rpId: \(ok["rp_id"] as? String ?? "nil")")
 
-        CredentialProviderViewController.completePasskeyAssertion(
-          credentialIdB64url: returnedCredId,
-          userHandleB64url: ok["user_handle_b64url"] as? String ?? "",
-          signatureB64url: ok["signature_b64url"] as? String ?? "",
-          authenticatorDataB64url: ok["authenticator_data_b64url"] as? String ?? "",
-          rpId: CredentialProviderViewController.pendingPasskeyRpId ?? ok["rp_id"] as? String ?? ""
-        )
+        let rpId = CredentialProviderViewController.pendingPasskeyRpId ?? ok["rp_id"] as? String ?? ""
+        let userHandle = ok["user_handle_b64url"] as? String ?? ""
+        let signature = ok["signature_b64url"] as? String ?? ""
+        let authData = ok["authenticator_data_b64url"] as? String ?? ""
+        DispatchQueue.main.async {
+          CredentialProviderViewController.completePasskeyAssertion(
+            credentialIdB64url: returnedCredId,
+            userHandleB64url: userHandle,
+            signatureB64url: signature,
+            authenticatorDataB64url: authData,
+            rpId: rpId
+          )
+        }
       }
       resolve(resultJson)
     }

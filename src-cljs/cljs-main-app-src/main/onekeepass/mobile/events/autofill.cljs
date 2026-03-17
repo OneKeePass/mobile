@@ -32,15 +32,18 @@
 (reg-event-fx
  :ios-copy-file-to-group
  (fn [{:keys [db]} [_event-id]]
+   (println "Going to call :bg-ios-copy-file-to-group")
    {:fx [[:bg-ios-copy-file-to-group [(active-db-key db)]]]}))
 
 (reg-fx
  :bg-ios-copy-file-to-group
  (fn [[db-key]]
-   (bg/ios-copy-files-to-group db-key 
+   (bg/ios-copy-files-to-group db-key
                                (fn [api-response]
                                  (when-let [info (on-ok api-response)]
-                                   (dispatch [:ios-autofill-db-info-updated info]))))))
+                                   (println "Response received in :bg-ios-copy-file-to-group" api-response)
+                                   (dispatch [:ios-autofill-db-info-updated info])
+                                   (bg/register-passkey-identities (fn [_] nil)))))))
 
 ;; Navigates to the autofill settings page
 (reg-event-fx

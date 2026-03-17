@@ -583,6 +583,16 @@ impl IosAppGroupSupportService {
         result_json_str(inner())
     }
 
+    // Returns all passkeys from all open databases — used by the main app to
+    // register ASPasskeyCredentialIdentity objects with ASCredentialIdentityStore.
+    fn passkey_get_all(&self, _json_args: &str) -> ResponseJson {
+        let inner = || -> OkpResult<Vec<onekeepass_core::db_service::passkey::PasskeySummary>> {
+            let db_keys = onekeepass_core::db_service::all_kdbx_cache_keys()?;
+            onekeepass_core::db_service::passkey::get_all_passkeys(&db_keys)
+        };
+        result_json_str(inner())
+    }
+
     // Signs a WebAuthn assertion for the given entry using the pre-computed
     // clientDataHash supplied by the iOS autofill extension.
     fn passkey_sign_assertion(&self, json_args: &str) -> ResponseJson {
@@ -663,6 +673,7 @@ impl IosAppGroupSupportService {
 
             "passkey_find_matching" => self.passkey_find_matching(json_args),
             "passkey_sign_assertion" => self.passkey_sign_assertion(json_args),
+            "passkey_get_all" => self.passkey_get_all(json_args),
 
             x => error_json_str(&format!(
                 "Invalid command or args: Command call {} with args {} failed",

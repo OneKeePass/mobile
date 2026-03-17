@@ -241,6 +241,14 @@
 (defn ios-query-autofill-db-info [db-key dispatch-fn]
   (ios-autofill-invoke-api "query_autofill_db_info" {:db-key db-key} dispatch-fn))
 
+(defn register-passkey-identities [dispatch-fn]
+  (println "Calling swift api registerPasskeyIdentities....")
+  (call-api-async
+   (fn [] 
+     (println "In api call of .registerPasskeyIdentities")
+     (.registerPasskeyIdentities okp-db-service))
+   dispatch-fn))
+
 (defn ios-copy-to-clipboard
   "Called to copy a selected field value to clipboard
    The arg field-info is a map that statifies the enum member 
