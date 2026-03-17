@@ -124,43 +124,40 @@ class OkpDbService: NSObject {
       resolve("{\"error\":\"No pending passkey request\"}")
       return
     }
-    DispatchQueue.global(qos: .userInteractive).async {
-      let hashB64url = clientDataHash.base64URLEncodedString()
-      let args = "{\"db_key\":\"\(dbKey)\",\"entry_uuid\":\"\(entryUuid)\",\"client_data_hash_b64url\":\"\(hashB64url)\"}"
-      
-      self.logger.debug("Invoking passkey_sign_assertion")
-      
-      let resultJson = AutoFillDbServiceAPI.iosAppGroupSupportService().invoke("passkey_sign_assertion", args)
-      
-      self.logger.debug("Rust passkey_sign_assertion returns \(resultJson)")
-      
-      if let data = resultJson.data(using: .utf8),
-         let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-         let ok = dict["ok"] as? [String: Any] {
+    // requiresMainQueueSetup() → true: already on main thread — call synchronously (same as credentialSelected)
+    let hashB64url = clientDataHash.base64URLEncodedString()
+    let args = "{\"db_key\":\"\(dbKey)\",\"entry_uuid\":\"\(entryUuid)\",\"client_data_hash_b64url\":\"\(hashB64url)\"}"
 
-        let returnedCredId = ok["credential_id_b64url"] as? String ?? ""
-        let expectedIds = CredentialProviderViewController.pendingPasskeyCredentialIds
-          .map { $0.base64URLEncodedString() }
-        self.logger.debug("Rust returned credentialId: \(returnedCredId)")
-        self.logger.debug("iOS allowedCredentialIds: \(expectedIds)")
-        self.logger.debug("OS rpId: \(CredentialProviderViewController.pendingPasskeyRpId ?? "nil"), Rust rpId: \(ok["rp_id"] as? String ?? "nil")")
+    logger.debug("Invoking passkey_sign_assertion (synchronous, main thread)")
 
-        let rpId = CredentialProviderViewController.pendingPasskeyRpId ?? ok["rp_id"] as? String ?? ""
-        let userHandle = ok["user_handle_b64url"] as? String ?? ""
-        let signature = ok["signature_b64url"] as? String ?? ""
-        let authData = ok["authenticator_data_b64url"] as? String ?? ""
-        DispatchQueue.main.async {
-          CredentialProviderViewController.completePasskeyAssertion(
-            credentialIdB64url: returnedCredId,
-            userHandleB64url: userHandle,
-            signatureB64url: signature,
-            authenticatorDataB64url: authData,
-            rpId: rpId
-          )
-        }
-      }
-      resolve(resultJson)
+    let resultJson = AutoFillDbServiceAPI.iosAppGroupSupportService().invoke("passkey_sign_assertion", args)
+
+    logger.debug("Rust passkey_sign_assertion returns \(resultJson)")
+
+    if let data = resultJson.data(using: .utf8),
+       let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+       let ok = dict["ok"] as? [String: Any] {
+
+      let returnedCredId = ok["credential_id_b64url"] as? String ?? ""
+      let expectedIds = CredentialProviderViewController.pendingPasskeyCredentialIds
+        .map { $0.base64URLEncodedString() }
+      logger.debug("Rust returned credentialId: \(returnedCredId)")
+      logger.debug("iOS allowedCredentialIds: \(expectedIds)")
+      logger.debug("OS rpId: \(CredentialProviderViewController.pendingPasskeyRpId ?? "nil"), Rust rpId: \(ok["rp_id"] as? String ?? "nil")")
+
+      let rpId = CredentialProviderViewController.pendingPasskeyRpId ?? ok["rp_id"] as? String ?? ""
+      let userHandle = ok["user_handle_b64url"] as? String ?? ""
+      let signature = ok["signature_b64url"] as? String ?? ""
+      let authData = ok["authenticator_data_b64url"] as? String ?? ""
+      CredentialProviderViewController.completePasskeyAssertion(
+        credentialIdB64url: returnedCredId,
+        userHandleB64url: userHandle,
+        signatureB64url: signature,
+        authenticatorDataB64url: authData,
+        rpId: rpId
+      )
     }
+    resolve(resultJson)
   }
   
   

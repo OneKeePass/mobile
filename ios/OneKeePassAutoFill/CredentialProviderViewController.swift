@@ -130,7 +130,9 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
     logger1.debug("ASPasskeyAssertionCredential formed successfully \(credential) and sent to app")
 
     cancelled = true  // Prevent viewDidDisappear's cancelExtension from racing with this call
-    ctx.completeAssertionRequest(using: credential)
+    Task {
+      await ctx.completeAssertionRequest(using: credential)
+    }
   }
 
   static func serviceIdentifiersReceived() -> [String: String] {
