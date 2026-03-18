@@ -236,6 +236,33 @@ pub enum CommandArg {
         allow_credential_ids: Option<Vec<String>>,
     },
 
+    // Pending passkey — store (extension side). Many unique required fields.
+    PasskeyStorePendingArg {
+        org_db_key: String,
+        credential_id_b64url: String,
+        private_key_pem: String,
+        rp_id: String,
+        rp_name: String,
+        username: String,
+        user_handle_b64url: String,
+        origin: String,
+        entry_uuid: Option<String>,
+        new_entry_name: Option<String>,
+        group_uuid: Option<String>,
+        new_group_name: Option<String>,
+    },
+
+    // Pending passkey — commit or discard (main app side). Must come before DbKey.
+    PasskeyPendingRecordArg {
+        record_uuid: String,
+        db_key: String,
+    },
+
+    // Pending passkey — list (main app side). Unique field org_db_key.
+    PasskeyPendingListArg {
+        org_db_key: String,
+    },
+
     // This variant needs to come last so that other variants starting with db_key is matched before this
     // and this will be matched only if db_key is passed. A kind of descending order with the same field names
     // in diffrent variant. If this variant put before any other variant with db_key field,

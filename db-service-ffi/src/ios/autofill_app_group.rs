@@ -42,6 +42,22 @@ const META_JSON_FILE_NAME: &str = "autofill_meta.json";
 
 const META_JSON_FILE_VERSION: &str = "2.0.0";
 
+const PENDING_PASSKEYS_DIR: &str = "pending_passkeys";
+
+// Pending records older than 30 days are removed during listing
+const PENDING_PASSKEY_TTL_SECS: i64 = 30 * 24 * 60 * 60;
+
+// A passkey registration record written by the autofill extension.
+// The main app later picks it up, commits it to KDBX, and deletes the file.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PendingPasskeyRecord {
+    pub record_uuid: String,
+    pub created_at_unix: i64,
+    // The db_key used in the main app (original file URI)
+    pub org_db_key: String,
+    pub passkey_info: onekeepass_core::db_service::passkey::PasskeyStorageInfo,
+}
+
 /////////  Some public exposed fns ////////////////
 
 pub(crate) fn delete_copied_autofill_details(db_key: &str) -> OkpResult<()> {
@@ -87,6 +103,11 @@ pub(crate) fn remove_all_app_extension_contents() {
         let _ = remove_dir_contents(path);
     }
 
+    // Also remove pending passkey records
+    if let Ok(path) = app_group_root_sub_dir(PENDING_PASSKEYS_DIR) {
+        let _ = remove_dir_contents(path);
+    }
+
     if let Some(path) = autofill_meta_json_file() {
         let _ = fs::remove_file(path);
     }
@@ -113,6 +134,11 @@ fn app_group_root_sub_dir(sub_dir_name: &str) -> OkpResult<PathBuf> {
     let app_group_home_dir = app_extension_root()?;
     let p = util::create_sub_dir(app_group_home_dir.to_string_lossy().as_ref(), sub_dir_name);
     Ok(p)
+}
+
+// Returns AppGroup/okp/pending_passkeys/, creating it if needed
+fn pending_passkeys_dir() -> OkpResult<PathBuf> {
+    app_group_root_sub_dir(PENDING_PASSKEYS_DIR)
 }
 
 // Gets the full path of the autofill specific meta data json file
@@ -634,6 +660,238 @@ impl IosAppGroupSupportService {
             };
         result_json_str(inner())
     }
+
+    // ── Pending passkey queue ────────────────────────────────────────────
+
+    // Writes a PendingPasskeyRecord to AppGroup/okp/pending_passkeys/<uuid>.json.
+    // Called by the autofill extension after a passkey creation ceremony.
+    fn passkey_store_pending(&self, json_args: &str) -> ResponseJson {
+        let inner = || -> OkpResult<PendingPasskeyRecord> {
+            let (
+                org_db_key,
+                credential_id_b64url,
+                private_key_pem,
+                rp_id,
+                rp_name,
+                username,
+                user_handle_b64url,
+                origin,
+                entry_uuid,
+                new_entry_name,
+                group_uuid,
+                new_group_name,
+            ) = parse_command_args_or_err!(
+                json_args,
+                PasskeyStorePendingArg {
+                    org_db_key,
+                    credential_id_b64url,
+                    private_key_pem,
+                    rp_id,
+                    rp_name,
+                    username,
+                    user_handle_b64url,
+                    origin,
+                    entry_uuid,
+                    new_entry_name,
+                    group_uuid,
+                    new_group_name
+                }
+            );
+
+            let entry_uuid_parsed = entry_uuid
+                .map(|s| uuid::Uuid::parse_str(&s))
+                .transpose()
+                .map_err(|e| OkpError::UnexpectedError(format!("Invalid entry_uuid: {}", e)))?;
+
+            let group_uuid_parsed = group_uuid
+                .map(|s| uuid::Uuid::parse_str(&s))
+                .transpose()
+                .map_err(|e| OkpError::UnexpectedError(format!("Invalid group_uuid: {}", e)))?;
+
+            let passkey_info = onekeepass_core::db_service::passkey::PasskeyStorageInfo {
+                credential_id_b64url,
+                private_key_pem, // Phase 5: encrypt before writing
+                rp_id,
+                rp_name,
+                username,
+                user_handle_b64url,
+                origin,
+                entry_uuid: entry_uuid_parsed,
+                new_entry_name,
+                group_uuid: group_uuid_parsed,
+                new_group_name,
+            };
+
+            let record_uuid = uuid::Uuid::new_v4().to_string();
+            let created_at_unix = service_util::now_utc_seconds();
+
+            let record = PendingPasskeyRecord {
+                record_uuid: record_uuid.clone(),
+                created_at_unix,
+                org_db_key,
+                passkey_info,
+            };
+
+            let dir = pending_passkeys_dir()?;
+            let file_path = dir.join(format!("{}.json", &record_uuid));
+            let json_str = serde_json::to_string_pretty(&record)
+                .map_err(|e| OkpError::UnexpectedError(format!("JSON serialize failed: {}", e)))?;
+            fs::write(&file_path, json_str.as_bytes())?;
+
+            debug!("Pending passkey record written to {:?}", &file_path);
+
+            Ok(record)
+        };
+        result_json_str(inner())
+    }
+
+    // Lists all pending passkey records, optionally filtered by org_db_key.
+    // Pass empty org_db_key to list records for all databases.
+    // Expired records (older than PENDING_PASSKEY_TTL_SECS) are removed lazily.
+    fn passkey_pending_list(&self, json_args: &str) -> ResponseJson {
+        let inner = || -> OkpResult<Vec<PendingPasskeyRecord>> {
+            let (org_db_key,) = parse_command_args_or_err!(
+                json_args,
+                PasskeyPendingListArg { org_db_key }
+            );
+
+            let dir = pending_passkeys_dir()?;
+
+            if !dir.exists() {
+                return Ok(vec![]);
+            }
+
+            let now = service_util::now_utc_seconds();
+            let mut records = Vec::new();
+            let entries = fs::read_dir(&dir)?;
+
+            for entry in entries {
+                let entry = entry?;
+                let path = entry.path();
+
+                if path.extension().and_then(|e| e.to_str()) != Some("json") {
+                    continue;
+                }
+
+                match fs::read_to_string(&path) {
+                    Ok(json_str) => {
+                        match serde_json::from_str::<PendingPasskeyRecord>(&json_str) {
+                            Ok(record) => {
+                                // Remove expired records
+                                if (now - record.created_at_unix) > PENDING_PASSKEY_TTL_SECS {
+                                    log::info!(
+                                        "Removing expired pending passkey record {:?}",
+                                        &path
+                                    );
+                                    let _ = fs::remove_file(&path);
+                                    continue;
+                                }
+
+                                // Filter by org_db_key if non-empty
+                                if org_db_key.is_empty() || record.org_db_key == org_db_key {
+                                    records.push(record);
+                                }
+                            }
+                            Err(e) => {
+                                log::warn!(
+                                    "Skipping malformed pending passkey file {:?}: {}",
+                                    &path,
+                                    e
+                                );
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        log::warn!("Could not read pending passkey file {:?}: {}", &path, e);
+                    }
+                }
+            }
+
+            // Newest first
+            records.sort_by(|a, b| b.created_at_unix.cmp(&a.created_at_unix));
+
+            Ok(records)
+        };
+        result_json_str(inner())
+    }
+
+    // Reads a pending passkey record, stores the passkey into the in-memory KDBX
+    // via store_passkey_entry, then deletes the pending file.
+    // The caller (UI layer) is responsible for triggering the normal save flow afterward.
+    fn passkey_commit_pending(&self, json_args: &str) -> ResponseJson {
+        let inner = || -> OkpResult<()> {
+            let (record_uuid, db_key) = parse_command_args_or_err!(
+                json_args,
+                PasskeyPendingRecordArg { record_uuid, db_key }
+            );
+
+            let dir = pending_passkeys_dir()?;
+            let file_path = dir.join(format!("{}.json", &record_uuid));
+
+            if !file_path.exists() {
+                return Err(OkpError::UnexpectedError(format!(
+                    "Pending passkey record {} not found",
+                    &record_uuid
+                )));
+            }
+
+            let json_str = fs::read_to_string(&file_path)?;
+            let record: PendingPasskeyRecord = serde_json::from_str(&json_str)
+                .map_err(|e| {
+                    OkpError::UnexpectedError(format!(
+                        "Failed to parse pending passkey record: {}",
+                        e
+                    ))
+                })?;
+
+            // Phase 5: decrypt record.passkey_info.private_key_pem here
+
+            // store_passkey_entry modifies the in-memory KDBX only.
+            // db_key is the main app's runtime db_key (the loaded DB).
+            onekeepass_core::db_service::passkey::store_passkey_entry(
+                &db_key,
+                record.passkey_info,
+            )?;
+
+            // Delete the pending file only after successful commit
+            fs::remove_file(&file_path)?;
+
+            debug!(
+                "Pending passkey {} committed to db_key {} and file deleted",
+                &record_uuid, &db_key
+            );
+
+            Ok(())
+        };
+        result_json_str(inner())
+    }
+
+    // Deletes a pending passkey record without committing it to KDBX.
+    fn passkey_discard_pending(&self, json_args: &str) -> ResponseJson {
+        let inner = || -> OkpResult<()> {
+            let (record_uuid, _db_key) = parse_command_args_or_err!(
+                json_args,
+                PasskeyPendingRecordArg { record_uuid, db_key }
+            );
+
+            let dir = pending_passkeys_dir()?;
+            let file_path = dir.join(format!("{}.json", &record_uuid));
+
+            if !file_path.exists() {
+                return Err(OkpError::UnexpectedError(format!(
+                    "Pending passkey record {} not found",
+                    &record_uuid
+                )));
+            }
+
+            fs::remove_file(&file_path)?;
+
+            debug!("Pending passkey record {} discarded", &record_uuid);
+
+            Ok(())
+        };
+        result_json_str(inner())
+    }
 }
 
 // Here we implement all fns of this struct that are exported
@@ -674,6 +932,12 @@ impl IosAppGroupSupportService {
             "passkey_find_matching" => self.passkey_find_matching(json_args),
             "passkey_sign_assertion" => self.passkey_sign_assertion(json_args),
             "passkey_get_all" => self.passkey_get_all(json_args),
+
+            // Pending passkey queue
+            "passkey_store_pending" => self.passkey_store_pending(json_args),
+            "passkey_pending_list" => self.passkey_pending_list(json_args),
+            "passkey_commit_pending" => self.passkey_commit_pending(json_args),
+            "passkey_discard_pending" => self.passkey_discard_pending(json_args),
 
             x => error_json_str(&format!(
                 "Invalid command or args: Command call {} with args {} failed",
