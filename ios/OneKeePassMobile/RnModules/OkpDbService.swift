@@ -17,7 +17,10 @@ class OkpDbService: NSObject {
   
   override init() {
     logger.debug("Going to call initialize from ")
-    // ASCredentialIdentityStore.shared.removeAllCredentialIdentities()
+    
+    ASCredentialIdentityStore.shared.removeAllCredentialIdentities()
+    logger.debug("Temporary one - ASCredentialIdentityStore.shared.removeAllCredentialIdentities called  ")
+    
     DbServiceAPI.initialize()
   }
   

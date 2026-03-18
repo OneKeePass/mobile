@@ -43,7 +43,7 @@
                                  (when-let [info (on-ok api-response)]
                                    (println "Response received in :bg-ios-copy-file-to-group" api-response)
                                    (dispatch [:ios-autofill-db-info-updated info])
-                                   (bg/register-passkey-identities (fn [_] nil)))))))
+                                   #_(bg/register-passkey-identities (fn [_] nil)))))))
 
 ;; Navigates to the autofill settings page
 (reg-event-fx
