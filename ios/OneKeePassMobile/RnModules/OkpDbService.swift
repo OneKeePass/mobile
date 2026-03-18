@@ -18,8 +18,8 @@ class OkpDbService: NSObject {
   override init() {
     logger.debug("Going to call initialize from ")
     
-    ASCredentialIdentityStore.shared.removeAllCredentialIdentities()
-    logger.debug("Temporary one - ASCredentialIdentityStore.shared.removeAllCredentialIdentities called  ")
+    // ASCredentialIdentityStore.shared.removeAllCredentialIdentities()
+    // logger.debug("Temporary one - ASCredentialIdentityStore.shared.removeAllCredentialIdentities called  ")
     
     DbServiceAPI.initialize()
   }
@@ -89,6 +89,13 @@ class OkpDbService: NSObject {
     }
   }
   
+  // This fn is not used for now and not called from cljs. 
+  // Without this, the message on the sign-in sheet is not correct
+  // Once we decide to use this, instead of making call from cljs, we need to make this as a callback service to rust code and 
+  // should be called in fn IosAppGroupSupportService.copy_files_to_app_group of src/ios/autofill_app_group.rs
+  // Also those PasskeyIdentities be removed when we call IosAppGroupSupportService.delete_copied_autofill_details
+
+
   // Called after a database is enabled for AutoFill (and its copy written to the App Group).
   // Queries Rust for all passkeys in the open database(s) and registers them with
   // ASCredentialIdentityStore so the iOS sheet shows "passkeys" not "passwords".
