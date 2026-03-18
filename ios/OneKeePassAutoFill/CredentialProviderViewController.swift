@@ -114,7 +114,7 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
           let authData = Data(base64URLEncoded: authenticatorDataB64url),
           let clientDataHash = pendingPasskeyClientDataHash
     else {
-      logger1.error("completePasskeyAssertion: missing context or could not decode base64url data")
+      logger1.error("CredentialProviderViewController - completePasskeyAssertion: missing context or could not decode base64url data")
       return
     }
 
@@ -127,11 +127,13 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
       credentialID: credentialIdData
     )
     
-    logger1.debug("ASPasskeyAssertionCredential formed successfully \(credential) and sent to app")
+    logger1.debug("CredentialProviderViewController -  ASPasskeyAssertionCredential formed successfully \(credential) and sent to app")
 
     cancelled = true  // Prevent viewDidDisappear's cancelExtension from racing with this call
-    Task {
+    Task { @MainActor in
+      logger1.debug("CredentialProviderViewController -  completeAssertionRequest Task started — calling completeAssertionRequest")
       await ctx.completeAssertionRequest(using: credential)
+      logger1.debug("CredentialProviderViewController - completeAssertionRequest Task completed")
     }
   }
 
@@ -170,7 +172,9 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
     // This was used when we used the inner clsss 'OkpViewController' till RN 0.78.2
     // This is commented out if  we set this class controllers's view directly
     // See prepareCredentialList where this is called when we set the view directly instead of using the custom controller
-    prepareUI()
+    if !Self.cancelled {
+      prepareUI()
+    }
   }
 
   override func didReceiveMemoryWarning() {
@@ -237,7 +241,7 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
     logger.debug("CredentialProviderViewController - prepareCredentialList for password auth is called")
     
     Self.cancelled = false
-    
+
     CredentialProviderViewController.serviceIdentifierDomain = nil
     CredentialProviderViewController.serviceIdentifierUrl = nil
     CredentialProviderViewController.serviceIdentifierDisplayName = nil

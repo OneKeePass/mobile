@@ -159,9 +159,7 @@ class OkpDbService: NSObject {
     }
     resolve(resultJson)
   }
-  
-  
-  
+
   /// TDODO: Need to move authenticateWithBiometric and getAuthenticationErrorDescription to a common class and share between app and autofill
 
   
