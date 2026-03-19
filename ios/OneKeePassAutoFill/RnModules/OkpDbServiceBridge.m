@@ -28,5 +28,9 @@ RCT_EXTERN_METHOD(findMatchingPasskeys:(NSString *)rpId allowCredentialIds:(NSAr
 
 RCT_EXTERN_METHOD(completePasskeyAssertion:(NSString *)entryUuid dbKey:(NSString *)dbKey resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 
+RCT_EXTERN_METHOD(getPendingPasskeyRegistrationContext:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+
+RCT_EXTERN_METHOD(completePasskeyRegistration:(NSString *)dbKey orgDbKey:(NSString *)orgDbKey entryUuid:(NSString *)entryUuid newEntryName:(NSString *)newEntryName groupUuid:(NSString *)groupUuid newGroupName:(NSString *)newGroupName resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+
 @end
 

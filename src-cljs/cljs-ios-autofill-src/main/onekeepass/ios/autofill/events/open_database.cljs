@@ -107,16 +107,25 @@
                                   (dispatch [:all-entries-loaded db-key entry-summaries]))))))
 
 ;; Called after retreiving all entries for the opened database.
-;; If a passkey assertion context is stored (rp-id), route to passkey page;
-;; otherwise run the normal credential-service-identifier filtering.
+;; Routes to the appropriate flow based on context:
+;; 1. Passkey registration (if rp-id is set in registration context)
+;; 2. Passkey assertion (if rp-id is set in assertion context)
+;; 3. Normal credential-service-identifier filtering (default)
 (reg-event-fx
  :all-entries-loaded
  (fn [{:keys [db]} [_event-id db-key entry-summaries]]
-   (let [rp-id (get-in db [:passkey-assertion :rp-id])
+   (let [reg-rp-id (get-in db [:passkey-registration :rp-id])
+         assert-rp-id (get-in db [:passkey-assertion :rp-id])
          allow-ids (get-in db [:passkey-assertion :allow-credential-ids] [])]
      {:fx [[:dispatch [:entry-list/update-selected-entry-items db-key entry-summaries]]
-           (if rp-id
-             [:dispatch [:passkey-assertion/fetch rp-id allow-ids]]
+           (cond
+             reg-rp-id
+             [:dispatch [:passkey-registration/load-groups db-key]]
+
+             assert-rp-id
+             [:dispatch [:passkey-assertion/fetch assert-rp-id allow-ids]]
+
+             :else
              [:bg-credential-service-identifier-filtering [db-key]])]})))
 
 ;; Called to load any matching entries based on ios autofill credential identifiers 

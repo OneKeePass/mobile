@@ -35,6 +35,15 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
   static var pendingPasskeyCredentialIds: [Data] = []
   static var pendingPasskeyClientDataHash: Data?
 
+  // Passkey registration state (iOS 17+)
+  static var pendingPasskeyRegistrationRpId: String?
+  static var pendingPasskeyRegistrationUserName: String?
+  static var pendingPasskeyRegistrationUserHandle: Data?
+  static var pendingPasskeyRegistrationClientDataHash: Data?
+  static var isPasskeyRegistrationMode: Bool = false
+  
+  static var prepareViewCalled: Bool = false
+
   private let logger = logger1
   
   //==============================================================================================================//
@@ -75,6 +84,32 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
   
   // ====================================================================================================== //
   
+  static func resetContexts() {
+    
+    Self.extContext = nil
+    Self.cancelled = false
+    Self.isPasskeyRegistrationMode = false
+    
+    Self.pendingPasskeyClientDataHash = nil
+    Self.pendingPasskeyCredentialIds = []
+    Self.pendingPasskeyRegistrationClientDataHash = nil
+    Self.pendingPasskeyRegistrationRpId = nil
+    
+    Self.pendingPasskeyRegistrationUserHandle = nil
+    Self.pendingPasskeyRegistrationUserName =  nil
+    Self.pendingPasskeyRpId = nil
+    
+    Self.serviceIdentifierDisplayName = nil
+    Self.serviceIdentifierDomain = nil
+    Self.serviceIdentifierUrl = nil
+    Self.serviceIdentifierDisplayName = nil
+    
+    Self.prepareViewCalled = false
+    
+    logger1.debug("CredentialProviderViewController - All static variables are reset")
+    
+  }
+  
   static func cancelExtension() {
     logger1.debug("CredentialProviderViewController - In cancelExtension fn and  current cancelled state is \(cancelled) and extContext is \(String(describing: extContext))")
     
@@ -86,6 +121,8 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
     } else {
       logger1.debug("CredentialProviderViewController - Cancelation is not needed/called")
     }
+    
+    resetContexts()
   }
   
   static func credentialSelected(_ user: String, _ password: String) {
@@ -137,6 +174,38 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
     }
   }
 
+  @available(iOS 17.0, *)
+  static func completePasskeyRegistration(
+    credentialIdB64url: String,
+    attestationObjectB64url: String,
+    clientDataHash: Data
+  ) {
+    guard let ctx = extContext,
+          let credentialIdData = Data(base64URLEncoded: credentialIdB64url),
+          let attestationObjectData = Data(base64URLEncoded: attestationObjectB64url),
+          let rpId = pendingPasskeyRegistrationRpId
+    else {
+      logger1.error("CredentialProviderViewController - completePasskeyRegistration: missing context or could not decode base64url data")
+      return
+    }
+
+    let credential = ASPasskeyRegistrationCredential(
+      relyingParty: rpId,
+      clientDataHash: clientDataHash,
+      credentialID: credentialIdData,
+      attestationObject: attestationObjectData
+    )
+
+    logger1.debug("CredentialProviderViewController - ASPasskeyRegistrationCredential formed successfully")
+
+    cancelled = true
+    Task { @MainActor in
+      logger1.debug("CredentialProviderViewController - completeRegistrationRequest Task started")
+      await ctx.completeRegistrationRequest(using: credential)
+      logger1.debug("CredentialProviderViewController - completeRegistrationRequest Task completed")
+    }
+  }
+
   static func serviceIdentifiersReceived() -> [String: String] {
     var dict: [String: String] = [:]
     
@@ -162,6 +231,9 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
   override func viewDidDisappear(_ animated: Bool) {
     super.viewDidDisappear(animated)
     logger.debug("CredentialProviderViewController - viewDidDisappear is called \(animated)")
+    
+    Self.resetContexts()
+    
     // This needs to be added here when use this class's view directly
     // CredentialProviderViewController.cancelExtension()
   }
@@ -207,8 +279,13 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
   
   func prepareUI() {
     logger.debug("CredentialProviderViewController - prepareUI is called")
+    if Self.prepareViewCalled {
+      logger.debug("CredentialProviderViewController - prepareUI is already called and not calling again")
+      return
+    }
     let vc = OkpReactViewController()
     present(vc, animated: true, completion: nil)
+    Self.prepareViewCalled = true
   }
   
   // This is another way of adding the RN view directly as a sub view
@@ -319,6 +396,31 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
     extensionContext.cancelRequest(withError: NSError(
       domain: ASExtensionErrorDomain,
       code: ASExtensionError.userInteractionRequired.rawValue))
+  }
+
+  // iOS 17+ passkey registration entry point.
+  // Called when a website requests passkey creation and iOS invokes the autofill extension.
+  @available(iOS 17.0, *)
+  override func prepareInterface(
+    forPasskeyRegistration registrationRequest: ASCredentialRequest
+  ) {
+    logger.debug("CredentialProviderViewController - prepareInterfaceForPasskeyRegistration called")
+    Self.cancelled = false
+
+    guard let request = registrationRequest as? ASPasskeyCredentialRequest,
+          let identity = request.credentialIdentity as? ASPasskeyCredentialIdentity
+    else {
+      logger.error("CredentialProviderViewController - prepareInterfaceForPasskeyRegistration: not a passkey request")
+      return
+    }
+
+    Self.pendingPasskeyRegistrationRpId = identity.relyingPartyIdentifier
+    Self.pendingPasskeyRegistrationUserName = identity.userName
+    Self.pendingPasskeyRegistrationUserHandle = identity.userHandle
+    Self.pendingPasskeyRegistrationClientDataHash = request.clientDataHash
+    Self.isPasskeyRegistrationMode = true
+
+    logger.debug("CredentialProviderViewController - passkey registration for rpId=\(identity.relyingPartyIdentifier), user=\(identity.userName)")
   }
 
   /*

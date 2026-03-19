@@ -89,6 +89,7 @@
  (fn [_]
    (bg/get-pending-passkey-context
     (fn [response]
+      (println "ASSERTION - bg/get-pending-passkey-context handles response" response)
       (dispatch [:passkey-assertion/context-loaded (on-ok response)])))))
 
 (reg-fx

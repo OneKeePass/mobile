@@ -666,6 +666,8 @@ impl IosAppGroupSupportService {
     // Writes a PendingPasskeyRecord to AppGroup/okp/pending_passkeys/<uuid>.json.
     // Called by the autofill extension after a passkey creation ceremony.
     fn passkey_store_pending(&self, json_args: &str) -> ResponseJson {
+        debug!("In passkey_store_pending Rust ffi");
+        
         let inner = || -> OkpResult<PendingPasskeyRecord> {
             let (
                 org_db_key,
@@ -734,8 +736,12 @@ impl IosAppGroupSupportService {
 
             let dir = pending_passkeys_dir()?;
             let file_path = dir.join(format!("{}.json", &record_uuid));
+            
             let json_str = serde_json::to_string_pretty(&record)
                 .map_err(|e| OkpError::UnexpectedError(format!("JSON serialize failed: {}", e)))?;
+
+            debug!("Pending passkey is written to the file {:?}", file_path);
+
             fs::write(&file_path, json_str.as_bytes())?;
 
             debug!("Pending passkey record written to {:?}", &file_path);
@@ -892,6 +898,75 @@ impl IosAppGroupSupportService {
         };
         result_json_str(inner())
     }
+
+    // ── Passkey creation (Phase 3) ─────────────────────────────────────
+
+    // Generates a new passkey key pair and returns the attestation object,
+    // credential ID, and private key PEM. Called by the autofill extension
+    // during a passkey registration ceremony.
+    fn passkey_create_with_hash(&self, json_args: &str) -> ResponseJson {
+        let inner =
+            || -> OkpResult<onekeepass_core::passkey_crypto::PasskeyCreationWithHashResult> {
+                let (rp_id, rp_name, user_name, user_handle_b64url, client_data_hash_b64url) =
+                    parse_command_args_or_err!(
+                        json_args,
+                        PasskeyCreateWithHashArg {
+                            rp_id,
+                            rp_name,
+                            user_name,
+                            user_handle_b64url,
+                            client_data_hash_b64url
+                        }
+                    );
+
+                let hash_bytes = BASE64URL_NOPAD
+                    .decode(client_data_hash_b64url.as_bytes())
+                    .map_err(|e| OkpError::UnexpectedError(e.to_string()))?;
+
+                Ok(
+                    onekeepass_core::passkey_crypto::create_passkey_with_hash(
+                        &rp_id,
+                        &rp_name,
+                        &user_name,
+                        &user_handle_b64url,
+                        &hash_bytes,
+                    )?,
+                )
+            };
+        result_json_str(inner())
+    }
+
+    // Returns all groups in the opened database for the passkey registration
+    // group picker UI.
+    fn passkey_get_db_groups(&self, json_args: &str) -> ResponseJson {
+        let inner =
+            || -> OkpResult<Vec<onekeepass_core::db_service::passkey::GroupInfo>> {
+                let (db_key,) = parse_command_args_or_err!(json_args, DbKey { db_key });
+                Ok(onekeepass_core::db_service::passkey::get_db_groups(&db_key)?)
+            };
+        result_json_str(inner())
+    }
+
+    // Returns all entries in a specific group for the passkey registration
+    // entry picker UI.
+    fn passkey_get_group_entries(&self, json_args: &str) -> ResponseJson {
+        let inner =
+            || -> OkpResult<Vec<onekeepass_core::db_service::passkey::EntryBasicInfo>> {
+                let (db_key, group_uuid_str) = parse_command_args_or_err!(
+                    json_args,
+                    PasskeyGetGroupEntriesArg { db_key, group_uuid }
+                );
+
+                let group_uuid = uuid::Uuid::parse_str(&group_uuid_str)
+                    .map_err(|e| OkpError::UnexpectedError(format!("Invalid group_uuid: {}", e)))?;
+
+                Ok(onekeepass_core::db_service::passkey::get_group_entries(
+                    &db_key,
+                    &group_uuid,
+                )?)
+            };
+        result_json_str(inner())
+    }
 }
 
 // Here we implement all fns of this struct that are exported
@@ -938,6 +1013,11 @@ impl IosAppGroupSupportService {
             "passkey_pending_list" => self.passkey_pending_list(json_args),
             "passkey_commit_pending" => self.passkey_commit_pending(json_args),
             "passkey_discard_pending" => self.passkey_discard_pending(json_args),
+
+            // Passkey creation (Phase 3)
+            "passkey_create_with_hash" => self.passkey_create_with_hash(json_args),
+            "passkey_get_db_groups" => self.passkey_get_db_groups(json_args),
+            "passkey_get_group_entries" => self.passkey_get_group_entries(json_args),
 
             x => error_json_str(&format!(
                 "Invalid command or args: Command call {} with args {} failed",

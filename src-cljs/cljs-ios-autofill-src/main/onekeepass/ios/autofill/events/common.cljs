@@ -129,6 +129,8 @@
                                  (when-let [af-init-data (on-ok api-response)]
                                    (dispatch [:autofill-init-data-loaded af-init-data]))))))
 
+;; This event is called first when autofill is loaded 
+;; See the calling sequence from 'sync-initialize' fn (triggered from cljs-ios-autofill-src/main/onekeepass/ios/autofill/core.cljs start fn)
 (reg-event-fx
  :autofill-init-data-loaded
  (fn [{:keys [db]} [_event-id {:keys [copied-dbs-info database-preferences app-lock-preference last-pin-auth-success-time] :as af-init-data}]]
@@ -136,10 +138,14 @@
                          {:database-preferences database-preferences
                           :app-lock-preference app-lock-preference
                           :last-pin-auth-success-time last-pin-auth-success-time})
-            (assoc-in [:autofill-db-files-info] copied-dbs-info))
+            (assoc-in [:autofill-db-files-info] copied-dbs-info)
+            ;; Will be set based on the 'check-context' event
+            (assoc-in [:passkey-assertion] {})
+            (assoc-in [:passkey-registration] {}))
     :fx [[:dispatch [:app-lock/app-launched]]
          [:bg-list-key-files]
-         [:dispatch [:passkey-assertion/check-context]]]}))
+         [:dispatch [:passkey-assertion/check-context]]
+         [:dispatch [:passkey-registration/check-context]]]}))
 
 (reg-sub
  :app-lock-preference

@@ -270,6 +270,32 @@
    (fn [] (.completePasskeyAssertion okp-db-service entry-uuid db-key))
    dispatch-fn))
 
+(defn get-pending-passkey-registration-context
+  "Returns {:ok {:rp-id ... :user-name ... :user-handle-b64url ...}} if this session was
+   triggered by a passkey registration request, or {:ok nil} otherwise."
+  [dispatch-fn]
+  (call-api-async
+   (fn [] (.getPendingPasskeyRegistrationContext okp-db-service))
+   dispatch-fn))
+
+(defn get-db-groups
+  "Fetches all groups in the opened database for the passkey registration group picker."
+  [db-key dispatch-fn]
+  (autofill-invoke-api "passkey_get_db_groups" {:db-key db-key} dispatch-fn))
+
+(defn get-group-entries
+  "Fetches all entries in a specific group for the passkey registration entry picker."
+  [db-key group-uuid dispatch-fn]
+  (autofill-invoke-api "passkey_get_group_entries" {:db-key db-key :group-uuid group-uuid} dispatch-fn))
+
+(defn complete-passkey-registration
+  "Bundled passkey registration: creates key pair, stores pending record, and completes the iOS request.
+   Single Swift call that bundles 3 operations."
+  [db-key org-db-key entry-uuid new-entry-name group-uuid new-group-name dispatch-fn]
+  (call-api-async
+   (fn [] (.completePasskeyRegistration okp-db-service db-key org-db-key entry-uuid new-entry-name group-uuid new-group-name))
+   dispatch-fn))
+
 (defn credentials-selected [user-name password dispatch-fn]
   (call-api-async (fn [] (.credentialSelected okp-db-service user-name password)) dispatch-fn))
 

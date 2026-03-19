@@ -230,6 +230,15 @@ pub enum CommandArg {
         client_data_hash_b64url: String,
     },
 
+    // Passkey creation with pre-computed clientDataHash (iOS autofill)
+    PasskeyCreateWithHashArg {
+        rp_id: String,
+        rp_name: String,
+        user_name: String,
+        user_handle_b64url: String,
+        client_data_hash_b64url: String,
+    },
+
     // Passkey lookup — unique rp_id field; must come before GenericArg
     PasskeyFindMatchingArg {
         rp_id: String,
@@ -261,6 +270,12 @@ pub enum CommandArg {
     // Pending passkey — list (main app side). Unique field org_db_key.
     PasskeyPendingListArg {
         org_db_key: String,
+    },
+
+    // Group entries lookup — has db_key + group_uuid; must come before DbKey.
+    PasskeyGetGroupEntriesArg {
+        db_key: String,
+        group_uuid: String,
     },
 
     // This variant needs to come last so that other variants starting with db_key is matched before this
