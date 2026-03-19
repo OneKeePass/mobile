@@ -87,10 +87,26 @@
                            (let [item (js->clj (.-item props) :keywordize-keys true)]
                              (r/as-element [entry-item item])))}])]))))
 
+(defn- error-view []
+  (let [error-msg (reg-events/registration-error-message)]
+    (fn []
+      [rn-view {:style {:flex 1 :width "100%" :justify-content "center" :align-items "center" :padding 20}}
+       [rn-view {:style {:background-color @primary-container-color
+                         :padding 10
+                         :width "100%"
+                         :align-items "center"}}
+        [rnp-text {:variant "titleSmall"} "Passkey Registration Failed"]]
+       [rn-view {:style {:padding 20}}
+        [rnp-text {:variant "bodyMedium" :style {:text-align "center"}} @error-msg]]
+       [rnp-button {:mode "contained"
+                    :onPress reg-events/close-after-error}
+        "Close"]])))
+
 (defn content []
   (let [step (reg-events/registration-step)]
     (fn []
       (condp = @step
         :group-picker [group-picker]
         :entry-picker [entry-picker]
+        :error [error-view]
         [group-picker]))))

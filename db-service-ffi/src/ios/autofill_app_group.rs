@@ -141,6 +141,48 @@ fn pending_passkeys_dir() -> OkpResult<PathBuf> {
     app_group_root_sub_dir(PENDING_PASSKEYS_DIR)
 }
 
+// Reads all non-expired pending passkey records from disk.
+// Does NOT modify or delete any files — callers decide what to do with the records.
+fn collect_pending_passkeys() -> Vec<PendingPasskeyRecord> {
+    let dir = match pending_passkeys_dir() {
+        Ok(d) => d,
+        Err(_) => return vec![],
+    };
+    if !dir.exists() {
+        return vec![];
+    }
+    let now = service_util::now_utc_seconds();
+    let mut records = Vec::new();
+    let entries = match fs::read_dir(&dir) {
+        Ok(e) => e,
+        Err(_) => return vec![],
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|e| e.to_str()) != Some("json") {
+            continue;
+        }
+        let json_str = match fs::read_to_string(&path) {
+            Ok(s) => s,
+            Err(e) => {
+                log::warn!("Could not read pending passkey file {:?}: {}", &path, e);
+                continue;
+            }
+        };
+        match serde_json::from_str::<PendingPasskeyRecord>(&json_str) {
+            Ok(record) => {
+                if (now - record.created_at_unix) <= PENDING_PASSKEY_TTL_SECS {
+                    records.push(record);
+                }
+            }
+            Err(e) => {
+                log::warn!("Skipping malformed pending passkey file {:?}: {}", &path, e);
+            }
+        }
+    }
+    records
+}
+
 // Gets the full path of the autofill specific meta data json file
 fn autofill_meta_json_file() -> Option<PathBuf> {
     // let Some(app_group_home_dir) = &AppState::global().app_group_home_dir else {
@@ -531,6 +573,23 @@ impl IosAppGroupSupportService {
                 }
                 _ => e,
             })?;
+
+            // Apply any pending passkey registrations to the in-memory KDBX so that
+            // passkey_find_matching and passkey_sign_assertion can find them within
+            // this extension session. The pending files are NOT deleted here; the main
+            // app commits them via passkey_commit_pending when it has its own UI.
+            for record in collect_pending_passkeys() {
+                if let Err(e) = onekeepass_core::db_service::passkey::store_passkey_entry(
+                    &kdbx_loaded.db_key,
+                    record.passkey_info,
+                ) {
+                    log::warn!(
+                        "Could not apply pending passkey {} to in-memory KDBX: {}",
+                        record.record_uuid,
+                        e
+                    );
+                }
+            }
 
             let r = db_service::entry_summary_data(
                 &kdbx_loaded.db_key,

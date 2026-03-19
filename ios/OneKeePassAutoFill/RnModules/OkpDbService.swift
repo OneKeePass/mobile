@@ -264,7 +264,16 @@ class OkpDbService: NSObject {
       let storeResult = svc.invoke("passkey_store_pending", storeArgsStr)
       self.logger.debug("passkey_store_pending result: \(storeResult)")
 
-      // Step 3: Complete the iOS registration request
+      // Do NOT complete iOS registration if store failed
+      if let storeData = storeResult.data(using: .utf8),
+         let storeDict = try? JSONSerialization.jsonObject(with: storeData) as? [String: Any],
+         let storeError = storeDict["error"], !(storeError is NSNull) {
+        self.logger.error("passkey_store_pending failed: \(storeResult)")
+        resolve(storeResult)
+        return
+      }
+
+      // Step 3: Complete the iOS registration request (only on success)
       CredentialProviderViewController.completePasskeyRegistration(
         credentialIdB64url: credentialIdB64url,
         attestationObjectB64url: attestationObjectB64url,

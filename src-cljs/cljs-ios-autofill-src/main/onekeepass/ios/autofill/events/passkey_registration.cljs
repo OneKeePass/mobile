@@ -26,6 +26,12 @@
 (defn registration-step []
   (subscribe [:passkey-registration/step]))
 
+(defn registration-error-message []
+  (subscribe [:passkey-registration/error-message]))
+
+(defn close-after-error []
+  (dispatch [:passkey-registration/close-after-error]))
+
 (defn select-group [group]
   (dispatch [:passkey-registration/select-group group]))
 
@@ -69,6 +75,11 @@
  :passkey-registration/step
  (fn [db _]
    (get-in db [:passkey-registration :step] :group-picker)))
+
+(reg-sub
+ :passkey-registration/error-message
+ (fn [db _]
+   (get-in db [:passkey-registration :error-message])))
 
 ;; ── Events ───────────────────────────────────────────────────────────────────
 
@@ -157,6 +168,20 @@
  (fn [_ _]
    {}))
 
+;; Sets step to :error and stores error message in db
+(reg-event-fx
+ :passkey-registration/registration-failed
+ (fn [{:keys [db]} [_ error]]
+   {:db (-> db
+            (assoc-in [:passkey-registration :step] :error)
+            (assoc-in [:passkey-registration :error-message] (str error)))}))
+
+;; Cancels the extension after user dismisses the error view
+(reg-event-fx
+ :passkey-registration/close-after-error
+ (fn [_ _]
+   {:fx [[:bg/cancel-extension nil]]}))
+
 ;; ── Effects ──────────────────────────────────────────────────────────────────
 
 (reg-fx
@@ -188,5 +213,14 @@
  (fn [[db-key org-db-key entry-uuid new-entry-name group-uuid new-group-name]]
    (bg/complete-passkey-registration
     db-key org-db-key entry-uuid new-entry-name group-uuid new-group-name
-    (fn [_response]
-      (dispatch [:passkey-registration/completed])))))
+    (fn [response]
+      (if-let [_ok (on-ok response
+                          (fn [error]
+                            (dispatch [:passkey-registration/registration-failed error])))]
+        (dispatch [:passkey-registration/completed])
+        nil)))))
+
+(reg-fx
+ :bg/cancel-extension
+ (fn [_]
+   (bg/cancel-extension (fn [_] nil))))
