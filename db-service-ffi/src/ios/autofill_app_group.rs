@@ -93,7 +93,12 @@ pub(crate) fn copy_files_to_app_group_on_save_or_read(db_key: &str) {
             "Unexpected error in copying the files for autofill on save: {} ",
             e
         );
+        return;
     }
+
+    debug!("register_passkey_identities_for_db is called in copy_files_to_app_group_on_save_or_read ");
+    // Update ASCredentialIdentityStore with current passkeys for this db
+    register_passkey_identities_for_db(db_key);
 }
 
 // Called during app reset
@@ -181,6 +186,31 @@ fn collect_pending_passkeys() -> Vec<PendingPasskeyRecord> {
         }
     }
     records
+}
+
+// Fetches all passkeys for the given db_key and registers them with ASCredentialIdentityStore
+// via the Swift callback. Errors are logged but never propagated — passkey identity registration
+// must not block copy or commit operations.
+fn register_passkey_identities_for_db(db_key: &str) {
+    use onekeepass_core::db_service::passkey::get_all_passkeys;
+    use crate::udl_uniffi_exports::PasskeySummaryData;
+
+    let passkeys = match get_all_passkeys(&[db_key.to_string()]) {
+        Ok(p) => p,
+        Err(e) => {
+            log::error!("register_passkey_identities_for_db: fetch error: {:?}", e);
+            return;
+        }
+    };
+    let passkey_data: Vec<PasskeySummaryData> = passkeys.into_iter().map(Into::into).collect();
+    
+    debug!("IosAppGroupSupportService:register_passkey_identities_for_db is called. Passkeys count {}", passkey_data.len());
+
+    if let Err(e) = IosApiCallbackImpl::api_service()
+        .register_passkey_identities(db_key.to_string(), passkey_data)
+    {
+        log::error!("register_passkey_identities_for_db: callback error: {:?}", e);
+    }
 }
 
 // Gets the full path of the autofill specific meta data json file
@@ -451,7 +481,10 @@ struct IosAppGroupSupportService {}
 impl IosAppGroupSupportService {
     fn internal_copy_files_to_app_group(&self, json_args: &str) -> OkpResult<CopiedDbFileInfo> {
         let (db_key,) = parse_command_args_or_err!(json_args, DbKey { db_key });
-        copy_files_to_app_group(&db_key)
+        let result = copy_files_to_app_group(&db_key)?;
+        debug!("IosAppGroupSupportService:copy_files_to_app_group completed");
+        register_passkey_identities_for_db(&db_key);
+        Ok(result)
     }
 
     // Copies the selected db's data content and all key file used to the shared location
@@ -917,6 +950,9 @@ impl IosAppGroupSupportService {
                 &db_key,
                 record.passkey_info,
             )?;
+
+            // Update ASCredentialIdentityStore with passkeys for this database
+            register_passkey_identities_for_db(&db_key);
 
             // Delete the pending file only after successful commit
             fs::remove_file(&file_path)?;

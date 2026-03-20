@@ -2,7 +2,7 @@ use log::debug;
 use once_cell::sync::OnceCell;
 use std::{collections::HashMap, sync::Arc};
 
-use crate::{udl_types::ApiCallbackResult, OkpResult};
+use crate::{udl_types::ApiCallbackResult, udl_uniffi_exports::PasskeySummaryData, OkpResult};
 
 // A signleton that holds iOS specific api callbacks services implemented in Swift
 pub struct IosApiCallbackImpl {
@@ -60,4 +60,9 @@ pub trait IosApiService: Send + Sync {
     fn clipboard_copy_string(&self, text: String, timeout: u32) -> ApiCallbackResult<()>;
     // Autofill specific
     fn asc_credential_service_identifiers(&self,) -> ApiCallbackResult<HashMap<String,String>>;
+    fn register_passkey_identities(
+        &self,
+        db_key: String,
+        passkeys: Vec<PasskeySummaryData>,
+    ) -> ApiCallbackResult<()>;
 }

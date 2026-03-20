@@ -35,8 +35,6 @@ RCT_EXTERN_METHOD(authenticateWithBiometric:(RCTPromiseResolveBlock)resolve reje
 
 RCT_EXTERN_METHOD(autoFillInvokeCommand:(NSString *)commandName args:(NSString *)args  resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 
-RCT_EXTERN_METHOD(registerPasskeyIdentities:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
-
 //RCT_EXTERN_METHOD(copyFileToAppGroup:(NSString *)args resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 
 //RCT_EXTERN_METHOD(deleteAppGroupFiles:(NSString *)args resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)

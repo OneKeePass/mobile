@@ -241,15 +241,6 @@
 (defn ios-query-autofill-db-info [db-key dispatch-fn]
   (ios-autofill-invoke-api "query_autofill_db_info" {:db-key db-key} dispatch-fn))
 
-;; Should be removed after we modify IosAppGroupSupportService.copy_files_to_app_group of src/ios/autofill_app_group.rs
-;; to call there instead of as a separate call from cljs 
-(defn register-passkey-identities [dispatch-fn]
-  (println "Calling swift api registerPasskeyIdentities....")
-  (call-api-async
-   (fn []
-     (println "In api call of .registerPasskeyIdentities")
-     (.registerPasskeyIdentities okp-db-service))
-   dispatch-fn))
 
 (defn ios-copy-to-clipboard
   "Called to copy a selected field value to clipboard
