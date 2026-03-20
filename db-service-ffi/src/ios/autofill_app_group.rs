@@ -6,9 +6,7 @@ use std::{
 use data_encoding::BASE64URL_NOPAD;
 use log::debug;
 use onekeepass_core::db_service::{
-    self,
-    service_util::{self, now_utc_milli_seconds, string_to_simple_hash},
-    EntrySummary,
+    self, passkey::{self, PasskeyStorageInfo}, service_util::{self, now_utc_milli_seconds, string_to_simple_hash}
 };
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -16,15 +14,9 @@ use url::Url;
 use onekeepass_core::error;
 
 use crate::{
-    app_lock,
-    app_preference::{AppLockPreference, DatabasePreference},
-    app_state::AppState,
-    commands::{
-        error_json_str, ok_json_str, result_json_str, CommandArg, InvokeResult, ResponseJson,
-    },
-    parse_command_args_or_err,
-    util::{self, remove_dir_contents},
-    OkpError, OkpResult,
+    OkpError, OkpResult, app_lock, app_preference::{AppLockPreference, DatabasePreference}, app_state::AppState, commands::{
+        CommandArg, InvokeResult, ResponseJson, error_json_str, ok_json_str, result_json_str
+    }, parse_command_args_or_err, udl_uniffi_exports, util::{self, remove_dir_contents}
 };
 
 use super::IosApiCallbackImpl;
@@ -55,7 +47,7 @@ pub struct PendingPasskeyRecord {
     pub created_at_unix: i64,
     // The db_key used in the main app (original file URI)
     pub org_db_key: String,
-    pub passkey_info: onekeepass_core::db_service::passkey::PasskeyStorageInfo,
+    pub passkey_info: PasskeyStorageInfo,
 }
 
 /////////  Some public exposed fns ////////////////
@@ -74,7 +66,53 @@ pub(crate) fn delete_copied_autofill_details(db_key: &str) -> OkpResult<()> {
     );
 
     AutoFillMeta::read().remove_copied_db_info(&db_key);
+
+    // Remove pending passkey JSON files for this db
+    remove_pending_passkeys_for_db(db_key);
+
+    // Remove passkey identities from ASCredentialIdentityStore.
+    // Passing an empty list: Swift removes any cached identities for this db from the store.
+    // Note: if the session cache is empty (db was never opened this session), this is a no-op.
+    // The normal case (user disabling autofill while db is open) always has a populated cache.
+    if let Err(e) = IosApiCallbackImpl::api_service()
+        .register_passkey_identities(db_key.to_string(), vec![])
+    {
+        log::error!(
+            "delete_copied_autofill_details: remove passkey identities error: {:?}",
+            e
+        );
+    }
+
     Ok(())
+}
+
+// Scans the pending_passkeys directory and removes all records whose org_db_key matches db_key.
+fn remove_pending_passkeys_for_db(db_key: &str) {
+    let dir = match pending_passkeys_dir() {
+        Ok(d) => d,
+        Err(_) => return,
+    };
+    if !dir.exists() {
+        return;
+    }
+    let entries = match fs::read_dir(&dir) {
+        Ok(e) => e,
+        Err(_) => return,
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|e| e.to_str()) != Some("json") {
+            continue;
+        }
+        if let Ok(json_str) = fs::read_to_string(&path) {
+            if let Ok(record) = serde_json::from_str::<PendingPasskeyRecord>(&json_str) {
+                if record.org_db_key == db_key {
+                    let _ = fs::remove_file(&path);
+                    debug!("Removed pending passkey file {:?} for db_key", &path);
+                }
+            }
+        }
+    }
 }
 
 // If this db is used in Autofill extension, then we need to copy the database (with essentail data and kdf adjusted) when it is
@@ -188,21 +226,32 @@ fn collect_pending_passkeys() -> Vec<PendingPasskeyRecord> {
     records
 }
 
+// Builds a PasskeySummaryData from a PendingPasskeyRecord for use before the passkey is committed
+// to KDBX. Uses record_uuid as the entry_uuid placeholder.
+fn passkey_summary_from_pending(record: &PendingPasskeyRecord) -> udl_uniffi_exports::PasskeySummaryData {
+    udl_uniffi_exports::PasskeySummaryData {
+        entry_uuid: record.record_uuid.clone(),
+        db_key: record.org_db_key.clone(),
+        credential_id_b64url: record.passkey_info.credential_id_b64url.clone(),
+        rp_id: record.passkey_info.rp_id.clone(),
+        username: record.passkey_info.username.clone(),
+        user_handle_b64url: record.passkey_info.user_handle_b64url.clone(),
+    }
+}
+
 // Fetches all passkeys for the given db_key and registers them with ASCredentialIdentityStore
 // via the Swift callback. Errors are logged but never propagated — passkey identity registration
 // must not block copy or commit operations.
 fn register_passkey_identities_for_db(db_key: &str) {
-    use onekeepass_core::db_service::passkey::get_all_passkeys;
-    use crate::udl_uniffi_exports::PasskeySummaryData;
-
-    let passkeys = match get_all_passkeys(&[db_key.to_string()]) {
+    
+    let passkeys = match passkey::get_all_passkeys(&[db_key.to_string()]) {
         Ok(p) => p,
         Err(e) => {
             log::error!("register_passkey_identities_for_db: fetch error: {:?}", e);
             return;
         }
     };
-    let passkey_data: Vec<PasskeySummaryData> = passkeys.into_iter().map(Into::into).collect();
+    let passkey_data: Vec<udl_uniffi_exports::PasskeySummaryData> = passkeys.into_iter().map(Into::into).collect();
     
     debug!("IosAppGroupSupportService:register_passkey_identities_for_db is called. Passkeys count {}", passkey_data.len());
 
@@ -576,7 +625,7 @@ impl IosAppGroupSupportService {
 
     // Gets the list of all entries in a database that is opened in autofill extension
     fn all_entries_on_db_open(&self, json_args: &str) -> ResponseJson {
-        let inner_fn = || -> OkpResult<Vec<EntrySummary>> {
+        let inner_fn = || -> OkpResult<Vec<db_service::EntrySummary>> {
             let (db_file_name, password, key_file_name, biometric_auth_used) = parse_command_args_or_err!(
                 json_args,
                 OpenDbArg {
@@ -612,7 +661,7 @@ impl IosAppGroupSupportService {
             // this extension session. The pending files are NOT deleted here; the main
             // app commits them via passkey_commit_pending when it has its own UI.
             for record in collect_pending_passkeys() {
-                if let Err(e) = onekeepass_core::db_service::passkey::store_passkey_entry(
+                if let Err(e) = passkey::store_passkey_entry(
                     &kdbx_loaded.db_key,
                     record.passkey_info,
                 ) {
@@ -687,14 +736,14 @@ impl IosAppGroupSupportService {
     // Returns all passkeys in opened databases that match the given relying-party ID
     // and optional allow-list of credential IDs.
     fn passkey_find_matching(&self, json_args: &str) -> ResponseJson {
-        let inner = || -> OkpResult<Vec<onekeepass_core::db_service::passkey::PasskeySummary>> {
+        let inner = || -> OkpResult<Vec<passkey::PasskeySummary>> {
             let (rp_id, allow_credential_ids) = parse_command_args_or_err!(
                 json_args,
                 PasskeyFindMatchingArg { rp_id, allow_credential_ids }
             );
-            let db_keys = onekeepass_core::db_service::all_kdbx_cache_keys()?;
+            let db_keys = db_service::all_kdbx_cache_keys()?;
             let ids = allow_credential_ids.unwrap_or_default();
-            Ok(onekeepass_core::db_service::passkey::find_matching_passkeys(
+            Ok(passkey::find_matching_passkeys(
                 &db_keys, &rp_id, &ids,
             )?)
         };
@@ -704,9 +753,9 @@ impl IosAppGroupSupportService {
     // Returns all passkeys from all open databases — used by the main app to
     // register ASPasskeyCredentialIdentity objects with ASCredentialIdentityStore.
     fn passkey_get_all(&self, _json_args: &str) -> ResponseJson {
-        let inner = || -> OkpResult<Vec<onekeepass_core::db_service::passkey::PasskeySummary>> {
-            let db_keys = onekeepass_core::db_service::all_kdbx_cache_keys()?;
-            onekeepass_core::db_service::passkey::get_all_passkeys(&db_keys)
+        let inner = || -> OkpResult<Vec<passkey::PasskeySummary>> {
+            let db_keys = db_service::all_kdbx_cache_keys()?;
+            passkey::get_all_passkeys(&db_keys)
         };
         result_json_str(inner())
     }
@@ -733,7 +782,7 @@ impl IosAppGroupSupportService {
 
                 debug!("Calling onekeepass_core::db_service::passkey::get_passkey_for_assertion");
 
-                let passkey = onekeepass_core::db_service::passkey::get_passkey_for_assertion(
+                let passkey = passkey::get_passkey_for_assertion(
                     &db_key, &entry_uuid,
                 )?;
 
@@ -802,7 +851,7 @@ impl IosAppGroupSupportService {
                 .transpose()
                 .map_err(|e| OkpError::UnexpectedError(format!("Invalid group_uuid: {}", e)))?;
 
-            let passkey_info = onekeepass_core::db_service::passkey::PasskeyStorageInfo {
+            let passkey_info = passkey::PasskeyStorageInfo {
                 credential_id_b64url,
                 private_key_pem, // Phase 5: encrypt before writing
                 rp_id,
@@ -837,6 +886,14 @@ impl IosAppGroupSupportService {
             fs::write(&file_path, json_str.as_bytes())?;
 
             debug!("Pending passkey record written to {:?}", &file_path);
+
+            // Register the new passkey identity immediately so it appears in autofill sheet
+            let summary = passkey_summary_from_pending(&record);
+            if let Err(e) = IosApiCallbackImpl::api_service()
+                .register_passkey_identities(record.org_db_key.clone(), vec![summary])
+            {
+                log::error!("passkey_store_pending: register identity error: {:?}", e);
+            }
 
             Ok(record)
         };
@@ -946,7 +1003,7 @@ impl IosAppGroupSupportService {
 
             // store_passkey_entry modifies the in-memory KDBX only.
             // db_key is the main app's runtime db_key (the loaded DB).
-            onekeepass_core::db_service::passkey::store_passkey_entry(
+            passkey::store_passkey_entry(
                 &db_key,
                 record.passkey_info,
             )?;
@@ -1035,9 +1092,9 @@ impl IosAppGroupSupportService {
     // group picker UI.
     fn passkey_get_db_groups(&self, json_args: &str) -> ResponseJson {
         let inner =
-            || -> OkpResult<Vec<onekeepass_core::db_service::passkey::GroupInfo>> {
+            || -> OkpResult<Vec<passkey::GroupInfo>> {
                 let (db_key,) = parse_command_args_or_err!(json_args, DbKey { db_key });
-                Ok(onekeepass_core::db_service::passkey::get_db_groups(&db_key)?)
+                Ok(passkey::get_db_groups(&db_key)?)
             };
         result_json_str(inner())
     }
@@ -1046,7 +1103,7 @@ impl IosAppGroupSupportService {
     // entry picker UI.
     fn passkey_get_group_entries(&self, json_args: &str) -> ResponseJson {
         let inner =
-            || -> OkpResult<Vec<onekeepass_core::db_service::passkey::EntryBasicInfo>> {
+            || -> OkpResult<Vec<passkey::EntryBasicInfo>> {
                 let (db_key, group_uuid_str) = parse_command_args_or_err!(
                     json_args,
                     PasskeyGetGroupEntriesArg { db_key, group_uuid }
@@ -1055,7 +1112,7 @@ impl IosAppGroupSupportService {
                 let group_uuid = uuid::Uuid::parse_str(&group_uuid_str)
                     .map_err(|e| OkpError::UnexpectedError(format!("Invalid group_uuid: {}", e)))?;
 
-                Ok(onekeepass_core::db_service::passkey::get_group_entries(
+                Ok(passkey::get_group_entries(
                     &db_key,
                     &group_uuid,
                 )?)
