@@ -94,20 +94,6 @@ class OkpDbService: NSObject {
     resolve("{\"ok\":{\"rp_id\":\"\(rpId)\",\"allow_credential_ids\":\(idsJson)}}")
   }
 
-  // Returns a JSON array of passkeys matching the given relying-party ID and optional allow-list.
-  @objc
-  func findMatchingPasskeys(_ rpId: String, allowCredentialIds: [String],
-                            resolve: @escaping RCTPromiseResolveBlock,
-                            reject _: @escaping RCTPromiseRejectBlock) {
-    DispatchQueue.global(qos: .userInteractive).async {
-      let idsJson = allowCredentialIds.isEmpty
-        ? "[]"
-        : "[" + allowCredentialIds.map { "\"\($0)\"" }.joined(separator: ",") + "]"
-      let args = "{\"rp_id\":\"\(rpId)\",\"allow_credential_ids\":\(idsJson)}"
-      resolve(AutoFillDbServiceAPI.iosAppGroupSupportService().invoke("passkey_find_matching", args))
-    }
-  }
-
   // Signs the pending passkey assertion and completes the extension request.
   @objc
   func completePasskeyAssertion(_ entryUuid: String, dbKey: String,

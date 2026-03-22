@@ -255,13 +255,15 @@
    dispatch-fn))
 
 (defn find-matching-passkeys
-  "Fetches all passkeys matching rpId from open databases.
+  "Fetches all passkeys in db-key matching rp-id.
    allow-credential-ids is a seq of base64url strings (may be empty).
    dispatch-fn receives {:ok [...PasskeySummary]} or {:error ...}."
-  [rp-id allow-credential-ids dispatch-fn]
-  (call-api-async
-   (fn [] (.findMatchingPasskeys okp-db-service rp-id (clj->js allow-credential-ids)))
-   dispatch-fn))
+  [db-key rp-id allow-credential-ids dispatch-fn]
+  (autofill-invoke-api "passkey_find_matching"
+                       {:db-key db-key
+                        :rp-id rp-id
+                        :allow-credential-ids allow-credential-ids}
+                       dispatch-fn))
 
 (defn complete-passkey-assertion
   "Signs the pending passkey assertion for the entry and completes the iOS extension request."

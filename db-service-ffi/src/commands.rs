@@ -240,8 +240,6 @@ pub enum CommandArg {
     },
 
     // Pending passkey — store (extension side). Many unique required fields.
-    // Must come before PasskeyFindMatchingArg (which only needs rp_id + optional field)
-    // so serde untagged doesn't greedily match the less-specific variant first.
     PasskeyStorePendingArg {
         org_db_key: String,
         credential_id_b64url: String,
@@ -257,8 +255,9 @@ pub enum CommandArg {
         new_group_name: Option<String>,
     },
 
-    // Passkey lookup — unique rp_id field; must come before GenericArg
+    // Passkey lookup — requires db_key + rp_id; must come before DbKey
     PasskeyFindMatchingArg {
+        db_key: String,
         rp_id: String,
         allow_credential_ids: Option<Vec<String>>,
     },

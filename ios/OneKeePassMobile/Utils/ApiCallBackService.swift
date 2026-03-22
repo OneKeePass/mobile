@@ -46,14 +46,21 @@ class ApiCallBackService:@unchecked Sendable, IosApiService,CommonDeviceServiceE
     try clipboardCopyString(clipData.fieldValue, clipData.cleanupAfter )
   }
 
-  // Static cache: dbKey → registered identities (so we can remove old ones before adding new)
-  @available(iOS 17.0, *)
-  private static var cachedPasskeyIdentities: [String: [ASPasskeyCredentialIdentity]] = [:]
-
-  func registerPasskeyIdentities(_ dbKey: String, _ passkeys: [PasskeySummaryData]) throws {
+  func registerPasskeyIdentities(_ dbKey: String, _ oldPasskeys: [PasskeySummaryData], _ newPasskeys: [PasskeySummaryData]) throws {
     guard #available(iOS 17.0, *) else { return }
 
-    let newIdentities: [ASPasskeyCredentialIdentity] = passkeys.compactMap { item in
+    let oldIdentities: [ASPasskeyCredentialIdentity] = oldPasskeys.compactMap { item in
+      guard let credData = decodeBase64URL(item.credentialIdB64url),
+            let uhData   = decodeBase64URL(item.userHandleB64url)
+      else { return nil }
+      return ASPasskeyCredentialIdentity(
+        relyingPartyIdentifier: item.rpId,
+        userName:               item.username,
+        credentialID:           credData,
+        userHandle:             uhData,
+        recordIdentifier:       item.entryUuid)
+    }
+    let newIdentities: [ASPasskeyCredentialIdentity] = newPasskeys.compactMap { item in
       guard let credData = decodeBase64URL(item.credentialIdB64url),
             let uhData   = decodeBase64URL(item.userHandleB64url)
       else { return nil }
@@ -66,8 +73,6 @@ class ApiCallBackService:@unchecked Sendable, IosApiService,CommonDeviceServiceE
     }
 
     let store = ASCredentialIdentityStore.shared
-    let oldIdentities = ApiCallBackService.cachedPasskeyIdentities[dbKey] ?? []
-
     if oldIdentities.isEmpty {
       guard !newIdentities.isEmpty else { return }
       store.saveCredentialIdentities(newIdentities) { _, error in
@@ -81,8 +86,6 @@ class ApiCallBackService:@unchecked Sendable, IosApiService,CommonDeviceServiceE
         }
       }
     }
-
-    ApiCallBackService.cachedPasskeyIdentities[dbKey] = newIdentities
   }
 
   private func decodeBase64URL(_ s: String) -> Data? {

@@ -384,7 +384,7 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
     Self.pendingPasskeyClientDataHash = request.clientDataHash
     Self.pendingPasskeyCredentialIds = [identity.credentialID]
     logger.debug("CredentialProviderViewController - prepareInterfaceToProvideCredential: passkey for rpId=\(identity.relyingPartyIdentifier)")
-    //prepareUI()
+    prepareUI()
   }
 
   // Called by iOS when it tries to provide a registered passkey identity without showing UI.

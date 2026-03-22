@@ -16,7 +16,7 @@ use onekeepass_core::error;
 use crate::{
     OkpError, OkpResult, app_lock, app_preference::{AppLockPreference, DatabasePreference}, app_state::AppState, commands::{
         CommandArg, InvokeResult, ResponseJson, error_json_str, ok_json_str, result_json_str
-    }, parse_command_args_or_err, udl_uniffi_exports, util::{self, remove_dir_contents}
+    }, parse_command_args_or_err, udl_uniffi_exports::{self, PasskeySummaryData}, util::{self, remove_dir_contents}
 };
 
 use super::IosApiCallbackImpl;
@@ -38,6 +38,19 @@ const PENDING_PASSKEYS_DIR: &str = "pending_passkeys";
 
 // Pending records older than 30 days are removed during listing
 const PENDING_PASSKEY_TTL_SECS: i64 = 30 * 24 * 60 * 60;
+
+// Persisted record of KDBX passkeys last registered with ASCredentialIdentityStore.
+// Used to reconstruct the identity list for removal in future sessions.
+const REGISTERED_PASSKEY_IDS_DIR: &str = "registered_passkey_ids";
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+struct RegisteredPasskeySummary {
+    entry_uuid: String,
+    rp_id: String,
+    username: String,
+    credential_id_b64url: String,
+    user_handle_b64url: String,
+}
 
 // A passkey registration record written by the autofill extension.
 // The main app later picks it up, commits it to KDBX, and deletes the file.
@@ -67,15 +80,28 @@ pub(crate) fn delete_copied_autofill_details(db_key: &str) -> OkpResult<()> {
 
     AutoFillMeta::read().remove_copied_db_info(&db_key);
 
-    // Remove pending passkey JSON files for this db
-    remove_pending_passkeys_for_db(db_key);
+    // Build the full list of identities to remove from ASCredentialIdentityStore BEFORE
+    // deleting any files:
+    //   - pending passkeys: registered by autofill extension (separate process, not in session cache)
+    //   - registered passkeys: KDBX passkeys persisted across sessions
+    let pending: Vec<_> = collect_pending_passkeys()
+        .into_iter()
+        .filter(|r| r.org_db_key == db_key)
+        .map(|r| passkey_summary_from_pending(&r))
+        .collect();
 
-    // Remove passkey identities from ASCredentialIdentityStore.
-    // Passing an empty list: Swift removes any cached identities for this db from the store.
-    // Note: if the session cache is empty (db was never opened this session), this is a no-op.
-    // The normal case (user disabling autofill while db is open) always has a populated cache.
+    let registered = load_registered_passkeys(db_key);
+
+    let mut all_to_remove = pending;
+    all_to_remove.extend(registered);
+
+    // Delete the files before the callback (old list already captured above)
+    remove_pending_passkeys_for_db(db_key);
+    delete_registered_passkeys_file(db_key);
+
+    // Single call: remove all passkey identities for this db, add nothing
     if let Err(e) = IosApiCallbackImpl::api_service()
-        .register_passkey_identities(db_key.to_string(), vec![])
+        .register_passkey_identities(db_key.to_string(), all_to_remove, vec![])
     {
         log::error!(
             "delete_copied_autofill_details: remove passkey identities error: {:?}",
@@ -148,6 +174,11 @@ pub(crate) fn remove_all_app_extension_contents() {
 
     // Also remove pending passkey records
     if let Ok(path) = app_group_root_sub_dir(PENDING_PASSKEYS_DIR) {
+        let _ = remove_dir_contents(path);
+    }
+
+    // Also remove persisted registered passkey id files
+    if let Ok(path) = app_group_root_sub_dir(REGISTERED_PASSKEY_IDS_DIR) {
         let _ = remove_dir_contents(path);
     }
 
@@ -228,8 +259,8 @@ fn collect_pending_passkeys() -> Vec<PendingPasskeyRecord> {
 
 // Builds a PasskeySummaryData from a PendingPasskeyRecord for use before the passkey is committed
 // to KDBX. Uses record_uuid as the entry_uuid placeholder.
-fn passkey_summary_from_pending(record: &PendingPasskeyRecord) -> udl_uniffi_exports::PasskeySummaryData {
-    udl_uniffi_exports::PasskeySummaryData {
+fn passkey_summary_from_pending(record: &PendingPasskeyRecord) -> PasskeySummaryData {
+    PasskeySummaryData {
         entry_uuid: record.record_uuid.clone(),
         db_key: record.org_db_key.clone(),
         credential_id_b64url: record.passkey_info.credential_id_b64url.clone(),
@@ -239,11 +270,87 @@ fn passkey_summary_from_pending(record: &PendingPasskeyRecord) -> udl_uniffi_exp
     }
 }
 
+fn registered_passkeys_dir() -> OkpResult<PathBuf> {
+    app_group_root_sub_dir(REGISTERED_PASSKEY_IDS_DIR)
+}
+
+fn registered_passkeys_file(db_key: &str) -> OkpResult<PathBuf> {
+    let dir = registered_passkeys_dir()?;
+    let hash = string_to_simple_hash(db_key).to_string();
+    Ok(dir.join(format!("{}.json", hash)))
+}
+
+fn save_registered_passkeys(db_key: &str, passkeys: &[PasskeySummaryData]) {
+    let path = match registered_passkeys_file(db_key) {
+        Ok(p) => p,
+        Err(e) => {
+            log::error!("save_registered_passkeys: dir error: {:?}", e);
+            return;
+        }
+    };
+    if passkeys.is_empty() {
+        let _ = fs::remove_file(&path);
+        return;
+    }
+    let records: Vec<RegisteredPasskeySummary> = passkeys
+        .iter()
+        .map(|p| RegisteredPasskeySummary {
+            entry_uuid: p.entry_uuid.clone(),
+            rp_id: p.rp_id.clone(),
+            username: p.username.clone(),
+            credential_id_b64url: p.credential_id_b64url.clone(),
+            user_handle_b64url: p.user_handle_b64url.clone(),
+        })
+        .collect();
+    match serde_json::to_string_pretty(&records) {
+        Ok(json) => {
+            let _ = fs::write(&path, json.as_bytes());
+        }
+        Err(e) => {
+            log::error!("save_registered_passkeys: serialize error: {:?}", e);
+        }
+    }
+}
+
+fn load_registered_passkeys(db_key: &str) -> Vec<PasskeySummaryData> {
+    let path = match registered_passkeys_file(db_key) {
+        Ok(p) => p,
+        Err(_) => return vec![],
+    };
+    let json_str = match fs::read_to_string(&path) {
+        Ok(s) => s,
+        Err(_) => return vec![],
+    };
+    let records: Vec<RegisteredPasskeySummary> = match serde_json::from_str(&json_str) {
+        Ok(r) => r,
+        Err(e) => {
+            log::warn!("load_registered_passkeys: parse error: {:?}", e);
+            return vec![];
+        }
+    };
+    records
+        .into_iter()
+        .map(|r| PasskeySummaryData {
+            entry_uuid: r.entry_uuid,
+            db_key: db_key.to_string(),
+            rp_id: r.rp_id,
+            username: r.username,
+            credential_id_b64url: r.credential_id_b64url,
+            user_handle_b64url: r.user_handle_b64url,
+        })
+        .collect()
+}
+
+fn delete_registered_passkeys_file(db_key: &str) {
+    if let Ok(path) = registered_passkeys_file(db_key) {
+        let _ = fs::remove_file(&path);
+    }
+}
+
 // Fetches all passkeys for the given db_key and registers them with ASCredentialIdentityStore
 // via the Swift callback. Errors are logged but never propagated — passkey identity registration
 // must not block copy or commit operations.
 fn register_passkey_identities_for_db(db_key: &str) {
-    
     let passkeys = match passkey::get_all_passkeys(&[db_key.to_string()]) {
         Ok(p) => p,
         Err(e) => {
@@ -251,12 +358,29 @@ fn register_passkey_identities_for_db(db_key: &str) {
             return;
         }
     };
-    let passkey_data: Vec<udl_uniffi_exports::PasskeySummaryData> = passkeys.into_iter().map(Into::into).collect();
-    
-    debug!("IosAppGroupSupportService:register_passkey_identities_for_db is called. Passkeys count {}", passkey_data.len());
+    let new_passkeys: Vec<PasskeySummaryData> = passkeys.into_iter().map(Into::into).collect();
+
+    debug!(
+        "register_passkey_identities_for_db is called. Passkeys count {}",
+        new_passkeys.len()
+    );
+
+    // old = previously registered KDBX passkeys + any pending passkeys for this db
+    // Pending passkeys may have been added to the store by the autofill extension;
+    // they must be removed when the KDBX list (which now includes the committed entry) replaces them.
+    let mut old_passkeys = load_registered_passkeys(db_key);
+    let pending: Vec<_> = collect_pending_passkeys()
+        .into_iter()
+        .filter(|r| r.org_db_key == db_key)
+        .map(|r| passkey_summary_from_pending(&r))
+        .collect();
+    old_passkeys.extend(pending);
+
+    // Persist new list for future sessions
+    save_registered_passkeys(db_key, &new_passkeys);
 
     if let Err(e) = IosApiCallbackImpl::api_service()
-        .register_passkey_identities(db_key.to_string(), passkey_data)
+        .register_passkey_identities(db_key.to_string(), old_passkeys, new_passkeys)
     {
         log::error!("register_passkey_identities_for_db: callback error: {:?}", e);
     }
@@ -733,19 +857,16 @@ impl IosAppGroupSupportService {
         result_json_str(inner_fn())
     }
 
-    // Returns all passkeys in opened databases that match the given relying-party ID
+    // Returns all passkeys in the given db that match the relying-party ID
     // and optional allow-list of credential IDs.
     fn passkey_find_matching(&self, json_args: &str) -> ResponseJson {
         let inner = || -> OkpResult<Vec<passkey::PasskeySummary>> {
-            let (rp_id, allow_credential_ids) = parse_command_args_or_err!(
+            let (db_key, rp_id, allow_credential_ids) = parse_command_args_or_err!(
                 json_args,
-                PasskeyFindMatchingArg { rp_id, allow_credential_ids }
+                PasskeyFindMatchingArg { db_key, rp_id, allow_credential_ids }
             );
-            let db_keys = db_service::all_kdbx_cache_keys()?;
             let ids = allow_credential_ids.unwrap_or_default();
-            Ok(passkey::find_matching_passkeys(
-                &db_keys, &rp_id, &ids,
-            )?)
+            Ok(passkey::find_matching_passkeys(&[db_key], &rp_id, &ids)?)
         };
         result_json_str(inner())
     }
@@ -890,7 +1011,7 @@ impl IosAppGroupSupportService {
             // Register the new passkey identity immediately so it appears in autofill sheet
             let summary = passkey_summary_from_pending(&record);
             if let Err(e) = IosApiCallbackImpl::api_service()
-                .register_passkey_identities(record.org_db_key.clone(), vec![summary])
+                .register_passkey_identities(record.org_db_key.clone(), vec![], vec![summary])
             {
                 log::error!("passkey_store_pending: register identity error: {:?}", e);
             }

@@ -3,7 +3,7 @@
   (:require
    [onekeepass.ios.autofill.background :as bg]
    [onekeepass.ios.autofill.constants :refer [PASSKEY_ASSERTION_PAGE_ID]]
-   [onekeepass.ios.autofill.events.common :refer [on-ok]]
+   [onekeepass.ios.autofill.events.common :refer [active-db-key on-ok]]
    [re-frame.core :refer [dispatch reg-event-fx reg-fx reg-sub subscribe]]))
 
 (defn passkey-assertion-select [selection]
@@ -58,13 +58,14 @@
 
 (reg-event-fx
  :passkey-assertion/fetch
- (fn [_ [_ rp-id allow-credential-ids]]
-   {:fx [[:bg/find-matching-passkeys
-          [rp-id allow-credential-ids
-           (fn [response]
-             (if-let [items (on-ok response)]
-               (dispatch [:passkey-assertion/loaded items])
-               nil))]]]}))
+ (fn [{:keys [db]} [_ rp-id allow-credential-ids]]
+   (let [db-key (active-db-key db)]
+     {:fx [[:bg/find-matching-passkeys
+            [db-key rp-id allow-credential-ids
+             (fn [response]
+               (if-let [items (on-ok response)]
+                 (dispatch [:passkey-assertion/loaded items])
+                 nil))]]]})))
 
 (reg-event-fx
  :passkey-assertion/loaded
@@ -94,8 +95,8 @@
 
 (reg-fx
  :bg/find-matching-passkeys
- (fn [[rp-id allow-ids dispatch-fn]]
-   (bg/find-matching-passkeys rp-id allow-ids dispatch-fn)))
+ (fn [[db-key rp-id allow-ids dispatch-fn]]
+   (bg/find-matching-passkeys db-key rp-id allow-ids dispatch-fn)))
 
 (reg-fx
  :bg/complete-passkey-assertion

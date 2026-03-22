@@ -63,6 +63,7 @@ pub trait IosApiService: Send + Sync {
     fn register_passkey_identities(
         &self,
         db_key: String,
-        passkeys: Vec<PasskeySummaryData>,
+        old_passkeys: Vec<PasskeySummaryData>,
+        new_passkeys: Vec<PasskeySummaryData>,
     ) -> ApiCallbackResult<()>;
 }
