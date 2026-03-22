@@ -397,6 +397,9 @@
 
 (comment
   (in-ns 'onekeepass.ios.autofill.events.common)
+  ;; pretty printing
+
+  (clojure.pprint/pprint @re-frame.db/app-db)
 
   (def db-key (-> @re-frame.db/app-db :current-db-file-name))
   (-> @re-frame.db/app-db (get db-key) keys))

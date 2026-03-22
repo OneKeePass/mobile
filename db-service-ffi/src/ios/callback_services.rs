@@ -24,14 +24,13 @@ impl IosApiCallbackImpl {
     // }
 }
 
-
 ///////////
 
 static IOS_API_SERVICE_STATE: OnceCell<IosApiCallbackImpl> = OnceCell::new();
 
-//IMPORTANT: 
-// This fn should be called once in Swift during intialization of Native modules  
-// Then only we can use the api callback functions 
+//IMPORTANT:
+// This fn should be called once in Swift during intialization of Native modules
+// Then only we can use the api callback functions
 // Otherwise we get panic 'Caught a panic calling rust code: "called `Option::unwrap()` on a `None` value"'
 
 // top level functions generated to be called from Swift something similar to 'db_service_initialize'
@@ -58,12 +57,14 @@ pub fn ios_callback_service_initialize(ios_api_service: Arc<dyn IosApiService>) 
 #[uniffi::export(with_foreign)]
 pub trait IosApiService: Send + Sync {
     fn clipboard_copy_string(&self, text: String, timeout: u32) -> ApiCallbackResult<()>;
-    // Autofill specific
-    fn asc_credential_service_identifiers(&self,) -> ApiCallbackResult<HashMap<String,String>>;
+
     fn register_passkey_identities(
         &self,
         db_key: String,
         old_passkeys: Vec<PasskeySummaryData>,
         new_passkeys: Vec<PasskeySummaryData>,
     ) -> ApiCallbackResult<()>;
+
+    // Autofill specific
+    fn asc_credential_service_identifiers(&self) -> ApiCallbackResult<HashMap<String, String>>;
 }
