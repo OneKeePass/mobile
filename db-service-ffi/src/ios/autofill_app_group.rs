@@ -18,7 +18,7 @@ use url::Url;
 use onekeepass_core::error;
 
 use crate::{
-    OkpError, OkpResult, app_lock, app_preference::{AppLockPreference, DatabasePreference}, app_state::AppState, commands::{
+    OkpError, OkpResult, app_lock, app_preference::{AppLockPreference, DatabasePreference}, app_state::{AppState, OKP_SHARED_DIR}, commands::{
         CommandArg, InvokeResult, ResponseJson, error_json_str, ok_json_str, result_json_str
     }, parse_command_args_or_err, util::{self, remove_dir_contents}
 };
@@ -137,7 +137,6 @@ pub(crate) fn remove_all_app_extension_contents() {
 
 // Gets the app extension root
 // e.g app_group_root/okp
-
 fn app_extension_root() -> OkpResult<PathBuf> {
     let Some(app_group_home_dir) = AppState::app_group_home_dir() else {
         return Err(OkpError::UnexpectedError(
@@ -149,10 +148,29 @@ fn app_extension_root() -> OkpResult<PathBuf> {
     Ok(full_path_dir.to_path_buf())
 }
 
+// Gets the shared root so that both the main app and extension share the contents here
+fn app_extension_shared_root() -> OkpResult<PathBuf> {
+    let Some(app_group_home_dir) = AppState::app_group_home_dir() else {
+        return Err(OkpError::UnexpectedError(
+            "No app group home dir is found".into(),
+        ));
+    };
+
+    let full_path_dir = Path::new(app_group_home_dir).join(OKP_SHARED_DIR);
+    Ok(full_path_dir.to_path_buf())
+}
+
 // Creates a sub dir with the given name under the app group root
 fn app_group_root_sub_dir(sub_dir_name: &str) -> OkpResult<PathBuf> {
     let app_group_home_dir = app_extension_root()?;
     let p = util::create_sub_dir(app_group_home_dir.to_string_lossy().as_ref(), sub_dir_name);
+    Ok(p)
+}
+
+// Creates a sub dir with the given name under the app group shared root
+fn app_group_shared_root_sub_dir(sub_dir_name: &str) -> OkpResult<PathBuf> {
+    let app_shared_group_home_dir = app_extension_shared_root()?;
+    let p = util::create_sub_dir(app_shared_group_home_dir.to_string_lossy().as_ref(), sub_dir_name);
     Ok(p)
 }
 

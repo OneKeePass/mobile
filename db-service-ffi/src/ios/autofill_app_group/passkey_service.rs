@@ -58,7 +58,7 @@ pub struct PendingPasskeyRecord {
 
 // Returns AppGroup/okp/pending_passkeys/, creating it if needed
 fn pending_passkeys_dir() -> OkpResult<PathBuf> {
-    super::app_group_root_sub_dir(PENDING_PASSKEYS_DIR)
+    super::app_group_shared_root_sub_dir(PENDING_PASSKEYS_DIR)
 }
 
 // Scans the pending_passkeys directory and removes all records whose org_db_key matches db_key.
@@ -146,7 +146,7 @@ pub(super) fn passkey_summary_from_pending(record: &PendingPasskeyRecord) -> Pas
 }
 
 fn registered_passkeys_dir() -> OkpResult<PathBuf> {
-    super::app_group_root_sub_dir(REGISTERED_PASSKEY_IDS_DIR)
+    super::app_group_shared_root_sub_dir(REGISTERED_PASSKEY_IDS_DIR)
 }
 
 fn registered_passkeys_file(db_key: &str) -> OkpResult<PathBuf> {
