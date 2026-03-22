@@ -117,10 +117,15 @@
    (subscribe [:app-lock-preference])))
 
 ;;;
+;; TODO: 
+;; Need to clear all local data. 
+;; When ios the extension process is killed after completing the autofill or on cancel, this call is redundant.
+;; But if that process is reused, then we need the data clearing
 (reg-event-fx
  :load-autofill-init-data
  (fn [{:keys [_db]} [_event-id]]
-   {:fx [[:bg-load-autofill-init-data]]}))
+   {:fx [[:dispatch [:search-term-clear]]
+         [:bg-load-autofill-init-data]]}))
 
 (reg-fx
  :bg-load-autofill-init-data

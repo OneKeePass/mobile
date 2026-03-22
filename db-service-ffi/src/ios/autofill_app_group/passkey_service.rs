@@ -1,7 +1,7 @@
 // All passkey-related types, storage helpers, and IosAppGroupSupportService passkey command
 // handlers. This is a child module of autofill_app_group; use super:: to access parent items.
 
-use std::{fs, path::PathBuf};
+use std::{collections::HashSet, fs, path::PathBuf};
 
 use data_encoding::BASE64URL_NOPAD;
 use log::debug;
@@ -227,33 +227,66 @@ pub(super) fn delete_registered_passkeys_file(db_key: &str) {
 // via the Swift callback. Errors are logged but never propagated — passkey identity registration
 // must not block copy or commit operations.
 pub(super) fn register_passkey_identities_for_db(db_key: &str) {
-    let passkeys = match passkey::get_all_passkeys(&[db_key.to_string()]) {
+    // Fetch all passkeys currently committed to KDBX for this database.
+    let kdbx_passkeys = match passkey::get_all_passkeys(&[db_key.to_string()]) {
         Ok(p) => p,
         Err(e) => {
             log::error!("register_passkey_identities_for_db: fetch error: {:?}", e);
             return;
         }
     };
-    let new_passkeys: Vec<PasskeySummaryData> = passkeys.into_iter().map(Into::into).collect();
+    let new_kdbx_passkeys: Vec<PasskeySummaryData> =
+        kdbx_passkeys.into_iter().map(Into::into).collect();
 
     debug!(
         "register_passkey_identities_for_db is called. Passkeys count {}",
-        new_passkeys.len()
+        new_kdbx_passkeys.len()
     );
 
-    // old = previously registered KDBX passkeys + any pending passkeys for this db
-    // Pending passkeys may have been added to the store by the autofill extension;
-    // they must be removed when the KDBX list (which now includes the committed entry) replaces them.
-    let mut old_passkeys = load_registered_passkeys(db_key);
-    let pending: Vec<_> = collect_pending_passkeys()
+    // Build a set of credential IDs already present in KDBX to detect which
+    // pending passkeys have already been committed.
+    let kdbx_credential_ids: HashSet<&str> = new_kdbx_passkeys
+        .iter()
+        .map(|p| p.credential_id_b64url.as_str())
+        .collect();
+
+    // Collect all pending passkey records for this database.
+    // Kept as PendingPasskeyRecord (not yet converted) so we can map to PasskeySummaryData
+    // twice below without requiring Clone on PasskeySummaryData.
+    let pending_records: Vec<PendingPasskeyRecord> = collect_pending_passkeys()
         .into_iter()
         .filter(|r| r.org_db_key == db_key)
-        .map(|r| passkey_summary_from_pending(&r))
         .collect();
-    old_passkeys.extend(pending);
 
-    // Persist new list for future sessions
-    save_registered_passkeys(db_key, &new_passkeys);
+    // old = previously registered KDBX passkeys + ALL pending passkeys for this db.
+    // Every pending entry must appear in old_passkeys so ASCredentialIdentityStore
+    // removes the stale pending identity before re-adding the correct one below.
+    let mut old_passkeys = load_registered_passkeys(db_key);
+    old_passkeys.extend(pending_records.iter().map(|r| passkey_summary_from_pending(r)));
+
+    // Persist only the KDBX list for future sessions. Uncommitted pending passkeys
+    // are intentionally excluded — they will be re-evaluated on the next call.
+    save_registered_passkeys(db_key, &new_kdbx_passkeys);
+
+    // new = KDBX passkeys + pending passkeys NOT yet in KDBX.
+    // Uncommitted pending passkeys must survive in ASCredentialIdentityStore
+    // so autofill can offer them before the main app commits them.
+    // A pending passkey is considered committed once its credential_id_b64url
+    // appears in the KDBX list (i.e. passkey_commit_pending has run for it).
+    let uncommitted_pending: Vec<PasskeySummaryData> = pending_records
+        .iter()
+        .filter(|r| !kdbx_credential_ids.contains(r.passkey_info.credential_id_b64url.as_str()))
+        .map(|r| passkey_summary_from_pending(r))
+        .collect();
+
+    let mut new_passkeys = new_kdbx_passkeys;
+    new_passkeys.extend(uncommitted_pending);
+
+    debug!(
+        "register_passkey_identities_for_db: old count {}, new count {}",
+        old_passkeys.len(),
+        new_passkeys.len()
+    );
 
     if let Err(e) = IosApiCallbackImpl::api_service()
         .register_passkey_identities(db_key.to_string(), old_passkeys, new_passkeys)

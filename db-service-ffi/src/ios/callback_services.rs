@@ -61,7 +61,9 @@ pub trait IosApiService: Send + Sync {
     fn register_passkey_identities(
         &self,
         db_key: String,
+        // Old identities if any to remove from the ASCredentialIdentityStore
         old_passkeys: Vec<PasskeySummaryData>,
+        // New identities to add to the ASCredentialIdentityStore
         new_passkeys: Vec<PasskeySummaryData>,
     ) -> ApiCallbackResult<()>;
 

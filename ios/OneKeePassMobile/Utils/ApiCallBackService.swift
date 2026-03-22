@@ -74,11 +74,13 @@ class ApiCallBackService:@unchecked Sendable, IosApiService,CommonDeviceServiceE
 
     let store = ASCredentialIdentityStore.shared
     if oldIdentities.isEmpty {
+      // Just the new identities for a db and save that
       guard !newIdentities.isEmpty else { return }
       store.saveCredentialIdentities(newIdentities) { _, error in
         if let error { cmnLogger.error("registerPasskeyIdentities save error: \(error)") }
       }
     } else {
+      // We remove old identities for a db before saving new one
       store.removeCredentialIdentities(oldIdentities) { _, _ in
         guard !newIdentities.isEmpty else { return }
         store.saveCredentialIdentities(newIdentities) { _, error in

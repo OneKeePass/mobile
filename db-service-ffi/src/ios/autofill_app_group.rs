@@ -87,8 +87,9 @@ pub(crate) fn delete_copied_autofill_details(db_key: &str) -> OkpResult<()> {
     Ok(())
 }
 
-// If this db is used in Autofill extension, then we need to copy the database (with essentail data and kdf adjusted) when it is
-// read or saved
+// This is called in main app. 
+// If this db is used in Autofill extension, then we need to copy the database (with essential data and kdf adjusted in core lib) 
+// when it is read or saved
 
 // We need to copy autofill files during read in addition to save time
 // so that we can ensure the latest opened database is used in autofill

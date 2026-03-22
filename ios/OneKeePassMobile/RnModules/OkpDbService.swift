@@ -18,7 +18,7 @@ class OkpDbService: NSObject {
   override init() {
     logger.debug("Going to call initialize from ")
     
-    // Dev time temp use
+    // Dev time temp use only by uncommenting and running the nain app
     // ASCredentialIdentityStore.shared.removeAllCredentialIdentities()
     // logger.debug("Temporary one - ASCredentialIdentityStore.shared.removeAllCredentialIdentities called  ")
     
