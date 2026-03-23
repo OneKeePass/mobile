@@ -90,6 +90,35 @@ class ApiCallBackService:@unchecked Sendable, IosApiService,CommonDeviceServiceE
     }
   }
 
+  // Called by Rust after signing a passkey assertion; completes the iOS credential provider request.
+  // No-op in the main app target — only the autofill extension has CredentialProviderViewController.
+  func completePasskeyAssertion(_ data: PasskeyAssertionCallbackData) throws {
+      
+    #if OKP_APP_EXTENSION
+    guard #available(iOS 17.0, *) else { return }
+    CredentialProviderViewController.completePasskeyAssertion(
+      credentialIdB64url:      data.credentialIdB64url,
+      userHandleB64url:        data.userHandleB64url,
+      signatureB64url:         data.signatureB64url,
+      authenticatorDataB64url: data.authenticatorDataB64url,
+      rpId:                    data.rpId)
+    #endif
+  }
+
+  // Called by Rust after creating a passkey registration; completes the iOS credential provider request.
+  // No-op in the main app target — only the autofill extension has CredentialProviderViewController.
+  func completePasskeyRegistration(_ data: PasskeyRegistrationCallbackData) throws {
+    #if OKP_APP_EXTENSION
+    guard #available(iOS 17.0, *),
+          let clientDataHash = Data(base64URLEncoded: data.clientDataHashB64url)
+    else { return }
+    CredentialProviderViewController.completePasskeyRegistration(
+      credentialIdB64url:      data.credentialIdB64url,
+      attestationObjectB64url: data.attestationObjectB64url,
+      clientDataHash:          clientDataHash)
+    #endif
+  }
+
   private func decodeBase64URL(_ s: String) -> Data? {
     var b64 = s.replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
     b64 += String(repeating: "=", count: (4 - b64.count % 4) % 4)

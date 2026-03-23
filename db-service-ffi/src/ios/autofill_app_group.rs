@@ -698,6 +698,10 @@ impl IosAppGroupSupportService {
             "passkey_get_db_groups" => self.passkey_get_db_groups(json_args),
             "passkey_get_group_entries" => self.passkey_get_group_entries(json_args),
 
+            // Bundled commands: sign+complete and create+store+complete in one Rust call
+            "passkey_complete_assertion" => self.passkey_complete_assertion(json_args),
+            "passkey_complete_registration" => self.passkey_complete_registration(json_args),
+
             x => error_json_str(&format!(
                 "Invalid command or args: Command call {} with args {} failed",
                 x, &json_args

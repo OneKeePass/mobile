@@ -2,7 +2,50 @@ use log::debug;
 use once_cell::sync::OnceCell;
 use std::{collections::HashMap, sync::Arc};
 
-use crate::{udl_types::ApiCallbackResult, udl_uniffi_exports::PasskeySummaryData, OkpResult};
+use crate::{udl_types::ApiCallbackResult, OkpResult};
+
+#[derive(uniffi::Record)]
+pub struct PasskeySummaryData {
+    pub entry_uuid: String,
+    pub db_key: String,
+    pub credential_id_b64url: String,
+    pub rp_id: String,
+    pub username: String,
+    pub user_handle_b64url: String,
+}
+
+impl From<onekeepass_core::db_service::passkey::PasskeySummary> for PasskeySummaryData {
+    fn from(s: onekeepass_core::db_service::passkey::PasskeySummary) -> Self {
+        Self {
+            entry_uuid: s.entry_uuid,
+            db_key: s.db_key,
+            credential_id_b64url: s.credential_id_b64url,
+            rp_id: s.rp_id,
+            username: s.username,
+            user_handle_b64url: s.user_handle_b64url,
+        }
+    }
+}
+
+
+/// Data passed to Swift to complete a passkey assertion via CredentialProviderViewController.
+#[derive(uniffi::Record)]
+pub struct PasskeyAssertionCallbackData {
+    pub credential_id_b64url: String,
+    pub rp_id: String,
+    pub user_handle_b64url: String,
+    pub signature_b64url: String,
+    pub authenticator_data_b64url: String,
+}
+
+/// Data passed to Swift to complete a passkey registration via CredentialProviderViewController.
+#[derive(uniffi::Record)]
+pub struct PasskeyRegistrationCallbackData {
+    pub credential_id_b64url: String,
+    pub attestation_object_b64url: String,
+    /// Passed as `clientDataHash` to iOS; base64url-encoded.
+    pub client_data_hash_b64url: String,
+}
 
 // A signleton that holds iOS specific api callbacks services implemented in Swift
 pub struct IosApiCallbackImpl {
@@ -69,4 +112,12 @@ pub trait IosApiService: Send + Sync {
 
     // Autofill specific
     fn asc_credential_service_identifiers(&self) -> ApiCallbackResult<HashMap<String, String>>;
+
+    // Called by Rust after signing a passkey assertion; Swift creates ASPasskeyAssertionCredential
+    // and calls ctx.completeAssertionRequest(using:).
+    fn complete_passkey_assertion(&self, data: PasskeyAssertionCallbackData) -> ApiCallbackResult<()>;
+
+    // Called by Rust after creating a passkey registration; Swift creates ASPasskeyRegistrationCredential
+    // and calls ctx.completeRegistrationRequest(using:).
+    fn complete_passkey_registration(&self, data: PasskeyRegistrationCallbackData) -> ApiCallbackResult<()>;
 }

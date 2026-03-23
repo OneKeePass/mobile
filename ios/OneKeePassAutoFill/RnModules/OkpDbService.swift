@@ -91,60 +91,14 @@ class OkpDbService: NSObject {
     let idsJson = allowIds.isEmpty
       ? "[]"
       : "[" + allowIds.map { "\"\($0)\"" }.joined(separator: ",") + "]"
-    resolve("{\"ok\":{\"rp_id\":\"\(rpId)\",\"allow_credential_ids\":\(idsJson)}}")
+    let hashB64url = CredentialProviderViewController.pendingPasskeyClientDataHash?
+      .base64URLEncodedString() ?? ""
+    resolve("{\"ok\":{\"rp_id\":\"\(rpId)\",\"allow_credential_ids\":\(idsJson),\"client_data_hash_b64url\":\"\(hashB64url)\"}}")
   }
 
-  // Signs the pending passkey assertion and completes the extension request.
-  @objc
-  func completePasskeyAssertion(_ entryUuid: String, dbKey: String,
-                                resolve: @escaping RCTPromiseResolveBlock,
-                                reject _: @escaping RCTPromiseRejectBlock) {
-    
-    logger.debug("Passkey completePasskeyAssertion is called for entryUuid: \(entryUuid)")
-    
-    guard #available(iOS 17.0, *) else {
-      resolve("{}")
-      return
-    }
-    guard let clientDataHash = CredentialProviderViewController.pendingPasskeyClientDataHash else {
-      resolve("{\"error\":\"No pending passkey request\"}")
-      return
-    }
-    // requiresMainQueueSetup() → true: already on main thread — call synchronously (same as credentialSelected)
-    let hashB64url = clientDataHash.base64URLEncodedString()
-    let args = "{\"db_key\":\"\(dbKey)\",\"entry_uuid\":\"\(entryUuid)\",\"client_data_hash_b64url\":\"\(hashB64url)\"}"
-
-    logger.debug("Invoking passkey_sign_assertion (synchronous, main thread)")
-
-    let resultJson = AutoFillDbServiceAPI.iosAppGroupSupportService().invoke("passkey_sign_assertion", args)
-
-    logger.debug("Rust passkey_sign_assertion returns \(resultJson)")
-
-    if let data = resultJson.data(using: .utf8),
-       let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-       let ok = dict["ok"] as? [String: Any] {
-
-      let returnedCredId = ok["credential_id_b64url"] as? String ?? ""
-      let expectedIds = CredentialProviderViewController.pendingPasskeyCredentialIds
-        .map { $0.base64URLEncodedString() }
-      logger.debug("Rust returned credentialId: \(returnedCredId)")
-      logger.debug("iOS allowedCredentialIds: \(expectedIds)")
-      logger.debug("OS rpId: \(CredentialProviderViewController.pendingPasskeyRpId ?? "nil"), Rust rpId: \(ok["rp_id"] as? String ?? "nil")")
-
-      let rpId = CredentialProviderViewController.pendingPasskeyRpId ?? ok["rp_id"] as? String ?? ""
-      let userHandle = ok["user_handle_b64url"] as? String ?? ""
-      let signature = ok["signature_b64url"] as? String ?? ""
-      let authData = ok["authenticator_data_b64url"] as? String ?? ""
-      CredentialProviderViewController.completePasskeyAssertion(
-        credentialIdB64url: returnedCredId,
-        userHandleB64url: userHandle,
-        signatureB64url: signature,
-        authenticatorDataB64url: authData,
-        rpId: rpId
-      )
-    }
-    resolve(resultJson)
-  }
+  // completePasskeyAssertion has been removed.
+  // Use autofill-invoke-api "passkey_complete_assertion" from ClojureScript instead.
+  // The Rust handler signs the assertion and calls the complete_passkey_assertion Swift callback.
 
   // Returns the pending passkey registration context (rpId, userName, userHandle),
   // or {"ok":null} if this session was not triggered by a passkey registration request.
@@ -160,115 +114,15 @@ class OkpDbService: NSObject {
     let userName = CredentialProviderViewController.pendingPasskeyRegistrationUserName ?? ""
     let userHandle = CredentialProviderViewController.pendingPasskeyRegistrationUserHandle?
       .base64URLEncodedString() ?? ""
-    resolve("{\"ok\":{\"rp_id\":\"\(rpId)\",\"user_name\":\"\(userName)\",\"user_handle_b64url\":\"\(userHandle)\"}}")
-  }
-
-  // Bundled passkey registration: creates key pair, stores pending record, and completes the iOS request.
-  // This combines 3 Rust FFI calls into one Swift method to reduce ClojureScript → Swift round-trips.
-  @objc
-  func completePasskeyRegistration(_ dbKey: String,
-                                    orgDbKey: String,
-                                    entryUuid: String,
-                                    newEntryName: String,
-                                    groupUuid: String,
-                                    newGroupName: String,
-                                    resolve: @escaping RCTPromiseResolveBlock,
-                                    reject _: @escaping RCTPromiseRejectBlock) {
-    logger.debug("completePasskeyRegistration called for orgDbKey: \(orgDbKey)")
-
-    guard #available(iOS 17.0, *) else {
-      resolve("{\"error\":\"Passkey registration requires iOS 17+\"}")
-      return
-    }
-    guard let clientDataHash = CredentialProviderViewController.pendingPasskeyRegistrationClientDataHash,
-          let rpId = CredentialProviderViewController.pendingPasskeyRegistrationRpId else {
-      resolve("{\"error\":\"No pending passkey registration request\"}")
-      return
-    }
-
-    let userName = CredentialProviderViewController.pendingPasskeyRegistrationUserName ?? ""
-    let userHandle = CredentialProviderViewController.pendingPasskeyRegistrationUserHandle?
+    let hashB64url = CredentialProviderViewController.pendingPasskeyRegistrationClientDataHash?
       .base64URLEncodedString() ?? ""
-    let hashB64url = clientDataHash.base64URLEncodedString()
-
-    DispatchQueue.global(qos: .userInteractive).async { [unowned self] in
-      let svc = AutoFillDbServiceAPI.iosAppGroupSupportService()
-
-      // Step 1: Create key pair via Rust FFI
-      let createArgs: [String: Any] = [
-        "rp_id": rpId,
-        "rp_name": rpId,
-        "user_name": userName,
-        "user_handle_b64url": userHandle,
-        "client_data_hash_b64url": hashB64url
-      ]
-      guard let createArgsJson = try? JSONSerialization.data(withJSONObject: createArgs),
-            let createArgsStr = String(data: createArgsJson, encoding: .utf8) else {
-        resolve("{\"error\":\"Failed to serialize create args\"}")
-        return
-      }
-
-      let createResult = svc.invoke("passkey_create_with_hash", createArgsStr)
-      self.logger.debug("passkey_create_with_hash result: \(createResult)")
-
-      guard let createData = createResult.data(using: .utf8),
-            let createDict = try? JSONSerialization.jsonObject(with: createData) as? [String: Any],
-            let createOk = createDict["ok"] as? [String: Any] else {
-        resolve(createResult)
-        return
-      }
-
-      let credentialIdB64url = createOk["credential_id_b64url"] as? String ?? ""
-      let privateKeyPem = createOk["private_key_pem"] as? String ?? ""
-      let attestationObjectB64url = createOk["attestation_object_b64url"] as? String ?? ""
-      let createdRpId = createOk["rp_id"] as? String ?? rpId
-      let createdRpName = createOk["rp_name"] as? String ?? rpId
-      let createdUsername = createOk["username"] as? String ?? userName
-      let createdUserHandle = createOk["user_handle_b64url"] as? String ?? userHandle
-
-      // Step 2: Store pending passkey record via Rust FFI
-      let storeArgs: [String: Any?] = [
-        "org_db_key": orgDbKey,
-        "credential_id_b64url": credentialIdB64url,
-        "private_key_pem": privateKeyPem,
-        "rp_id": createdRpId,
-        "rp_name": createdRpName,
-        "username": createdUsername,
-        "user_handle_b64url": createdUserHandle,
-        "origin": "https://\(createdRpId)",
-        "entry_uuid": entryUuid.isEmpty ? nil : entryUuid,
-        "new_entry_name": newEntryName.isEmpty ? nil : newEntryName,
-        "group_uuid": groupUuid.isEmpty ? nil : groupUuid,
-        "new_group_name": newGroupName.isEmpty ? nil : newGroupName
-      ]
-      guard let storeArgsJson = try? JSONSerialization.data(withJSONObject: storeArgs.compactMapValues { $0 }),
-            let storeArgsStr = String(data: storeArgsJson, encoding: .utf8) else {
-        resolve("{\"error\":\"Failed to serialize store args\"}")
-        return
-      }
-
-      let storeResult = svc.invoke("passkey_store_pending", storeArgsStr)
-      self.logger.debug("passkey_store_pending result: \(storeResult)")
-
-      // Do NOT complete iOS registration if store failed
-      if let storeData = storeResult.data(using: .utf8),
-         let storeDict = try? JSONSerialization.jsonObject(with: storeData) as? [String: Any],
-         let storeError = storeDict["error"], !(storeError is NSNull) {
-        self.logger.error("passkey_store_pending failed: \(storeResult)")
-        resolve(storeResult)
-        return
-      }
-
-      // Step 3: Complete the iOS registration request (only on success)
-      CredentialProviderViewController.completePasskeyRegistration(
-        credentialIdB64url: credentialIdB64url,
-        attestationObjectB64url: attestationObjectB64url,
-        clientDataHash: clientDataHash
-      )
-
-      resolve(storeResult)
-    }
+    resolve("{\"ok\":{\"rp_id\":\"\(rpId)\",\"user_name\":\"\(userName)\",\"user_handle_b64url\":\"\(userHandle)\",\"client_data_hash_b64url\":\"\(hashB64url)\"}}")
   }
+
+  // completePasskeyRegistration has been removed.
+  // Use autofill-invoke-api "passkey_complete_registration" from ClojureScript instead.
+  // The Rust handler creates the keypair, stores the pending record, and calls the
+  // complete_passkey_registration Swift callback to complete the iOS request.
 
   /// TDODO: Need to move authenticateWithBiometric and getAuthenticationErrorDescription to a common class and share between app and autofill
 

@@ -230,6 +230,22 @@ pub enum CommandArg {
         client_data_hash_b64url: String,
     },
 
+    // Bundled passkey registration — create keypair + store pending + complete iOS request.
+    // Distinct from PasskeyStorePendingArg (no credential_id_b64url / private_key_pem / origin).
+    // Must come before PasskeyCreateWithHashArg (superset of its fields) and PasskeyStorePendingArg.
+    PasskeyCompleteRegistrationArg {
+        org_db_key: String,
+        rp_id: String,
+        rp_name: String,
+        user_name: String,
+        user_handle_b64url: String,
+        client_data_hash_b64url: String,
+        entry_uuid: Option<String>,
+        new_entry_name: Option<String>,
+        group_uuid: Option<String>,
+        new_group_name: Option<String>,
+    },
+
     // Passkey creation with pre-computed clientDataHash (iOS autofill)
     PasskeyCreateWithHashArg {
         rp_id: String,

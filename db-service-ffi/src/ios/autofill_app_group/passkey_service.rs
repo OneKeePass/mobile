@@ -13,10 +13,10 @@ use onekeepass_core::db_service::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    commands::{CommandArg, ResponseJson, result_json_str},
-    parse_command_args_or_err,
-    udl_uniffi_exports::PasskeySummaryData,
     OkpError, OkpResult,
+    commands::{CommandArg, ResponseJson, result_json_str},
+    ios::{PasskeyAssertionCallbackData, PasskeyRegistrationCallbackData, PasskeySummaryData},
+    parse_command_args_or_err,
 };
 
 use super::super::IosApiCallbackImpl;
@@ -295,6 +295,32 @@ pub(super) fn register_passkey_identities_for_db(db_key: &str) {
     }
 }
 
+// ── Shared passkey storage helper ─────────────────────────────────────────────
+
+// Writes a PendingPasskeyRecord to disk and registers the passkey identity with
+// ASCredentialIdentityStore via the iOS callback. Shared by passkey_store_pending and
+// passkey_complete_registration to avoid duplicating this logic.
+fn persist_pending_passkey(
+    org_db_key: &str,
+    passkey_info: passkey::PasskeyStorageInfo,
+) -> OkpResult<PendingPasskeyRecord> {
+    let record_uuid = uuid::Uuid::new_v4().to_string();
+    let created_at_unix = service_util::now_utc_seconds();
+    let record = PendingPasskeyRecord {
+        record_uuid: record_uuid.clone(),
+        created_at_unix,
+        org_db_key: org_db_key.to_string(),
+        passkey_info,
+    };
+    let dir = pending_passkeys_dir()?;
+    let file_path = dir.join(format!("{}.json", &record_uuid));
+    let json_str = serde_json::to_string_pretty(&record)
+        .map_err(|e| OkpError::UnexpectedError(format!("JSON serialize failed: {}", e)))?;
+    fs::write(&file_path, json_str.as_bytes())?;
+    debug!("persist_pending_passkey: record written to {:?}", &file_path);
+    Ok(record)
+}
+
 // ── IosAppGroupSupportService passkey command handlers ────────────────────────
 
 impl super::IosAppGroupSupportService {
@@ -426,27 +452,7 @@ impl super::IosAppGroupSupportService {
                 new_group_name,
             };
 
-            let record_uuid = uuid::Uuid::new_v4().to_string();
-            let created_at_unix = service_util::now_utc_seconds();
-
-            let record = PendingPasskeyRecord {
-                record_uuid: record_uuid.clone(),
-                created_at_unix,
-                org_db_key,
-                passkey_info,
-            };
-
-            let dir = pending_passkeys_dir()?;
-            let file_path = dir.join(format!("{}.json", &record_uuid));
-
-            let json_str = serde_json::to_string_pretty(&record)
-                .map_err(|e| OkpError::UnexpectedError(format!("JSON serialize failed: {}", e)))?;
-
-            debug!("Pending passkey is written to the file {:?}", file_path);
-
-            fs::write(&file_path, json_str.as_bytes())?;
-
-            debug!("Pending passkey record written to {:?}", &file_path);
+            let record = persist_pending_passkey(&org_db_key, passkey_info)?;
 
             // Register the new passkey identity immediately so it appears in autofill sheet
             let summary = passkey_summary_from_pending(&record);
@@ -457,6 +463,141 @@ impl super::IosAppGroupSupportService {
             }
 
             Ok(record)
+        };
+        result_json_str(inner())
+    }
+
+    // ── Bundled assertion (sign + complete iOS request) ──────────────────
+
+    // Single Rust command that signs the passkey assertion and then calls the Swift callback
+    // `complete_passkey_assertion` to complete the iOS credential provider request.
+    // Called from ClojureScript via autofill-invoke-api "passkey_complete_assertion".
+    pub(super) fn passkey_complete_assertion(&self, json_args: &str) -> ResponseJson {
+        // debug!("passkey_complete_assertion is called with json_args {}", &json_args);
+
+        let inner = || -> OkpResult<()> {
+            let (db_key, entry_uuid_str, client_data_hash_b64url) = parse_command_args_or_err!(
+                json_args,
+                PasskeySignAssertionArg { db_key, entry_uuid, client_data_hash_b64url }
+            );
+            let entry_uuid = uuid::Uuid::parse_str(&entry_uuid_str)
+                .map_err(|e| OkpError::UnexpectedError(e.to_string()))?;
+            let pk = passkey::get_passkey_for_assertion(&db_key, &entry_uuid)?;
+            // debug!("get_passkey_for_assertion completed");
+            let hash_bytes = BASE64URL_NOPAD
+                .decode(client_data_hash_b64url.as_bytes())
+                .map_err(|e| OkpError::UnexpectedError(e.to_string()))?;
+            let result = onekeepass_core::passkey_crypto::sign_assertion_with_hash(
+                &pk.credential_id_b64url,
+                &pk.rp_id,
+                &pk.user_handle_b64url,
+                &pk.private_key_pem,
+                &hash_bytes,
+            )?;
+            // debug!("sign_assertion_with_hash completed and calling IosApiCallbackImpl");
+            IosApiCallbackImpl::api_service().complete_passkey_assertion(
+                PasskeyAssertionCallbackData {
+                    credential_id_b64url: result.credential_id_b64url,
+                    rp_id: result.rp_id,
+                    user_handle_b64url: result.user_handle_b64url,
+                    signature_b64url: result.signature_b64url,
+                    authenticator_data_b64url: result.authenticator_data_b64url,
+                },
+            )?;
+            debug!(" IosApiCallbackImpl callback completed");
+            Ok(())
+        };
+        // debug!("passkey_complete_assertion returning to cljs");
+        result_json_str(inner())
+    }
+
+    // ── Bundled registration (create keypair + store pending + complete iOS request) ──
+
+    // Single Rust command that creates a passkey, stores the pending record, and calls the
+    // Swift callback `complete_passkey_registration` to complete the iOS credential provider
+    // request. Called from ClojureScript via autofill-invoke-api "passkey_complete_registration".
+    pub(super) fn passkey_complete_registration(&self, json_args: &str) -> ResponseJson {
+        let inner = || -> OkpResult<()> {
+            let (
+                org_db_key,
+                rp_id,
+                rp_name,
+                user_name,
+                user_handle_b64url,
+                client_data_hash_b64url,
+                entry_uuid,
+                new_entry_name,
+                group_uuid,
+                new_group_name,
+            ) = parse_command_args_or_err!(
+                json_args,
+                PasskeyCompleteRegistrationArg {
+                    org_db_key,
+                    rp_id,
+                    rp_name,
+                    user_name,
+                    user_handle_b64url,
+                    client_data_hash_b64url,
+                    entry_uuid,
+                    new_entry_name,
+                    group_uuid,
+                    new_group_name
+                }
+            );
+
+            // Step 1: Create keypair
+            let hash_bytes = BASE64URL_NOPAD
+                .decode(client_data_hash_b64url.as_bytes())
+                .map_err(|e| OkpError::UnexpectedError(e.to_string()))?;
+            let creation = onekeepass_core::passkey_crypto::create_passkey_with_hash(
+                &rp_id,
+                &rp_name,
+                &user_name,
+                &user_handle_b64url,
+                &hash_bytes,
+            )?;
+
+            // Step 2: Store pending record (writes to disk + registers identity)
+            let entry_uuid_parsed = entry_uuid
+                .map(|s| uuid::Uuid::parse_str(&s))
+                .transpose()
+                .map_err(|e| OkpError::UnexpectedError(format!("Invalid entry_uuid: {}", e)))?;
+            let group_uuid_parsed = group_uuid
+                .map(|s| uuid::Uuid::parse_str(&s))
+                .transpose()
+                .map_err(|e| OkpError::UnexpectedError(format!("Invalid group_uuid: {}", e)))?;
+            let passkey_info = passkey::PasskeyStorageInfo {
+                credential_id_b64url: creation.credential_id_b64url.clone(),
+                private_key_pem: creation.private_key_pem, // Phase 5: encrypt before writing
+                rp_id: creation.rp_id.clone(),
+                rp_name: creation.rp_name,
+                username: creation.username,
+                user_handle_b64url: creation.user_handle_b64url,
+                origin: format!("https://{}", &creation.rp_id),
+                entry_uuid: entry_uuid_parsed,
+                new_entry_name,
+                group_uuid: group_uuid_parsed,
+                new_group_name,
+            };
+            let record = persist_pending_passkey(&org_db_key, passkey_info)?;
+
+            // Register the new passkey identity so it appears in future autofill sheets
+            let summary = passkey_summary_from_pending(&record);
+            if let Err(e) = IosApiCallbackImpl::api_service()
+                .register_passkey_identities(record.org_db_key.clone(), vec![], vec![summary])
+            {
+                log::error!("passkey_complete_registration: register identity error: {:?}", e);
+            }
+
+            // Step 3: Complete the iOS registration request via Swift callback
+            IosApiCallbackImpl::api_service().complete_passkey_registration(
+                PasskeyRegistrationCallbackData {
+                    credential_id_b64url: creation.credential_id_b64url,
+                    attestation_object_b64url: creation.attestation_object_b64url,
+                    client_data_hash_b64url,
+                },
+            )?;
+            Ok(())
         };
         result_json_str(inner())
     }

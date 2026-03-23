@@ -37,15 +37,18 @@
    {:fx [[:bg/get-pending-passkey-context nil]]}))
 
 ;; Stores the passkey context returned by getPendingPasskeyContext.
-;; context is {:rp-id "..." :allow-credential-ids [...]} or nil.
+;; context is {:rp-id "..." :allow-credential-ids [...] :client-data-hash-b64url "..."} or nil.
 (reg-event-fx
  :passkey-assertion/context-loaded
  (fn [{:keys [db]} [_ context]]
+   (println "Context in :passkey-assertion/context-loaded" context)
    {:db (if context
           (-> db
               (assoc-in [:passkey-assertion :rp-id] (:rp-id context))
               (assoc-in [:passkey-assertion :allow-credential-ids]
-                        (or (:allow-credential-ids context) [])))
+                        (or (:allow-credential-ids context) []))
+              (assoc-in [:passkey-assertion :client-data-hash-b64url]
+                        (:client-data-hash-b64url context)))
           db)}))
 
 ;; Called after a database is unlocked when in passkey assertion mode.
@@ -76,12 +79,14 @@
 ;; Called when the user taps a passkey in the list.
 (reg-event-fx
  :passkey-assertion/select
- (fn [_ [_ {:keys [entry-uuid db-key]}]]
-   {:fx [[:bg/complete-passkey-assertion
-          [entry-uuid db-key
-           (fn [_response]
-             ;; The extension is completed by the Swift layer; nothing more to do here.
-             nil)]]]}))
+ (fn [{:keys [db]} [_ {:keys [entry-uuid db-key]}]]
+   (let [hash (get-in db [:passkey-assertion :client-data-hash-b64url])]
+     {:fx [[:bg/complete-passkey-assertion
+            [entry-uuid db-key hash
+             (fn [response]
+               (println "bg/complete-passkey-assertion response" response)
+               ;; The extension is completed by the Rust/Swift callback; nothing more to do here.
+               nil)]]]})))
 
 ;; ── Effects ──────────────────────────────────────────────────────────────────
 
@@ -100,6 +105,6 @@
 
 (reg-fx
  :bg/complete-passkey-assertion
- (fn [[entry-uuid db-key dispatch-fn]]
+ (fn [[entry-uuid db-key client-data-hash-b64url dispatch-fn]]
    (println "bg/complete-passkey-assertion is called")
-   (bg/complete-passkey-assertion entry-uuid db-key dispatch-fn)))
+   (bg/complete-passkey-assertion db-key entry-uuid client-data-hash-b64url dispatch-fn)))

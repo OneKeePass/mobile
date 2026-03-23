@@ -40,29 +40,6 @@ pub struct AppClipboardCopyData {
     pub cleanup_after: u32,
 }
 
-#[derive(uniffi::Record)]
-pub struct PasskeySummaryData {
-    pub entry_uuid: String,
-    pub db_key: String,
-    pub credential_id_b64url: String,
-    pub rp_id: String,
-    pub username: String,
-    pub user_handle_b64url: String,
-}
-
-impl From<onekeepass_core::db_service::passkey::PasskeySummary> for PasskeySummaryData {
-    fn from(s: onekeepass_core::db_service::passkey::PasskeySummary) -> Self {
-        Self {
-            entry_uuid: s.entry_uuid,
-            db_key: s.db_key,
-            credential_id_b64url: s.credential_id_b64url,
-            rp_id: s.rp_id,
-            username: s.username,
-            user_handle_b64url: s.user_handle_b64url,
-        }
-    }
-}
-
 // As per uniffi 'callback_interface' is 'soft' deprecated
 // If we use this, we need to use Box<dyn SecureEnclaveService> instead of Arc<dyn SecureEnclaveService>
 //#[uniffi::export(callback_interface)]

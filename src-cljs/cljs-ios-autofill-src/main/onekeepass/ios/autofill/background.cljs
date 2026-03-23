@@ -1,12 +1,13 @@
 (ns onekeepass.ios.autofill.background
   "All backend api calls that are used across many events"
   (:require
-   [react-native :as rn]
-   [onekeepass.ios.autofill.utils :as u :refer [contains-val?]]
+   [camel-snake-kebab.core :as csk]
+   [camel-snake-kebab.extras :as cske]
    [cljs.core.async :refer [go]]
    [cljs.core.async.interop :refer-macros [<p!]]
-   [camel-snake-kebab.extras :as cske]
-   [camel-snake-kebab.core :as csk]))
+   [clojure.string :as str]
+   [onekeepass.ios.autofill.utils :as u :refer [contains-val?]]
+   [react-native :as rn]))
 
 
 (def okp-db-service ^js/OkpDbService (.-OkpDbService rn/NativeModules))
@@ -185,17 +186,39 @@
                                                                  :args-keys-excluded args-keys-excluded)))
                   dispatch-fn :convert-response convert-response :convert-response-fn convert-response-fn))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn- transform-request-passkey-field-names [args]
+  (let [t-fn (fn [k]
+               ;; (keyword? k)  -> true. We need to use name fn to get string 
+               (if (str/includes? (name k) "b64url")
+                 (-> k name (str/replace  #"-" "_"))
+                 (csk/->snake_case k)))]
+    (cske/transform-keys t-fn args)))
+
+(defn- transform-response-passkey-field-names [response]
+  (let [t-fn (fn [k]
+               (if (str/includes? k "b64url")
+                 (-> k (str/replace  #"_" "-") keyword)
+                 (csk/->kebab-case-keyword k)))]
+    (cske/transform-keys t-fn response)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+
 (defn load-autofill-init-data [dispatch-fn]
   (autofill-invoke-api  "autofill_init_data" {} dispatch-fn))
 
 #_(defn list-app-group-db-files [dispatch-fn]
-  (autofill-invoke-api  "list_of_autofill_db_infos" {} dispatch-fn))
+    (autofill-invoke-api  "list_of_autofill_db_infos" {} dispatch-fn))
 
 (defn list-key-files [dispatch-fn]
   (autofill-invoke-api "list_of_key_files" {} dispatch-fn))
 
 #_(defn database-preferences [dispatch-fn]
-  (autofill-invoke-api "database_preferences" {} dispatch-fn))
+    (autofill-invoke-api "database_preferences" {} dispatch-fn))
 
 #_(defn read-kdbx-from-app-group
     "Calls the API to read a kdbx file.
@@ -247,12 +270,13 @@
   (call-api-async (fn [] (.cancelExtension okp-db-service)) dispatch-fn))
 
 (defn get-pending-passkey-context
-  "Returns {:ok {:rp-id ... :allow-credential-ids [...]}} if this session was triggered
-   by a passkey assertion request, or {:ok nil} otherwise."
+  "Returns {:ok {:rp-id ... :allow-credential-ids [...] :client-data-hash-b64url ...}}
+   if this session was triggered by a passkey assertion request, or {:ok nil} otherwise."
   [dispatch-fn]
   (call-api-async
    (fn [] (.getPendingPasskeyContext okp-db-service))
-   dispatch-fn))
+   dispatch-fn
+   :convert-response-fn transform-response-passkey-field-names))
 
 (defn find-matching-passkeys
   "Fetches all passkeys in db-key matching rp-id.
@@ -266,19 +290,25 @@
                        dispatch-fn))
 
 (defn complete-passkey-assertion
-  "Signs the pending passkey assertion for the entry and completes the iOS extension request."
-  [entry-uuid db-key dispatch-fn]
-  (call-api-async
-   (fn [] (.completePasskeyAssertion okp-db-service entry-uuid db-key))
-   dispatch-fn))
+  "Signs the pending passkey assertion and completes the iOS extension request.
+   Calls autofill-invoke-api passkey_complete_assertion which does signing + iOS completion in Rust."
+  [db-key entry-uuid client-data-hash-b64url dispatch-fn]
+  (autofill-invoke-api "passkey_complete_assertion"
+                       (transform-request-passkey-field-names
+                        {:db-key db-key
+                         :entry-uuid entry-uuid
+                         :client-data-hash-b64url client-data-hash-b64url})
+                       dispatch-fn
+                       :convert-request false))
 
 (defn get-pending-passkey-registration-context
-  "Returns {:ok {:rp-id ... :user-name ... :user-handle-b64url ...}} if this session was
-   triggered by a passkey registration request, or {:ok nil} otherwise."
+  "Returns {:ok {:rp-id ... :user-name ... :user-handle-b64url ... :client-data-hash-b64url ...}}
+   if this session was triggered by a passkey registration request, or {:ok nil} otherwise."
   [dispatch-fn]
   (call-api-async
    (fn [] (.getPendingPasskeyRegistrationContext okp-db-service))
-   dispatch-fn))
+   dispatch-fn
+   :convert-response-fn transform-response-passkey-field-names))
 
 (defn get-db-groups
   "Fetches all groups in the opened database for the passkey registration group picker."
@@ -292,11 +322,23 @@
 
 (defn complete-passkey-registration
   "Bundled passkey registration: creates key pair, stores pending record, and completes the iOS request.
-   Single Swift call that bundles 3 operations."
-  [db-key org-db-key entry-uuid new-entry-name group-uuid new-group-name dispatch-fn]
-  (call-api-async
-   (fn [] (.completePasskeyRegistration okp-db-service db-key org-db-key entry-uuid new-entry-name group-uuid new-group-name))
-   dispatch-fn))
+   Calls autofill-invoke-api passkey_complete_registration which does all 3 steps in Rust."
+  [org-db-key rp-id rp-name user-name user-handle-b64url client-data-hash-b64url
+   entry-uuid new-entry-name group-uuid new-group-name dispatch-fn]
+  (autofill-invoke-api "passkey_complete_registration"
+                       (transform-request-passkey-field-names
+                        {:org-db-key org-db-key
+                         :rp-id rp-id
+                         :rp-name rp-name
+                         :user-name user-name
+                         :user-handle-b64url user-handle-b64url
+                         :client-data-hash-b64url client-data-hash-b64url
+                         :entry-uuid (when-not (empty? entry-uuid) entry-uuid)
+                         :new-entry-name (when-not (empty? new-entry-name) new-entry-name)
+                         :group-uuid (when-not (empty? group-uuid) group-uuid)
+                         :new-group-name (when-not (empty? new-group-name) new-group-name)})
+                       dispatch-fn
+                       :convert-request false))
 
 (defn credentials-selected [user-name password dispatch-fn]
   (call-api-async (fn [] (.credentialSelected okp-db-service user-name password)) dispatch-fn))
@@ -375,7 +417,7 @@
   ([caller-name event-name event-handler-fn]
    ;;(println (js/Date.) "caller-name event-name event-handler-fn " caller-name event-name event-handler-fn)
    (let [el (get @native-event-listeners [caller-name event-name])]
-    ;;Register the event handler function only if the '[caller-name event-name]' is not already registered
+     ;;Register the event handler function only if the '[caller-name event-name]' is not already registered
      (when (nil? el)
        (try
          (let [subscription (.addListener event-emitter event-name event-handler-fn)]
@@ -384,7 +426,7 @@
            (do
              (println "error is " (ex-cause err))
              (js/console.log (ex-cause err)))))
-      ;;To log the following messsage use 'if' instead of 'when' form
+       ;;To log the following messsage use 'if' instead of 'when' form
        #_(println "Tauri event listener for " event-name " is already registered"))))
   ([event-name event-handler-fn]
    (register-event-listener :common event-name event-handler-fn)))
