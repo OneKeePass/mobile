@@ -1,5 +1,6 @@
 (ns onekeepass.mobile.appbar
-  (:require [onekeepass.mobile.about :as about :refer [about-content
+  (:require [onekeepass.mobile.passkey-pending :as passkey-pending]
+            [onekeepass.mobile.about :as about :refer [about-content
                                                        privacy-policy-content]]
             [onekeepass.mobile.app-settings :as app-settings]
             [onekeepass.mobile.app-database-settings :as app-db-settings]
@@ -12,6 +13,7 @@
                                                   HOME_PAGE_ID
                                                   KEY_FILE_FORM_PAGE_ID
                                                   MERGE_DATABASE_PAGE_ID
+                                                  PASSKEY_PENDING_REVIEW_PAGE_ID
                                                   RS_CONNECTION_CONFIG_PAGE_ID
                                                   RS_CONNECTIONS_LIST_PAGE_ID
                                                   RS_FILES_FOLDERS_PAGE_ID]]
@@ -108,7 +110,8 @@
      (= page RS_CONNECTION_CONFIG_PAGE_ID)
      (= page RS_CONNECTIONS_LIST_PAGE_ID)
      (= page ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID)
-     (= page APP_LOCK_SETTINGS_PAGE_ID))
+     (= page APP_LOCK_SETTINGS_PAGE_ID)
+     (= page PASSKEY_PENDING_REVIEW_PAGE_ID))
     (do
       (cmn-events/to-previous-page)
       true)
@@ -475,6 +478,9 @@
 
     (= page MERGE_DATABASE_PAGE_ID)
     [merging/main-content]
+
+    (= page PASSKEY_PENDING_REVIEW_PAGE_ID)
+    [passkey-pending/content]
 
     ;; For now, this page is shown after loading the newly selected language translation
     ;; Other attempts to refresh the app settings page itself did not work

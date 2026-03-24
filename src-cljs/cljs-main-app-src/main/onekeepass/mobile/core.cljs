@@ -12,6 +12,7 @@
    #_[onekeepass.mobile.android.autofill.core :as android-core] ;;;;;;; ;;;;;;; ;;;;;;; ;;;;;;;
    [onekeepass.mobile.appbar :refer [appbar-main-content
                                      hardware-back-pressed]]
+   [onekeepass.mobile.passkey-pending :refer [pending-passkey-snackbar]]
    [onekeepass.mobile.background :as bg]
    [onekeepass.mobile.common-components :as cc :refer [message-dialog
                                                        message-modal
@@ -43,6 +44,7 @@
      ;; All dialogs that may be used in more than one page are added under this portal 
      [rnp-portal
       [message-snackbar]
+      [pending-passkey-snackbar]
       #_[open-db-dialog]
       [save-error-modal @(save-events/save-error-modal-data)]
       [message-modal @(cmn-events/message-modal-data)]
