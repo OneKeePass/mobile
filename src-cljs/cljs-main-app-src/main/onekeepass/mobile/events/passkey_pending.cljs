@@ -35,6 +35,11 @@
   []
   (dispatch [:passkey-pending/commit-all]))
 
+(defn check-all
+  "Called on iOS app open to check for pending passkeys across ALL databases"
+  []
+  (dispatch [:passkey-pending/check-all]))
+
 
 ;; Not required
 #_(defn check-before-autofill-disable
@@ -82,6 +87,29 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;; Events ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; Called on iOS app open to check all databases for pending passkeys.
+(reg-event-fx
+ :passkey-pending/check-all
+ (fn [{:keys [_db]} _]
+   {:fx [[:bg-all-pending-passkeys-list nil]]}))
+
+(reg-fx
+ :bg-all-pending-passkeys-list
+ (fn [_]
+   (bg/ios-all-pending-passkeys-list
+    (fn [api-response]
+      (when-not (on-error api-response)
+        (dispatch [:passkey-pending/all-loaded (:ok api-response)]))))))
+
+;; Shows the notification dialog if any pending passkeys exist across databases.
+(reg-event-fx
+ :passkey-pending/all-loaded
+ (fn [{:keys [_db]} [_event-id items]]
+   {:fx [(when (seq items)
+           [:dispatch [:generic-dialog-show-with-state
+                       :ios-all-pending-passkeys-notification-dialog
+                       {:pending-passkeys (or items [])}]])]}))
+
 ;; Called after a database is opened (iOS only).
 ;; Loads the pending passkey list for the given org-db-key.
 (reg-event-fx
@@ -92,7 +120,7 @@
 (reg-fx
  :bg-passkey-pending-list
  (fn [[db-key]]
-   (bg/pending-passkeys-list
+   (bg/ios-pending-passkeys-list
     db-key
     (fn [api-response]
       (when-not (on-error api-response)

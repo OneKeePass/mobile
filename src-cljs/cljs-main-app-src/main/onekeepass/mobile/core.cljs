@@ -13,6 +13,8 @@
    [onekeepass.mobile.appbar :refer [appbar-main-content
                                      hardware-back-pressed]]
    #_[onekeepass.mobile.passkey-pending :refer [pending-passkey-snackbar]]
+   [onekeepass.mobile.passkey-pending :refer [ios-all-pending-passkeys-notification-dialog]]
+   [onekeepass.mobile.events.passkey-pending :as pp-events]
    [onekeepass.mobile.background :as bg]
    [onekeepass.mobile.common-components :as cc :refer [message-dialog
                                                        message-modal
@@ -48,7 +50,9 @@
       #_[open-db-dialog]
       [save-error-modal @(save-events/save-error-modal-data)]
       [message-modal @(cmn-events/message-modal-data)]
-      [message-dialog @(cmn-events/message-dialog-data)]]]))
+      [message-dialog @(cmn-events/message-dialog-data)]
+      (when (bg/is-iOS)
+        [ios-all-pending-passkeys-notification-dialog])]]))
 
 ;; System back action handler (Android)
 (def ^:private back-handler (atom nil))
@@ -115,7 +119,9 @@
   (cmn-events/sync-initialize)
   (as-events/init-session-timeout-tick)
   (t/load-language-translation)
-  (rs-events/load-all-remote-connection-configs))
+  (rs-events/load-all-remote-connection-configs)
+  (when (bg/is-iOS)
+    (pp-events/check-all)))
 
 ;; Main entry point with shadow-cljs
 (defn start

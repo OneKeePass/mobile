@@ -241,8 +241,11 @@
 (defn ios-query-autofill-db-info [db-key dispatch-fn]
   (ios-autofill-invoke-api "query_autofill_db_info" {:db-key db-key} dispatch-fn))
 
-(defn pending-passkeys-list [org-db-key dispatch-fn]
+(defn ios-pending-passkeys-list [org-db-key dispatch-fn]
   (ios-autofill-invoke-api "passkey_pending_list" {:org-db-key org-db-key} dispatch-fn))
+
+(defn ios-all-pending-passkeys-list [dispatch-fn]
+  (ios-autofill-invoke-api "passkey_pending_list" {:org-db-key ""} dispatch-fn))
 
 (defn commit-pending-passkey [record-uuid db-key dispatch-fn]
   (ios-autofill-invoke-api "passkey_commit_pending" {:record-uuid record-uuid :db-key db-key} dispatch-fn))

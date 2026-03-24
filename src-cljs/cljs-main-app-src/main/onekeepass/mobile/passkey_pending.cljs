@@ -3,6 +3,7 @@
    Shows passkeys awaiting commit to the real KDBX database, with Save/Discard actions.
    Also exports the notification snackbar rendered in core.cljs."
   (:require
+   [clojure.string :as str]
    [onekeepass.mobile.events.dialogs :as dlg-events]
    [onekeepass.mobile.events.passkey-pending :as pp-events]
    [onekeepass.mobile.events.common :as cmn-events]
@@ -46,7 +47,7 @@
 (defn ios-pending-passkey-notification-dialog
   ([{:keys [dialog-show]}]
    [cust-dialog {:style {} :dismissable false :visible dialog-show :onDismiss #()}
-    [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1} "Pending Passkeys" #_(lstr-dlg-title "mergeResults")]
+    [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1 :style {:color @rnc/error-color}} "Pending Passkeys" #_(lstr-dlg-title "mergeResults")]
     [rnp-dialog-content
      [rn-view {:style {:flexDirection "column" :justify-content "center"}}
       [rnp-text "There are one or more pending passkeys and they need to be merged to the database"]]]
@@ -66,7 +67,7 @@
 (defn ios-autofill-disable-pending-passkey-dialog
   ([{:keys [dialog-show]}]
    [cust-dialog {:style {} :dismissable false :visible dialog-show :onDismiss #()}
-    [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1} "Pending Passkeys"]
+    [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1 :style {:color @rnc/error-color}} "Pending Passkeys"]
     [rnp-dialog-content
      [rn-view {:style {:flexDirection "column" :justify-content "center"}}
       [rnp-text "There are pending passkeys that have not been committed to the database. Please review them before disabling autofill."]]]
@@ -83,6 +84,39 @@
   ([]
    (ios-autofill-disable-pending-passkey-dialog
     @(dlg-events/ios-autofill-disable-pending-passkey-dialog-data))))
+
+;;;;;;;;;;;;; All-databases pending passkeys notification dialog ;;;;;;;;;;
+
+(defn- pending-passkeys-by-db
+  "Group pending passkeys by database, returning [{:db-name :count}]"
+  [items]
+  (->> items
+       (group-by :org-db-key)
+       (mapv (fn [[db-key db-items]]
+               {:db-name (last (str/split db-key "/"))
+                :count   (count db-items)}))))
+
+(defn ios-all-pending-passkeys-notification-dialog
+  ([{:keys [dialog-show pending-passkeys]}]
+   (let [by-db (pending-passkeys-by-db (or pending-passkeys []))]
+     [cust-dialog {:style {} :dismissable false :visible dialog-show :onDismiss #()}
+      [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1 :style {:color @rnc/error-color} } "Pending Passkeys"]
+      [rnp-dialog-content
+       [rn-view {:style {:flexDirection "column"}}
+        [rnp-text "The following databases have pending passkeys. Open each database to review and save them."]
+        [rn-view {:style {:marginTop 8}}
+         (doall
+          (for [{:keys [db-name count]} by-db]
+            ^{:key db-name}
+            [rnp-text {:style {:marginTop 4}} (str "• " db-name " (" count ")")]))]]]
+      [rnp-dialog-actions
+       [rnp-button {:mode "text"
+                    :onPress dlg-events/ios-all-pending-passkeys-notification-dialog-close}
+        "Close"]]]))
+
+  ([]
+   (ios-all-pending-passkeys-notification-dialog
+    @(dlg-events/ios-all-pending-passkeys-notification-dialog-data))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;; Review page appbar title ;;;;;;;;;;;;;;;;;;;;;;
 
