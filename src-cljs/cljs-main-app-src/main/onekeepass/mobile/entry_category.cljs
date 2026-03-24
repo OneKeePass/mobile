@@ -1,5 +1,7 @@
 (ns onekeepass.mobile.entry-category
   (:require
+   [onekeepass.mobile.background :as bg]
+   [onekeepass.mobile.bottom-navigator :as bn]
    [onekeepass.mobile.common-components  :refer [menu-action-factory]]
    [onekeepass.mobile.constants :as const :refer [AUTO_DB_OPEN_TYPE_NAME
                                                   BANK_ACCOUNT_TYPE_NAME
@@ -19,9 +21,9 @@
                                                   UUID_OF_ENTRY_TYPE_LOGIN
                                                   WIRELESS_ROUTER_TYPE_NAME]]
    [onekeepass.mobile.events.common :as cmn-events]
-   [onekeepass.mobile.events.settings :as stgs-events]
    [onekeepass.mobile.events.entry-category :as ecat-events]
    [onekeepass.mobile.icons-list :refer [icon-id->name]]
+   [onekeepass.mobile.passkey-pending :as passkey-pending]
    [onekeepass.mobile.rn-components :as rnc :refer [cust-rnp-divider
                                                     dots-icon-name icon-color
                                                     on-primary-color
@@ -34,10 +36,9 @@
                                                     rnp-list-icon
                                                     rnp-list-item rnp-menu
                                                     rnp-menu-item rnp-text]]
-   [onekeepass.mobile.translation :refer [lstr-cv lstr-entry-type-title lstr-l
+   [onekeepass.mobile.translation :refer [lstr-cv lstr-entry-type-title
                                           lstr-ml]]
    [onekeepass.mobile.utils :refer [contains-val? str->int]]
-   [onekeepass.mobile.bottom-navigator :as bn]
    [reagent.core :as r]))
 
 (set! *warn-on-infer* true)
@@ -323,4 +324,6 @@
 
    [fab-action-menu @fab-action-menu-data @(ecat-events/root-group)]
    [category-long-press-menu @category-long-press-menu-data]
-   [group-by-menu @group-by-menu-data]])
+   [group-by-menu @group-by-menu-data]
+   (when (bg/is-iOS)
+     [passkey-pending/ios-pending-passkey-notification-dialog])])

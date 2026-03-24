@@ -30,7 +30,12 @@
   [record-uuid db-key]
   (dispatch [:passkey-pending/discard record-uuid db-key]))
 
-(defn close-snackbar
+(defn commit-all
+  "Commit every pending passkey for the current database, then save once"
+  []
+  (dispatch [:passkey-pending/commit-all]))
+
+#_(defn close-snackbar
   "Close the pending passkeys notification snackbar"
   []
   (dispatch [:passkey-pending/snackbar-close]))
@@ -42,7 +47,7 @@
   []
   (subscribe [:passkey-pending/items]))
 
-(defn snackbar-open?
+#_(defn snackbar-open?
   "Returns true when the pending passkeys notification snackbar should be visible"
   []
   (subscribe [:passkey-pending/snackbar-open]))
@@ -57,7 +62,7 @@
  (fn [db _]
    (get-in db [:passkey-pending :items] [])))
 
-(reg-sub
+#_(reg-sub
  :passkey-pending/snackbar-open
  (fn [db _]
    (get-in db [:passkey-pending :snackbar-open] false)))
@@ -84,18 +89,31 @@
     db-key
     (fn [api-response]
       (when-not (on-error api-response)
+        #_(println "bg/pending-passkeys-list api-response" api-response)
         (dispatch [:passkey-pending/loaded (:ok api-response) db-key]))))))
 
 ;; Stores the loaded items. If non-empty, opens the notification snackbar.
-(reg-event-db
- :passkey-pending/loaded
- (fn [db [_event-id items db-key]]
-   (-> db
-       (assoc-in [:passkey-pending :items] (or items []))
-       (assoc-in [:passkey-pending :db-key] db-key)
-       (assoc-in [:passkey-pending :snackbar-open] (boolean (seq items))))))
+#_(reg-event-db
+   :passkey-pending/loaded
+   (fn [db [_event-id items db-key]]
+     (-> db
+         (assoc-in [:passkey-pending :items] (or items []))
+         (assoc-in [:passkey-pending :db-key] db-key)
+         (assoc-in [:passkey-pending :snackbar-open] (boolean (seq items))))))
 
-(reg-event-db
+(reg-event-fx
+ :passkey-pending/loaded
+ (fn [{:keys [db]} [_event-id items db-key]]
+   {:db (-> db
+            (assoc-in [:passkey-pending :items] (or items []))
+            (assoc-in [:passkey-pending :db-key] db-key))
+    ;; This will show the dialog
+    :fx [(when (> (count items) 0)
+           [:dispatch [:generic-dialog-show-with-state
+                       :ios-pending-passkey-notification-dialog
+                       {:items-count (count items)}]])]}))
+
+#_(reg-event-db
  :passkey-pending/snackbar-close
  (fn [db _]
    (assoc-in db [:passkey-pending :snackbar-open] false)))
@@ -104,7 +122,7 @@
 (reg-event-fx
  :passkey-pending/show-review
  (fn [{:keys [_db]} _]
-   {:fx [[:dispatch [:passkey-pending/snackbar-close]]
+   {:fx [#_[:dispatch [:passkey-pending/snackbar-close]]
          [:dispatch [:common/next-page PASSKEY_PENDING_REVIEW_PAGE_ID "pendingPasskeys"]]]}))
 
 ;; Commit a pending passkey to the open KDBX database.
@@ -131,9 +149,47 @@
                           (get-in db [:passkey-pending :items] []))]
      {:db (assoc-in db [:passkey-pending :items] updated)
       :fx [[:dispatch [:save/save-current-kdbx {}]]
+           [:dispatch [:common/refresh-forms]]
            [:dispatch [:common/message-snackbar-open 'passkeySaved]]
            (when (empty? updated)
              [:dispatch [:common/previous-page]])]})))
+
+;; Commit all pending passkeys for the current database, save once when all done.
+(reg-event-fx
+ :passkey-pending/commit-all
+ (fn [{:keys [db]} _]
+   (let [items (get-in db [:passkey-pending :items] [])]
+     {:db (assoc-in db [:passkey-pending :commit-all-remaining] (count items))
+      :fx (mapv (fn [{:keys [record-uuid org-db-key]}]
+                  [:bg-passkey-commit-batch [record-uuid org-db-key]])
+                items)})))
+
+(reg-fx
+ :bg-passkey-commit-batch
+ (fn [[record-uuid db-key]]
+   (bg/commit-pending-passkey
+    record-uuid
+    db-key
+    (fn [api-response]
+      (when-not (on-error api-response)
+        (dispatch [:passkey-pending/committed-in-batch record-uuid]))))))
+
+;; Removes committed item; when the last one completes: save once, show snackbar, navigate back.
+(reg-event-fx
+ :passkey-pending/committed-in-batch
+ (fn [{:keys [db]} [_event-id record-uuid]]
+   (let [updated   (filterv #(not= (:record-uuid %) record-uuid)
+                             (get-in db [:passkey-pending :items] []))
+         remaining (dec (get-in db [:passkey-pending :commit-all-remaining] 0))]
+     {:db (-> db
+              (assoc-in [:passkey-pending :items] updated)
+              (assoc-in [:passkey-pending :commit-all-remaining] remaining))
+      :fx (if (zero? remaining)
+            [[:dispatch [:save/save-current-kdbx {}]]
+             [:dispatch [:common/refresh-forms]]
+             [:dispatch [:common/message-snackbar-open 'passkeySaved]]
+             [:dispatch [:common/previous-page]]]
+            [])})))
 
 ;; Discard a pending passkey without saving.
 (reg-event-fx
@@ -160,3 +216,7 @@
      {:db (assoc-in db [:passkey-pending :items] updated)
       :fx [(when (empty? updated)
              [:dispatch [:common/previous-page]])]})))
+
+
+(comment
+  (def db-key (-> @re-frame.db/app-db :current-db-file-name)))

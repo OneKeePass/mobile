@@ -268,6 +268,9 @@
                                  (= page RS_CONNECTIONS_LIST_PAGE_ID)
                                  (r/as-element [rs-configs/appbar-title])
 
+                                 (= page PASSKEY_PENDING_REVIEW_PAGE_ID)
+                                 (r/as-element [passkey-pending/appbar-title])
+
                                  ;;  (= page APP_LOCK_SETTINGS_PAGE_ID)
                                  ;;  (r/as-element [app-lock-settings/appbar-title])
 
@@ -292,7 +295,8 @@
 
 (def page-id-based-title-providers [:entry-form
                                     :password-generator
-                                    RS_CONNECTIONS_LIST_PAGE_ID])
+                                    RS_CONNECTIONS_LIST_PAGE_ID
+                                    PASSKEY_PENDING_REVIEW_PAGE_ID])
 
 (def title-provider-pages [HOME_PAGE_ID
                            :about

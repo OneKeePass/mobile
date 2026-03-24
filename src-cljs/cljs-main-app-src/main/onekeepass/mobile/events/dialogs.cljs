@@ -131,7 +131,14 @@
 (defn-generic-dialog-subs-events :move-group-or-entry-dialog [[data nil]])
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; ios-pending-passkey-notification-dialog ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defn-generic-dialog-disp-events :ios-pending-passkey-notification-dialog [[close nil]
+                                                                           [show-with-state state-m]])
+
+(defn-generic-dialog-subs-events :ios-pending-passkey-notification-dialog [[data nil]])
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 
 (defn- init-dialog-map
   "Called to initialize fields of a dialog identified by 'dialog-identifier-kw' 
@@ -193,10 +200,10 @@
 ;; if the arg 'state' has key ':dialog-show true', then the dialog will be shown
 (reg-event-fx
  :generic-dialog-update-with-map
- (fn [{:keys [db]} [_event-id dialog-identifier-kw state]] 
-   (let [dialog-state (get-in db [dialog-identifier-kw]) 
+ (fn [{:keys [db]} [_event-id dialog-identifier-kw state]]
+   (let [dialog-state (get-in db [dialog-identifier-kw])
          dialog-state (u/deep-merge dialog-state state)]
-     
+
      {:db (-> db (assoc dialog-identifier-kw dialog-state))})))
 
 ;; The event arg is a vec  - [kws-v value]

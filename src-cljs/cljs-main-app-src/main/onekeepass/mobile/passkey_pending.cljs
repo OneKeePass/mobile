@@ -3,36 +3,90 @@
    Shows passkeys awaiting commit to the real KDBX database, with Save/Discard actions.
    Also exports the notification snackbar rendered in core.cljs."
   (:require
-   [reagent.core :as r]
-   [onekeepass.mobile.rn-components :as rnc :refer [cust-rnp-divider
-                                                    page-background-color
-                                                    rn-safe-area-view
-                                                    rn-scroll-view
-                                                    rn-view
-                                                    rnp-button
-                                                    rnp-list-item
-                                                    rnp-snackbar
-                                                    rnp-text]]
+   [onekeepass.mobile.events.dialogs :as dlg-events]
    [onekeepass.mobile.events.passkey-pending :as pp-events]
-   [onekeepass.mobile.translation :refer [lstr-bl lstr-pt lstr-sm]]))
+   [onekeepass.mobile.events.common :as cmn-events]
+   [onekeepass.mobile.rn-components :as rnc :refer [appbar-text-color
+                                                    cust-dialog
+                                                    cust-rnp-divider
+                                                    page-background-color
+                                                    page-title-text-variant
+                                                    rn-safe-area-view
+                                                    rnp-dialog-actions
+                                                    rnp-dialog-content
+                                                    rnp-dialog-title
+                                                    rn-scroll-view rn-view
+                                                    rnp-button rnp-list-item
+                                                    rnp-snackbar rnp-text]]
+   [onekeepass.mobile.translation :refer [lstr-bl lstr-dlg-title lstr-pt
+                                          lstr-sm]]
+   [reagent.core :as r]))
 
 (set! *warn-on-infer* true)
 
+;; This is not used. Intead ios-pending-passkey-notification-dialog is used 
 ;;;;;;;;;;;;;;;;;;;;;;;;;; Notification snackbar ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Rendered from core.cljs inside rnp-portal alongside message-snackbar.
 ;; Visible only when pending passkeys exist (iOS only — state is never
 ;; populated on Android).
 
-(defn pending-passkey-snackbar []
-  (let [open  @(pp-events/snackbar-open?)
-        cnt   @(pp-events/pending-count)]
-    [rnp-snackbar {:visible open
-                   :onDismiss pp-events/close-snackbar
-                   :action (clj->js {:label (lstr-bl "review")
-                                     :onPress pp-events/show-review})
-                   :duration 10000
-                   :wrapperStyle {:bottom 20 :zIndex 10}}
-     (str cnt " " (lstr-sm 'pendingPasskeys))]))
+#_(defn pending-passkey-snackbar []
+    (let [open  @(pp-events/snackbar-open?)
+          cnt   @(pp-events/pending-count)]
+      [rnp-snackbar {:visible open
+                     :onDismiss pp-events/close-snackbar
+                     :action (clj->js {:label (lstr-bl "review")
+                                       :onPress pp-events/show-review})
+                     :duration 10000
+                     :wrapperStyle {:bottom 20 :zIndex 10}}
+       (str cnt " " (lstr-sm 'pendingPasskeys))]))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Notification Dialog ;;;;;;;;;;;;;;;;;;;;;
+
+(defn ios-pending-passkey-notification-dialog
+  ([{:keys [dialog-show]}]
+   [cust-dialog {:style {} :dismissable false :visible dialog-show :onDismiss #()}
+    [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1} "Pending Passkeys" #_(lstr-dlg-title "mergeResults")]
+    [rnp-dialog-content
+     [rn-view {:style {:flexDirection "column" :justify-content "center"}}
+      [rnp-text "There are one or more pending passkeys and they need to be merged to the database"]]]
+    [rnp-dialog-actions
+     [rnp-button {:mode "text"
+                  :onPress (fn []
+                             (dlg-events/ios-pending-passkey-notification-dialog-close)
+                             (pp-events/show-review))}
+      "Review" #_(lstr-bl "review")]]])
+
+  ([]
+   (ios-pending-passkey-notification-dialog @(dlg-events/ios-pending-passkey-notification-dialog-data))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;; Review page appbar title ;;;;;;;;;;;;;;;;;;;;;;
+
+(defn appbar-title []
+  [rn-view {:flexDirection "row"
+            :style {:alignItems "center"
+                    :justify-content "space-between"}}
+   [rnp-button {:style {}
+                :textColor @appbar-text-color
+                :mode "text"
+                :onPress cmn-events/to-previous-page}
+    (lstr-bl "cancel")]
+   [rnp-text {:style {:color @appbar-text-color
+                      :max-width 120
+                      :margin-right 20 :margin-left 20}
+              :ellipsizeMode "tail"
+              :numberOfLines 1
+              :variant page-title-text-variant}
+    "Pending Passkeys"
+    #_(lstr-pt "pendingPasskeys")]
+   [rnp-button {:style {}
+                :textColor @appbar-text-color
+                :disabled (empty? @(pp-events/pending-items))
+                :mode "text"
+                :onPress pp-events/commit-all}
+    "Save all"
+    #_(lstr-bl "saveAll")]])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;; Review page ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -61,7 +115,7 @@
                        [rnp-button {:mode     "text"
                                     :compact  true
                                     :on-press #(pp-events/discard record-uuid org-db-key)}
-                        (lstr-bl "discard")]]))}]))
+                        "Discard" #_(lstr-bl "discard")]]))}]))
 
 (defn- empty-view []
   [rn-view {:style {:flex 1 :align-items "center" :justify-content "center"}}
