@@ -19,10 +19,15 @@
   []
   (dispatch [:ios-copy-file-to-group]))
 
-(defn ios-delete-copied-autofill-details 
+(defn ios-delete-copied-autofill-details
   "Called when user removes the current database from using in autofill"
   []
   (dispatch [:ios-delete-copied-autofill-details]))
+
+(defn ios-delete-copied-autofill-details-with-check
+  "Called when user toggles off autofill; checks for pending passkeys first"
+  []
+  (dispatch [:passkey-pending/ios-autofill-disable-check-pending-passkeys]))
 
 (defn ios-autofill-db-info 
   "Gets the autofill use info or nil"

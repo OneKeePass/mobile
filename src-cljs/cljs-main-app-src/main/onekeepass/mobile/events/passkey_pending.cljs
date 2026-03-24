@@ -35,10 +35,17 @@
   []
   (dispatch [:passkey-pending/commit-all]))
 
+
+;; Not required
+#_(defn check-before-autofill-disable
+    "Called when user toggles off autofill; checks for pending passkeys first (iOS only)"
+    []
+    (dispatch [:passkey-pending/ios-autofill-disable-check-pending-passkeys]))
+
 #_(defn close-snackbar
-  "Close the pending passkeys notification snackbar"
-  []
-  (dispatch [:passkey-pending/snackbar-close]))
+    "Close the pending passkeys notification snackbar"
+    []
+    (dispatch [:passkey-pending/snackbar-close]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;; Subscriptions ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -48,9 +55,9 @@
   (subscribe [:passkey-pending/items]))
 
 #_(defn snackbar-open?
-  "Returns true when the pending passkeys notification snackbar should be visible"
-  []
-  (subscribe [:passkey-pending/snackbar-open]))
+    "Returns true when the pending passkeys notification snackbar should be visible"
+    []
+    (subscribe [:passkey-pending/snackbar-open]))
 
 (defn pending-count
   "Returns the number of pending passkey records"
@@ -63,9 +70,9 @@
    (get-in db [:passkey-pending :items] [])))
 
 #_(reg-sub
- :passkey-pending/snackbar-open
- (fn [db _]
-   (get-in db [:passkey-pending :snackbar-open] false)))
+   :passkey-pending/snackbar-open
+   (fn [db _]
+     (get-in db [:passkey-pending :snackbar-open] false)))
 
 (reg-sub
  :passkey-pending/count
@@ -114,9 +121,9 @@
                        {:items-count (count items)}]])]}))
 
 #_(reg-event-db
- :passkey-pending/snackbar-close
- (fn [db _]
-   (assoc-in db [:passkey-pending :snackbar-open] false)))
+   :passkey-pending/snackbar-close
+   (fn [db _]
+     (assoc-in db [:passkey-pending :snackbar-open] false)))
 
 ;; Navigate to the review page and close the snackbar.
 (reg-event-fx
@@ -179,7 +186,7 @@
  :passkey-pending/committed-in-batch
  (fn [{:keys [db]} [_event-id record-uuid]]
    (let [updated   (filterv #(not= (:record-uuid %) record-uuid)
-                             (get-in db [:passkey-pending :items] []))
+                            (get-in db [:passkey-pending :items] []))
          remaining (dec (get-in db [:passkey-pending :commit-all-remaining] 0))]
      {:db (-> db
               (assoc-in [:passkey-pending :items] updated)
@@ -190,6 +197,18 @@
              [:dispatch [:common/message-snackbar-open 'passkeySaved]]
              [:dispatch [:common/previous-page]]]
             [])})))
+
+;; Called when user toggles off autofill.
+;; If pending passkeys exist, shows warning dialog; otherwise proceeds with disable.
+(reg-event-fx
+ :passkey-pending/ios-autofill-disable-check-pending-passkeys
+ (fn [{:keys [db]} _]
+   (let [pending-count (count (get-in db [:passkey-pending :items] []))]
+     (if (pos? pending-count)
+       {:fx [[:dispatch [:generic-dialog-show-with-state
+                         :ios-autofill-disable-pending-passkey-dialog
+                         {:items-count pending-count}]]]}
+       {:fx [[:dispatch [:ios-delete-copied-autofill-details]]]}))))
 
 ;; Discard a pending passkey without saving.
 (reg-event-fx

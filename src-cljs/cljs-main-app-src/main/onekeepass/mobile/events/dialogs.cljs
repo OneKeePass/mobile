@@ -137,6 +137,13 @@
 
 (defn-generic-dialog-subs-events :ios-pending-passkey-notification-dialog [[data nil]])
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; ios-autofill-disable-pending-passkey-dialog ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defn-generic-dialog-disp-events :ios-autofill-disable-pending-passkey-dialog
+  [[close nil]
+   [show-with-state state-m]])
+
+(defn-generic-dialog-subs-events :ios-autofill-disable-pending-passkey-dialog [[data nil]])
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 

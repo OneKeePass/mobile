@@ -61,6 +61,29 @@
    (ios-pending-passkey-notification-dialog @(dlg-events/ios-pending-passkey-notification-dialog-data))))
 
 
+;;;;;;;;;;;;;;;;;;;;; Autofill-disable warning dialog ;;;;;;;;;;;;;;;;;;;;
+
+(defn ios-autofill-disable-pending-passkey-dialog
+  ([{:keys [dialog-show]}]
+   [cust-dialog {:style {} :dismissable false :visible dialog-show :onDismiss #()}
+    [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1} "Pending Passkeys"]
+    [rnp-dialog-content
+     [rn-view {:style {:flexDirection "column" :justify-content "center"}}
+      [rnp-text "There are pending passkeys that have not been committed to the database. Please review them before disabling autofill."]]]
+    [rnp-dialog-actions
+     [rnp-button {:mode "text"
+                  :onPress dlg-events/ios-autofill-disable-pending-passkey-dialog-close}
+      "Close"]
+     [rnp-button {:mode "text"
+                  :onPress (fn []
+                             (dlg-events/ios-autofill-disable-pending-passkey-dialog-close)
+                             (pp-events/show-review))}
+      "Review"]]])
+
+  ([]
+   (ios-autofill-disable-pending-passkey-dialog
+    @(dlg-events/ios-autofill-disable-pending-passkey-dialog-data))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;; Review page appbar title ;;;;;;;;;;;;;;;;;;;;;;
 
 (defn appbar-title []
