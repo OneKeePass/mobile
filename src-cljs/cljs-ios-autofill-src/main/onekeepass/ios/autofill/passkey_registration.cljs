@@ -23,10 +23,11 @@
     :onPress #(reg-events/select-existing-entry entry)}])
 
 (defn- group-picker []
-  (let [groups (reg-events/registration-groups)
-        context (reg-events/registration-context)]
+  (let [groups         (reg-events/registration-groups)
+        context        (reg-events/registration-context)
+        new-group-name (reg-events/registration-new-group-name)]
     (fn []
-      (let [rp-id (:rp-id @context)
+      (let [rp-id     (:rp-id @context)
             user-name (:user-name @context)]
         [rn-view {:style {:flex 1 :width "100%"}}
          [rn-view {:style {:background-color @primary-container-color
@@ -35,6 +36,23 @@
           [rnp-text {:variant "titleSmall"} (str "Register passkey for " rp-id)]
           (when (not-empty user-name)
             [rnp-text {:variant "bodySmall" :style {:margin-top 4}} (str "User: " user-name)])]
+
+         ;; New group creation section
+         [rn-view {:style {:padding 10}}
+          [rnp-text-input {:label "New group name"
+                           :defaultValue @new-group-name
+                           :onChangeText reg-events/update-new-group-name}]
+          [rn-view {:style {:margin-top 10 :align-items "center"}}
+           [rnp-button {:mode "contained"
+                        :disabled (empty? @new-group-name)
+                        :onPress reg-events/create-new-group-and-continue}
+            "Create new group"]]]
+
+         [rn-view {:style {:padding-horizontal 10 :padding-vertical 5}}
+          [rnp-divider]
+          [rn-view {:style {:align-items "center" :padding 8}}
+           [rnp-text {:variant "bodySmall"} "or select existing group"]]]
+
          [rn-view {:style {:padding 10}}
           [rnp-text {:variant "titleSmall"} "Select a group:"]]
          (if (empty? @groups)
@@ -49,18 +67,22 @@
                              (r/as-element [group-item item])))}])]))))
 
 (defn- entry-picker []
-  (let [entries (reg-events/registration-entries)
+  (let [entries        (reg-events/registration-entries)
         selected-group (reg-events/registration-selected-group)
-        new-entry-name (reg-events/registration-new-entry-name)]
+        new-entry-name (reg-events/registration-new-entry-name)
+        new-group-name (reg-events/registration-new-group-name)]
     (fn []
-      (let [group-name (:name @selected-group)]
+      (let [creating-new-group? (not-empty @new-group-name)
+            group-label (if creating-new-group?
+                          (str "Add to new group: " @new-group-name)
+                          (str "Add to group: " (:name @selected-group)))]
         [rn-view {:style {:flex 1 :width "100%"}}
          [rn-view {:style {:background-color @primary-container-color
                            :padding 10
                            :align-items "center"}}
-          [rnp-text {:variant "titleSmall"} (str "Add to group: " group-name)]]
+          [rnp-text {:variant "titleSmall"} group-label]]
 
-         ;; New entry creation section
+         ;; New entry creation section (always shown)
          [rn-view {:style {:padding 10}}
           [rnp-text-input {:label "New entry name"
                            :defaultValue @new-entry-name
@@ -70,22 +92,23 @@
                         :onPress reg-events/create-new-entry}
             "Create new entry"]]]
 
-         [rn-view {:style {:padding-horizontal 10 :padding-vertical 5}}
-          [rnp-divider]
-          [rn-view {:style {:align-items "center" :padding 8}}
-           [rnp-text {:variant "bodySmall"} "or add to existing entry"]]]
-
-         ;; Existing entries list
-         (if (empty? @entries)
-           [rn-view {:style {:flex 1 :justify-content "center" :align-items "center"}}
-            [rnp-text {:variant "bodySmall"} "No entries in this group"]]
-           [rn-flat-list
-            {:data (clj->js @entries)
-             :keyExtractor (fn [item] (aget item "entry-uuid"))
-             :ItemSeparatorComponent (fn [_] (r/as-element [rnp-divider]))
-             :renderItem (fn [props]
-                           (let [item (js->clj (.-item props) :keywordize-keys true)]
-                             (r/as-element [entry-item item])))}])]))))
+         ;; "or add to existing entry" — hidden when creating a new group
+         (when-not creating-new-group?
+           [:<>
+            [rn-view {:style {:padding-horizontal 10 :padding-vertical 5}}
+             [rnp-divider]
+             [rn-view {:style {:align-items "center" :padding 8}}
+              [rnp-text {:variant "bodySmall"} "or add to existing entry"]]]
+            (if (empty? @entries)
+              [rn-view {:style {:flex 1 :justify-content "center" :align-items "center"}}
+               [rnp-text {:variant "bodySmall"} "No entries in this group"]]
+              [rn-flat-list
+               {:data (clj->js @entries)
+                :keyExtractor (fn [item] (aget item "entry-uuid"))
+                :ItemSeparatorComponent (fn [_] (r/as-element [rnp-divider]))
+                :renderItem (fn [props]
+                              (let [item (js->clj (.-item props) :keywordize-keys true)]
+                                (r/as-element [entry-item item])))}])])]))))
 
 (defn- error-view []
   (let [error-msg (reg-events/registration-error-message)]

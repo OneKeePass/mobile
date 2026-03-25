@@ -23,6 +23,15 @@
 (defn registration-new-entry-name []
   (subscribe [:passkey-registration/new-entry-name]))
 
+(defn registration-new-group-name []
+  (subscribe [:passkey-registration/new-group-name]))
+
+(defn update-new-group-name [name]
+  (dispatch [:passkey-registration/update-new-group-name name]))
+
+(defn create-new-group-and-continue []
+  (dispatch [:passkey-registration/create-new-group-and-continue]))
+
 (defn registration-step []
   (subscribe [:passkey-registration/step]))
 
@@ -70,6 +79,11 @@
  :passkey-registration/new-entry-name
  (fn [db _]
    (get-in db [:passkey-registration :new-entry-name] "")))
+
+(reg-sub
+ :passkey-registration/new-group-name
+ (fn [db _]
+   (get-in db [:passkey-registration :new-group-name] "")))
 
 (reg-sub
  :passkey-registration/step
@@ -120,12 +134,14 @@
               (assoc-in [:passkey-registration :new-entry-name] rp-id))
       :fx [[:dispatch [:common/next-page PASSKEY_REGISTRATION_PAGE_ID "Register Passkey"]]]})))
 
-;; User selected a group — store it and fetch entries for that group.
+;; User selected a group — store it, clear new-group-name, and fetch entries.
 (reg-event-fx
  :passkey-registration/select-group
  (fn [{:keys [db]} [_ group]]
    (let [db-key (:current-db-file-name db)]
-     {:db (assoc-in db [:passkey-registration :selected-group] group)
+     {:db (-> db
+              (assoc-in [:passkey-registration :selected-group] group)
+              (assoc-in [:passkey-registration :new-group-name] ""))
       :fx [[:bg/get-group-entries [db-key (:group-uuid group)]]]})))
 
 ;; Entries loaded — store them and switch to :entry-picker step.
@@ -141,6 +157,20 @@
  :passkey-registration/update-new-entry-name
  (fn [{:keys [db]} [_ name]]
    {:db (assoc-in db [:passkey-registration :new-entry-name] name)}))
+
+;; User edited the new group name text field.
+(reg-event-fx
+ :passkey-registration/update-new-group-name
+ (fn [{:keys [db]} [_ name]]
+   {:db (assoc-in db [:passkey-registration :new-group-name] name)}))
+
+;; User tapped "Create new group" — skip entry fetching, jump straight to entry-picker.
+(reg-event-fx
+ :passkey-registration/create-new-group-and-continue
+ (fn [{:keys [db]} _]
+   {:db (-> db
+            (assoc-in [:passkey-registration :entries] [])
+            (assoc-in [:passkey-registration :step] :entry-picker))}))
 
 ;; User selected an existing entry — complete registration with that entry.
 (reg-event-fx
@@ -158,6 +188,8 @@
              (:entry-uuid entry) nil (:group-uuid group) nil]]]})))
 
 ;; User chose to create a new entry — complete registration with new-entry-name.
+;; When new-group-name is set, pass it as the last arg and nil for group-uuid so
+;; the backend creates the group on the fly.
 (reg-event-fx
  :passkey-registration/create-new-entry
  (fn [{:keys [db]} [_]]
@@ -168,10 +200,13 @@
          user-hdl       (get-in db [:passkey-registration :user-handle-b64url])
          hash           (get-in db [:passkey-registration :client-data-hash-b64url])
          group          (get-in db [:passkey-registration :selected-group])
-         new-entry-name (get-in db [:passkey-registration :new-entry-name] "")]
+         new-entry-name (get-in db [:passkey-registration :new-entry-name] "")
+         new-group-name (not-empty (get-in db [:passkey-registration :new-group-name] ""))]
      {:fx [[:bg/complete-passkey-registration
             [org-db-key rp-id rp-id user-name user-hdl hash
-             nil new-entry-name (:group-uuid group) nil]]]})))
+             nil new-entry-name
+             (when-not new-group-name (:group-uuid group))
+             new-group-name]]]})))
 
 ;; Called after completePasskeyRegistration returns — extension is already completed by Swift.
 (reg-event-fx

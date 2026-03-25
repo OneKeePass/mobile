@@ -130,7 +130,7 @@
                 :onPress cmn-events/to-previous-page}
     (lstr-bl "cancel")]
    [rnp-text {:style {:color @appbar-text-color
-                      :max-width 120
+                      :max-width 200
                       :margin-right 20 :margin-left 20}
               :ellipsizeMode "tail"
               :numberOfLines 1
