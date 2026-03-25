@@ -1,4 +1,4 @@
-(ns onekeepass.mobile.events.passkey-pending
+(ns onekeepass.mobile.events.ios.passkey-pending
   "Events, effects and subscriptions for pending passkey pickup in the main app.
    Pending passkeys are created by the iOS Autofill extension during passkey registration
    and must be committed to the real KDBX database by the main app."

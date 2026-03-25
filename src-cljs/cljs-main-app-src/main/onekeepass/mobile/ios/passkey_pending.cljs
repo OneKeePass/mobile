@@ -1,11 +1,11 @@
-(ns onekeepass.mobile.passkey-pending
+(ns onekeepass.mobile.ios.passkey-pending
   "Review screen for pending passkeys created by the iOS Autofill extension.
    Shows passkeys awaiting commit to the real KDBX database, with Save/Discard actions.
    Also exports the notification snackbar rendered in core.cljs."
   (:require
    [clojure.string :as str]
    [onekeepass.mobile.events.dialogs :as dlg-events]
-   [onekeepass.mobile.events.passkey-pending :as pp-events]
+   [onekeepass.mobile.events.ios.passkey-pending :as pp-events]
    [onekeepass.mobile.events.common :as cmn-events]
    [onekeepass.mobile.rn-components :as rnc :refer [appbar-text-color
                                                     cust-dialog

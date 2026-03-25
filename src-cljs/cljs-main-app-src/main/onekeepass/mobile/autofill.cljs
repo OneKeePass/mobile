@@ -3,7 +3,7 @@
    [onekeepass.mobile.common-components :refer [settings-section-header]]
    [onekeepass.mobile.constants :refer [TR-KEY-AUTOFILL]]
    [onekeepass.mobile.events.autofill :as af-events]
-   [onekeepass.mobile.passkey-pending :refer [ios-autofill-disable-pending-passkey-dialog]]
+   [onekeepass.mobile.ios.passkey-pending :refer [ios-autofill-disable-pending-passkey-dialog]]
    [onekeepass.mobile.rn-components :as rnc :refer [page-background-color
                                                     rn-safe-area-view
                                                     rn-section-list rn-view

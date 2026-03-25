@@ -23,7 +23,7 @@
    [onekeepass.mobile.events.common :as cmn-events]
    [onekeepass.mobile.events.entry-category :as ecat-events]
    [onekeepass.mobile.icons-list :refer [icon-id->name]]
-   [onekeepass.mobile.passkey-pending :as passkey-pending]
+   [onekeepass.mobile.ios.passkey-pending :as passkey-pending]
    [onekeepass.mobile.rn-components :as rnc :refer [cust-rnp-divider
                                                     dots-icon-name icon-color
                                                     on-primary-color

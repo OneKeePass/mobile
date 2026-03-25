@@ -12,9 +12,8 @@
    #_[onekeepass.mobile.android.autofill.core :as android-core] ;;;;;;; ;;;;;;; ;;;;;;; ;;;;;;;
    [onekeepass.mobile.appbar :refer [appbar-main-content
                                      hardware-back-pressed]]
-   #_[onekeepass.mobile.passkey-pending :refer [pending-passkey-snackbar]]
-   [onekeepass.mobile.passkey-pending :refer [ios-all-pending-passkeys-notification-dialog]]
-   [onekeepass.mobile.events.passkey-pending :as pp-events]
+   [onekeepass.mobile.ios.passkey-pending :refer [ios-all-pending-passkeys-notification-dialog]]
+   [onekeepass.mobile.events.ios.passkey-pending :as pp-events]
    [onekeepass.mobile.background :as bg]
    [onekeepass.mobile.common-components :as cc :refer [message-dialog
                                                        message-modal

@@ -1,5 +1,5 @@
 (ns onekeepass.mobile.appbar
-  (:require [onekeepass.mobile.passkey-pending :as passkey-pending]
+  (:require [onekeepass.mobile.ios.passkey-pending :as passkey-pending]
             [onekeepass.mobile.about :as about :refer [about-content
                                                        privacy-policy-content]]
             [onekeepass.mobile.app-settings :as app-settings]
