@@ -1,0 +1,169 @@
+package com.onekeepassmobile.passkey
+
+import android.util.Base64
+import android.util.Log
+import org.json.JSONObject
+import java.security.MessageDigest
+
+// Shared singleton holding the in-flight passkey request context.
+// Set by PasskeyActivity.onCreate and read by PasskeyModule.
+object PasskeyRequestStore {
+
+    private const val TAG = "OkpPasskey PasskeyRequestStore"
+
+    // ── Mode ──────────────────────────────────────────────────────────────
+
+    var currentMode: String? = null
+
+    // ── Assertion context ─────────────────────────────────────────────────
+
+    // UUID of the selected passkey entry (populated in assertion mode when
+    // the service already knows which entry the user selected)
+    var assertionEntryUuid: String? = null
+
+    // DB key of the open database containing the passkey
+    var assertionDbKey: String? = null
+
+    // RP ID extracted from the request JSON
+    var assertionRpId: String = ""
+
+    // base64url-encoded SHA-256(clientDataJSON) passed to Rust for signing
+    var assertionClientDataHashB64url: String = ""
+
+    // base64url-encoded clientDataJSON to include in the assertion response
+    // (null when the app provided its own clientDataHash)
+    var assertionClientDataJsonB64url: String? = null
+
+    // ── Registration context ──────────────────────────────────────────────
+
+    var registrationRpId: String = ""
+    var registrationRpName: String = ""
+    var registrationUserName: String = ""
+    var registrationUserHandleB64url: String = ""
+    var registrationClientDataHashB64url: String = ""
+    var registrationClientDataJsonB64url: String? = null
+
+    // ── DB key tracking ───────────────────────────────────────────────────
+
+    // Updated by DbServiceModule when the main app successfully opens a database
+    @Volatile
+    var currentDbKey: String? = null
+
+    // ── Helpers ───────────────────────────────────────────────────────────
+
+    // Called from PasskeyActivity when the system provides a passkey assertion
+    // request via PendingIntentHandler. Extracts challenge and rpId from the
+    // request JSON, builds clientDataJSON, and hashes it.
+    fun storeAssertionContext(
+        entryUuid: String?,
+        dbKey: String?,
+        requestJson: String,
+        providedClientDataHash: ByteArray?
+    ) {
+        currentMode = PasskeyActivity.MODE_ASSERTION
+        assertionEntryUuid = entryUuid
+        assertionDbKey = dbKey
+
+        try {
+            val json = JSONObject(requestJson)
+            val challenge = json.optString("challenge", "")
+            assertionRpId = json.optString("rpId", "")
+
+            if (providedClientDataHash != null) {
+                // App already computed the hash; use it directly (no clientDataJSON in response)
+                assertionClientDataHashB64url = Base64.encodeToString(
+                    providedClientDataHash, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP
+                )
+                assertionClientDataJsonB64url = null
+            } else {
+                // Build clientDataJSON per WebAuthn spec and hash it
+                val clientDataJson = buildClientDataJson(
+                    type = "webauthn.get",
+                    challenge = challenge,
+                    rpId = assertionRpId
+                )
+                val hash = sha256(clientDataJson)
+                assertionClientDataHashB64url = Base64.encodeToString(
+                    hash, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP
+                )
+                assertionClientDataJsonB64url = Base64.encodeToString(
+                    clientDataJson, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP
+                )
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "storeAssertionContext parse error", e)
+        }
+    }
+
+    // Called from PasskeyActivity when the system provides a passkey registration
+    // request via PendingIntentHandler.
+    fun storeRegistrationContext(
+        requestJson: String,
+        providedClientDataHash: ByteArray?
+    ) {
+        currentMode = PasskeyActivity.MODE_REGISTRATION
+
+        try {
+            val json = JSONObject(requestJson)
+            val challenge = json.optString("challenge", "")
+            val rp = json.optJSONObject("rp")
+            val user = json.optJSONObject("user")
+
+            registrationRpId = rp?.optString("id", "") ?: ""
+            registrationRpName = rp?.optString("name", registrationRpId) ?: registrationRpId
+            registrationUserName = user?.optString("name", "") ?: ""
+            registrationUserHandleB64url = user?.optString("id", "") ?: ""
+
+            if (providedClientDataHash != null) {
+                registrationClientDataHashB64url = Base64.encodeToString(
+                    providedClientDataHash, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP
+                )
+                registrationClientDataJsonB64url = null
+            } else {
+                val clientDataJson = buildClientDataJson(
+                    type = "webauthn.create",
+                    challenge = challenge,
+                    rpId = registrationRpId
+                )
+                val hash = sha256(clientDataJson)
+                registrationClientDataHashB64url = Base64.encodeToString(
+                    hash, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP
+                )
+                registrationClientDataJsonB64url = Base64.encodeToString(
+                    clientDataJson, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP
+                )
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "storeRegistrationContext parse error", e)
+        }
+    }
+
+    fun clear() {
+        currentMode = null
+        assertionEntryUuid = null
+        assertionDbKey = null
+        assertionRpId = ""
+        assertionClientDataHashB64url = ""
+        assertionClientDataJsonB64url = null
+        registrationRpId = ""
+        registrationRpName = ""
+        registrationUserName = ""
+        registrationUserHandleB64url = ""
+        registrationClientDataHashB64url = ""
+        registrationClientDataJsonB64url = null
+    }
+
+    // ── Private helpers ───────────────────────────────────────────────────
+
+    private fun buildClientDataJson(type: String, challenge: String, rpId: String): ByteArray {
+        return JSONObject().apply {
+            put("type", type)
+            put("challenge", challenge)
+            put("origin", "https://$rpId")
+            put("crossOrigin", false)
+        }.toString().toByteArray(Charsets.UTF_8)
+    }
+
+    private fun sha256(data: ByteArray): ByteArray =
+        MessageDigest.getInstance("SHA-256").digest(data)
+}

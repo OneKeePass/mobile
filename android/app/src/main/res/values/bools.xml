@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Passkey credential provider disabled below API 34 -->
+    <bool name="use_credential_manager">false</bool>
+</resources>

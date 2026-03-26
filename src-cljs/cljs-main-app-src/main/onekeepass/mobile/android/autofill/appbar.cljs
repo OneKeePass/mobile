@@ -2,10 +2,14 @@
   "Only the Android Autofill specific appbar components"
   (:require [onekeepass.mobile.android.autofill.entry-list :as android-af-el]
             [onekeepass.mobile.android.autofill.entry-form :as android-af-ef]
-            [onekeepass.mobile.android.autofill.events.common :as android-af-cmn-events 
+            [onekeepass.mobile.android.autofill.passkey-assertion :as android-pk-assertion]
+            [onekeepass.mobile.android.autofill.passkey-registration :as android-pk-registration]
+            [onekeepass.mobile.android.autofill.events.common :as android-af-cmn-events
              :refer [ENTRY_FORM_PAGE_ID
                      ENTRY_LIST_PAGE_ID
                      HOME_PAGE_ID
+                     PASSKEY_ASSERTION_PAGE_ID
+                     PASSKEY_REGISTRATION_PAGE_ID
                      to-previous-page]]
             [onekeepass.mobile.android.autofill.start-page :as android-af-start-page]
             [onekeepass.mobile.rn-components :as rnc :refer [background-color
@@ -47,6 +51,7 @@
     :title title}])
 
 (defn appbar-body-content  [{:keys [page]}]
+  (println "page in autofill appbar-body-content is" page)
   (cond
     (= page HOME_PAGE_ID)
     [android-af-start-page/open-page-content]
@@ -56,6 +61,12 @@
 
     (= page ENTRY_FORM_PAGE_ID)
     [android-af-ef/content]
+
+    (= page PASSKEY_ASSERTION_PAGE_ID)
+    [android-pk-assertion/content]
+
+    (= page PASSKEY_REGISTRATION_PAGE_ID)
+    [android-pk-registration/content]
 
     :else
     [android-af-start-page/open-page-content]))

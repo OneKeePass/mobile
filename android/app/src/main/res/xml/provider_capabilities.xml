@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Declares the credential types this provider supports for Android Credential Manager -->
+<credential-provider xmlns:android="http://schemas.android.com/apk/res/android">
+    <capabilities>
+        <capability name="androidx.credentials.TYPE_PUBLIC_KEY_CREDENTIAL" />
+    </capabilities>
+</credential-provider>

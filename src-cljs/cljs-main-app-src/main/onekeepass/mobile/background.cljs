@@ -6,6 +6,7 @@
    ["react-native-vision-camera" :as rn-vision-camera]
    [camel-snake-kebab.core :as csk]
    [camel-snake-kebab.extras :as cske]
+   [clojure.string :as str]
    [onekeepass.mobile.background-common :as bg-cmn :refer [android-invoke-api
                                                            api-args->json
                                                            call-api-async
@@ -867,6 +868,85 @@
     ([event-name]
      (unregister-event-listener :common event-name)))
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;  Android Passkey (Credential Manager)  ;;;;;;;;;;;;;
+
+(def okp-passkey-service ^js/OkpPasskeyService (.-OkpPasskeyService rn/NativeModules))
+
+(defn- transform-request-passkey-field-names [args]
+  (let [t-fn (fn [k]
+               (if (str/includes? (name k) "b64url")
+                 (-> k name (str/replace  #"-" "_"))
+                 (csk/->snake_case k)))]
+    (cske/transform-keys t-fn args)))
+
+(defn- transform-response-passkey-field-names [response]
+  (let [t-fn (fn [k]
+               (if (str/includes? k "b64url")
+                 (-> k (str/replace  #"_" "-") keyword)
+                 (csk/->kebab-case-keyword k)))]
+    (cske/transform-keys t-fn response)))
+
+(defn android-get-passkey-context
+  "Calls OkpPasskeyService.getPasskeyContext().
+   Returns {:ok {:mode 'assertion'|'registration' :rp-id ... :client-data-hash-b64url ...}} or {:ok nil}."
+  [dispatch-fn]
+  (call-api-async
+   (fn [] (.getPasskeyContext okp-passkey-service))
+   dispatch-fn
+   :convert-response-fn transform-response-passkey-field-names))
+
+(defn android-find-matching-passkeys
+  "Fetches all passkeys in db-key matching rp-id.
+   allow-credential-ids is a seq of base64url strings (may be empty)."
+  [db-key rp-id allow-credential-ids dispatch-fn]
+  (android-invoke-api "passkey_find_matching"
+                      {:db-key db-key
+                       :rp-id rp-id
+                       :allow-credential-ids allow-credential-ids}
+                      dispatch-fn))
+
+(defn android-complete-passkey-assertion
+  "Calls OkpPasskeyService.completePasskeyAssertion — signs the assertion,
+   calls PendingIntentHandler with the credential response and finishes PasskeyActivity."
+  [entry-uuid db-key dispatch-fn]
+  (call-api-async
+   (fn [] (.completePasskeyAssertion okp-passkey-service entry-uuid db-key))
+   dispatch-fn
+   :no-response-conversion true))
+
+(defn android-complete-passkey-registration
+  "Calls OkpPasskeyService.completePasskeyRegistration — creates key pair, stores in KDBX,
+   saves DB to disk and calls PendingIntentHandler with the registration response."
+  [org-db-key rp-id rp-name user-name user-handle-b64url client-data-hash-b64url
+   entry-uuid new-entry-name group-uuid new-group-name dispatch-fn]
+  (call-api-async
+   (fn [] (.completePasskeyRegistration
+           okp-passkey-service
+           (clj->js (transform-request-passkey-field-names
+                     {:org-db-key org-db-key
+                      :rp-id rp-id
+                      :rp-name rp-name
+                      :user-name user-name
+                      :user-handle-b64url user-handle-b64url
+                      :client-data-hash-b64url client-data-hash-b64url
+                      :entry-uuid (when-not (empty? entry-uuid) entry-uuid)
+                      :new-entry-name (when-not (empty? new-entry-name) new-entry-name)
+                      :group-uuid (when-not (empty? group-uuid) group-uuid)
+                      :new-group-name (when-not (empty? new-group-name) new-group-name)}))))
+   dispatch-fn))
+
+(defn android-passkey-get-db-groups
+  "Fetches all groups in the opened database for the passkey registration group picker."
+  [db-key dispatch-fn]
+  (android-invoke-api "passkey_get_db_groups" {:db-key db-key} dispatch-fn))
+
+(defn android-passkey-get-group-entries
+  "Fetches all entries in a specific group for the passkey registration entry picker."
+  [db-key group-uuid dispatch-fn]
+  (android-invoke-api "passkey_get_group_entries" {:db-key db-key :group-uuid group-uuid} dispatch-fn))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

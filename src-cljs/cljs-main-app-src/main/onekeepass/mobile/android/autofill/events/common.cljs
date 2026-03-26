@@ -26,7 +26,9 @@
 (reg-event-fx
  :android-af-load-autofill-init-data
  (fn [{:keys [_db]} [_event-id]]
-   {:fx [[:bg-android-af-list-key-files]]}))
+   {:fx [[:bg-android-af-list-key-files]
+         ;; Check if launched from PasskeyActivity (assertion or registration mode)
+         [:dispatch [:android-pk/check-context]]]}))
 
 ;; Based on the fn 'db-opened' from the main common 
 ;; We use the main ':opened-db-list' to maintain the list of the recent db list
@@ -75,6 +77,8 @@
 (def LOGIN_PAGE_ID :login)
 (def ENTRY_LIST_PAGE_ID :entry-list)
 (def ENTRY_FORM_PAGE_ID :entry-form)
+(def PASSKEY_ASSERTION_PAGE_ID :android-pk-assertion)
+(def PASSKEY_REGISTRATION_PAGE_ID :android-pk-registration)
 
 (defn to-home []
   (dispatch [:android-af-common/next-page HOME_PAGE_ID "Home"]))
@@ -427,9 +431,20 @@
 ;; Called after retreiving all entries for the opened database
 (reg-event-fx
  :android-af-all-entries-loaded
- (fn [{:keys [_db]} [_event-id db-key entry-summaries]]
-   {:fx [[:dispatch [:android-af/entry-list-load-complete entry-summaries]]
-         [:bg-android-af-autofill-filtered-entries [db-key]]]}))
+ (fn [{:keys [db]} [_event-id db-key entry-summaries]]
+   (let [assertion-rp-id    (get-in db [:android-af :passkey-assertion :rp-id])
+         registration-rp-id (get-in db [:android-af :passkey-registration :rp-id])
+         allow-ids          (get-in db [:android-af :passkey-assertion :allow-credential-ids] [])]
+     (cond
+       (not-empty assertion-rp-id)
+       {:fx [[:dispatch [:android-pk-assertion/fetch assertion-rp-id allow-ids]]]}
+
+       (not-empty registration-rp-id)
+       {:fx [[:dispatch [:android-pk-registration/load-groups]]]}
+
+       :else
+       {:fx [[:dispatch [:android-af/entry-list-load-complete entry-summaries]]
+             [:bg-android-af-autofill-filtered-entries [db-key]]]}))))
 
 ;; Called to load any matching entries based on ios autofill credential identifiers 
 ;; This is called after loading all entries summary - see the above event
@@ -444,7 +459,7 @@
 
 ;; This event name is stored in [:android-af :main-event-handler] and is called 
 ;; by any main app event
-;; At this time, the vent name is stored in the event ':android-af/kdbx-database-opened'
+;; At this time, the event name is stored in the event ':android-af/kdbx-database-opened'
 
 ;; For now, the main app event ':close-kdbx-completed' triggers this event 
 (reg-event-fx

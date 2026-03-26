@@ -6,11 +6,13 @@ import android.os.ParcelFileDescriptor
 import android.util.Log
 import androidx.fragment.app.FragmentActivity
 import com.facebook.react.bridge.*
+import com.onekeepassmobile.passkey.PasskeyRequestStore
 import onekeepass.mobile.ffi.ApiResponse
 import java.io.FileNotFoundException
 import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import org.json.JSONObject
 
 
 private const val TAG = "DbServiceModule"  //TAG can only be max 23 characters
@@ -114,10 +116,16 @@ class DbServiceModule(reactContext: ReactApplicationContext) :
                     if (fd != null) {
                         // detachFd call should be used so that the file is closed in the rust code automatically
                         // However in CreateKdbx and saveKdbx, kotlin side is responsible for closing the file
-                        resolveResponse(
-                            DbServiceAPI.readKdbx(fd.detachFd().toULong(), args),
-                            promise
-                        )
+                        val response = DbServiceAPI.readKdbx(fd.detachFd().toULong(), args)
+                        // Track the open db key so PasskeyProviderService can find matching passkeys
+                        if (response is ApiResponse.Success) {
+                            try {
+                                if (!JSONObject(response.result).has("error")) {
+                                    PasskeyRequestStore.currentDbKey = fullFileNameUri
+                                }
+                            } catch (_: Exception) {}
+                        }
+                        resolveResponse(response, promise)
                         // Log.d(TAG, "File created using fd with response $response")
                     } else {
                         // Do we need to ask the user select the kdbx again to read ?
