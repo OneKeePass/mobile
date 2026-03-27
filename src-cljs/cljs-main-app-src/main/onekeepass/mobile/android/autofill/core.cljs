@@ -20,7 +20,7 @@
                                                              rnp-portal
                                                              use-color-scheme]]))
 
-(defn main-content-tr []
+(defn- main-content-tr []
   (fn []
     (if-not @(cmn-events/language-translation-loading-completed)
       [rn-view [rnc/rnp-text "Please wait..."]]
@@ -33,7 +33,7 @@
 ;; System back action handler (Android)
 (def ^:private back-handler (atom nil))
 
-(defn main-content []
+(defn- main-content []
   (fn []
     (let [theme-name (use-color-scheme)]
       (reset-colors theme-name)

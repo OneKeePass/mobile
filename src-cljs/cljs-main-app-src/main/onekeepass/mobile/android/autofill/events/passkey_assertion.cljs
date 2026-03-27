@@ -2,11 +2,11 @@
   "Re-frame events and effects for the Android passkey assertion (Credential Manager) flow.
    All event names and db keys are prefixed with :android-pk-assertion to avoid conflicts."
   (:require
-   [onekeepass.mobile.background :as bg]
    [onekeepass.mobile.android.autofill.events.common :refer [android-af-active-db-key
                                                              PASSKEY_ASSERTION_PAGE_ID
                                                              to-page]]
-   [onekeepass.mobile.events.common :refer [on-ok]]
+   [onekeepass.mobile.background :as bg]
+   [onekeepass.mobile.events.common :refer [on-error on-ok]]
    [re-frame.core :refer [dispatch reg-event-fx reg-fx reg-sub subscribe]]))
 
 ;; ── Public API (for UI — no direct dispatch/subscribe in UI code) ─────────────
@@ -102,6 +102,8 @@
             [entry-uuid db-key hash
              (fn [response]
                (println "bg/android-complete-passkey-assertion response" response)
+               ;; If there is any error in the response, user is notified
+               (on-error response)
                nil)]]]})))
 
 ;; ── Effects ───────────────────────────────────────────────────────────────────

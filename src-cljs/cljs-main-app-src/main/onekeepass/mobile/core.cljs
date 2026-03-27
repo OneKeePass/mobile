@@ -113,7 +113,10 @@
   [rnc/gh-gesture-handler-root-view {:style {:flex 1}}
    [:f> main]])
 
-(defn init-calls []
+(defn init-calls 
+  "A common initialization functionalities for ios, android and android autofill"
+  []
+  (println "Common init-calls is called ...")
   (native-events/register-backend-event-handlers)
   (cmn-events/sync-initialize)
   (as-events/init-session-timeout-tick)

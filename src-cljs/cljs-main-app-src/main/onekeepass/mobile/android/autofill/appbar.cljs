@@ -41,7 +41,7 @@
   (back-action @current-page-info))
 
 ;; TODO: Need to use lstr-pt as done in main app
-(defn positioned-title [& {:keys [title _page style titleStyle]}]
+(defn- positioned-title [& {:keys [title _page style titleStyle]}]
   [rnp-appbar-content 
    {:style (merge 
             {:marginLeft 0  :position "absolute", :left 0, :right 0, :zIndex -1} 
@@ -50,7 +50,7 @@
     :titleStyle (merge {:align-self "center"} titleStyle)
     :title title}])
 
-(defn appbar-body-content  [{:keys [page]}]
+(defn- appbar-body-content  [{:keys [page]}]
   (println "page in autofill appbar-body-content is" page)
   (cond
     (= page HOME_PAGE_ID)
@@ -71,7 +71,7 @@
     :else
     [android-af-start-page/open-page-content]))
 
-(defn appbar-header-content
+(defn- appbar-header-content
   "The page body content based on the page info set"
   [{:keys [page title] :as page-info}]
   

@@ -72,6 +72,8 @@ class PasskeyModule(reactContext: ReactApplicationContext) :
                     json.put("client_data_hash_b64url", PasskeyRequestStore.assertionClientDataHashB64url)
                     json.put("entry_uuid", PasskeyRequestStore.assertionEntryUuid ?: JSONObject.NULL)
                     json.put("db_key", PasskeyRequestStore.assertionDbKey ?: JSONObject.NULL)
+                    val allowIds = PasskeyRequestStore.assertionAllowCredentialIds
+                    json.put("allow_credential_ids", org.json.JSONArray(allowIds))
                 }
                 PasskeyActivity.MODE_REGISTRATION -> {
                     json.put("rp_id", PasskeyRequestStore.registrationRpId)
@@ -249,7 +251,7 @@ class PasskeyModule(reactContext: ReactApplicationContext) :
     private fun parseOkResult(resultJson: String): JSONObject? {
         return try {
             val root = JSONObject(resultJson)
-            if (root.has("error")) {
+            if (root.has("error") && !root.isNull("error")) {
                 Log.e(TAG, "Rust error: ${root.getString("error")}")
                 null
             } else {
@@ -269,7 +271,7 @@ class PasskeyModule(reactContext: ReactApplicationContext) :
         val authenticatorData = result.optString("authenticator_data_b64url", "")
         val signature = result.optString("signature_b64url", "")
         val userHandle = result.optString("user_handle_b64url", "")
-        val clientDataJson = PasskeyRequestStore.assertionClientDataJsonB64url ?: ""
+        val clientDataJson = PasskeyRequestStore.assertionClientDataJsonB64url
 
         return JSONObject().apply {
             put("id", credentialId)
@@ -277,7 +279,10 @@ class PasskeyModule(reactContext: ReactApplicationContext) :
             put("type", "public-key")
             put("authenticatorAttachment", "platform")
             put("response", JSONObject().apply {
-                put("clientDataJSON", clientDataJson)
+                // Omit clientDataJSON when null (Chrome/Brave path): the browser provided
+                // clientDataHash so it already has its own clientDataJSON and will substitute it.
+                // Include clientDataJSON when non-null (Firefox path): we built it ourselves.
+                if (clientDataJson != null) put("clientDataJSON", clientDataJson)
                 put("authenticatorData", authenticatorData)
                 put("signature", signature)
                 put("userHandle", userHandle)
@@ -290,14 +295,14 @@ class PasskeyModule(reactContext: ReactApplicationContext) :
     private fun buildRegistrationResponseJson(result: JSONObject): String {
         val credentialId = result.optString("credential_id_b64url", "")
         val attestationObject = result.optString("attestation_object_b64url", "")
-        val clientDataJson = PasskeyRequestStore.registrationClientDataJsonB64url ?: ""
+        val clientDataJson = PasskeyRequestStore.registrationClientDataJsonB64url
 
         return JSONObject().apply {
             put("id", credentialId)
             put("rawId", credentialId)
             put("type", "public-key")
             put("response", JSONObject().apply {
-                put("clientDataJSON", clientDataJson)
+                if (clientDataJson != null) put("clientDataJSON", clientDataJson)
                 put("attestationObject", attestationObject)
             })
         }.toString()

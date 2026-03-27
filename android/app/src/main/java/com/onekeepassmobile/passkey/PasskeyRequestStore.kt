@@ -27,6 +27,9 @@ object PasskeyRequestStore {
     // RP ID extracted from the request JSON
     var assertionRpId: String = ""
 
+    // base64url credential IDs from allowCredentials (empty = no filtering)
+    var assertionAllowCredentialIds: List<String> = emptyList()
+
     // base64url-encoded SHA-256(clientDataJSON) passed to Rust for signing
     var assertionClientDataHashB64url: String = ""
 
@@ -69,8 +72,23 @@ object PasskeyRequestStore {
             val challenge = json.optString("challenge", "")
             assertionRpId = json.optString("rpId", "")
 
+            val allowCredentials = json.optJSONArray("allowCredentials")
+            assertionAllowCredentialIds = buildList {
+                if (allowCredentials != null) {
+                    for (i in 0 until allowCredentials.length()) {
+                        val id = allowCredentials.getJSONObject(i).optString("id", "")
+                        if (id.isNotEmpty()) add(id)
+                    }
+                }
+            }
+
             if (providedClientDataHash != null) {
-                // App already computed the hash; use it directly (no clientDataJSON in response)
+                // App already computed the hash; use it directly for signing.
+                // Do NOT build clientDataJSON here — the caller (e.g. Chrome) has its own
+                // clientDataJSON whose origin is "android:apk-key-hash:..." (not "https://<rpId>").
+                // Chrome validates SHA-256(returned_clientDataJSON) == clientDataHash, so returning
+                // our own JSON with the wrong origin causes Chrome to fail with an unknown error.
+                // Leave assertionClientDataJsonB64url = null; Chrome supplies its own clientDataJSON.
                 assertionClientDataHashB64url = Base64.encodeToString(
                     providedClientDataHash, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP
                 )
@@ -143,6 +161,7 @@ object PasskeyRequestStore {
         assertionEntryUuid = null
         assertionDbKey = null
         assertionRpId = ""
+        assertionAllowCredentialIds = emptyList()
         assertionClientDataHashB64url = ""
         assertionClientDataJsonB64url = null
         registrationRpId = ""
