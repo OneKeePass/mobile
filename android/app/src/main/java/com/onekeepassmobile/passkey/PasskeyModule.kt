@@ -177,8 +177,8 @@ class PasskeyModule(reactContext: ReactApplicationContext) :
                     return@execute
                 }
 
-                val dbKey = args.getString("db_key") ?: run {
-                    promise.reject(E_BAD_ARGS, "Missing db_key")
+                val dbKey = args.getString("org_db_key") ?: run {
+                    promise.reject(E_BAD_ARGS, "Missing org_db_key")
                     return@execute
                 }
 
@@ -232,7 +232,7 @@ class PasskeyModule(reactContext: ReactApplicationContext) :
 
         return buildString {
             append("{")
-            append("\"org_db_key\":\"${args.getString("db_key")!!.escapeJson()}\",")
+            append("\"org_db_key\":\"${args.getString("org_db_key")!!.escapeJson()}\",")
             append("\"rp_id\":\"${(args.getString("rp_id") ?: PasskeyRequestStore.registrationRpId).escapeJson()}\",")
             append("\"rp_name\":\"${(args.getString("rp_name") ?: PasskeyRequestStore.registrationRpName).escapeJson()}\",")
             append("\"user_name\":\"${(args.getString("user_name") ?: PasskeyRequestStore.registrationUserName).escapeJson()}\",")
