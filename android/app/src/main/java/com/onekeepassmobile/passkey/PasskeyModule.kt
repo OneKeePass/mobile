@@ -278,6 +278,7 @@ class PasskeyModule(reactContext: ReactApplicationContext) :
             put("rawId", credentialId)
             put("type", "public-key")
             put("authenticatorAttachment", "platform")
+            put("clientExtensionResults", JSONObject())
             put("response", JSONObject().apply {
                 // Omit clientDataJSON when null (Chrome/Brave path): the browser provided
                 // clientDataHash so it already has its own clientDataJSON and will substitute it.
@@ -301,6 +302,7 @@ class PasskeyModule(reactContext: ReactApplicationContext) :
             put("id", credentialId)
             put("rawId", credentialId)
             put("type", "public-key")
+            put("clientExtensionResults", JSONObject())
             put("response", JSONObject().apply {
                 if (clientDataJson != null) put("clientDataJSON", clientDataJson)
                 put("attestationObject", attestationObject)
