@@ -63,6 +63,20 @@ pub enum AutoFillDbData {
     CreditCard {},
 }
 
+// Data passed to Kotlin to complete a passkey assertion via Android Credential Manager.
+#[derive(uniffi::Record)]
+pub struct AndroidPasskeyAssertionCallbackData {
+    pub authentication_response_json: String,
+}
+
+// Data passed to Kotlin to complete a passkey registration via Android Credential Manager.
+// org_db_key is the KDBX content URI needed to save the database to disk.
+#[derive(uniffi::Record)]
+pub struct AndroidPasskeyRegistrationCallbackData {
+    pub registration_response_json: String,
+    pub org_db_key: String,
+}
+
 // Corresponding UDL:
 // [Trait, WithForeign]
 // interface AndroidApiService {};
@@ -72,4 +86,13 @@ pub trait AndroidApiService: Send + Sync {
     // Autofill specific
     fn autofill_client_app_url_info(&self) -> ApiCallbackResult<HashMap<String, String>>;
     fn complete_autofill(&self, auto_fill_data: AutoFillDbData) -> ApiCallbackResult<()>;
+    // Passkey assertion/registration completion (called by Rust after crypto operations)
+    fn complete_passkey_assertion(
+        &self,
+        data: AndroidPasskeyAssertionCallbackData,
+    ) -> ApiCallbackResult<()>;
+    fn complete_passkey_registration(
+        &self,
+        data: AndroidPasskeyRegistrationCallbackData,
+    ) -> ApiCallbackResult<()>;
 }

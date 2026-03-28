@@ -352,43 +352,72 @@ impl AndroidSupportServiceExtra {
     }
 
     // Signs a WebAuthn assertion for the given entry using the pre-computed
-    // clientDataHash supplied by the Android Credential Manager.
-    // Returns the signed assertion data as JSON for Kotlin to build
-    // PublicKeyCredential and complete the credential request.
+    // clientDataHash supplied by the Android Credential Manager, builds the
+    // complete AuthenticationResponseJSON, then calls the Kotlin callback
+    // (AndroidApiService.complete_passkey_assertion) which calls PendingIntentHandler
+    // and finishes PasskeyActivity. Returns null to ClojureScript on success.
+    // Called from ClojureScript via android-invoke-api "passkey_complete_assertion".
     fn passkey_complete_assertion(&self, json_args: &str) -> ResponseJson {
-        let inner =
-            || -> OkpResult<onekeepass_core::passkey_crypto::PasskeyAssertionWithHashResult> {
-                let (db_key, entry_uuid_str, client_data_hash_b64url) =
-                    parse_command_args_or_err!(
-                        json_args,
-                        PasskeySignAssertionArg { db_key, entry_uuid, client_data_hash_b64url }
-                    );
-                let entry_uuid = uuid::Uuid::parse_str(&entry_uuid_str)
-                    .map_err(|e| OkpError::UnexpectedError(e.to_string()))?;
-                let pk = passkey::get_passkey_for_assertion(&db_key, &entry_uuid)?;
-                let hash_bytes = BASE64URL_NOPAD
-                    .decode(client_data_hash_b64url.as_bytes())
-                    .map_err(|e| OkpError::UnexpectedError(e.to_string()))?;
-                Ok(onekeepass_core::passkey_crypto::sign_assertion_with_hash(
-                    &pk.credential_id_b64url,
-                    &pk.rp_id,
-                    &pk.user_handle_b64url,
-                    &pk.private_key_pem,
-                    &hash_bytes,
-                )?)
-            };
+        let inner = || -> OkpResult<serde_json::Value> {
+            let (db_key, entry_uuid_str, client_data_hash_b64url, client_data_json_b64url) =
+                parse_command_args_or_err!(
+                    json_args,
+                    PasskeySignAssertionArg {
+                        db_key,
+                        entry_uuid,
+                        client_data_hash_b64url,
+                        client_data_json_b64url
+                    }
+                );
+            let entry_uuid = uuid::Uuid::parse_str(&entry_uuid_str)
+                .map_err(|e| OkpError::UnexpectedError(e.to_string()))?;
+            let pk = passkey::get_passkey_for_assertion(&db_key, &entry_uuid)?;
+            let hash_bytes = BASE64URL_NOPAD
+                .decode(client_data_hash_b64url.as_bytes())
+                .map_err(|e| OkpError::UnexpectedError(e.to_string()))?;
+            let result = onekeepass_core::passkey_crypto::sign_assertion_with_hash(
+                &pk.credential_id_b64url,
+                &pk.rp_id,
+                &pk.user_handle_b64url,
+                &pk.private_key_pem,
+                &hash_bytes,
+            )?;
+            let response_json =
+                build_authentication_response_json(&result, client_data_json_b64url.as_deref());
+            crate::android::callback_services::AndroidApiCallbackImpl::api_service()
+                .complete_passkey_assertion(
+                    crate::android::callback_services::AndroidPasskeyAssertionCallbackData {
+                        authentication_response_json: response_json,
+                    },
+                )?;
+            Ok(serde_json::Value::Null)
+        };
         result_json_str(inner())
     }
 
-    // Creates a passkey key pair and stores the passkey directly into the
-    // in-memory KDBX (no pending queue needed on Android).
-    // Returns {credential_id_b64url, attestation_object_b64url} for Kotlin
-    // to build CreatePublicKeyCredentialResponse.
-    // The caller (Kotlin/ClojureScript) is responsible for saving the DB to disk.
+    // Creates a passkey key pair, stores it into the in-memory KDBX, builds the
+    // complete RegistrationResponseJSON, then calls the Kotlin callback
+    // (AndroidApiService.complete_passkey_registration) which saves the DB to disk,
+    // calls PendingIntentHandler, and finishes PasskeyActivity.
+    // Returns null to ClojureScript on success.
+    // Called from ClojureScript via android-invoke-api "passkey_complete_registration".
     fn passkey_complete_registration(&self, json_args: &str) -> ResponseJson {
-        let inner =
-            || -> OkpResult<onekeepass_core::passkey_crypto::PasskeyCreationWithHashResult> {
-                let (
+        let inner = || -> OkpResult<serde_json::Value> {
+            let (
+                org_db_key,
+                rp_id,
+                rp_name,
+                user_name,
+                user_handle_b64url,
+                client_data_hash_b64url,
+                entry_uuid,
+                new_entry_name,
+                group_uuid,
+                new_group_name,
+                client_data_json_b64url,
+            ) = parse_command_args_or_err!(
+                json_args,
+                PasskeyCompleteRegistrationArg {
                     org_db_key,
                     rp_id,
                     rp_name,
@@ -399,66 +428,63 @@ impl AndroidSupportServiceExtra {
                     new_entry_name,
                     group_uuid,
                     new_group_name,
-                ) = parse_command_args_or_err!(
-                    json_args,
-                    PasskeyCompleteRegistrationArg {
-                        org_db_key,
-                        rp_id,
-                        rp_name,
-                        user_name,
-                        user_handle_b64url,
-                        client_data_hash_b64url,
-                        entry_uuid,
-                        new_entry_name,
-                        group_uuid,
-                        new_group_name
-                    }
-                );
+                    client_data_json_b64url
+                }
+            );
 
-                let hash_bytes = BASE64URL_NOPAD
-                    .decode(client_data_hash_b64url.as_bytes())
-                    .map_err(|e| OkpError::UnexpectedError(e.to_string()))?;
-                let creation = onekeepass_core::passkey_crypto::create_passkey_with_hash(
-                    &rp_id,
-                    &rp_name,
-                    &user_name,
-                    &user_handle_b64url,
-                    &hash_bytes,
-                )?;
+            let hash_bytes = BASE64URL_NOPAD
+                .decode(client_data_hash_b64url.as_bytes())
+                .map_err(|e| OkpError::UnexpectedError(e.to_string()))?;
+            let creation = onekeepass_core::passkey_crypto::create_passkey_with_hash(
+                &rp_id,
+                &rp_name,
+                &user_name,
+                &user_handle_b64url,
+                &hash_bytes,
+            )?;
 
-                let entry_uuid_parsed = entry_uuid
-                    .map(|s| uuid::Uuid::parse_str(&s))
-                    .transpose()
-                    .map_err(|e| OkpError::UnexpectedError(format!("Invalid entry_uuid: {}", e)))?;
-                let group_uuid_parsed = group_uuid
-                    .map(|s| uuid::Uuid::parse_str(&s))
-                    .transpose()
-                    .map_err(|e| OkpError::UnexpectedError(format!("Invalid group_uuid: {}", e)))?;
+            let entry_uuid_parsed = entry_uuid
+                .map(|s| uuid::Uuid::parse_str(&s))
+                .transpose()
+                .map_err(|e| OkpError::UnexpectedError(format!("Invalid entry_uuid: {}", e)))?;
+            let group_uuid_parsed = group_uuid
+                .map(|s| uuid::Uuid::parse_str(&s))
+                .transpose()
+                .map_err(|e| OkpError::UnexpectedError(format!("Invalid group_uuid: {}", e)))?;
 
-                let passkey_info = passkey::PasskeyStorageInfo {
-                    credential_id_b64url: creation.credential_id_b64url.clone(),
-                    private_key_pem: creation.private_key_pem.clone(),
-                    rp_id: creation.rp_id.clone(),
-                    rp_name: creation.rp_name.clone(),
-                    username: creation.username.clone(),
-                    user_handle_b64url: creation.user_handle_b64url.clone(),
-                    origin: format!("https://{}", &creation.rp_id),
-                    entry_uuid: entry_uuid_parsed,
-                    new_entry_name,
-                    group_uuid: group_uuid_parsed,
-                    new_group_name,
-                };
-
-                // Writes passkey into in-memory KDBX; caller must save DB to disk.
-                passkey::store_passkey_entry(&org_db_key, passkey_info)?;
-
-                debug!(
-                    "passkey_complete_registration: passkey stored in-memory for db_key {}",
-                    &org_db_key
-                );
-
-                Ok(creation)
+            let passkey_info = passkey::PasskeyStorageInfo {
+                credential_id_b64url: creation.credential_id_b64url.clone(),
+                private_key_pem: creation.private_key_pem.clone(),
+                rp_id: creation.rp_id.clone(),
+                rp_name: creation.rp_name.clone(),
+                username: creation.username.clone(),
+                user_handle_b64url: creation.user_handle_b64url.clone(),
+                origin: format!("https://{}", &creation.rp_id),
+                entry_uuid: entry_uuid_parsed,
+                new_entry_name,
+                group_uuid: group_uuid_parsed,
+                new_group_name,
             };
+
+            // Writes passkey into in-memory KDBX; the thin Kotlin method saves to disk.
+            passkey::store_passkey_entry(&org_db_key, passkey_info)?;
+
+            debug!(
+                "passkey_complete_registration: passkey stored in-memory for db_key {}",
+                &org_db_key
+            );
+
+            let reg_json =
+                build_registration_response_json(&creation, client_data_json_b64url.as_deref());
+            crate::android::callback_services::AndroidApiCallbackImpl::api_service()
+                .complete_passkey_registration(
+                    crate::android::callback_services::AndroidPasskeyRegistrationCallbackData {
+                        registration_response_json: reg_json,
+                        org_db_key: org_db_key.clone(),
+                    },
+                )?;
+            Ok(serde_json::Value::Null)
+        };
         result_json_str(inner())
     }
 
@@ -486,6 +512,59 @@ impl AndroidSupportServiceExtra {
         };
         result_json_str(inner())
     }
+}
+
+// ── WebAuthn response JSON builders ───────────────────────────────────────────
+
+// Builds a complete AuthenticationResponseJSON from a signed assertion result.
+// client_data_json_b64url is Some on the Firefox path (we built clientDataJSON ourselves)
+// and None on the Chrome/Brave path (the browser holds its own clientDataJSON).
+fn build_authentication_response_json(
+    result: &onekeepass_core::passkey_crypto::PasskeyAssertionWithHashResult,
+    client_data_json_b64url: Option<&str>,
+) -> String {
+    let mut response = serde_json::json!({
+        "authenticatorData": result.authenticator_data_b64url,
+        "signature": result.signature_b64url,
+        "userHandle": result.user_handle_b64url,
+    });
+    if let Some(cdj) = client_data_json_b64url {
+        response["clientDataJSON"] = serde_json::Value::String(cdj.to_string());
+    }
+    serde_json::json!({
+        "id": result.credential_id_b64url,
+        "rawId": result.credential_id_b64url,
+        "type": "public-key",
+        "authenticatorAttachment": "platform",
+        "clientExtensionResults": {},
+        "response": response,
+    })
+    .to_string()
+}
+
+// Builds a complete RegistrationResponseJSON from a passkey creation result.
+// client_data_json_b64url is Some on the Firefox path, None on the Chrome/Brave path.
+fn build_registration_response_json(
+    creation: &onekeepass_core::passkey_crypto::PasskeyCreationWithHashResult,
+    client_data_json_b64url: Option<&str>,
+) -> String {
+    let mut response = serde_json::json!({
+        "attestationObject": creation.attestation_object_b64url,
+        "authenticatorData": creation.auth_data_b64url,
+        "transports": ["internal"],
+    });
+    if let Some(cdj) = client_data_json_b64url {
+        response["clientDataJSON"] = serde_json::Value::String(cdj.to_string());
+    }
+    serde_json::json!({
+        "id": creation.credential_id_b64url,
+        "rawId": creation.credential_id_b64url,
+        "type": "public-key",
+        "authenticatorAttachment": "platform",
+        "clientExtensionResults": {},
+        "response": response,
+    })
+    .to_string()
 }
 
 //////

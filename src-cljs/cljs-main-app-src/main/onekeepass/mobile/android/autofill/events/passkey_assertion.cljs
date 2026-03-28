@@ -6,7 +6,7 @@
                                                              PASSKEY_ASSERTION_PAGE_ID
                                                              to-page]]
    [onekeepass.mobile.background :as bg]
-   [onekeepass.mobile.events.common :refer [on-error on-ok]]
+   [onekeepass.mobile.events.common :refer [on-ok]]
    [re-frame.core :refer [dispatch reg-event-fx reg-fx reg-sub subscribe]]))
 
 ;; ── Public API (for UI — no direct dispatch/subscribe in UI code) ─────────────
@@ -61,7 +61,9 @@
               (assoc-in [:android-af :passkey-assertion :allow-credential-ids]
                         (or (:allow-credential-ids context) []))
               (assoc-in [:android-af :passkey-assertion :client-data-hash-b64url]
-                        (:client-data-hash-b64url context)))}
+                        (:client-data-hash-b64url context))
+              (assoc-in [:android-af :passkey-assertion :client-data-json-b64url]
+                        (:client-data-json-b64url context)))}
 
      (= "registration" (:mode context))
      {:fx [[:dispatch [:android-pk-registration/context-loaded context]]]}
@@ -94,17 +96,22 @@
     :fx [[:dispatch-passkey-assertion-page nil]]}))
 
 ;; Called when the user taps a passkey in the assertion list.
+;; Single-step flow: FFI call signs the assertion, builds the JSON, and calls the
+;; Kotlin callback (PendingIntentHandler + activity.finish) all within Rust.
+;; PasskeyActivity is already finished by the time dispatch-fn fires on success.
 (reg-event-fx
  :android-pk-assertion/select
  (fn [{:keys [db]} [_ {:keys [entry-uuid db-key]}]]
-   (let [hash (get-in db [:android-af :passkey-assertion :client-data-hash-b64url])]
+   (let [hash (get-in db [:android-af :passkey-assertion :client-data-hash-b64url])
+         cdj  (get-in db [:android-af :passkey-assertion :client-data-json-b64url])]
      {:fx [[:bg/android-complete-passkey-assertion
-            [entry-uuid db-key hash
+            [entry-uuid db-key hash cdj
              (fn [response]
                (println "bg/android-complete-passkey-assertion response" response)
-               ;; If there is any error in the response, user is notified
-               (on-error response)
-               nil)]]]})))
+               ;; Activity already finished by Rust→Kotlin callback on success.
+               (on-ok response
+                      #_(fn [error]
+                        (println "passkey assertion error:" error))))]]]})))
 
 ;; ── Effects ───────────────────────────────────────────────────────────────────
 
@@ -123,9 +130,9 @@
 
 (reg-fx
  :bg/android-complete-passkey-assertion
- (fn [[entry-uuid db-key _client-data-hash-b64url dispatch-fn]]
-   ;; client-data-hash is handled by PasskeyRequestStore on the Kotlin side
-   (bg/android-complete-passkey-assertion entry-uuid db-key dispatch-fn)))
+ (fn [[entry-uuid db-key client-data-hash-b64url client-data-json-b64url dispatch-fn]]
+   (bg/android-complete-passkey-assertion
+    entry-uuid db-key client-data-hash-b64url client-data-json-b64url dispatch-fn)))
 
 (reg-fx
  :dispatch-passkey-assertion-page

@@ -113,7 +113,9 @@
             (assoc-in [:android-af :passkey-registration :user-handle-b64url]
                       (:user-handle-b64url context))
             (assoc-in [:android-af :passkey-registration :client-data-hash-b64url]
-                      (:client-data-hash-b64url context)))}))
+                      (:client-data-hash-b64url context))
+            (assoc-in [:android-af :passkey-registration :client-data-json-b64url]
+                      (:client-data-json-b64url context)))}))
 
 ;; Called after registration context is stored. Fetches database groups.
 (reg-event-fx
@@ -179,9 +181,10 @@
          user-name  (get-in db [:android-af :passkey-registration :user-name])
          user-hdl   (get-in db [:android-af :passkey-registration :user-handle-b64url])
          hash       (get-in db [:android-af :passkey-registration :client-data-hash-b64url])
+         cdj        (get-in db [:android-af :passkey-registration :client-data-json-b64url])
          group      (get-in db [:android-af :passkey-registration :selected-group])]
      {:fx [[:bg/android-complete-passkey-registration
-            [org-db-key rp-id rp-name user-name user-hdl hash
+            [org-db-key rp-id rp-name user-name user-hdl hash cdj
              (:entry-uuid entry) nil (:group-uuid group) nil]]]})))
 
 ;; User chose to create a new entry.
@@ -194,11 +197,12 @@
          user-name      (get-in db [:android-af :passkey-registration :user-name])
          user-hdl       (get-in db [:android-af :passkey-registration :user-handle-b64url])
          hash           (get-in db [:android-af :passkey-registration :client-data-hash-b64url])
+         cdj            (get-in db [:android-af :passkey-registration :client-data-json-b64url])
          group          (get-in db [:android-af :passkey-registration :selected-group])
          new-entry-name (get-in db [:android-af :passkey-registration :new-entry-name] "")
          new-group-name (not-empty (get-in db [:android-af :passkey-registration :new-group-name] ""))]
      {:fx [[:bg/android-complete-passkey-registration
-            [org-db-key rp-id rp-name user-name user-hdl hash
+            [org-db-key rp-id rp-name user-name user-hdl hash cdj
              nil new-entry-name
              (when-not new-group-name (:group-uuid group))
              new-group-name]]]})))
@@ -237,16 +241,17 @@
 (reg-fx
  :bg/android-complete-passkey-registration
  (fn [[org-db-key rp-id rp-name user-name user-handle-b64url client-data-hash-b64url
-       entry-uuid new-entry-name group-uuid new-group-name]]
+       client-data-json-b64url entry-uuid new-entry-name group-uuid new-group-name]]
    (bg/android-complete-passkey-registration
-    org-db-key rp-id rp-name user-name user-handle-b64url client-data-hash-b64url
+    org-db-key rp-id rp-name user-name user-handle-b64url
+    client-data-hash-b64url client-data-json-b64url
     entry-uuid new-entry-name group-uuid new-group-name
     (fn [response]
       (println "bg/android-complete-passkey-registration response" response)
-      (when-not (on-ok response
-                       (fn [error]
-                         (dispatch [:android-pk-registration/registration-failed error])))
-        nil)))))
+      ;; Activity already finished by Rust→Kotlin callback on success.
+      (on-ok response
+             (fn [error]
+               (dispatch [:android-pk-registration/registration-failed error])))))))
 
 (reg-fx
  :dispatch-passkey-registration-page

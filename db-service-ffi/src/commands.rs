@@ -223,16 +223,19 @@ pub enum CommandArg {
         auto_open_properties: AutoOpenProperties,
     },
 
-    // Passkey assertion (iOS autofill) — three unique fields; must come before DbKey
+    // Passkey assertion (iOS autofill + Android) — three unique required fields; must come before DbKey.
+    // client_data_json_b64url is Android-only (Firefox path); iOS callers omit it → None.
     PasskeySignAssertionArg {
         db_key: String,
         entry_uuid: String,
         client_data_hash_b64url: String,
+        client_data_json_b64url: Option<String>,
     },
 
-    // Bundled passkey registration — create keypair + store pending + complete iOS request.
+    // Bundled passkey registration — create keypair + store pending/in-memory + complete request.
     // Distinct from PasskeyStorePendingArg (no credential_id_b64url / private_key_pem / origin).
     // Must come before PasskeyCreateWithHashArg (superset of its fields) and PasskeyStorePendingArg.
+    // client_data_json_b64url is Android-only (Firefox path); iOS callers omit it → None.
     PasskeyCompleteRegistrationArg {
         org_db_key: String,
         rp_id: String,
@@ -244,6 +247,7 @@ pub enum CommandArg {
         new_entry_name: Option<String>,
         group_uuid: Option<String>,
         new_group_name: Option<String>,
+        client_data_json_b64url: Option<String>,
     },
 
     // Passkey creation with pre-computed clientDataHash (iOS autofill)

@@ -355,13 +355,14 @@ impl super::IosAppGroupSupportService {
 
         let inner =
             || -> OkpResult<onekeepass_core::passkey_crypto::PasskeyAssertionWithHashResult> {
-                let (db_key, entry_uuid_str, client_data_hash_b64url) =
+                let (db_key, entry_uuid_str, client_data_hash_b64url, _) =
                     parse_command_args_or_err!(
                         json_args,
                         PasskeySignAssertionArg {
                             db_key,
                             entry_uuid,
-                            client_data_hash_b64url
+                            client_data_hash_b64url,
+                            client_data_json_b64url
                         }
                     );
                 let entry_uuid = uuid::Uuid::parse_str(&entry_uuid_str)
@@ -476,9 +477,9 @@ impl super::IosAppGroupSupportService {
         // debug!("passkey_complete_assertion is called with json_args {}", &json_args);
 
         let inner = || -> OkpResult<()> {
-            let (db_key, entry_uuid_str, client_data_hash_b64url) = parse_command_args_or_err!(
+            let (db_key, entry_uuid_str, client_data_hash_b64url, _) = parse_command_args_or_err!(
                 json_args,
-                PasskeySignAssertionArg { db_key, entry_uuid, client_data_hash_b64url }
+                PasskeySignAssertionArg { db_key, entry_uuid, client_data_hash_b64url, client_data_json_b64url }
             );
             let entry_uuid = uuid::Uuid::parse_str(&entry_uuid_str)
                 .map_err(|e| OkpError::UnexpectedError(e.to_string()))?;
@@ -529,6 +530,7 @@ impl super::IosAppGroupSupportService {
                 new_entry_name,
                 group_uuid,
                 new_group_name,
+                _,
             ) = parse_command_args_or_err!(
                 json_args,
                 PasskeyCompleteRegistrationArg {
@@ -541,7 +543,8 @@ impl super::IosAppGroupSupportService {
                     entry_uuid,
                     new_entry_name,
                     group_uuid,
-                    new_group_name
+                    new_group_name,
+                    client_data_json_b64url
                 }
             );
 
