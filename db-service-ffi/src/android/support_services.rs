@@ -552,6 +552,8 @@ fn build_registration_response_json(
         "attestationObject": creation.attestation_object_b64url,
         "authenticatorData": creation.auth_data_b64url,
         "transports": ["internal"],
+        "publicKey": creation.public_key_b64url,
+        "publicKeyAlgorithm": -7_i64,
     });
     if let Some(cdj) = client_data_json_b64url {
         response["clientDataJSON"] = serde_json::Value::String(cdj.to_string());

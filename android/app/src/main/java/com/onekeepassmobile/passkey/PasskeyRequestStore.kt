@@ -136,7 +136,25 @@ object PasskeyRequestStore {
                 registrationClientDataHashB64url = Base64.encodeToString(
                     providedClientDataHash, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP
                 )
-                registrationClientDataJsonB64url = null
+                // Try to reconstruct clientDataJSON so Chrome can validate
+                // sha256(returned_clientDataJSON) == clientDataHash.
+                // Chrome's RegistrationResponseJSON requires clientDataJSON to be present;
+                // without it Chrome shows "unknown error" even though assertion (which Chrome
+                // assembles itself from our signature + auth data) works fine without it.
+                val candidate = buildClientDataJson(
+                    type = "webauthn.create",
+                    challenge = challenge,
+                    rpId = registrationRpId
+                )
+                if (sha256(candidate).contentEquals(providedClientDataHash)) {
+                    registrationClientDataJsonB64url = Base64.encodeToString(
+                        candidate, Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP
+                    )
+                } else {
+                    Log.w(TAG, "storeRegistrationContext: reconstructed clientDataJSON hash " +
+                          "does not match providedClientDataHash; leaving it null")
+                    registrationClientDataJsonB64url = null
+                }
             } else {
                 val clientDataJson = buildClientDataJson(
                     type = "webauthn.create",
