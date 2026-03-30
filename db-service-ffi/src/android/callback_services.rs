@@ -95,4 +95,9 @@ pub trait AndroidApiService: Send + Sync {
         &self,
         data: AndroidPasskeyRegistrationCallbackData,
     ) -> ApiCallbackResult<()>;
+
+    fn store_passkey_registration_response(
+        &self,
+        data: AndroidPasskeyRegistrationCallbackData,
+    ) -> ApiCallbackResult<()>;
 }

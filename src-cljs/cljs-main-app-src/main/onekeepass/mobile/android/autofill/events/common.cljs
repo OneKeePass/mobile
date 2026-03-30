@@ -408,7 +408,7 @@
  (fn [{:keys [db]} [_event-id {:keys [db-key _database-name] :as kdbx-loaded}]]
    ;; TODO: We need to add this opened db to the list, but Main app's current-db-file-name
    ;; is not be set and instead [:android-af :current-db-file-name] is set
-   ;; The amin app current-db-file-name is not set in db-opened
+   ;; The main app current-db-file-name is not set in db-opened
    {:db (-> db (android-af-db-opened  kdbx-loaded)
             ;; Here we store a callback event handler which is called 
             ;; from main app event. For example, ':close-kdbx-completed' will dispatch to

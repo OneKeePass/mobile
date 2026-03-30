@@ -50,6 +50,8 @@ object PasskeyRequestStore {
     // Read and cleared by getRegistrationSaveError @ReactMethod.
     var registrationSaveError: String? = null
 
+    var registrationResponseJson: String = ""
+
     // ── DB key tracking ───────────────────────────────────────────────────
 
     // Updated by DbServiceModule when the main app successfully opens a database
@@ -193,6 +195,7 @@ object PasskeyRequestStore {
         registrationClientDataHashB64url = ""
         registrationClientDataJsonB64url = null
         registrationSaveError = null
+        registrationResponseJson = ""
     }
 
     // ── Private helpers ───────────────────────────────────────────────────

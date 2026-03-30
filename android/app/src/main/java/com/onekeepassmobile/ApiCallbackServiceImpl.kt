@@ -3,6 +3,7 @@ package com.onekeepassmobile
 import android.util.Log
 import com.onekeepassmobile.autofill.OkpFillResponseBuilder
 import com.onekeepassmobile.passkey.PasskeyModule
+import com.onekeepassmobile.passkey.PasskeyRequestStore
 import onekeepass.mobile.ffi.AndroidApiService
 import onekeepass.mobile.ffi.AndroidPasskeyAssertionCallbackData
 import onekeepass.mobile.ffi.AndroidPasskeyRegistrationCallbackData
@@ -58,5 +59,10 @@ class ApiCallbackServiceImpl():AndroidApiService,CommonDeviceServiceEx {
     // Called by Rust after creating a passkey registration; delegates to PasskeyModule companion.
     override fun completePasskeyRegistration(data: AndroidPasskeyRegistrationCallbackData) {
         PasskeyModule.completePasskeyRegistration(data.registrationResponseJson, data.orgDbKey)
+    }
+
+    // Called by Rust after creating a passkey registration and stores the response to be sent later
+    override fun storePasskeyRegistrationResponse(data: AndroidPasskeyRegistrationCallbackData) {
+        PasskeyRequestStore.registrationResponseJson = data.registrationResponseJson
     }
 }

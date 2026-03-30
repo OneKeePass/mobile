@@ -890,7 +890,6 @@
                  (csk/->snake_case k)))]
     (cske/transform-keys t-fn args)))
 
-
 ;;;;;
 
 (defn android-get-passkey-context
@@ -901,6 +900,24 @@
    (fn [] (.getPasskeyContext okp-passkey-service))
    dispatch-fn
    :convert-response-fn transform-response-passkey-field-names))
+
+(defn android-passkey-get-db-groups
+  "Fetches all groups in the opened database for the passkey registration group picker."
+  [db-key dispatch-fn]
+  (android-invoke-api "passkey_get_db_groups"
+                      (transform-request-passkey-field-names {:db-key db-key})
+                      dispatch-fn
+                      :convert-request false
+                      :convert-response-fn transform-response-passkey-field-names))
+
+(defn android-passkey-get-group-entries
+  "Fetches all entries in a specific group for the passkey registration entry picker."
+  [db-key group-uuid dispatch-fn]
+  (android-invoke-api "passkey_get_group_entries"
+                      (transform-request-passkey-field-names {:db-key db-key :group-uuid group-uuid})
+                      dispatch-fn
+                      :convert-request false
+                      :convert-response-fn transform-response-passkey-field-names))
 
 (defn android-find-matching-passkeys
   "Fetches all passkeys in db-key matching rp-id.
@@ -931,7 +948,7 @@
                       :convert-request false
                       :convert-response-fn transform-response-passkey-field-names))
 
-(defn android-complete-passkey-registration
+(defn android-start-passkey-registration
   "Calls Rust FFI passkey_complete_registration — creates key pair, stores passkey in
    in-memory KDBX, builds the RegistrationResponseJSON, and calls the Kotlin callback
    (saves DB + PendingIntentHandler + activity.finish) directly via uniffi.
@@ -957,30 +974,19 @@
                       :convert-request false
                       :convert-response-fn transform-response-passkey-field-names))
 
-(defn android-passkey-get-db-groups
-  "Fetches all groups in the opened database for the passkey registration group picker."
-  [db-key dispatch-fn]
-  (android-invoke-api "passkey_get_db_groups"
-                      (transform-request-passkey-field-names {:db-key db-key})
-                      dispatch-fn
-                      :convert-request false
-                      :convert-response-fn transform-response-passkey-field-names))
-
-(defn android-passkey-get-group-entries
-  "Fetches all entries in a specific group for the passkey registration entry picker."
-  [db-key group-uuid dispatch-fn]
-  (android-invoke-api "passkey_get_group_entries"
-                      (transform-request-passkey-field-names {:db-key db-key :group-uuid group-uuid})
-                      dispatch-fn
-                      :convert-request false
-                      :convert-response-fn transform-response-passkey-field-names))
-
 (defn android-get-registration-save-error
   "Calls OkpPasskeyService.getRegistrationSaveError().
    Always returns {:error \"message\"} or {:error nil}. Use on-error to handle."
   [dispatch-fn]
   (call-api-async
    (fn [] (.getRegistrationSaveError okp-passkey-service))
+   dispatch-fn))
+
+(defn android-complete-passkey-registration-final
+  "Calls OkpPasskeyService.completePasskeyRegistration."
+  [dispatch-fn]
+  (call-api-async
+   (fn [] (.completePasskeyRegistration okp-passkey-service))
    dispatch-fn))
 
 (defn android-cancel-passkey-registration

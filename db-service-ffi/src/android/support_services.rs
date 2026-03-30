@@ -476,13 +476,22 @@ impl AndroidSupportServiceExtra {
 
             let reg_json =
                 build_registration_response_json(&creation, client_data_json_b64url.as_deref());
+
             crate::android::callback_services::AndroidApiCallbackImpl::api_service()
-                .complete_passkey_registration(
+                .store_passkey_registration_response(
                     crate::android::callback_services::AndroidPasskeyRegistrationCallbackData {
                         registration_response_json: reg_json,
                         org_db_key: org_db_key.clone(),
                     },
-                )?;
+                )?;    
+            
+            // crate::android::callback_services::AndroidApiCallbackImpl::api_service()
+            //     .complete_passkey_registration(
+            //         crate::android::callback_services::AndroidPasskeyRegistrationCallbackData {
+            //             registration_response_json: reg_json,
+            //             org_db_key: org_db_key.clone(),
+            //         },
+            //     )?;
             
             Ok(())
         };

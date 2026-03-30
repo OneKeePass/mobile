@@ -105,7 +105,9 @@
 (reg-event-fx
  :save/save-current-kdbx
  (fn [{:keys [db]} [_event-id {:keys [save-message] :as m-data}]]
+   ;;(println "In :save/save-current-kdbx")
    (let [save-enabled (not (current-db-disable-edit db))]
+     ;;(println "In :save/save-current-kdbx save-enabled active-db " save-enabled (active-db-key db))
      (if save-enabled
        ;; m-data is a map with keys :save-message and :error-title
        (let [handler-fn (partial save-api-response-handler m-data)]

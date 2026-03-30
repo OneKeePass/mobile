@@ -276,7 +276,7 @@
 (defn section-header [section-name]
   (let [edit @(form-events/entry-form-field :edit)
         standard-sections @(form-events/entry-form-data-fields :standard-section-names)
-        _ (println "In section-header standard-section-names are " standard-sections)
+        ;;_ (println "In section-header standard-section-names are " standard-sections)
         standard-section? (u/contains-val? standard-sections section-name)
         tr-section-name (if standard-section? (lstr-section-name section-name) section-name)]
     [rn-view {:style {:flexDirection "row"

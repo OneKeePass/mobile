@@ -17,6 +17,7 @@ import com.onekeepassmobile.DbServiceAPI
 import com.onekeepassmobile.FileUtils
 import com.onekeepassmobile.MainApplication
 import org.json.JSONObject
+import java.util.concurrent.Executors
 
 // React Native module that bridges ClojureScript passkey UI to Android Credential Manager.
 //
@@ -121,6 +122,27 @@ class PasskeyModule(reactContext: ReactApplicationContext) :
         promise.resolve("{}")
     }
 
+    @ReactMethod
+    fun completePasskeyRegistration(promise: Promise) {
+        Log.d(TAG,"Going to complete the passkey registration")
+
+        val activity = PasskeyActivity.getActivity() ?: run {
+            Log.e(TAG, "completePasskeyRegistration: PasskeyActivity is no longer alive")
+            return
+        }
+        val resultIntent = Intent()
+        PendingIntentHandler.setCreateCredentialResponse(
+            resultIntent,
+            CreatePublicKeyCredentialResponse(PasskeyRequestStore.registrationResponseJson)
+        )
+        activity.runOnUiThread {
+            activity.setResult(Activity.RESULT_OK, resultIntent)
+            activity.finish()
+        }
+
+        promise.resolve("{}")
+    }
+
     companion object {
         //private const val TAG = "OkpPasskey PasskeyModule"
         private const val TAG = "OkpPasskey"
@@ -161,10 +183,14 @@ class PasskeyModule(reactContext: ReactApplicationContext) :
                 return
             }
             if (!saveKdbxViaPfd(orgDbKey)) {
+                //TODO: Need to send the actual db save error to UI
                 PasskeyRequestStore.registrationSaveError =
                     "Could not save the database. Please try again."
+                // throw Exception()
                 return
             }
+
+            // As kdbx database save is successful, the passkey reponse is sent and the activity is closed
 
             Log.d(TAG,"Going to complete the passkey registration")
 
