@@ -95,8 +95,8 @@ class PasskeyActivity : ReactActivity() {
     }
 
     companion object {
-        private const val TAG = "OkpPasskey PasskeyActivity"
-
+        //private const val TAG = "OkpPasskey PasskeyActivity"
+        private const val TAG = "OkpPasskey"
         const val EXTRA_MODE = "passkey_mode"
         const val EXTRA_ENTRY_UUID = "entry_uuid"
         const val EXTRA_DB_KEY = "db_key"

@@ -93,8 +93,37 @@ class PasskeyModule(reactContext: ReactApplicationContext) :
         }
     }
 
+    // ── Save-error retrieval ───────────────────────────────────────────────
+
+    // Always returns {"error": "message"} or {"error": null}.
+    // Reads and clears PasskeyRequestStore.registrationSaveError.
+    // CLJS uses on-error to handle: dispatches a callback if non-null, no-op if null.
+    @ReactMethod
+    fun getRegistrationSaveError(promise: Promise) {
+        val error = PasskeyRequestStore.registrationSaveError
+        PasskeyRequestStore.registrationSaveError = null
+        promise.resolve("{\"error\":\"$error\"}")
+        // promise.resolve(if (error != null) "{\"error\":\"$error\"}" else "{\"error\":null}")
+    }
+
+    // Cancels PasskeyActivity with RESULT_CANCELED.
+    // Safe to call when the activity is already gone — getActivity() returns null and this
+    // becomes a no-op. Called by CLJS close-after-error for both the save-failure path
+    // (activity still alive) and normal Rust-error path (activity already finished).
+    @ReactMethod
+    fun cancelPasskeyRegistration(promise: Promise) {
+        PasskeyActivity.getActivity()?.runOnUiThread {
+            PasskeyActivity.getActivity()?.let {
+                it.setResult(Activity.RESULT_CANCELED)
+                it.finish()
+            }
+        }
+        promise.resolve("{}")
+    }
+
     companion object {
-        private const val TAG = "OkpPasskey PasskeyModule"
+        //private const val TAG = "OkpPasskey PasskeyModule"
+        private const val TAG = "OkpPasskey"
 
         // ── Passkey completion (called from ApiCallbackServiceImpl via Rust callback) ──
 
@@ -123,12 +152,22 @@ class PasskeyModule(reactContext: ReactApplicationContext) :
         // Called by ApiCallbackServiceImpl.completePasskeyRegistration after the Rust FFI
         // creates the keypair and builds the RegistrationResponseJSON. Saves the KDBX to
         // disk and finishes PasskeyActivity.
+        // If save fails: stores the error in PasskeyRequestStore and returns without finishing
+        // the activity. The CLJS dispatch-fn will call getRegistrationSaveError, show an error
+        // to the user, and then call cancelPasskeyRegistration to finish with RESULT_CANCELED.
         fun completePasskeyRegistration(responseJson: String, orgDbKey: String) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 Log.e(TAG, "completePasskeyRegistration: requires Android 14+")
                 return
             }
-            saveKdbxViaPfd(orgDbKey)
+            if (!saveKdbxViaPfd(orgDbKey)) {
+                PasskeyRequestStore.registrationSaveError =
+                    "Could not save the database. Please try again."
+                return
+            }
+
+            Log.d(TAG,"Going to complete the passkey registration")
+
             val activity = PasskeyActivity.getActivity() ?: run {
                 Log.e(TAG, "completePasskeyRegistration: PasskeyActivity is no longer alive")
                 return
@@ -147,26 +186,31 @@ class PasskeyModule(reactContext: ReactApplicationContext) :
         // Saves the open database to disk using the ContentResolver FD approach.
         // Uses MainApplication.getInstanceContext() since this is a companion object
         // without access to reactApplicationContext.
-        private fun saveKdbxViaPfd(fullFileNameUri: String) {
+        // Returns true on success, false on any failure.
+        private fun saveKdbxViaPfd(fullFileNameUri: String): Boolean {
             val context = MainApplication.getInstanceContext()
             val uri = Uri.parse(fullFileNameUri)
             val contentResolver = context.contentResolver
             val fileName = FileUtils.getMetaInfo(contentResolver, uri)?.filename ?: ""
             val fd = contentResolver.openFileDescriptor(uri, "rwt") ?: run {
                 Log.w(TAG, "saveKdbxViaPfd: could not open FD for $fullFileNameUri")
-                return
+                return false
             }
-            try {
+            return try {
                 when (val response = DbServiceAPI.saveKdbx(
                     fd.fd.toULong(),
                     fullFileNameUri,
                     fileName,
                     true // overwrite = true; no conflict check needed during passkey registration
                 )) {
-                    is onekeepass.mobile.ffi.ApiResponse.Success ->
+                    is onekeepass.mobile.ffi.ApiResponse.Success -> {
                         Log.d(TAG, "saveKdbxViaPfd success")
-                    is onekeepass.mobile.ffi.ApiResponse.Failure ->
+                        true
+                    }
+                    is onekeepass.mobile.ffi.ApiResponse.Failure -> {
                         Log.e(TAG, "saveKdbxViaPfd Rust error: ${response.result}")
+                        false
+                    }
                 }
             } finally {
                 fd.close()

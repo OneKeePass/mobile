@@ -9,8 +9,8 @@ import java.security.MessageDigest
 // Set by PasskeyActivity.onCreate and read by PasskeyModule.
 object PasskeyRequestStore {
 
-    private const val TAG = "OkpPasskey PasskeyRequestStore"
-
+    //private const val TAG = "OkpPasskey PasskeyRequestStore"
+    private const val TAG = "OkpPasskey"
     // ── Mode ──────────────────────────────────────────────────────────────
 
     var currentMode: String? = null
@@ -45,6 +45,10 @@ object PasskeyRequestStore {
     var registrationUserHandleB64url: String = ""
     var registrationClientDataHashB64url: String = ""
     var registrationClientDataJsonB64url: String? = null
+
+    // Set by completePasskeyRegistration if saveKdbxViaPfd fails.
+    // Read and cleared by getRegistrationSaveError @ReactMethod.
+    var registrationSaveError: String? = null
 
     // ── DB key tracking ───────────────────────────────────────────────────
 
@@ -188,6 +192,7 @@ object PasskeyRequestStore {
         registrationUserHandleB64url = ""
         registrationClientDataHashB64url = ""
         registrationClientDataJsonB64url = null
+        registrationSaveError = null
     }
 
     // ── Private helpers ───────────────────────────────────────────────────

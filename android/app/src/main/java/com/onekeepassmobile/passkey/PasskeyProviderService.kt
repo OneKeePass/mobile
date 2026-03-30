@@ -236,7 +236,8 @@ class PasskeyProviderService : CredentialProviderService() {
     }
 
     companion object {
-        private const val TAG = "OkpPasskey PasskeyProviderService"
+        //private const val TAG = "OkpPasskey PasskeyProviderService"
+        private const val TAG = "OkpPasskey"
         private const val REQUEST_CODE_REGISTRATION = 1001
         private const val REQUEST_CODE_ASSERTION_GENERIC = 1002
     }

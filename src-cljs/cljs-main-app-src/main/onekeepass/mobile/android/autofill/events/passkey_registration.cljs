@@ -2,11 +2,11 @@
   "Re-frame events and effects for the Android passkey registration (Credential Manager) flow.
    All event names and db keys are prefixed with :android-pk-registration to avoid conflicts."
   (:require
-   [onekeepass.mobile.background :as bg]
    [onekeepass.mobile.android.autofill.events.common :refer [android-af-active-db-key
-                                                              PASSKEY_REGISTRATION_PAGE_ID
-                                                              to-page]]
-   [onekeepass.mobile.events.common :refer [on-ok]]
+                                                             PASSKEY_REGISTRATION_PAGE_ID
+                                                             to-page]]
+   [onekeepass.mobile.background :as bg]
+   [onekeepass.mobile.events.common :refer [on-error on-ok]]
    [re-frame.core :refer [dispatch reg-event-fx reg-fx reg-sub subscribe]]))
 
 ;; ── Public API (for UI — no direct dispatch/subscribe in UI code) ─────────────
@@ -214,11 +214,14 @@
             (assoc-in [:android-af :passkey-registration :step] :error)
             (assoc-in [:android-af :passkey-registration :error-message] (str error)))}))
 
-;; Navigate back to home after user dismisses the error view
+;; Navigate back to home after user dismisses the error view.
+;; Also cancels PasskeyActivity (RESULT_CANCELED) — needed when save failed and the activity
+;; is still alive. Safe when activity is already gone (cancelPasskeyRegistration is a no-op).
 (reg-event-fx
  :android-pk-registration/close-after-error
  (fn [_ _]
-   {:fx [[:dispatch [:android-af-common/next-page :home "Home"]]]}))
+   {:fx [[:bg/android-cancel-passkey-registration nil]
+         [:dispatch [:android-af-common/next-page :home "Home"]]]}))
 
 ;; ── Effects ───────────────────────────────────────────────────────────────────
 
@@ -242,18 +245,55 @@
  :bg/android-complete-passkey-registration
  (fn [[org-db-key rp-id rp-name user-name user-handle-b64url client-data-hash-b64url
        client-data-json-b64url entry-uuid new-entry-name group-uuid new-group-name]]
+   
    (bg/android-complete-passkey-registration
+    
     org-db-key rp-id rp-name user-name user-handle-b64url
     client-data-hash-b64url client-data-json-b64url
     entry-uuid new-entry-name group-uuid new-group-name
+    
     (fn [response]
       (println "bg/android-complete-passkey-registration response" response)
-      ;; Activity already finished by Rust→Kotlin callback on success.
-      (on-ok response
-             (fn [error]
-               (dispatch [:android-pk-registration/registration-failed error])))))))
+      (when-not (on-error response
+                          ;; Handle any Rust-level error
+                          (fn [error]
+                            (dispatch [:android-pk-registration/registration-failed error])))
+        ;; When Rust succeeded, also check whether the Kotlin DB save step succeeded.
+        ;; getRegistrationSaveError returns {:error "msg"} on failure, {:error nil} if fine.
+        (bg/android-get-registration-save-error
+         (fn [save-response]
+           (println  "bg/android-get-registration-save-error save-response" save-response)
+           (on-error save-response
+                     (fn [err]
+                       (dispatch [:android-pk-registration/registration-failed err])))))))
+    
+    #_(fn [response]
+        (println "bg/android-complete-passkey-registration response" response)
+        ;; Handle any Rust-level error
+        (on-ok response
+               (fn [error]
+                 (dispatch [:android-pk-registration/registration-failed error])))
+        
+        ;; When Rust succeeded, also check whether the Kotlin DB save step succeeded.
+        ;; getRegistrationSaveError returns {:error "msg"} on failure, {:error nil} if fine.
+        (when (nil? (:error response))
+          (bg/android-get-registration-save-error
+           (fn [save-response]
+             (on-error save-response
+                       (fn [err]
+                         (dispatch [:android-pk-registration/registration-failed err]))))))))))
 
 (reg-fx
  :dispatch-passkey-registration-page
  (fn [_]
    (to-page PASSKEY_REGISTRATION_PAGE_ID "Register Passkey")))
+
+(reg-fx
+ :bg/android-get-registration-save-error
+ (fn [dispatch-fn]
+   (bg/android-get-registration-save-error dispatch-fn)))
+
+(reg-fx
+ :bg/android-cancel-passkey-registration
+ (fn [_]
+   (bg/android-cancel-passkey-registration (fn [_] nil))))

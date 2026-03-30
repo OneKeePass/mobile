@@ -975,6 +975,22 @@
                       :convert-request false
                       :convert-response-fn transform-response-passkey-field-names))
 
+(defn android-get-registration-save-error
+  "Calls OkpPasskeyService.getRegistrationSaveError().
+   Always returns {:error \"message\"} or {:error nil}. Use on-error to handle."
+  [dispatch-fn]
+  (call-api-async
+   (fn [] (.getRegistrationSaveError okp-passkey-service))
+   dispatch-fn))
+
+(defn android-cancel-passkey-registration
+  "Calls OkpPasskeyService.cancelPasskeyRegistration().
+   Cancels PasskeyActivity with RESULT_CANCELED. Safe if activity is already gone."
+  [dispatch-fn]
+  (call-api-async
+   (fn [] (.cancelPasskeyRegistration okp-passkey-service))
+   dispatch-fn))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (comment

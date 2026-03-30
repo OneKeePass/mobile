@@ -358,7 +358,7 @@ impl AndroidSupportServiceExtra {
     // and finishes PasskeyActivity. Returns null to ClojureScript on success.
     // Called from ClojureScript via android-invoke-api "passkey_complete_assertion".
     fn passkey_complete_assertion(&self, json_args: &str) -> ResponseJson {
-        let inner = || -> OkpResult<serde_json::Value> {
+        let inner = || -> OkpResult<()> {
             let (db_key, entry_uuid_str, client_data_hash_b64url, client_data_json_b64url) =
                 parse_command_args_or_err!(
                     json_args,
@@ -390,7 +390,7 @@ impl AndroidSupportServiceExtra {
                         authentication_response_json: response_json,
                     },
                 )?;
-            Ok(serde_json::Value::Null)
+            Ok(())
         };
         result_json_str(inner())
     }
@@ -402,7 +402,7 @@ impl AndroidSupportServiceExtra {
     // Returns null to ClojureScript on success.
     // Called from ClojureScript via android-invoke-api "passkey_complete_registration".
     fn passkey_complete_registration(&self, json_args: &str) -> ResponseJson {
-        let inner = || -> OkpResult<serde_json::Value> {
+        let inner = || -> OkpResult<()> {
             let (
                 org_db_key,
                 rp_id,
@@ -483,7 +483,8 @@ impl AndroidSupportServiceExtra {
                         org_db_key: org_db_key.clone(),
                     },
                 )?;
-            Ok(serde_json::Value::Null)
+            
+            Ok(())
         };
         result_json_str(inner())
     }
