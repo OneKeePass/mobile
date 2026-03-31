@@ -33,7 +33,7 @@
 (reg-event-fx
  :android-pk/check-assertion-context
  (fn [{:keys [db]} _]
-   (println "Active db is" (android-af-active-db-key db))
+   ;; (println "Active db is" (android-af-active-db-key db))
    ;; Ensure that any previous values are reset on this launch
    {:db (-> db (assoc-in [:android-af :passkey-assertion] {}))
     :fx [[:bg/android-get-assertion-context nil]]}))
@@ -43,13 +43,13 @@
  (fn [_]
    (bg/android-get-passkey-context
     (fn [response]
-      (println "bg/android-get-assertion-context response" response)
+      ;; (println "bg/android-get-assertion-context response" response)
       (dispatch [:android-pk/assertion-context-loaded (on-ok response)])))))
 
 (reg-event-fx
  :android-pk/assertion-context-loaded
  (fn [{:keys [db]} [_ {:keys [rp-id allow-credential-ids client-data-hash-b64url client-data-json-b64url] :as context}]]
-   (println "android-pk/assertion-context-loaded" context)
+   ;;(println "android-pk/assertion-context-loaded" context)
    (let [assertion-rp-id rp-id
          allow-ids (or allow-credential-ids [])]
      {:db (-> db
@@ -100,25 +100,7 @@
 
      :else {})))
 
-
-#_(reg-event-fx
-   :android-pk/load-assertion-context
-   (fn [{:keys [db]} _]
-     ;; Ensure that any previous values are reset on this launch
-     {:db (-> db
-              (assoc-in [:android-af :passkey-assertion] {}))
-
-      :fx [[:bg/android-get-passkey-context nil]]}))
-
-
-
 ;; ── Assertion events ──────────────────────────────────────────────────────────
-
-#_(reg-event-fx
-   :android-pk-assertion/load-passkeys
-   (fn [{:keys [db]} [_ rp-id allow-credential-ids]]
-     {:db (assoc-in db [:android-af :passkey-assertion :rp-id] rp-id)
-      :fx [[:dispatch [:android-pk-assertion/fetch rp-id allow-credential-ids]]]}))
 
 (reg-event-fx
  :android-pk-assertion/fetch

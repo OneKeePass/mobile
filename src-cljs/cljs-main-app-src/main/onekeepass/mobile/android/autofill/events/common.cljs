@@ -450,7 +450,7 @@
              [:dispatch [:android-pk/check-assertion-context]]
 
              :passkey-registration-context
-             [:dispatch [:android-pk/check-context]])]})))
+             [:dispatch [:android-pk/check-registration-context]])]})))
 
 #_(reg-event-fx
    :android-af/kdbx-database-opened

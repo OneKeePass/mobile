@@ -100,6 +100,32 @@
 
 ;; ── Events ────────────────────────────────────────────────────────────────────
 
+;; Dedicated registration context check — mirrors :android-pk/check-assertion-context.
+;; Dispatched from common.cljs when android-af-context-mode is :passkey-registration-context.
+(reg-event-fx
+ :android-pk/check-registration-context
+ (fn [{:keys [db]} _]
+   ;; Ensure any previous values are reset on this launch
+   {:db (-> db (assoc-in [:android-af :passkey-registration] {}))
+    :fx [[:bg/android-get-registration-context nil]]}))
+
+;; Stores registration context fields then triggers group fetch from the opened db.
+;; Mirrors :android-pk/assertion-context-loaded.
+(reg-event-fx
+ :android-pk/registration-context-loaded
+ (fn [{:keys [db]} [_ {:keys [rp-id rp-name user-name user-handle-b64url
+                               client-data-hash-b64url client-data-json-b64url] :as context}]]
+   (println "android-pk/registration-context-loaded" context)
+   (let [db-key (android-af-active-db-key db)]
+     {:db (-> db
+              (assoc-in [:android-af :passkey-registration :rp-id] rp-id)
+              (assoc-in [:android-af :passkey-registration :rp-name] (or rp-name rp-id))
+              (assoc-in [:android-af :passkey-registration :user-name] user-name)
+              (assoc-in [:android-af :passkey-registration :user-handle-b64url] user-handle-b64url)
+              (assoc-in [:android-af :passkey-registration :client-data-hash-b64url] client-data-hash-b64url)
+              (assoc-in [:android-af :passkey-registration :client-data-json-b64url] client-data-json-b64url))
+      :fx [[:bg/android-passkey-get-db-groups [db-key]]]})))
+
 ;; Dispatched by the shared :android-pk/context-loaded handler (in passkey_assertion ns)
 ;; when mode is "registration".
 (reg-event-fx
@@ -116,13 +142,6 @@
                       (:client-data-hash-b64url context))
             (assoc-in [:android-af :passkey-registration :client-data-json-b64url]
                       (:client-data-json-b64url context)))}))
-
-;; Called after registration context is stored. Fetches database groups.
-(reg-event-fx
- :android-pk-registration/load-groups
- (fn [{:keys [db]} _]
-   (let [db-key (android-af-active-db-key db)]
-     {:fx [[:bg/android-passkey-get-db-groups [db-key]]]})))
 
 ;; Groups loaded — store them, set step to :group-picker and navigate to registration page.
 (reg-event-fx
@@ -223,18 +242,6 @@
    {:fx [[:bg/android-cancel-passkey-registration nil]
          [:dispatch [:android-af-common/next-page :home "Home"]]]}))
 
-#_(reg-event-fx
- :android-pk-registration/save-kdbx
- (fn [{:keys [_db]} [_ _]]
-   ;; Delegates to standard saving event
-   {:fx [[:dispatch [:save/save-current-kdbx
-                     {:error-title "Passkey registration save error"
-                      :save-message "Saving passkey ..."
-                      :on-save-ok (fn []
-                                    (println "In on-save-ok of :android-pk-registration/save-kdbx ")
-                                    ;; On successful saving, the passkey registration response sent to the client
-                                    ;; Call close kdbx here?
-                                    (dispatch [:android-pk-registration/complete]))}]]]}))
 
 (reg-event-fx
  :android-pk-registration/save-kdbx
@@ -242,7 +249,6 @@
  (fn [{:keys [db]} [_ _]]
    {:fx [[:dispatch [:common/message-modal-show nil 'saving]]
          [:android-pk-registration/bg-save-kdbx [(android-af-active-db-key db) false]]]}))
-
 
 (reg-fx
  :android-pk-registration/bg-save-kdbx
@@ -253,32 +259,6 @@
                                     (when-not (on-error api-response)
                                       (println "In on-save-ok of :android-pk-registration/save-kdbx ")
                                       (dispatch [:android-pk-registration/complete]))))))
-
-#_(reg-event-fx
-   :save/save-current-kdbx
-   (fn [{:keys [db]} [_event-id {:keys [save-message] :as m-data}]]
-     (println "In :save/save-current-kdbx")
-     (let [save-enabled (not (current-db-disable-edit db))]
-       (println "In :save/save-current-kdbx save-enabled active-db " save-enabled (active-db-key db))
-       (if save-enabled
-         ;; m-data is a map with keys :save-message and :error-title
-         (let [handler-fn (partial save-api-response-handler m-data)]
-           ;; We need to hold on to the 'handler-fn' in :save-api-response-handler
-           ;; as we may need to use when we need to call overwrite after 'Save error' resolution by user
-           ;; See event ':overwrite-on-save-error' how this handler-fn is used
-           {:db (-> db (assoc-in-key-db  [:save-api-response-handler] handler-fn))
-            :fx [[:dispatch [:common/message-modal-show nil (if-not (nil? save-message) save-message 'saving)]]
-                 [:bg-save-kdbx [(active-db-key db) false handler-fn]]]})
-         {:fx [[:dispatch [:common/message-modal-hide]]
-               [:dispatch [:common/error-box-show "Read Only"
-                           "Editing is diabled as the database is opened in read only mode"]]]}))))
-
-;; Calls the background save kdbx api
-#_(reg-fx
-   :bg-save-kdbx
-   (fn [[db-key overwrite dispatch-fn]]
-     ;; db-key is the full file name 
-     (bg/save-kdbx db-key overwrite dispatch-fn)))
 
 (reg-event-fx
  :android-pk-registration/complete
@@ -327,33 +307,17 @@
     (fn [api-response]
       (when-not (on-error api-response)
         (println "Passkey registration completed finally")
-        #())))))
+        (dispatch [:android-af/close-current-db]))))))
 
-#_(reg-fx
-   :bg/android-complete-passkey-registration
-   (fn [[org-db-key rp-id rp-name user-name user-handle-b64url client-data-hash-b64url
-         client-data-json-b64url entry-uuid new-entry-name group-uuid new-group-name]]
 
-     (bg/android-start-passkey-registration
-
-      org-db-key rp-id rp-name user-name user-handle-b64url
-      client-data-hash-b64url client-data-json-b64url
-      entry-uuid new-entry-name group-uuid new-group-name
-
-      (fn [response]
-        (println "bg/android-complete-passkey-registration response" response)
-        (when-not (on-error response
-                            ;; Handle any Rust-level error
-                            (fn [error]
-                              (dispatch [:android-pk-registration/registration-failed error])))
-          ;; When Rust succeeded, also check whether the Kotlin DB save step succeeded.
-          ;; getRegistrationSaveError returns {:error "msg"} on failure, {:error nil} if fine.
-          (bg/android-get-registration-save-error
-           (fn [save-response]
-             (println  "bg/android-get-registration-save-error save-response" save-response)
-             (on-error save-response
-                       (fn [err]
-                         (dispatch [:android-pk-registration/registration-failed err]))))))))))
+;; Mirrors :bg/android-get-assertion-context in passkey_assertion ns.
+(reg-fx
+ :bg/android-get-registration-context
+ (fn [_]
+   (bg/android-get-passkey-context
+    (fn [response]
+      (println "bg/android-get-registration-context response" response)
+      (dispatch [:android-pk/registration-context-loaded (on-ok response)])))))
 
 (reg-fx
  :dispatch-passkey-registration-page
@@ -368,4 +332,4 @@
 (reg-fx
  :bg/android-cancel-passkey-registration
  (fn [_]
-   (bg/android-cancel-passkey-registration (fn [_] nil))))
+   (bg/android-cancel-passkey-registration (fn [_] (dispatch [:android-af/close-current-db])))))
