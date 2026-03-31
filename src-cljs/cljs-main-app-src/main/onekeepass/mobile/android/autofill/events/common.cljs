@@ -109,16 +109,23 @@
   "Called to navigate to the previous page"
   [current-page-id]
   #_(println "current-page-id in to-previous-page is " current-page-id)
+  (cond
+    ;; Lock the opened db before navigating back to the home page
+    (= current-page-id ENTRY_LIST_PAGE_ID)
+    (do (dispatch [:android-af-common/lock-kdbx])
+        (dispatch [:android-af-common/previous-page]))
 
-  ;; Lock the opened db before navigating back to the home page
-  (when (= current-page-id ENTRY_LIST_PAGE_ID)
-    (dispatch [:android-af-common/lock-kdbx]))
+    ;; Close the opened db when navigating back from the passkey assertion page
+    (= current-page-id PASSKEY_ASSERTION_PAGE_ID)
+    (do (dispatch [:android-af/close-current-db])
+        (dispatch [:android-af-common/previous-page]))
 
-  ;; Close the opened db when navigating back from the passkey assertion page
-  (when (= current-page-id PASSKEY_ASSERTION_PAGE_ID)
-    (dispatch [:android-af/close-current-db]))
+    ;; Registration page has internal steps; delegate to step-aware back event
+    (= current-page-id PASSKEY_REGISTRATION_PAGE_ID)
+    (dispatch [:android-pk-registration/back])
 
-  (dispatch [:android-af-common/previous-page]))
+    :else
+    (dispatch [:android-af-common/previous-page])))
 
 (defn page-info []
   (subscribe [:android-af-page-info]))

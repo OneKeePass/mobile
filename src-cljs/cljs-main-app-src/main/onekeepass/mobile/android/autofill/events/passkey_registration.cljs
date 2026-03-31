@@ -56,6 +56,9 @@
 (defn create-new-entry []
   (dispatch [:android-pk-registration/create-new-entry]))
 
+(defn registration-back []
+  (dispatch [:android-pk-registration/back]))
+
 ;; ── Subscriptions ─────────────────────────────────────────────────────────────
 
 (reg-sub
@@ -232,6 +235,23 @@
    {:db (-> db
             (assoc-in [:android-af :passkey-registration :step] :error)
             (assoc-in [:android-af :passkey-registration :error-message] (str error)))}))
+
+;; Handles back navigation within the registration page.
+;; :entry-picker → reverts to :group-picker (stays on same page)
+;; :group-picker → closes db and pops the pages-stack (returns to home)
+(reg-event-fx
+ :android-pk-registration/back
+ (fn [{:keys [db]} _]
+   (let [step (get-in db [:android-af :passkey-registration :step] :group-picker)]
+     (condp = step
+       :entry-picker
+       {:db (assoc-in db [:android-af :passkey-registration :step] :group-picker)}
+
+       :group-picker
+       {:fx [[:dispatch [:android-af/close-current-db]]
+             [:dispatch [:android-af-common/previous-page]]]}
+
+       {:fx [[:dispatch [:android-af-common/previous-page]]]}))))
 
 ;; Navigate back to home after user dismisses the error view.
 ;; Also cancels PasskeyActivity (RESULT_CANCELED) — needed when save failed and the activity
