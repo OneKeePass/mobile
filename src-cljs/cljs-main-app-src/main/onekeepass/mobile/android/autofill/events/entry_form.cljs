@@ -157,7 +157,10 @@
                                          (fn [api-response]
                                            (when-not (on-error api-response)
                                              ;; After autofill, we lock the opened database
-                                             (dispatch [:android-af-common/lock-kdbx]))))
+                                             #_(dispatch [:android-af-common/lock-kdbx])
+                                             ;; After autofill, we close the opened database to be cosistent with passkey
+                                             (dispatch [:android-af/close-current-db])
+                                             )))
      {})))
 
 ;;;;;;;;;;;;;;;;;;;;; OTP ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

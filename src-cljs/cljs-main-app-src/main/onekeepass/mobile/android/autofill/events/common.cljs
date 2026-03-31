@@ -112,7 +112,8 @@
   (cond
     ;; Lock the opened db before navigating back to the home page
     (= current-page-id ENTRY_LIST_PAGE_ID)
-    (do (dispatch [:android-af-common/lock-kdbx])
+    (do #_(dispatch [:android-af-common/lock-kdbx])
+        (dispatch [:android-af/close-current-db])
         (dispatch [:android-af-common/previous-page]))
 
     ;; Close the opened db when navigating back from the passkey assertion page
