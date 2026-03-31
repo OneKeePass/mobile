@@ -6,7 +6,7 @@
                                                              PASSKEY_ASSERTION_PAGE_ID
                                                              to-page]]
    [onekeepass.mobile.background :as bg]
-   [onekeepass.mobile.events.common :refer [on-ok]]
+   [onekeepass.mobile.events.common :refer [on-error on-ok]]
    [re-frame.core :refer [dispatch reg-event-fx reg-fx reg-sub subscribe]]))
 
 ;; ── Public API (for UI — no direct dispatch/subscribe in UI code) ─────────────
@@ -24,10 +24,40 @@
  (fn [db _]
    (get-in db [:android-af :passkey-assertion :items] [])))
 
-(reg-sub
- :android-pk-assertion/rp-id
- (fn [db _]
-   (get-in db [:android-af :passkey-assertion :rp-id])))
+#_(reg-sub
+   :android-pk-assertion/rp-id
+   (fn [db _]
+     (get-in db [:android-af :passkey-assertion :rp-id])))
+
+
+(reg-event-fx
+ :android-pk/check-assertion-context
+ (fn [{:keys [db]} _]
+   (println "Active db is" (android-af-active-db-key db))
+   ;; Ensure that any previous values are reset on this launch
+   {:db (-> db (assoc-in [:android-af :passkey-assertion] {}))
+    :fx [[:bg/android-get-assertion-context nil]]}))
+
+(reg-fx
+ :bg/android-get-assertion-context
+ (fn [_]
+   (bg/android-get-passkey-context
+    (fn [response]
+      (println "bg/android-get-assertion-context response" response)
+      (dispatch [:android-pk/assertion-context-loaded (on-ok response)])))))
+
+(reg-event-fx
+ :android-pk/assertion-context-loaded
+ (fn [{:keys [db]} [_ {:keys [rp-id allow-credential-ids client-data-hash-b64url client-data-json-b64url] :as context}]]
+   (println "android-pk/assertion-context-loaded" context)
+   (let [assertion-rp-id rp-id
+         allow-ids (or allow-credential-ids [])]
+     {:db (-> db
+              (assoc-in [:android-af :passkey-assertion :rp-id] assertion-rp-id)
+              (assoc-in [:android-af :passkey-assertion :allow-credential-ids] allow-ids)
+              (assoc-in [:android-af :passkey-assertion :client-data-hash-b64url] client-data-hash-b64url)
+              (assoc-in [:android-af :passkey-assertion :client-data-json-b64url] client-data-json-b64url))
+      :fx [[:dispatch [:android-pk-assertion/fetch assertion-rp-id allow-ids]]]})))
 
 ;; ── Shared context check (routes to assertion or registration) ────────────────
 
@@ -38,7 +68,7 @@
 ;; Returns nil context when launched as regular password autofill.
 (reg-event-fx
  :android-pk/check-context
- (fn [db _]
+ (fn [{:keys [db]} _]
    ;; Ensure that any previous values are reset on this launch
    {:db (-> db
             (assoc-in [:android-af :passkey-assertion] {})
@@ -70,13 +100,25 @@
 
      :else {})))
 
+
+#_(reg-event-fx
+   :android-pk/load-assertion-context
+   (fn [{:keys [db]} _]
+     ;; Ensure that any previous values are reset on this launch
+     {:db (-> db
+              (assoc-in [:android-af :passkey-assertion] {}))
+
+      :fx [[:bg/android-get-passkey-context nil]]}))
+
+
+
 ;; ── Assertion events ──────────────────────────────────────────────────────────
 
-(reg-event-fx
- :android-pk-assertion/load-passkeys
- (fn [{:keys [db]} [_ rp-id allow-credential-ids]]
-   {:db (assoc-in db [:android-af :passkey-assertion :rp-id] rp-id)
-    :fx [[:dispatch [:android-pk-assertion/fetch rp-id allow-credential-ids]]]}))
+#_(reg-event-fx
+   :android-pk-assertion/load-passkeys
+   (fn [{:keys [db]} [_ rp-id allow-credential-ids]]
+     {:db (assoc-in db [:android-af :passkey-assertion :rp-id] rp-id)
+      :fx [[:dispatch [:android-pk-assertion/fetch rp-id allow-credential-ids]]]}))
 
 (reg-event-fx
  :android-pk-assertion/fetch
@@ -92,6 +134,7 @@
 (reg-event-fx
  :android-pk-assertion/loaded
  (fn [{:keys [db]} [_ items]]
+   (println ":android-pk-assertion/loaded called with items" items)
    {:db (assoc-in db [:android-af :passkey-assertion :items] items)
     :fx [[:dispatch-passkey-assertion-page nil]]}))
 
@@ -109,9 +152,8 @@
              (fn [response]
                (println "bg/android-complete-passkey-assertion response" response)
                ;; Activity already finished by Rust→Kotlin callback on success.
-               (on-ok response
-                      #_(fn [error]
-                        (println "passkey assertion error:" error))))]]]})))
+               (when-not (on-error response)
+                 (dispatch [:android-af/close-opened-db db-key])))]]]})))
 
 ;; ── Effects ───────────────────────────────────────────────────────────────────
 

@@ -33,6 +33,8 @@
 ;; System back action handler (Android)
 (def ^:private back-handler (atom nil))
 
+(def ^:private android-af-context-mode-holder (atom nil))
+
 (defn- main-content []
   (fn []
     (let [theme-name (use-color-scheme)]
@@ -42,8 +44,8 @@
         (react-use-effect
          (fn []
            ;; event to load all available keyfiles to use as options in a select modal dialog
-           (android-af-cmn-events/sync-initialize)
-          
+           (android-af-cmn-events/sync-initialize @android-af-context-mode-holder) 
+
            (reset! back-handler (.addEventListener rnc/rn-back-handler "hardwareBackPress" hardware-back-pressed))
            ;;(println "Android af back-handler is registered ")
            ;; Returns a fn
@@ -60,6 +62,16 @@
 ;; This is the entry point (from onekeepass/mobile/core.cljs) for Android AutoFill
 ;; Android AutoFill shares the same '@re-frame.db/app-db' 
 ;; and also some events (loading app preference ? - See fn 'init-calls') from the main app
-(defn app-root []
+(defn app-root [{:keys [androidAutofill androidPasskeyMode] :as options}]
+  ;;(println "==== The app-root options" options)
+  (reset! android-af-context-mode-holder (cond
+                                           androidAutofill
+                                           :password-af-context
+
+                                           (= androidPasskeyMode "assertion")
+                                           :passkey-assertion-context
+
+                                           (= androidPasskeyMode "registration")
+                                           :passkey-registration-context))
   [rnc/gh-gesture-handler-root-view {:style {:flex 1}}
    [:f> main-content]])

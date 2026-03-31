@@ -143,9 +143,9 @@
                                     ;; Passkey assertion { androidPasskeyMode: 'assertion', rootTag: 31 }
                                     ;; Passkey registration { androidPasskeyMode: 'registration', rootTag: 51 }
 
-                                    (let [{:keys [androidAutofill androidPasskeyMode] :as _options} (js->clj props :keywordize-keys true)]
+                                    (let [{:keys [androidAutofill androidPasskeyMode] :as options} (js->clj props :keywordize-keys true)]
                                       (if (or androidAutofill androidPasskeyMode)
-                                        (r/as-element [android-core/app-root])
+                                        (r/as-element [android-core/app-root options])
                                         (r/as-element [app-root]))))))
 
 (defn init []
