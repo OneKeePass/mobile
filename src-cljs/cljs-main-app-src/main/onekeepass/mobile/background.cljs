@@ -949,15 +949,14 @@
                       :convert-response-fn transform-response-passkey-field-names))
 
 (defn android-start-passkey-registration
-  "Calls Rust FFI passkey_complete_registration — creates key pair, stores passkey in
-   in-memory KDBX, builds the RegistrationResponseJSON, and calls the Kotlin callback
-   (saves DB + PendingIntentHandler + activity.finish) directly via uniffi.
+  "Calls Rust FFI passkey_start_registration — creates key pair, stores passkey in
+   in-memory KDBX, and stores the RegistrationResponseJSON for later retrieval.
    Returns {:ok nil} on success.
    client-data-json-b64url is nil on Chrome/Brave path, non-nil on Firefox path."
   [org-db-key rp-id rp-name user-name user-handle-b64url
    client-data-hash-b64url client-data-json-b64url
    entry-uuid new-entry-name group-uuid new-group-name dispatch-fn]
-  (android-invoke-api "passkey_complete_registration"
+  (android-invoke-api "passkey_start_registration"
                       (transform-request-passkey-field-names
                        {:org-db-key org-db-key
                         :rp-id rp-id

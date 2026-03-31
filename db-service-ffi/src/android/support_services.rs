@@ -50,7 +50,7 @@ impl AndroidSupportServiceExtra {
 
             "passkey_find_matching" => self.passkey_find_matching(json_args),
             "passkey_complete_assertion" => self.passkey_complete_assertion(json_args),
-            "passkey_complete_registration" => self.passkey_complete_registration(json_args),
+            "passkey_start_registration" => self.passkey_start_registration(json_args),
             "passkey_get_db_groups" => self.passkey_get_db_groups(json_args),
             "passkey_get_group_entries" => self.passkey_get_group_entries(json_args),
 
@@ -396,12 +396,11 @@ impl AndroidSupportServiceExtra {
     }
 
     // Creates a passkey key pair, stores it into the in-memory KDBX, builds the
-    // complete RegistrationResponseJSON, then calls the Kotlin callback
-    // (AndroidApiService.complete_passkey_registration) which saves the DB to disk,
-    // calls PendingIntentHandler, and finishes PasskeyActivity.
+    // RegistrationResponseJSON, and stores it via store_passkey_registration_response
+    // for the ClojureScript layer to save the DB and finish PasskeyActivity.
     // Returns null to ClojureScript on success.
-    // Called from ClojureScript via android-invoke-api "passkey_complete_registration".
-    fn passkey_complete_registration(&self, json_args: &str) -> ResponseJson {
+    // Called from ClojureScript via android-invoke-api "passkey_start_registration".
+    fn passkey_start_registration(&self, json_args: &str) -> ResponseJson {
         let inner = || -> OkpResult<()> {
             let (
                 org_db_key,
@@ -470,7 +469,7 @@ impl AndroidSupportServiceExtra {
             passkey::store_passkey_entry(&org_db_key, passkey_info)?;
 
             debug!(
-                "passkey_complete_registration: passkey stored in-memory for db_key {}",
+                "passkey_start_registration: passkey stored in-memory for db_key {}",
                 &org_db_key
             );
 
@@ -484,14 +483,6 @@ impl AndroidSupportServiceExtra {
                         org_db_key: org_db_key.clone(),
                     },
                 )?;    
-            
-            // crate::android::callback_services::AndroidApiCallbackImpl::api_service()
-            //     .complete_passkey_registration(
-            //         crate::android::callback_services::AndroidPasskeyRegistrationCallbackData {
-            //             registration_response_json: reg_json,
-            //             org_db_key: org_db_key.clone(),
-            //         },
-            //     )?;
             
             Ok(())
         };
