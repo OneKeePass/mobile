@@ -84,6 +84,7 @@ class PasskeyModule(reactContext: ReactApplicationContext) :
                     json.put("user_handle_b64url", PasskeyRequestStore.registrationUserHandleB64url)
                     json.put("client_data_hash_b64url", PasskeyRequestStore.registrationClientDataHashB64url)
                     json.put("client_data_json_b64url", PasskeyRequestStore.registrationClientDataJsonB64url ?: JSONObject.NULL)
+                    json.put("algorithm", PasskeyRequestStore.registrationAlgorithm)
                 }
             }
 

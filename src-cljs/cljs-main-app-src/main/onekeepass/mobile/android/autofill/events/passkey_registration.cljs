@@ -117,7 +117,8 @@
 (reg-event-fx
  :android-pk/registration-context-loaded
  (fn [{:keys [db]} [_ {:keys [rp-id rp-name user-name user-handle-b64url
-                               client-data-hash-b64url client-data-json-b64url] :as context}]]
+                               client-data-hash-b64url client-data-json-b64url
+                               algorithm] :as context}]]
    (println "android-pk/registration-context-loaded" context)
    (let [db-key (android-af-active-db-key db)]
      {:db (-> db
@@ -126,7 +127,8 @@
               (assoc-in [:android-af :passkey-registration :user-name] user-name)
               (assoc-in [:android-af :passkey-registration :user-handle-b64url] user-handle-b64url)
               (assoc-in [:android-af :passkey-registration :client-data-hash-b64url] client-data-hash-b64url)
-              (assoc-in [:android-af :passkey-registration :client-data-json-b64url] client-data-json-b64url))
+              (assoc-in [:android-af :passkey-registration :client-data-json-b64url] client-data-json-b64url)
+              (assoc-in [:android-af :passkey-registration :algorithm] (or algorithm -7)))
       :fx [[:bg/android-passkey-get-db-groups [db-key]]]})))
 
 ;; Dispatched by the shared :android-pk/context-loaded handler (in passkey_assertion ns)
@@ -144,7 +146,9 @@
             (assoc-in [:android-af :passkey-registration :client-data-hash-b64url]
                       (:client-data-hash-b64url context))
             (assoc-in [:android-af :passkey-registration :client-data-json-b64url]
-                      (:client-data-json-b64url context)))}))
+                      (:client-data-json-b64url context))
+            (assoc-in [:android-af :passkey-registration :algorithm]
+                      (or (:algorithm context) -7)))}))
 
 ;; Groups loaded — store them, set step to :group-picker and navigate to registration page.
 (reg-event-fx
@@ -204,10 +208,11 @@
          user-hdl   (get-in db [:android-af :passkey-registration :user-handle-b64url])
          hash       (get-in db [:android-af :passkey-registration :client-data-hash-b64url])
          cdj        (get-in db [:android-af :passkey-registration :client-data-json-b64url])
-         group      (get-in db [:android-af :passkey-registration :selected-group])]
+         group      (get-in db [:android-af :passkey-registration :selected-group])
+         algorithm  (get-in db [:android-af :passkey-registration :algorithm] -7)]
      {:fx [[:bg/android-complete-passkey-registration
             [org-db-key rp-id rp-name user-name user-hdl hash cdj
-             (:entry-uuid entry) nil (:group-uuid group) nil]]]})))
+             (:entry-uuid entry) nil (:group-uuid group) nil algorithm]]]})))
 
 ;; User chose to create a new entry.
 (reg-event-fx
@@ -222,12 +227,13 @@
          cdj            (get-in db [:android-af :passkey-registration :client-data-json-b64url])
          group          (get-in db [:android-af :passkey-registration :selected-group])
          new-entry-name (get-in db [:android-af :passkey-registration :new-entry-name] "")
-         new-group-name (not-empty (get-in db [:android-af :passkey-registration :new-group-name] ""))]
+         new-group-name (not-empty (get-in db [:android-af :passkey-registration :new-group-name] ""))
+         algorithm      (get-in db [:android-af :passkey-registration :algorithm] -7)]
      {:fx [[:bg/android-complete-passkey-registration
             [org-db-key rp-id rp-name user-name user-hdl hash cdj
              nil new-entry-name
              (when-not new-group-name (:group-uuid group))
-             new-group-name]]]})))
+             new-group-name algorithm]]]})))
 
 (reg-event-fx
  :android-pk-registration/registration-failed
@@ -307,12 +313,13 @@
 (reg-fx
  :bg/android-complete-passkey-registration
  (fn [[org-db-key rp-id rp-name user-name user-handle-b64url client-data-hash-b64url
-       client-data-json-b64url entry-uuid new-entry-name group-uuid new-group-name]]
+       client-data-json-b64url entry-uuid new-entry-name group-uuid new-group-name algorithm]]
 
    ;; Does the first step of registration
    (bg/android-start-passkey-registration org-db-key rp-id rp-name user-name user-handle-b64url
                                           client-data-hash-b64url client-data-json-b64url
                                           entry-uuid new-entry-name group-uuid new-group-name
+                                          algorithm
 
                                           (fn [api-response]
                                             (when-not (on-error api-response #((dispatch [:android-pk-registration/registration-failed %])))

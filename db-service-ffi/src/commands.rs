@@ -248,6 +248,8 @@ pub enum CommandArg {
         group_uuid: Option<String>,
         new_group_name: Option<String>,
         client_data_json_b64url: Option<String>,
+        // COSE algorithm: -7 (ES256/P-256), -8 (EdDSA/Ed25519), -257 (RS256/RSA-2048). Default -7.
+        algorithm: Option<i64>,
     },
 
     // Passkey creation with pre-computed clientDataHash (iOS autofill)
@@ -257,6 +259,8 @@ pub enum CommandArg {
         user_name: String,
         user_handle_b64url: String,
         client_data_hash_b64url: String,
+        // COSE algorithm: -7 (ES256/P-256), -8 (EdDSA/Ed25519), -257 (RS256/RSA-2048). Default -7.
+        algorithm: Option<i64>,
     },
 
     // Pending passkey — store (extension side). Many unique required fields.

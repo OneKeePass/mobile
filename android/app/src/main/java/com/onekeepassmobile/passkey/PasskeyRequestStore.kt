@@ -2,6 +2,7 @@ package com.onekeepassmobile.passkey
 
 import android.util.Base64
 import android.util.Log
+import org.json.JSONArray
 import org.json.JSONObject
 import java.security.MessageDigest
 
@@ -45,6 +46,9 @@ object PasskeyRequestStore {
     var registrationUserHandleB64url: String = ""
     var registrationClientDataHashB64url: String = ""
     var registrationClientDataJsonB64url: String? = null
+
+    // COSE algorithm selected from pubKeyCredParams: -7 (ES256), -8 (EdDSA), -257 (RS256).
+    var registrationAlgorithm: Int = -7
 
     // Set by completePasskeyRegistration if saveKdbxViaPfd fails.
     // Read and cleared by getRegistrationSaveError @ReactMethod.
@@ -137,6 +141,7 @@ object PasskeyRequestStore {
             registrationRpName = rp?.optString("name", registrationRpId) ?: registrationRpId
             registrationUserName = user?.optString("name", "") ?: ""
             registrationUserHandleB64url = user?.optString("id", "") ?: ""
+            registrationAlgorithm = selectAlgorithm(json.optJSONArray("pubKeyCredParams"))
 
             if (providedClientDataHash != null) {
                 registrationClientDataHashB64url = Base64.encodeToString(
@@ -196,9 +201,22 @@ object PasskeyRequestStore {
         registrationClientDataJsonB64url = null
         registrationSaveError = null
         registrationResponseJson = ""
+        registrationAlgorithm = -7
     }
 
     // ── Private helpers ───────────────────────────────────────────────────
+
+    // Picks the first COSE algorithm in the RP's preferred order that we support.
+    // Falls back to -7 (ES256/P-256) if none match.
+    private fun selectAlgorithm(params: JSONArray?): Int {
+        if (params == null) return -7
+        val supported = setOf(-7, -8, -257)
+        for (i in 0 until params.length()) {
+            val alg = params.optJSONObject(i)?.optInt("alg", 0) ?: 0
+            if (alg in supported) return alg
+        }
+        return -7
+    }
 
     private fun buildClientDataJson(type: String, challenge: String, rpId: String): ByteArray {
         return JSONObject().apply {

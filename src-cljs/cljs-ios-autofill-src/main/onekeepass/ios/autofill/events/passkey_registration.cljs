@@ -105,7 +105,8 @@
    {:fx [[:bg/get-pending-passkey-registration-context nil]]}))
 
 ;; Stores the registration context returned by getPendingPasskeyRegistrationContext.
-;; context is {:rp-id "..." :user-name "..." :user-handle-b64url "..." :client-data-hash-b64url "..."} or nil.
+;; context is {:rp-id "..." :user-name "..." :user-handle-b64url "..."
+;;             :client-data-hash-b64url "..." :algorithm -7|-8} or nil.
 (reg-event-fx
  :passkey-registration/context-loaded
  (fn [{:keys [db]} [_ context]]
@@ -114,7 +115,8 @@
               (assoc-in [:passkey-registration :rp-id] (:rp-id context))
               (assoc-in [:passkey-registration :user-name] (:user-name context))
               (assoc-in [:passkey-registration :user-handle-b64url] (:user-handle-b64url context))
-              (assoc-in [:passkey-registration :client-data-hash-b64url] (:client-data-hash-b64url context)))
+              (assoc-in [:passkey-registration :client-data-hash-b64url] (:client-data-hash-b64url context))
+              (assoc-in [:passkey-registration :algorithm] (or (:algorithm context) -7)))
           db)}))
 
 ;; Called after DB unlock when in registration mode. Fetches groups from the opened database.
@@ -182,10 +184,11 @@
          user-name  (get-in db [:passkey-registration :user-name])
          user-hdl   (get-in db [:passkey-registration :user-handle-b64url])
          hash       (get-in db [:passkey-registration :client-data-hash-b64url])
-         group      (get-in db [:passkey-registration :selected-group])]
+         group      (get-in db [:passkey-registration :selected-group])
+         algorithm  (get-in db [:passkey-registration :algorithm] -7)]
      {:fx [[:bg/complete-passkey-registration
             [org-db-key rp-id rp-id user-name user-hdl hash
-             (:entry-uuid entry) nil (:group-uuid group) nil]]]})))
+             (:entry-uuid entry) nil (:group-uuid group) nil algorithm]]]})))
 
 ;; User chose to create a new entry — complete registration with new-entry-name.
 ;; When new-group-name is set, pass it as the last arg and nil for group-uuid so
@@ -201,12 +204,13 @@
          hash           (get-in db [:passkey-registration :client-data-hash-b64url])
          group          (get-in db [:passkey-registration :selected-group])
          new-entry-name (get-in db [:passkey-registration :new-entry-name] "")
-         new-group-name (not-empty (get-in db [:passkey-registration :new-group-name] ""))]
+         new-group-name (not-empty (get-in db [:passkey-registration :new-group-name] ""))
+         algorithm      (get-in db [:passkey-registration :algorithm] -7)]
      {:fx [[:bg/complete-passkey-registration
             [org-db-key rp-id rp-id user-name user-hdl hash
              nil new-entry-name
              (when-not new-group-name (:group-uuid group))
-             new-group-name]]]})))
+             new-group-name algorithm]]]})))
 
 ;; Called after completePasskeyRegistration returns — extension is already completed by Swift.
 (reg-event-fx
@@ -257,10 +261,10 @@
 (reg-fx
  :bg/complete-passkey-registration
  (fn [[org-db-key rp-id rp-name user-name user-handle-b64url client-data-hash-b64url
-       entry-uuid new-entry-name group-uuid new-group-name]]
+       entry-uuid new-entry-name group-uuid new-group-name algorithm]]
    (bg/complete-passkey-registration
     org-db-key rp-id rp-name user-name user-handle-b64url client-data-hash-b64url
-    entry-uuid new-entry-name group-uuid new-group-name
+    entry-uuid new-entry-name group-uuid new-group-name algorithm
     (fn [response]
       (println "bg/complete-passkey-registration response" response)
       (if-let [_ok (on-ok response

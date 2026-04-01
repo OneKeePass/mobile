@@ -952,10 +952,11 @@
   "Calls Rust FFI passkey_start_registration — creates key pair, stores passkey in
    in-memory KDBX, and stores the RegistrationResponseJSON for later retrieval.
    Returns {:ok nil} on success.
-   client-data-json-b64url is nil on Chrome/Brave path, non-nil on Firefox path."
+   client-data-json-b64url is nil on Chrome/Brave path, non-nil on Firefox path.
+   algorithm is the COSE alg integer (-7, -8, -257); nil means Rust will default to -7."
   [org-db-key rp-id rp-name user-name user-handle-b64url
    client-data-hash-b64url client-data-json-b64url
-   entry-uuid new-entry-name group-uuid new-group-name dispatch-fn]
+   entry-uuid new-entry-name group-uuid new-group-name algorithm dispatch-fn]
   (android-invoke-api "passkey_start_registration"
                       (transform-request-passkey-field-names
                        {:org-db-key org-db-key
@@ -968,7 +969,8 @@
                         :entry-uuid (when-not (empty? entry-uuid) entry-uuid)
                         :new-entry-name (when-not (empty? new-entry-name) new-entry-name)
                         :group-uuid (when-not (empty? group-uuid) group-uuid)
-                        :new-group-name (when-not (empty? new-group-name) new-group-name)})
+                        :new-group-name (when-not (empty? new-group-name) new-group-name)
+                        :algorithm algorithm})
                       dispatch-fn
                       :convert-request false
                       :convert-response-fn transform-response-passkey-field-names))

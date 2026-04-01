@@ -322,9 +322,10 @@
 
 (defn complete-passkey-registration
   "Bundled passkey registration: creates key pair, stores pending record, and completes the iOS request.
-   Calls autofill-invoke-api passkey_complete_registration which does all 3 steps in Rust."
+   Calls autofill-invoke-api passkey_complete_registration which does all 3 steps in Rust.
+   algorithm is the COSE alg integer (-7, -8); nil means Rust will default to -7."
   [org-db-key rp-id rp-name user-name user-handle-b64url client-data-hash-b64url
-   entry-uuid new-entry-name group-uuid new-group-name dispatch-fn]
+   entry-uuid new-entry-name group-uuid new-group-name algorithm dispatch-fn]
   (autofill-invoke-api "passkey_complete_registration"
                        (transform-request-passkey-field-names
                         {:org-db-key org-db-key
@@ -336,7 +337,8 @@
                          :entry-uuid (when-not (empty? entry-uuid) entry-uuid)
                          :new-entry-name (when-not (empty? new-entry-name) new-entry-name)
                          :group-uuid (when-not (empty? group-uuid) group-uuid)
-                         :new-group-name (when-not (empty? new-group-name) new-group-name)})
+                         :new-group-name (when-not (empty? new-group-name) new-group-name)
+                         :algorithm algorithm})
                        dispatch-fn
                        :convert-request false))
 

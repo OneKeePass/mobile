@@ -531,6 +531,7 @@ impl super::IosAppGroupSupportService {
                 group_uuid,
                 new_group_name,
                 _,
+                algorithm,
             ) = parse_command_args_or_err!(
                 json_args,
                 PasskeyCompleteRegistrationArg {
@@ -544,7 +545,8 @@ impl super::IosAppGroupSupportService {
                     new_entry_name,
                     group_uuid,
                     new_group_name,
-                    client_data_json_b64url
+                    client_data_json_b64url,
+                    algorithm
                 }
             );
 
@@ -558,6 +560,7 @@ impl super::IosAppGroupSupportService {
                 &user_name,
                 &user_handle_b64url,
                 &hash_bytes,
+                algorithm.unwrap_or(-7),
             )?;
 
             // Step 2: Store pending record (writes to disk + registers identity)
@@ -756,7 +759,7 @@ impl super::IosAppGroupSupportService {
     pub(super) fn passkey_create_with_hash(&self, json_args: &str) -> ResponseJson {
         let inner =
             || -> OkpResult<onekeepass_core::passkey_crypto::PasskeyCreationWithHashResult> {
-                let (rp_id, rp_name, user_name, user_handle_b64url, client_data_hash_b64url) =
+                let (rp_id, rp_name, user_name, user_handle_b64url, client_data_hash_b64url, algorithm) =
                     parse_command_args_or_err!(
                         json_args,
                         PasskeyCreateWithHashArg {
@@ -764,7 +767,8 @@ impl super::IosAppGroupSupportService {
                             rp_name,
                             user_name,
                             user_handle_b64url,
-                            client_data_hash_b64url
+                            client_data_hash_b64url,
+                            algorithm
                         }
                     );
 
@@ -778,6 +782,7 @@ impl super::IosAppGroupSupportService {
                     &user_name,
                     &user_handle_b64url,
                     &hash_bytes,
+                    algorithm.unwrap_or(-7),
                 )?)
             };
         result_json_str(inner())

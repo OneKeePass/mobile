@@ -40,6 +40,8 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
   static var pendingPasskeyRegistrationUserName: String?
   static var pendingPasskeyRegistrationUserHandle: Data?
   static var pendingPasskeyRegistrationClientDataHash: Data?
+  // COSE algorithm selected from supportedAlgorithms: -7 (ES256), -8 (EdDSA). Default -7.
+  static var pendingPasskeyRegistrationAlgorithm: Int = -7
   static var isPasskeyRegistrationMode: Bool = false
   
   static var prepareViewCalled: Bool = false
@@ -94,7 +96,8 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
     Self.pendingPasskeyCredentialIds = []
     Self.pendingPasskeyRegistrationClientDataHash = nil
     Self.pendingPasskeyRegistrationRpId = nil
-    
+    Self.pendingPasskeyRegistrationAlgorithm = -7
+
     Self.pendingPasskeyRegistrationUserHandle = nil
     Self.pendingPasskeyRegistrationUserName =  nil
     Self.pendingPasskeyRpId = nil
@@ -135,6 +138,21 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
     extContext!.completeRequest(withSelectedCredential: passwordCredential, completionHandler: nil)
   }
  
+  // Picks the first COSE algorithm in the RP's preferred order that we support.
+  // iOS ASPasskeyCredentialRequest.supportedAlgorithms exposes ES256 and EdDSA.
+  // RSA (-257) is not available via iOS Passkey API.
+  @available(iOS 17.0, *)
+  static func selectPreferredAlgorithm(_ algorithms: [ASCOSEAlgorithmIdentifier]) -> Int {
+    for alg in algorithms {
+      switch alg {
+      case .ES256: return -7
+      case .EdDSA: return -8
+      default: break
+      }
+    }
+    return -7
+  }
+
   @available(iOS 17.0, *)
   static func completePasskeyAssertion(
     credentialIdB64url: String,
@@ -418,9 +436,10 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
     Self.pendingPasskeyRegistrationUserName = identity.userName
     Self.pendingPasskeyRegistrationUserHandle = identity.userHandle
     Self.pendingPasskeyRegistrationClientDataHash = request.clientDataHash
+    Self.pendingPasskeyRegistrationAlgorithm = Self.selectPreferredAlgorithm(request.supportedAlgorithms)
     Self.isPasskeyRegistrationMode = true
 
-    logger.debug("CredentialProviderViewController - passkey registration for rpId=\(identity.relyingPartyIdentifier), user=\(identity.userName)")
+    logger.debug("CredentialProviderViewController - passkey registration for rpId=\(identity.relyingPartyIdentifier), user=\(identity.userName), algorithm=\(Self.pendingPasskeyRegistrationAlgorithm)")
   }
 
   /*

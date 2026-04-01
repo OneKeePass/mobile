@@ -414,6 +414,7 @@ impl AndroidSupportServiceExtra {
                 group_uuid,
                 new_group_name,
                 client_data_json_b64url,
+                algorithm,
             ) = parse_command_args_or_err!(
                 json_args,
                 PasskeyCompleteRegistrationArg {
@@ -427,7 +428,8 @@ impl AndroidSupportServiceExtra {
                     new_entry_name,
                     group_uuid,
                     new_group_name,
-                    client_data_json_b64url
+                    client_data_json_b64url,
+                    algorithm
                 }
             );
 
@@ -440,6 +442,7 @@ impl AndroidSupportServiceExtra {
                 &user_name,
                 &user_handle_b64url,
                 &hash_bytes,
+                algorithm.unwrap_or(-7),
             )?;
 
             let entry_uuid_parsed = entry_uuid
@@ -554,7 +557,7 @@ fn build_registration_response_json(
         "authenticatorData": creation.auth_data_b64url,
         "transports": ["internal"],
         "publicKey": creation.public_key_b64url,
-        "publicKeyAlgorithm": -7_i64,
+        "publicKeyAlgorithm": creation.algorithm,
     });
     if let Some(cdj) = client_data_json_b64url {
         response["clientDataJSON"] = serde_json::Value::String(cdj.to_string());

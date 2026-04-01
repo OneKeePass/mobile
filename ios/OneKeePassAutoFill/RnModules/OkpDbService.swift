@@ -116,7 +116,8 @@ class OkpDbService: NSObject {
       .base64URLEncodedString() ?? ""
     let hashB64url = CredentialProviderViewController.pendingPasskeyRegistrationClientDataHash?
       .base64URLEncodedString() ?? ""
-    resolve("{\"ok\":{\"rp_id\":\"\(rpId)\",\"user_name\":\"\(userName)\",\"user_handle_b64url\":\"\(userHandle)\",\"client_data_hash_b64url\":\"\(hashB64url)\"}}")
+    let algorithm = CredentialProviderViewController.pendingPasskeyRegistrationAlgorithm
+    resolve("{\"ok\":{\"rp_id\":\"\(rpId)\",\"user_name\":\"\(userName)\",\"user_handle_b64url\":\"\(userHandle)\",\"client_data_hash_b64url\":\"\(hashB64url)\",\"algorithm\":\(algorithm)}}")
   }
 
   // completePasskeyRegistration has been removed.
