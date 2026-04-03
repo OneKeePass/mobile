@@ -131,7 +131,7 @@
  :bg-load-autofill-init-data
  (fn []
    (bg/load-autofill-init-data (fn [api-response]
-                                 (println "bg/load-autofill-init-data api-response" api-response)
+                                 #_(println "bg/load-autofill-init-data api-response" api-response)
                                  (when-let [af-init-data (on-ok api-response)]
                                    (dispatch [:autofill-init-data-loaded af-init-data]))))))
 

@@ -239,7 +239,7 @@
  (fn [_]
    (bg/get-pending-passkey-registration-context
     (fn [response]
-      (println "REGISTRATION - bg/get-pending-passkey-registration-context handles response" response)
+      #_(println "REGISTRATION - bg/get-pending-passkey-registration-context handles response" response)
       (dispatch [:passkey-registration/context-loaded (on-ok response)])))))
 
 (reg-fx
@@ -266,7 +266,7 @@
     org-db-key rp-id rp-name user-name user-handle-b64url client-data-hash-b64url
     entry-uuid new-entry-name group-uuid new-group-name algorithm
     (fn [response]
-      (println "bg/complete-passkey-registration response" response)
+      #_(println "bg/complete-passkey-registration response" response)
       (if-let [_ok (on-ok response
                           (fn [error]
                             (dispatch [:passkey-registration/registration-failed error])))]

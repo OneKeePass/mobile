@@ -25,7 +25,7 @@
 (reg-event-fx
  :load-language-data-start
  (fn [{:keys [_db]} [_event-id language-ids-vec callback-on-tr-load]]
-    (println "Event main :load-language-data-start is called")
+    #_(println "Event main :load-language-data-start is called")
    {:fx [[:bg-load-language-translations [language-ids-vec callback-on-tr-load]]]}))
 
 ;; Called after user changes the language selection
@@ -57,7 +57,7 @@
 (reg-event-fx
  :load-language-data-complete
  (fn [{:keys [_db]} [_event-id]]
-   (println "Event :load-language-data-complete called")
+   #_(println "Event :load-language-data-complete called")
    {:fx [[:dispatch [:common/load-language-translation-complete]]]}))
 
 (comment

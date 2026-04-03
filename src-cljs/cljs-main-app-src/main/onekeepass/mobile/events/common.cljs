@@ -18,7 +18,7 @@
   (dispatch-sync [:load-app-preference]))
 
 (defn- default-error-fn [error]
-  (println "API returned error: " error)
+  #_(println "API returned error: " error)
   (dispatch [:common/error-box-show 'apiError error])
   (dispatch [:common/message-modal-hide]))
 

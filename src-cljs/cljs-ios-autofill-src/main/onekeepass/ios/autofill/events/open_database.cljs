@@ -196,7 +196,7 @@
   (let [stored-credentials
         (on-ok api-response
                (fn [error]
-                 (println "The bg/stored-db-credentials-on-biometric-authentication call returned error " error)
+                 #_(println "The bg/stored-db-credentials-on-biometric-authentication call returned error " error)
                   ;; When Backend api 'stored-db-credentials-on-biometric-authentication' results in error 
                   ;; for whatever reason. Ideally should not happen!
                  (dispatch [:open-database/database-file-picked kdbx-file-info-m])))]
@@ -222,9 +222,9 @@
      (bg/authenticate-with-biometric
       (fn [api-response]
         (when-let [result (on-ok api-response
-                                 (fn [error]
+                                 (fn [_error]
                                    ;; As a fallback if there is any error in using biometric call. Not expected
-                                   (println "The bg/authenticate-with-biometric call returned error " error)
+                                   #_(println "The bg/authenticate-with-biometric call returned error " error)
                                    (dispatch [:open-database/database-file-picked kdbx-file-info-m])))]
 
           ;; The variable 'result' will have some valid when biometric call works 

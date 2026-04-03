@@ -7,7 +7,7 @@
    [re-frame.core :refer [dispatch reg-event-fx reg-fx reg-sub subscribe]]))
 
 (defn passkey-assertion-select [selection]
-  (println "Passkey assertion selected " selection)
+  #_(println "Passkey assertion selected " selection)
   (dispatch [:passkey-assertion/select selection]))
 
 (defn passkey-assertion-items []
@@ -41,7 +41,7 @@
 (reg-event-fx
  :passkey-assertion/context-loaded
  (fn [{:keys [db]} [_ context]]
-   (println "Context in :passkey-assertion/context-loaded" context)
+   #_(println "Context in :passkey-assertion/context-loaded" context)
    {:db (if context
           (-> db
               (assoc-in [:passkey-assertion :rp-id] (:rp-id context))
@@ -84,7 +84,7 @@
      {:fx [[:bg/complete-passkey-assertion
             [entry-uuid db-key hash
              (fn [response]
-               (println "bg/complete-passkey-assertion response" response)
+               #_(println "bg/complete-passkey-assertion response" response)
                ;; The extension is completed by the Rust/Swift callback; nothing more to do here.
                nil)]]]})))
 
@@ -95,7 +95,7 @@
  (fn [_]
    (bg/get-pending-passkey-context
     (fn [response]
-      (println "ASSERTION - bg/get-pending-passkey-context handles response" response)
+      #_(println "ASSERTION - bg/get-pending-passkey-context handles response" response)
       (dispatch [:passkey-assertion/context-loaded (on-ok response)])))))
 
 (reg-fx
@@ -106,5 +106,5 @@
 (reg-fx
  :bg/complete-passkey-assertion
  (fn [[entry-uuid db-key client-data-hash-b64url dispatch-fn]]
-   (println "bg/complete-passkey-assertion is called")
+   #_(println "bg/complete-passkey-assertion is called")
    (bg/complete-passkey-assertion db-key entry-uuid client-data-hash-b64url dispatch-fn)))

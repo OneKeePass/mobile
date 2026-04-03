@@ -119,7 +119,7 @@
  (fn [{:keys [db]} [_ {:keys [rp-id rp-name user-name user-handle-b64url
                                client-data-hash-b64url client-data-json-b64url
                                algorithm] :as context}]]
-   (println "android-pk/registration-context-loaded" context)
+   #_(println "android-pk/registration-context-loaded" context)
    (let [db-key (android-af-active-db-key db)]
      {:db (-> db
               (assoc-in [:android-af :passkey-registration :rp-id] rp-id)
@@ -271,7 +271,7 @@
 
 (reg-event-fx
  :android-pk-registration/save-kdbx
- (println ":android-pk-registration/save-kdbx called")
+ #_(println ":android-pk-registration/save-kdbx called")
  (fn [{:keys [db]} [_ _]]
    {:fx [[:dispatch [:common/message-modal-show nil 'saving]]
          [:android-pk-registration/bg-save-kdbx [(android-af-active-db-key db) false]]]}))
@@ -283,13 +283,13 @@
    (bg/save-kdbx db-key overwrite (fn [api-response]
                                     (dispatch [:common/message-modal-hide])
                                     (when-not (on-error api-response)
-                                      (println "In on-save-ok of :android-pk-registration/save-kdbx ")
+                                      #_(println "In on-save-ok of :android-pk-registration/save-kdbx ")
                                       (dispatch [:android-pk-registration/complete]))))))
 
 (reg-event-fx
  :android-pk-registration/complete
  (fn [{:keys [_db]} [_ _]]
-   (println ":android-pk-registration/complete is called ")
+   #_(println ":android-pk-registration/complete is called ")
    {:fx [[:bg/android-complete-passkey-registration-final]]}))
 
 ;; ── Effects ───────────────────────────────────────────────────────────────────
@@ -333,7 +333,7 @@
    (bg/android-complete-passkey-registration-final
     (fn [api-response]
       (when-not (on-error api-response)
-        (println "Passkey registration completed finally")
+        #_(println "Passkey registration completed finally")
         (dispatch [:android-af/close-current-db]))))))
 
 
@@ -343,7 +343,7 @@
  (fn [_]
    (bg/android-get-passkey-context
     (fn [response]
-      (println "bg/android-get-registration-context response" response)
+      #_(println "bg/android-get-registration-context response" response)
       (dispatch [:android-pk/registration-context-loaded (on-ok response)])))))
 
 (reg-fx

@@ -26,7 +26,7 @@
 (reg-event-fx
    :android-af-load-autofill-init-data
    (fn [{:keys [db]} [_event-id android-af-context-mode]]
-     (println "android-af-load-autofill-init-data is called with active-db" android-af-context-mode (cmn-events/active-db-key db))
+     #_(println "android-af-load-autofill-init-data is called with active-db" android-af-context-mode (cmn-events/active-db-key db))
      (let [open-db-keys (cmn-events/opened-db-keys db)
            ;; Silent handler: log errors only, no snackbar, no state dispatch (state already cleared below)
            silent-close-handler (fn [api-response] (cmn-events/on-error api-response))
@@ -99,7 +99,7 @@
   (dispatch [:android-af-common/next-page HOME_PAGE_ID "Home"]))
 
 (defn to-page [page-id title]
-  (println "calling to-page page-id title" page-id title)
+  #_(println "calling to-page page-id title" page-id title)
   (dispatch [:android-af-common/next-page page-id title]))
 
 (defn to-entry-form-page []
@@ -311,11 +311,11 @@
   [kdbx-file-info-m api-response]
   (let [stored-credentials (on-ok api-response
                                   (fn [error]
-                                    (println "The bg/stored-db-credentials-on-biometric-authentication call returned error " error)
+                                    #_(println "The bg/stored-db-credentials-on-biometric-authentication call returned error " error)
                                     ;; When Backend api 'stored-db-credentials-on-biometric-authentication' results in error 
                                     ;; for whatever reason. Ideally should not happen!
                                     (dispatch [:android-af/database-file-picked kdbx-file-info-m])))]
-    (println "Received stored-credentials " stored-credentials)
+    #_(println "Received stored-credentials " stored-credentials)
 
     (if (nil? stored-credentials)
       ;; Handles the situation the stored-credentials returned from backend api is None
@@ -332,7 +332,7 @@
    ;; Set the credentials fields in :open-database fields so that we can reuse the credentisals if repick is used
    ;; This repick may be asked if 'bg-load-kdbx' call response comes back with error 'FILE_NOT_FOUND' or 'PERMISSION_REQUIRED_TO_READ'
    ;; Particularly we see 'FILE_NOT_FOUND' error code when iCloud file sync is not yet happened 
-   (println "In  :android-af/open-database-db-open-credentials-retrieved " stored-credentials kdbx-file-info-m)
+   #_(println "In  :android-af/open-database-db-open-credentials-retrieved " stored-credentials kdbx-file-info-m)
    {:db (-> db
             (assoc-in [:android-af :open-database :password] password)
             (assoc-in [:android-af :open-database :key-file-name] key-file-name)
@@ -360,20 +360,20 @@
 (reg-fx
  :android-af/bg-authenticate-with-biometric-before-db-open
  (fn [[{:keys [full-file-name-uri] :as kdbx-file-info-m}]]
-   (println "android-af/bg-authenticate-with-biometric-before-db-open is called")
+   #_(println "android-af/bg-authenticate-with-biometric-before-db-open is called")
    (let [;; Need to use 'partial' to create a backend call response handler 
          ;; that holds 'kdbx-file-info-m' for later use 
          cr-response-handler (partial handle-db-credentials-response kdbx-file-info-m)]
-     (println "Going to call  authenticate-with-biometric   " kdbx-file-info-m)
+     #_(println "Going to call  authenticate-with-biometric   " kdbx-file-info-m)
      (bg/authenticate-with-biometric
       (fn [api-response]
         (when-let [result (on-ok api-response
-                                 (fn [error]
+                                 (fn [_error]
                                    ;; As a fallback if there is any error in using biometric call. Not expected
-                                   (println "The bg/authenticate-with-biometric call returned error " error)
+                                   #_(println "The bg/authenticate-with-biometric call returned error " error)
                                    (dispatch [:android-af/database-file-picked kdbx-file-info-m])))]
 
-          (println "Biometric auth is " result)
+          #_(println "Biometric auth is " result)
           ;; The variable 'result' will have some valid value when biometric call works 
           (if (= result const/BIOMETRIC-AUTHENTICATION-SUCCESS)
             ;; Retrieve the auth info for furthur use
@@ -403,7 +403,7 @@
 (reg-fx
  :android-af/bg-load-kdbx
  (fn [[db-file-name password key-file-name biometric-auth-used]]
-   (println "In android-af/bg-load-kdbx " db-file-name password key-file-name biometric-auth-used)
+   #_(println "In android-af/bg-load-kdbx " db-file-name password key-file-name biometric-auth-used)
    (bg/load-kdbx db-file-name password key-file-name biometric-auth-used
                  (fn [api-response]
                    (when-let [kdbx-loaded
@@ -436,7 +436,7 @@
  :android-af/kdbx-database-opened
  (fn [{:keys [db]} [_event-id {:keys [db-key _database-name] :as kdbx-loaded}]]
    (let [android-af-context-mode (get-in db [:android-af-context-mode])]
-     (println "In :android-af/kdbx-database-opened android-af-context-mode" android-af-context-mode)
+     #_(println "In :android-af/kdbx-database-opened android-af-context-mode" android-af-context-mode)
      ;; TODO: We need to add this opened db to the list, but Main app's current-db-file-name
      ;; is not be set and instead [:android-af :current-db-file-name] is set
      ;; The main app current-db-file-name is not set in db-opened

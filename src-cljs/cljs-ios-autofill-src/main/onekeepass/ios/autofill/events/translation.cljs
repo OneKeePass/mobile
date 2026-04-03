@@ -46,7 +46,7 @@
 (reg-event-fx
  :load-language-data-complete
  (fn [{:keys [db]} [_event-id]]
-   (println "Event :load-language-data-complete called")
+   #_(println "Event :load-language-data-complete called")
    {:fx [[:dispatch [:common/load-language-translation-complete]]]}))
 
 (comment

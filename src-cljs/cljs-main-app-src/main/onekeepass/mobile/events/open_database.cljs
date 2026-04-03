@@ -264,7 +264,7 @@
   [kdbx-file-info-m api-response]
   (let [stored-credentials (on-ok api-response
                                   (fn [error]
-                                    (println "The bg/stored-db-credentials-on-biometric-authentication call returned error " error)
+                                    #_(println "The bg/stored-db-credentials-on-biometric-authentication call returned error " error)
                                     ;; When Backend api 'stored-db-credentials-on-biometric-authentication' results in error 
                                     ;; for whatever reason. Ideally should not happen!
                                     (dispatch [:open-database-dialog-show kdbx-file-info-m])))]

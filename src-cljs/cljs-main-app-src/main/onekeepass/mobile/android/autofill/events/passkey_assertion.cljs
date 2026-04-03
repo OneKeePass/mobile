@@ -79,7 +79,7 @@
 (reg-event-fx
  :android-pk/context-loaded
  (fn [{:keys [db]} [_ context]]
-   (println "android-pk/context-loaded" context)
+   #_(println "android-pk/context-loaded" context)
    (cond
      (nil? context)
      {}
@@ -116,7 +116,7 @@
 (reg-event-fx
  :android-pk-assertion/loaded
  (fn [{:keys [db]} [_ items]]
-   (println ":android-pk-assertion/loaded called with items" items)
+   #_(println ":android-pk-assertion/loaded called with items" items)
    {:db (assoc-in db [:android-af :passkey-assertion :items] items)
     :fx [[:dispatch-passkey-assertion-page nil]]}))
 
@@ -132,7 +132,7 @@
      {:fx [[:bg/android-complete-passkey-assertion
             [entry-uuid db-key hash cdj
              (fn [response]
-               (println "bg/android-complete-passkey-assertion response" response)
+               #_(println "bg/android-complete-passkey-assertion response" response)
                ;; Activity already finished by Rust→Kotlin callback on success.
                (when-not (on-error response)
                  (dispatch [:android-af/close-opened-db db-key])))]]]})))
@@ -144,7 +144,7 @@
  (fn [_]
    (bg/android-get-passkey-context
     (fn [response]
-      (println "bg/android-get-passkey-context response" response)
+      #_(println "bg/android-get-passkey-context response" response)
       (dispatch [:android-pk/context-loaded (on-ok response)])))))
 
 (reg-fx
