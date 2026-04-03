@@ -138,19 +138,31 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
     extContext!.completeRequest(withSelectedCredential: passwordCredential, completionHandler: nil)
   }
  
-  // Picks the first COSE algorithm in the RP's preferred order that we support.
-  // iOS ASPasskeyCredentialRequest.supportedAlgorithms exposes ES256 and EdDSA.
-  // RSA (-257) is not available via iOS Passkey API.
+  // Picks the first algorithm from the RP's supportedAlgorithms that OneKeePass supports.
+  // OneKeePass generates keys in Rust (not the Secure Enclave), so it can produce ES256 and EdDSA.
+  // Use rawValue comparisons to avoid referencing .EdDSA which was only added in iOS 18.
+  // At this time, ios only supports the ES256 algorithm
+  // See https://developer.apple.com/documentation/authenticationservices/ascosealgorithmidentifier 
   @available(iOS 17.0, *)
   static func selectPreferredAlgorithm(_ algorithms: [ASCOSEAlgorithmIdentifier]) -> Int {
+    logger1.error("CredentialProviderViewController - selectPreferredAlgorithm  algorithms \(algorithms)")
+    // It seems on ios algorithms is always [__C.ASCOSEAlgorithmIdentifier(rawValue: -7)]
+    // Algorithm ASCOSEAlgorithmIdentifier(rawValue: -7), Rawvalue -7
+    // Because of this while checking with https://webauthn.io and in Registration Settings
+    // only Ed25519 is selected as Supported Public Key Algorithms, though our app side credentials will be created and stored
+    // The https://webauthn.io will fail to register saying
+    // Registration failed: Unsupported crdential public key alg "-7", expectecd one of: [<COSEALgorithmIdentifier.EDDSA -8>]
+    // In such cases, user should not merge back the new passkey to main db
+    
     for alg in algorithms {
-      switch alg {
-      case .ES256: return -7
-      case .EdDSA: return -8
+      logger1.error("Algorithm \(String(describing: alg)), Rawvalue \(alg.rawValue)  ")
+      switch alg.rawValue {
+      case -7: return -7  // ES256
+      case -8: return -8  // EdDSA
       default: break
       }
     }
-    return -7
+    return -7 // ES256 fallback
   }
 
   @available(iOS 17.0, *)

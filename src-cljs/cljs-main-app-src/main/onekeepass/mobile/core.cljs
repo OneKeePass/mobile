@@ -9,7 +9,7 @@
    ;; and this will ensure that all android autofill related code are excluded
    ;; Though this will also work for ios, the main bundle size will be more
    ;; than required as all android autofill related code will be included needlessly
-   [onekeepass.mobile.android.autofill.core :as android-core] ;;;;;;; ;;;;;;; ;;;;;;; ;;;;;;;
+   #_[onekeepass.mobile.android.autofill.core :as android-core] ;;;;;;; ;;;;;;; ;;;;;;; ;;;;;;;
    [onekeepass.mobile.appbar :refer [appbar-main-content
                                      hardware-back-pressed]]
    [onekeepass.mobile.ios.passkey-pending :refer [ios-all-pending-passkeys-notification-dialog]]
@@ -132,10 +132,10 @@
   (init-calls)
 
   ;; iOS
-  #_(render-root "OneKeePassMobile" (r/as-element [app-root]))
+  (render-root "OneKeePassMobile" (r/as-element [app-root]))
 
   ;; Andoid 
-  (render-root "OneKeePassMobile" (fn [props]
+  #_(render-root "OneKeePassMobile" (fn [props]
                                     (js/console.log "Android app entry: In main core render-root props is " props)
                                     ;; Examples 
                                     ;; { rootTag: 11 } means main app
