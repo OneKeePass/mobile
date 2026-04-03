@@ -18,7 +18,7 @@ use url::Url;
 use onekeepass_core::error;
 
 use crate::{
-    OkpError, OkpResult, app_lock, app_preference::{AppLockPreference, DatabasePreference}, app_state::{AppState, OKP_SHARED_DIR}, commands::{
+    OkpError, OkpResult, app_lock, app_preference::{AppLockPreference, DatabasePreference, Preference}, app_state::{AppState, OKP_SHARED_DIR}, commands::{
         CommandArg, InvokeResult, ResponseJson, error_json_str, ok_json_str, result_json_str
     }, parse_command_args_or_err, util::{self, remove_dir_contents}
 };
@@ -482,7 +482,11 @@ impl IosAppGroupSupportService {
 
     fn autofill_init_data(&self) -> ResponseJson {
         let last_time = AutoFillMeta::read().last_pin_auth_success_time();
-        let mut app_lock_preference = AppState::app_lock_preference();
+        // Read preference fresh from the shared preference.json file on every call
+        // so that updates made by the main app are reflected even when the extension
+        // process is reused across sessions (AppState is only initialized once via OnceCell)
+        let fresh_pref = Preference::read(AppState::preference_home_dir());
+        let mut app_lock_preference = fresh_pref.app_lock_preference().clone();
         let now = service_util::now_utc_milli_seconds();
         if let Some(t) = last_time {
             if (now - t) <= 60000 {
@@ -492,7 +496,7 @@ impl IosAppGroupSupportService {
 
         let af_data = AutoFillInitData {
             copied_dbs_info: AutoFillMeta::read().get_copied_dbs_info().clone(),
-            database_preferences: AppState::database_preferences(),
+            database_preferences: fresh_pref.database_preferences().clone(),
             app_lock_preference,
         };
         result_json_str(Ok(af_data))
