@@ -19,7 +19,7 @@
                                                     rn-scroll-view rn-view
                                                     rnp-button rnp-list-item
                                                     rnp-snackbar rnp-text]]
-   [onekeepass.mobile.translation :refer [lstr-bl lstr-dlg-title lstr-pt
+   [onekeepass.mobile.translation :refer [lstr-bl lstr-dlg-text lstr-dlg-title lstr-l
                                           lstr-sm]]
    [reagent.core :as r]))
 
@@ -47,16 +47,16 @@
 (defn ios-pending-passkey-notification-dialog
   ([{:keys [dialog-show]}]
    [cust-dialog {:style {} :dismissable false :visible dialog-show :onDismiss #()}
-    [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1 :style {:color @rnc/error-color}} "Pending Passkeys" #_(lstr-dlg-title "mergeResults")]
+    [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1 :style {:color @rnc/error-color}} (lstr-dlg-title 'pendingPasskeys)]
     [rnp-dialog-content
      [rn-view {:style {:flexDirection "column" :justify-content "center"}}
-      [rnp-text "There are one or more pending passkeys and they need to be merged to the database"]]]
+      [rnp-text (lstr-dlg-text 'pendingPasskeysMergeNeeded)]]]
     [rnp-dialog-actions
      [rnp-button {:mode "text"
                   :onPress (fn []
                              (dlg-events/ios-pending-passkey-notification-dialog-close)
                              (pp-events/show-review))}
-      "Review" #_(lstr-bl "review")]]])
+      (lstr-bl 'review)]]])
 
   ([]
    (ios-pending-passkey-notification-dialog @(dlg-events/ios-pending-passkey-notification-dialog-data))))
@@ -67,19 +67,19 @@
 (defn ios-autofill-disable-pending-passkey-dialog
   ([{:keys [dialog-show]}]
    [cust-dialog {:style {} :dismissable false :visible dialog-show :onDismiss #()}
-    [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1 :style {:color @rnc/error-color}} "Pending Passkeys"]
+    [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1 :style {:color @rnc/error-color}} (lstr-dlg-title 'pendingPasskeys)]
     [rnp-dialog-content
      [rn-view {:style {:flexDirection "column" :justify-content "center"}}
-      [rnp-text "There are pending passkeys that have not been committed to the database. Please review them before disabling autofill."]]]
+      [rnp-text (lstr-dlg-text 'pendingPasskeysDisableWarning)]]]
     [rnp-dialog-actions
      [rnp-button {:mode "text"
                   :onPress dlg-events/ios-autofill-disable-pending-passkey-dialog-close}
-      "Close"]
+      (lstr-bl 'close)]
      [rnp-button {:mode "text"
                   :onPress (fn []
                              (dlg-events/ios-autofill-disable-pending-passkey-dialog-close)
                              (pp-events/show-review))}
-      "Review"]]])
+      (lstr-bl 'review)]]])
 
   ([]
    (ios-autofill-disable-pending-passkey-dialog
@@ -100,10 +100,10 @@
   ([{:keys [dialog-show pending-passkeys]}]
    (let [by-db (pending-passkeys-by-db (or pending-passkeys []))]
      [cust-dialog {:style {} :dismissable false :visible dialog-show :onDismiss #()}
-      [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1 :style {:color @rnc/error-color} } "Pending Passkeys"]
+      [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1 :style {:color @rnc/error-color} } (lstr-dlg-title 'pendingPasskeys)]
       [rnp-dialog-content
        [rn-view {:style {:flexDirection "column"}}
-        [rnp-text "The following databases have pending passkeys. Open each database to review and save them."]
+        [rnp-text (lstr-dlg-text 'pendingPasskeysMultiDb)]
         [rn-view {:style {:marginTop 8}}
          (doall
           (for [{:keys [db-name count]} by-db]
@@ -112,7 +112,7 @@
       [rnp-dialog-actions
        [rnp-button {:mode "text"
                     :onPress dlg-events/ios-all-pending-passkeys-notification-dialog-close}
-        "Close"]]]))
+        (lstr-bl 'close)]]]))
 
   ([]
    (ios-all-pending-passkeys-notification-dialog
@@ -135,15 +135,13 @@
               :ellipsizeMode "tail"
               :numberOfLines 1
               :variant page-title-text-variant}
-    "Pending Passkeys"
-    #_(lstr-pt "pendingPasskeys")]
+    (lstr-dlg-title 'pendingPasskeys)]
    [rnp-button {:style {}
                 :textColor @appbar-text-color
                 :disabled (empty? @(pp-events/pending-items))
                 :mode "text"
                 :onPress pp-events/commit-all}
-    "Save all"
-    #_(lstr-bl "saveAll")]])
+    (lstr-bl 'saveAll)]])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;; Review page ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -172,11 +170,11 @@
                        [rnp-button {:mode     "text"
                                     :compact  true
                                     :on-press #(pp-events/discard record-uuid org-db-key)}
-                        "Discard" #_(lstr-bl "discard")]]))}]))
+                        (lstr-bl 'discard)]]))}]))
 
 (defn- empty-view []
   [rn-view {:style {:flex 1 :align-items "center" :justify-content "center"}}
-   [rnp-text {:variant "bodyLarge"} (lstr-pt "noPendingPasskeys")]])
+   [rnp-text {:variant "bodyLarge"} (lstr-l 'noPendingPasskeys)]])
 
 (defn content []
   (let [items @(pp-events/pending-items)]

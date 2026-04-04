@@ -4,6 +4,7 @@
    [onekeepass.ios.autofill.background :as bg]
    [onekeepass.ios.autofill.constants :refer [PASSKEY_ASSERTION_PAGE_ID]]
    [onekeepass.ios.autofill.events.common :refer [active-db-key on-ok]]
+   [onekeepass.ios.autofill.translation :refer [lstr-pt]]
    [re-frame.core :refer [dispatch reg-event-fx reg-fx reg-sub subscribe]]))
 
 (defn passkey-assertion-select [selection]
@@ -74,7 +75,7 @@
  :passkey-assertion/loaded
  (fn [{:keys [db]} [_ items]]
    {:db (assoc-in db [:passkey-assertion :items] items)
-    :fx [[:dispatch [:common/next-page PASSKEY_ASSERTION_PAGE_ID "Select Passkey"]]]}))
+    :fx [[:dispatch [:common/next-page PASSKEY_ASSERTION_PAGE_ID (lstr-pt 'selectPasskey)]]]}))
 
 ;; Called when the user taps a passkey in the list.
 (reg-event-fx

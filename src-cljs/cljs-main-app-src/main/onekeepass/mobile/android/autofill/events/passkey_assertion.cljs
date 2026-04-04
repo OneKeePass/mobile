@@ -7,6 +7,7 @@
                                                              to-page]]
    [onekeepass.mobile.background :as bg]
    [onekeepass.mobile.events.common :refer [on-error on-ok]]
+   [onekeepass.mobile.translation :refer [lstr-pt]]
    [re-frame.core :refer [dispatch reg-event-fx reg-fx reg-sub subscribe]]))
 
 ;; ── Public API (for UI — no direct dispatch/subscribe in UI code) ─────────────
@@ -161,4 +162,4 @@
 (reg-fx
  :dispatch-passkey-assertion-page
  (fn [_]
-   (to-page PASSKEY_ASSERTION_PAGE_ID "Select Passkey")))
+   (to-page PASSKEY_ASSERTION_PAGE_ID (lstr-pt 'selectPasskey))))

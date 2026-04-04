@@ -9,6 +9,8 @@
                                             current-db-disable-edit
                                             get-in-key-db on-error
                                             on-ok]]
+   [onekeepass.mobile.translation :refer [lstr-error-dlg-title lstr-error-dlg-text
+                                          lstr-msg-dlg-title lstr-msg-dlg-text]]
    [re-frame.core :refer [dispatch reg-event-db reg-event-fx reg-fx
                           reg-sub subscribe]]))
 
@@ -71,7 +73,7 @@
     ;; TODO: Need to find a way to change the db-key from old to the new one from the bookmarks  
     ;; resolution and continue to proceed saving
     (and (bg/is-iOS) (= error "DbKeyNotFound"))
-    (dispatch [:common/default-error "Invalid reference" "It appears the database file might have been moved or renamed. Please remove the database and reopen the moved or renamed file"])
+    (dispatch [:common/default-error (lstr-error-dlg-title 'invalidReference) (lstr-error-dlg-text 'dbMovedOrRenamed)])
     #_(dispatch [:save-error-modal-show {:error-type :unnown-error
                                          :message "Internal error"
                                          :error-title error-title}])
@@ -118,8 +120,8 @@
           :fx [[:dispatch [:common/message-modal-show nil (if-not (nil? save-message) save-message 'saving)]]
                [:bg-save-kdbx [(active-db-key db) false handler-fn]]]})
        {:fx [[:dispatch [:common/message-modal-hide]]
-             [:dispatch [:common/error-box-show "Read Only"
-                         "Editing is diabled as the database is opened in read only mode"]]]}))))
+             [:dispatch [:common/error-box-show (lstr-msg-dlg-title 'dbReadOnly)
+                         (lstr-error-dlg-text 'editingDisabledReadOnly)]]]}))))
 
 ;; Calls the background save kdbx api
 (reg-fx
@@ -171,7 +173,7 @@
    ;; Any other error will be shown in the error dialog
    {:fx (if (= "DOCUMENT_PICKER_CANCELED" (:code error))
           []
-          [[:dispatch [:common/error-box-show "Save as Error" error]]])}))
+          [[:dispatch [:common/error-box-show (lstr-error-dlg-title 'saveAsError) error]]])}))
 
 ;; Used for both  iOS and Android
 (reg-event-fx
@@ -179,7 +181,7 @@
  (fn [{:keys [_db]} [_event-id kdbx-loaded]]
    {:fx [[:dispatch [:save-error-modal-hide]]
          [:dispatch [:common/kdbx-database-opened kdbx-loaded]]
-         [:dispatch [:common/message-box-show "Save completed" "The newly saved database is loaded now"]]]}))
+         [:dispatch [:common/message-box-show (lstr-msg-dlg-title 'saveCompleted) (lstr-msg-dlg-text 'saveCompleted)]]]}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Android specfic Save as events ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

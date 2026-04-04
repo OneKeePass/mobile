@@ -6,6 +6,7 @@
    [onekeepass.mobile.constants :as const]
    [onekeepass.mobile.events.common :as cmn-events :refer [on-ok]]
    [onekeepass.mobile.events.open-database :refer [blank-open-db]]
+   [onekeepass.mobile.translation :refer [lstr-error-dlg-title lstr-pt]]
    [re-frame.core :refer [dispatch reg-event-db reg-event-fx reg-fx reg-sub
                           subscribe]]
    [re-frame.router :refer [dispatch-sync]]))
@@ -103,7 +104,7 @@
   (dispatch [:android-af-common/next-page page-id title]))
 
 (defn to-entry-form-page []
-  (dispatch [:android-af-common/next-page ENTRY_FORM_PAGE_ID  "Entry"]))
+  (dispatch [:android-af-common/next-page ENTRY_FORM_PAGE_ID (lstr-pt 'entry)]))
 
 (defn to-previous-page
   "Called to navigate to the previous page"
@@ -428,7 +429,7 @@
  (fn [{:keys [db]} [_event-id error]]
    {:db  (-> db (assoc-in [:android-af :open-database :error-fields] {})
              (assoc-in [:android-af :open-database :status] :completed))
-    :fx [[:dispatch [:common/error-box-show "Database Open Error" error]]]}))
+    :fx [[:dispatch [:common/error-box-show (lstr-error-dlg-title 'dbOpenError) error]]]}))
 
 ;; Based on :common/kdbx-database-opened but dispatches autofill specific events
 

@@ -196,10 +196,18 @@
   [open-db-page])
 
 (defn top-bar-left-action [page]
-  (if (= page ENTRY_FORM_PAGE_ID)
+  (cond
+    (= page ENTRY_FORM_PAGE_ID)
     {:action form-events/cancel-entry-form
      :label (lstr-bl 'back)
      :title (lstr-pt 'entry)}
+
+    (#{PASSKEY_ASSERTION_PAGE_ID PASSKEY_REGISTRATION_PAGE_ID} page)
+    {:action cmn-events/cancel-extension
+     :label (lstr-bl 'cancel)
+     :title (lstr-pt 'autoFillPasskey)}
+
+    :else
     {:action cmn-events/cancel-extension
      :label (lstr-bl 'cancel)
      :title (lstr-pt 'autoFillPassword)}))

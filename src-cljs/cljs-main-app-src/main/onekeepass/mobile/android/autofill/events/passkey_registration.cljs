@@ -7,6 +7,7 @@
                                                              to-page]]
    [onekeepass.mobile.background :as bg]
    [onekeepass.mobile.events.common :refer [on-error on-ok]]
+   [onekeepass.mobile.translation :refer [lstr-pt]]
    [re-frame.core :refer [dispatch reg-event-fx reg-fx reg-sub subscribe]]))
 
 ;; ── Public API (for UI — no direct dispatch/subscribe in UI code) ─────────────
@@ -349,7 +350,7 @@
 (reg-fx
  :dispatch-passkey-registration-page
  (fn [_]
-   (to-page PASSKEY_REGISTRATION_PAGE_ID "Register Passkey")))
+   (to-page PASSKEY_REGISTRATION_PAGE_ID (lstr-pt 'registerPasskey))))
 
 (reg-fx
  :bg/android-get-registration-save-error

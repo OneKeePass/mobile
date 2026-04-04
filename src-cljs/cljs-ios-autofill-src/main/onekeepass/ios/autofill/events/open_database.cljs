@@ -6,6 +6,7 @@
    [onekeepass.ios.autofill.events.common :refer [database-preference-by-db-key
                                                    on-ok
                                                   org-db-file-path]]
+   [onekeepass.ios.autofill.translation :refer [lstr-dlg-title lstr-error-dlg-title]]
    [re-frame.core :refer [dispatch reg-event-db reg-event-fx reg-fx reg-sub
                           subscribe]]))
 
@@ -73,7 +74,7 @@
             (assoc-in [:open-database :database-full-file-name] full-file-name-uri)
             (assoc-in [:open-database :dialog-show] true))
 
-    :fx [[:dispatch [:common/next-page LOGIN_PAGE_ID "Unlock Database"]]]}))
+    :fx [[:dispatch [:common/next-page LOGIN_PAGE_ID (lstr-dlg-title 'unlockDatabase)]]]}))
 
 
 (reg-event-fx
@@ -93,7 +94,7 @@
    (if (= error "BiometricCredentialsAuthenticationFailed") 
      {:fx [[:dispatch [:open-database-db-open-with-credentials kdbx-file-info-m]]]}
 
-     {:fx [[:dispatch [:common/error-box-show "Database Open Error" error]]]})))
+     {:fx [[:dispatch [:common/error-box-show (lstr-error-dlg-title 'dbOpenError) error]]]})))
 
 ;; Backend call to get all entries on openning a databse
 ;; This is similar to load-kdbx call in the main app

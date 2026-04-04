@@ -4,6 +4,7 @@
    [onekeepass.ios.autofill.background :as bg]
    [onekeepass.ios.autofill.constants :refer [PASSKEY_REGISTRATION_PAGE_ID]]
    [onekeepass.ios.autofill.events.common :refer [on-ok org-db-file-path]]
+   [onekeepass.ios.autofill.translation :refer [lstr-pt]]
    [re-frame.core :refer [dispatch reg-event-fx reg-fx reg-sub subscribe]]))
 
 ;; ── Public API (for UI — no direct dispatch/subscribe in UI code) ───────────
@@ -134,7 +135,7 @@
               (assoc-in [:passkey-registration :groups] groups)
               (assoc-in [:passkey-registration :step] :group-picker)
               (assoc-in [:passkey-registration :new-entry-name] rp-id))
-      :fx [[:dispatch [:common/next-page PASSKEY_REGISTRATION_PAGE_ID "Register Passkey"]]]})))
+      :fx [[:dispatch [:common/next-page PASSKEY_REGISTRATION_PAGE_ID (lstr-pt 'registerPasskey)]]]})))
 
 ;; User selected a group — store it, clear new-group-name, and fetch entries.
 (reg-event-fx
