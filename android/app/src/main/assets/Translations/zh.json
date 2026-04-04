@@ -66,6 +66,7 @@
         "memoryUsage": "内存使用",
         "name": "名称",
         "never": "从不",
+        "noPendingPasskeys": "无待处理的 Passkey",
         "newConnection": "新建连接",
         "noResult": "无结果",
         "notes": "备注",
@@ -129,6 +130,7 @@
         "cardDetails": "卡片详情",
         "loginDetails": "登录详情",
         "notes": "备注",
+        "passkeyDetails": "Passkey 详情",
         "tags": "标签"
     },
     "entryFieldNames": {
@@ -155,6 +157,11 @@
         "expirationYear": "到期年份",
         "expiryDuration": "有效期",
         "issuingBank": "发卡银行",
+        "kpexPasskeyUsername": "Passkey 用户名",
+        "kpexPasskeyRelyingParty": "信赖方",
+        "kpexPasskeyUserHandle": "用户句柄",
+        "kpexPasskeyCredentialId": "Passkey 凭证 ID",
+        "kpexPasskeyPrivateKeyPem": "Passkey 私钥 PEM",
         "notes": "备注",
         "number": "号码",
         "otp": "一次性密码",
@@ -193,6 +200,7 @@
             "newDatabase": "新建数据库",
             "newSectionName": "新分区名称",
             "openDatabase": "打开数据库",
+            "pendingPasskeys": "待处理的 Passkey",
             "putBack": "放回",
             "restoreHistoryEntry": "从历史记录恢复",
             "remove": "移除",
@@ -218,6 +226,9 @@
             "deleteHistoryEntry": "确定要永久删除此历史记录吗？",
             "deleteOtp": "确定要永久删除此项吗？",
             "deleteRemoteConnection": "您想永久删除此连接吗？",
+            "pendingPasskeysMergeNeeded": "有一个或多个待处理的 Passkey 需要合并到数据库中",
+            "pendingPasskeysDisableWarning": "有待处理的 Passkey 尚未提交到数据库。请在禁用自动填充之前检查它们。",
+            "pendingPasskeysMultiDb": "以下数据库有待处理的 Passkey。请打开每个数据库来检查并保存它们。",
             "putBack": "请选择一个父分组",
             "restoreHistoryEntry": "确定要从此历史记录恢复条目吗？",
             "remove": "应用程序对数据库的所有引用都将被移除。原始数据库不会被删除，可以稍后重新打开",
@@ -234,14 +245,18 @@
             "dbOpenError": "数据库打开错误",
             "filePickError": "文件选择错误",
             "keyFileSavingCancelled": "密钥文件保存已取消",
+            "invalidReference": "无效引用",
             "missingFields": "缺少字段",
             "noScanning": "无法扫描",
             "scanError": "扫描错误",
             "restricted": "受限",
+            "saveAsError": "另存为错误",
             "uploadStatus": "上传状态"
         },
         "texts": {
             "biometricDbOpenFirstTime": "请输入凭据",
+            "dbMovedOrRenamed": "数据库文件似乎已被移动或重命名。请删除该数据库并重新打开已移动或重命名的文件",
+            "editingDisabledReadOnly": "编辑已禁用，因为数据库以只读模式打开",
             "noScanning": "请手动输入密钥而不是扫描二维码",
             "restricted": "请手动输入密钥而不是扫描二维码",
             "scannedUrlNotOtpUri": "扫描的URL不是OTP类型的URL",
@@ -252,12 +267,14 @@
         "titles": {
             "biometricDbOpenEnabled": "注意",
             "noCamera": "无相机",
-            "dbReadOnly": "只读"
+            "dbReadOnly": "只读",
+            "saveCompleted": "保存完成"
         },
         "texts": {
             "biometricDbOpenEnabled": "您需要重新登录才能使此更改生效",
             "noCamera": "未找到相机。请手动输入密钥",
-            "dbReadOnly": "由于无法连接到服务器，数据库以只读模式打开"
+            "dbReadOnly": "由于无法连接到服务器，数据库以只读模式打开",
+            "saveCompleted": "新保存的数据库现已加载"
         }
     },
     "modalDialog": {
@@ -298,6 +315,7 @@
         "keyFileSelected": "已选择密钥文件",
         "newSectionCreated": "已创建新分区",
         "noCopy": "无可复制内容",
+        "passkeySaved": "Passkey 已保存",
         "sectionNameChanged": "分区名称已更改",
         "updatedEntry": "已更新条目",
         "updatedSettings": "已更新设置"
@@ -307,6 +325,7 @@
         "appLockSettings": "应用锁定设置",
         "appSettings": "应用设置",
         "additionalDbAcccess": "额外数据库访问",
+        "autoFillPasskey": "自动填充 Passkey",
         "autoFillPassword": "自动填充密码",
         "autofillSettings": "自动填充设置",
         "category": "分类",
@@ -325,9 +344,11 @@
         "newCategory": "新分类",
         "newGroup": "新分组",
         "privacyPolicy": "隐私政策",
+        "registerPasskey": "注册 Passkey",
         "scanQRcode": "扫描二维码",
         "search": "搜索",
         "selectConnection": "选择连接",
+        "selectPasskey": "选择 Passkey",
         "settings": "设置",
         "sftp": "SFTP",
         "storageBrowser": "存储浏览器",
@@ -356,8 +377,11 @@
         "ok": "确定",
         "opendb": "打开数据库",
         "pickDbAgain": "再次选择数据库",
+        "discard": "丢弃",
         "refresh": "刷新",
         "removePassword": "移除密码",
+        "review": "检查",
+        "saveAll": "全部保存",
         "select": "选择",
         "selectFolder": "选择此文件夹",
         "sftp": "SFTP",
