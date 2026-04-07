@@ -165,7 +165,7 @@
     (r/as-element [app-root]))
 
 ;; Entry root for Android main and Android Autofill
-;; Ensure we load the ns [onekeepass.mobile.android.autofill.core :as android-core] 
+;; Ensure we load the ns #_[onekeepass.mobile.android.autofill.core :as android-core] 
 
 ;; This '-main' fn will work with iOS app also. Only things the main bundle size will be more 
 ;; than required and all android-af events are registered needlessly

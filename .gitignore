@@ -157,3 +157,5 @@ buck-out/
 !.yarn/versions
 .clj-kondo/imports/reagent/reagent/config.edn
 android/.clj-kondo/.cache/v1/lock
+
+*.bak
