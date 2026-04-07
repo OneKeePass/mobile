@@ -50,13 +50,13 @@ class OkpDbService: NSObject {
     }
   }
   
-  /// All app group realted API calls
+  /// All app group related API calls
   
   @objc
   func autoFillInvokeCommand(_ commandName: String, args: String, resolve: @escaping RCTPromiseResolveBlock,reject _: @escaping RCTPromiseRejectBlock)
   {
     DispatchQueue.global(qos: .userInteractive).async { [unowned self] in
-      logger.debug("InvokeCommand for \(commandName) called with args \(args) and delegating to api call")
+      logger.debug("InvokeCommand in autoFillInvokeCommand for \(commandName) called with args \(args) and delegating to api call")
       resolve(AutoFillDbServiceAPI.iosAppGroupSupportService().invoke(commandName, args))
     }
   }
@@ -74,9 +74,57 @@ class OkpDbService: NSObject {
     logger.debug("credentialSelected is called ")
     CredentialProviderViewController.credentialSelected(user, password)
   }
-  
-  
-  
+
+  // Returns JSON with the pending passkey assertion context (rpId + allowCredentialIds),
+  // or {"ok":null} if this session was not triggered by a passkey assertion request.
+  // Called by ClojureScript at startup to decide whether to show the passkey flow.
+  @objc
+  func getPendingPasskeyContext(_ resolve: @escaping RCTPromiseResolveBlock,
+                                reject _: @escaping RCTPromiseRejectBlock) {
+    guard #available(iOS 17.0, *),
+          let rpId = CredentialProviderViewController.pendingPasskeyRpId else {
+      resolve("{\"ok\":null}")
+      return
+    }
+    let allowIds: [String] = CredentialProviderViewController.pendingPasskeyCredentialIds
+      .map { $0.base64URLEncodedString() }
+    let idsJson = allowIds.isEmpty
+      ? "[]"
+      : "[" + allowIds.map { "\"\($0)\"" }.joined(separator: ",") + "]"
+    let hashB64url = CredentialProviderViewController.pendingPasskeyClientDataHash?
+      .base64URLEncodedString() ?? ""
+    resolve("{\"ok\":{\"rp_id\":\"\(rpId)\",\"allow_credential_ids\":\(idsJson),\"client_data_hash_b64url\":\"\(hashB64url)\"}}")
+  }
+
+  // completePasskeyAssertion has been removed.
+  // Use autofill-invoke-api "passkey_complete_assertion" from ClojureScript instead.
+  // The Rust handler signs the assertion and calls the complete_passkey_assertion Swift callback.
+
+  // Returns the pending passkey registration context (rpId, userName, userHandle),
+  // or {"ok":null} if this session was not triggered by a passkey registration request.
+  @objc
+  func getPendingPasskeyRegistrationContext(_ resolve: @escaping RCTPromiseResolveBlock,
+                                             reject _: @escaping RCTPromiseRejectBlock) {
+    guard #available(iOS 17.0, *),
+          CredentialProviderViewController.isPasskeyRegistrationMode,
+          let rpId = CredentialProviderViewController.pendingPasskeyRegistrationRpId else {
+      resolve("{\"ok\":null}")
+      return
+    }
+    let userName = CredentialProviderViewController.pendingPasskeyRegistrationUserName ?? ""
+    let userHandle = CredentialProviderViewController.pendingPasskeyRegistrationUserHandle?
+      .base64URLEncodedString() ?? ""
+    let hashB64url = CredentialProviderViewController.pendingPasskeyRegistrationClientDataHash?
+      .base64URLEncodedString() ?? ""
+    let algorithm = CredentialProviderViewController.pendingPasskeyRegistrationAlgorithm
+    resolve("{\"ok\":{\"rp_id\":\"\(rpId)\",\"user_name\":\"\(userName)\",\"user_handle_b64url\":\"\(userHandle)\",\"client_data_hash_b64url\":\"\(hashB64url)\",\"algorithm\":\(algorithm)}}")
+  }
+
+  // completePasskeyRegistration has been removed.
+  // Use autofill-invoke-api "passkey_complete_registration" from ClojureScript instead.
+  // The Rust handler creates the keypair, stores the pending record, and calls the
+  // complete_passkey_registration Swift callback to complete the iOS request.
+
   /// TDODO: Need to move authenticateWithBiometric and getAuthenticationErrorDescription to a common class and share between app and autofill
 
   

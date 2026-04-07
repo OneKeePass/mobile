@@ -2,7 +2,11 @@ package com.onekeepassmobile
 
 import android.util.Log
 import com.onekeepassmobile.autofill.OkpFillResponseBuilder
+import com.onekeepassmobile.passkey.PasskeyModule
+import com.onekeepassmobile.passkey.PasskeyRequestStore
 import onekeepass.mobile.ffi.AndroidApiService
+import onekeepass.mobile.ffi.AndroidPasskeyAssertionCallbackData
+import onekeepass.mobile.ffi.AndroidPasskeyRegistrationCallbackData
 import onekeepass.mobile.ffi.AppClipboardCopyData
 import onekeepass.mobile.ffi.AutoFillDbData
 import onekeepass.mobile.ffi.CommonDeviceServiceEx
@@ -45,5 +49,15 @@ class ApiCallbackServiceImpl():AndroidApiService,CommonDeviceServiceEx {
             is AutoFillDbData.Login -> { OkpFillResponseBuilder.completeLoginAutofill(autoFillData.username,autoFillData.password ) }
             else -> {Log.d(TAG,"Invalid autoFillData $autoFillData")}
         }
+    }
+
+    // Called by Rust after signing a passkey assertion; delegates to PasskeyModule companion.
+    override fun completePasskeyAssertion(data: AndroidPasskeyAssertionCallbackData) {
+        PasskeyModule.completePasskeyAssertion(data.authenticationResponseJson)
+    }
+
+    // Called by Rust after creating a passkey registration and stores the response to be sent later
+    override fun storePasskeyRegistrationResponse(data: AndroidPasskeyRegistrationCallbackData) {
+        PasskeyRequestStore.registrationResponseJson = data.registrationResponseJson
     }
 }

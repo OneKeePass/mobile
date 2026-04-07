@@ -18,7 +18,7 @@
   (dispatch-sync [:load-app-preference]))
 
 (defn- default-error-fn [error]
-  (println "API returned error: " error)
+  #_(println "API returned error: " error)
   (dispatch [:common/error-box-show 'apiError error])
   (dispatch [:common/message-modal-hide]))
 
@@ -242,7 +242,7 @@
 ;; Also this struct KdbxLoadedEx is used when we open a db in on read only mode
 (reg-event-fx
  :common/kdbx-database-opened
- (fn [{:keys [db]} [_event-id {:keys [database-name rs-additional-info] :as kdbx-loaded-ex}]]
+ (fn [{:keys [db]} [_event-id {:keys [database-name rs-additional-info db-key] :as kdbx-loaded-ex}]]
    ;;(println "kdbx-loaded-ex is " kdbx-loaded-ex)
    {:db (db-opened db kdbx-loaded-ex) ;; current-db-file-name is set in db-opened
     :fx [[:dispatch [:entry-category/load-categories-to-show]]
@@ -256,7 +256,10 @@
          ;; Loads the updated recent dbs info
          [:bg-app-preference]
          [:dispatch [:common/message-modal-hide]]
-         [:dispatch [:common/message-snackbar-open 'databaseOpened]]]}))
+         [:dispatch [:common/message-snackbar-open 'databaseOpened]]
+         ;; iOS only: check for pending passkeys created by the Autofill extension
+         (when (bg/is-iOS)
+           [:dispatch [:passkey-pending/check db-key]])]}))
 
 (reg-event-fx
  :close-kdbx-db

@@ -277,7 +277,7 @@
       ;; Error should not happen as we have already loaded a valid translations data before calling init 
       ;; Still what to do if there is any error in initializing 'i18n'? 
       (catch js/Error err
-        ;; Because of error in laoding i18n data, all UI texts will not be correct 
+        ;; Because of error in loading i18n data, all UI texts will not be correct 
         ;; even though we are calling this complete status setting.
         ;; If we do not call this status, the UI will be stuck in 'Please wait ..'
         (tr-events/load-language-data-complete)

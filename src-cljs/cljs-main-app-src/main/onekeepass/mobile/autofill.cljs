@@ -3,6 +3,7 @@
    [onekeepass.mobile.common-components :refer [settings-section-header]]
    [onekeepass.mobile.constants :refer [TR-KEY-AUTOFILL]]
    [onekeepass.mobile.events.autofill :as af-events]
+   [onekeepass.mobile.ios.passkey-pending :refer [ios-autofill-disable-pending-passkey-dialog]]
    [onekeepass.mobile.rn-components :as rnc :refer [page-background-color
                                                     rn-safe-area-view
                                                     rn-section-list rn-view
@@ -44,7 +45,7 @@
                       :value enabled?
                       :onValueChange (fn []
                                        (if enabled?
-                                         (af-events/ios-delete-copied-autofill-details)
+                                         (af-events/ios-delete-copied-autofill-details-with-check)
                                          (af-events/ios-copy-file-to-group)))}]]]
 
        (if-not enabled?
@@ -94,4 +95,5 @@
 
 (defn content []
   [rn-safe-area-view {:style {:flex 1 :backgroundColor @page-background-color}}
-   [main-content]])
+   [main-content]
+   [ios-autofill-disable-pending-passkey-dialog]])

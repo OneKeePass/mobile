@@ -22,5 +22,11 @@ RCT_EXTERN_METHOD(credentialSelected:(NSString *)user password:(NSString *)passw
 
 RCT_EXTERN_METHOD(authenticateWithBiometric:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 
+RCT_EXTERN_METHOD(getPendingPasskeyContext:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+
+RCT_EXTERN_METHOD(completePasskeyAssertion:(NSString *)entryUuid dbKey:(NSString *)dbKey resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+
+RCT_EXTERN_METHOD(getPendingPasskeyRegistrationContext:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+
 @end
 

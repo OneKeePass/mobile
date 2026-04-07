@@ -105,6 +105,7 @@
 (def RS_CONNECTION_CONFIG_PAGE_ID :rs-connection-config)
 (def RS_FILES_FOLDERS_PAGE_ID :rs-files-folders)
 
+(def PASSKEY_PENDING_REVIEW_PAGE_ID :passkey-pending-review)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

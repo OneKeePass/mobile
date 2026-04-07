@@ -1,3 +1,4 @@
+import AuthenticationServices
 import Foundation
 import LocalAuthentication
 
@@ -16,6 +17,11 @@ class OkpDbService: NSObject {
   
   override init() {
     logger.debug("Going to call initialize from ")
+    
+    // Dev time temp use only by uncommenting and running the nain app
+    // ASCredentialIdentityStore.shared.removeAllCredentialIdentities()
+    // logger.debug("Temporary one - ASCredentialIdentityStore.shared.removeAllCredentialIdentities called  ")
+    
     DbServiceAPI.initialize()
   }
   
@@ -446,5 +452,15 @@ class OkpDbService: NSObject {
       return 0
     }
     return supportedType ?? 0
+  }
+
+  // Decodes a base64url string (uses - and _ instead of + and /, no padding) into Data.
+  private func decodeBase64URL(_ b64url: String) -> Data? {
+    var s = b64url
+      .replacingOccurrences(of: "-", with: "+")
+      .replacingOccurrences(of: "_", with: "/")
+    let r = s.count % 4
+    if r != 0 { s += String(repeating: "=", count: 4 - r) }
+    return Data(base64Encoded: s)
   }
 }

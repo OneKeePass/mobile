@@ -6,6 +6,7 @@
    ["react-native-vision-camera" :as rn-vision-camera]
    [camel-snake-kebab.core :as csk]
    [camel-snake-kebab.extras :as cske]
+   [clojure.string :as str]
    [onekeepass.mobile.background-common :as bg-cmn :refer [android-invoke-api
                                                            api-args->json
                                                            call-api-async
@@ -58,7 +59,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn get-constants []
-    (.getConstants okp-db-service))
+  (.getConstants okp-db-service))
 
 (defn is-biometric-available []
   ;; Valid values expected for BiometricAvailable are "true" or "false" for both iOS and Android
@@ -240,6 +241,19 @@
 
 (defn ios-query-autofill-db-info [db-key dispatch-fn]
   (ios-autofill-invoke-api "query_autofill_db_info" {:db-key db-key} dispatch-fn))
+
+(defn ios-pending-passkeys-list [org-db-key dispatch-fn]
+  (ios-autofill-invoke-api "passkey_pending_list" {:org-db-key org-db-key} dispatch-fn))
+
+(defn ios-all-pending-passkeys-list [dispatch-fn]
+  (ios-autofill-invoke-api "passkey_pending_list" {:org-db-key ""} dispatch-fn))
+
+(defn commit-pending-passkey [record-uuid db-key dispatch-fn]
+  (ios-autofill-invoke-api "passkey_commit_pending" {:record-uuid record-uuid :db-key db-key} dispatch-fn))
+
+(defn discard-pending-passkey [record-uuid db-key dispatch-fn]
+  (ios-autofill-invoke-api "passkey_discard_pending" {:record-uuid record-uuid :db-key db-key} dispatch-fn))
+
 
 (defn ios-copy-to-clipboard
   "Called to copy a selected field value to clipboard
@@ -854,6 +868,135 @@
     ([event-name]
      (unregister-event-listener :common event-name)))
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;  Android Passkey (Credential Manager)  ;;;;;;;;;;;;;
+
+(def okp-passkey-service ^js/OkpPasskeyService (.-OkpPasskeyService rn/NativeModules))
+
+(defn- transform-response-passkey-field-names [response]
+  (let [t-fn (fn [k]
+               (if (str/includes? k "b64url")
+                 (-> k (str/replace  #"_" "-") keyword)
+                 (csk/->kebab-case-keyword k)))]
+    (cske/transform-keys t-fn response)))
+
+(defn- transform-request-passkey-field-names [args]
+  (let [t-fn (fn [k]
+               ;; (keyword? k)  -> true. We need to use name fn to get string 
+               (if (str/includes? (name k) "b64url")
+                 (-> k name (str/replace  #"-" "_"))
+                 (csk/->snake_case k)))]
+    (cske/transform-keys t-fn args)))
+
+;;;;;
+
+(defn android-get-passkey-context
+  "Calls OkpPasskeyService.getPasskeyContext().
+   Returns {:ok {:mode 'assertion'|'registration' :rp-id ... :client-data-hash-b64url ...}} or {:ok nil}."
+  [dispatch-fn]
+  (call-api-async
+   (fn [] (.getPasskeyContext okp-passkey-service))
+   dispatch-fn
+   :convert-response-fn transform-response-passkey-field-names))
+
+(defn android-passkey-get-db-groups
+  "Fetches all groups in the opened database for the passkey registration group picker."
+  [db-key dispatch-fn]
+  (android-invoke-api "passkey_get_db_groups"
+                      (transform-request-passkey-field-names {:db-key db-key})
+                      dispatch-fn
+                      :convert-request false
+                      :convert-response-fn transform-response-passkey-field-names))
+
+(defn android-passkey-get-group-entries
+  "Fetches all entries in a specific group for the passkey registration entry picker."
+  [db-key group-uuid dispatch-fn]
+  (android-invoke-api "passkey_get_group_entries"
+                      (transform-request-passkey-field-names {:db-key db-key :group-uuid group-uuid})
+                      dispatch-fn
+                      :convert-request false
+                      :convert-response-fn transform-response-passkey-field-names))
+
+(defn android-find-matching-passkeys
+  "Fetches all passkeys in db-key matching rp-id.
+   allow-credential-ids is a seq of base64url strings (may be empty)."
+  [db-key rp-id allow-credential-ids dispatch-fn]
+  (android-invoke-api "passkey_find_matching"
+                      (transform-request-passkey-field-names
+                       {:db-key db-key
+                        :rp-id rp-id
+                        :allow-credential-ids allow-credential-ids})
+                      dispatch-fn
+                      :convert-request false
+                      :convert-response-fn transform-response-passkey-field-names))
+
+(defn android-complete-passkey-assertion
+  "Calls Rust FFI passkey_complete_assertion — signs the assertion, builds the
+   AuthenticationResponseJSON, and calls the Kotlin callback (PendingIntentHandler +
+   activity.finish) directly via uniffi. Returns {:ok nil} on success.
+   client-data-json-b64url is nil on Chrome/Brave path, non-nil on Firefox path."
+  [entry-uuid db-key client-data-hash-b64url client-data-json-b64url dispatch-fn]
+  (android-invoke-api "passkey_complete_assertion"
+                      (transform-request-passkey-field-names
+                       {:db-key db-key
+                        :entry-uuid entry-uuid
+                        :client-data-hash-b64url client-data-hash-b64url
+                        :client-data-json-b64url client-data-json-b64url})
+                      dispatch-fn
+                      :convert-request false
+                      :convert-response-fn transform-response-passkey-field-names))
+
+(defn android-start-passkey-registration
+  "Calls Rust FFI passkey_start_registration — creates key pair, stores passkey in
+   in-memory KDBX, and stores the RegistrationResponseJSON for later retrieval.
+   Returns {:ok nil} on success.
+   client-data-json-b64url is nil on Chrome/Brave path, non-nil on Firefox path.
+   algorithm is the COSE alg integer (-7, -8, -257); nil means Rust will default to -7."
+  [org-db-key rp-id rp-name user-name user-handle-b64url
+   client-data-hash-b64url client-data-json-b64url
+   entry-uuid new-entry-name group-uuid new-group-name algorithm dispatch-fn]
+  (android-invoke-api "passkey_start_registration"
+                      (transform-request-passkey-field-names
+                       {:org-db-key org-db-key
+                        :rp-id rp-id
+                        :rp-name rp-name
+                        :user-name user-name
+                        :user-handle-b64url user-handle-b64url
+                        :client-data-hash-b64url client-data-hash-b64url
+                        :client-data-json-b64url client-data-json-b64url
+                        :entry-uuid (when-not (empty? entry-uuid) entry-uuid)
+                        :new-entry-name (when-not (empty? new-entry-name) new-entry-name)
+                        :group-uuid (when-not (empty? group-uuid) group-uuid)
+                        :new-group-name (when-not (empty? new-group-name) new-group-name)
+                        :algorithm algorithm})
+                      dispatch-fn
+                      :convert-request false
+                      :convert-response-fn transform-response-passkey-field-names))
+
+(defn android-get-registration-save-error
+  "Calls OkpPasskeyService.getRegistrationSaveError().
+   Always returns {:error \"message\"} or {:error nil}. Use on-error to handle."
+  [dispatch-fn]
+  (call-api-async
+   (fn [] (.getRegistrationSaveError okp-passkey-service))
+   dispatch-fn))
+
+(defn android-complete-passkey-registration-final
+  "Calls OkpPasskeyService.completePasskeyRegistration."
+  [dispatch-fn]
+  (call-api-async
+   (fn [] (.completePasskeyRegistration okp-passkey-service))
+   dispatch-fn))
+
+(defn android-cancel-passkey-registration
+  "Calls OkpPasskeyService.cancelPasskeyRegistration().
+   Cancels PasskeyActivity with RESULT_CANCELED. Safe if activity is already gone."
+  [dispatch-fn]
+  (call-api-async
+   (fn [] (.cancelPasskeyRegistration okp-passkey-service))
+   dispatch-fn))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

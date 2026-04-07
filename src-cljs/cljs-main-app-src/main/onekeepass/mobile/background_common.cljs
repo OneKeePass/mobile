@@ -65,7 +65,6 @@
       ;; fn itself
       (->>  api-args clj->js  (.stringify js/JSON)))))
 
-
 (defn transform-response-excluding-keys
   "Called to transform the keys recursively in all maps found in the json response except those 
    keys returned by keys-excluded-fn. 
@@ -79,7 +78,6 @@
                  k
                  (csk/->kebab-case-keyword k)))]
     (cske/transform-keys t-fn response)))
-
 
 (defn transform-api-response
   "Transforms the resolved value and returns a result map with key :ok or :error

@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import AuthenticationServices
 
 // This is intialized and set in a global singleton holder in rust
 
@@ -44,6 +45,85 @@ class ApiCallBackService:@unchecked Sendable, IosApiService,CommonDeviceServiceE
     cmnLogger.debug("Common service clipboardCopyString is called with clipData as \(clipData)")
     try clipboardCopyString(clipData.fieldValue, clipData.cleanupAfter )
   }
-  
-  
+
+  func registerPasskeyIdentities(_ dbKey: String, _ oldPasskeys: [PasskeySummaryData], _ newPasskeys: [PasskeySummaryData]) throws {
+    guard #available(iOS 17.0, *) else { return }
+
+    let oldIdentities: [ASPasskeyCredentialIdentity] = oldPasskeys.compactMap { item in
+      guard let credData = decodeBase64URL(item.credentialIdB64url),
+            let uhData   = decodeBase64URL(item.userHandleB64url)
+      else { return nil }
+      return ASPasskeyCredentialIdentity(
+        relyingPartyIdentifier: item.rpId,
+        userName:               item.username,
+        credentialID:           credData,
+        userHandle:             uhData,
+        recordIdentifier:       item.entryUuid)
+    }
+    let newIdentities: [ASPasskeyCredentialIdentity] = newPasskeys.compactMap { item in
+      guard let credData = decodeBase64URL(item.credentialIdB64url),
+            let uhData   = decodeBase64URL(item.userHandleB64url)
+      else { return nil }
+      return ASPasskeyCredentialIdentity(
+        relyingPartyIdentifier: item.rpId,
+        userName:               item.username,
+        credentialID:           credData,
+        userHandle:             uhData,
+        recordIdentifier:       item.entryUuid)
+    }
+
+    let store = ASCredentialIdentityStore.shared
+    if oldIdentities.isEmpty {
+      // Just the new identities for a db and save that
+      guard !newIdentities.isEmpty else { return }
+      store.saveCredentialIdentities(newIdentities) { _, error in
+        if let error { cmnLogger.error("registerPasskeyIdentities save error: \(error)") }
+      }
+    } else {
+      // We remove old identities for a db before saving new one
+      store.removeCredentialIdentities(oldIdentities) { _, _ in
+        guard !newIdentities.isEmpty else { return }
+        store.saveCredentialIdentities(newIdentities) { _, error in
+          if let error { cmnLogger.error("registerPasskeyIdentities save error: \(error)") }
+        }
+      }
+    }
+  }
+
+  // Called by Rust after signing a passkey assertion; completes the iOS credential provider request.
+  // No-op in the main app target — only the autofill extension has CredentialProviderViewController.
+  func completePasskeyAssertion(_ data: PasskeyAssertionCallbackData) throws {
+      
+    #if OKP_APP_EXTENSION
+    guard #available(iOS 17.0, *) else { return }
+    CredentialProviderViewController.completePasskeyAssertion(
+      credentialIdB64url:      data.credentialIdB64url,
+      userHandleB64url:        data.userHandleB64url,
+      signatureB64url:         data.signatureB64url,
+      authenticatorDataB64url: data.authenticatorDataB64url,
+      rpId:                    data.rpId)
+    #endif
+  }
+
+  // Called by Rust after creating a passkey registration; completes the iOS credential provider request.
+  // No-op in the main app target — only the autofill extension has CredentialProviderViewController.
+  func completePasskeyRegistration(_ data: PasskeyRegistrationCallbackData) throws {
+    #if OKP_APP_EXTENSION
+    guard #available(iOS 17.0, *),
+          let clientDataHash = Data(base64URLEncoded: data.clientDataHashB64url)
+    else { return }
+    CredentialProviderViewController.completePasskeyRegistration(
+      credentialIdB64url:      data.credentialIdB64url,
+      attestationObjectB64url: data.attestationObjectB64url,
+      clientDataHash:          clientDataHash)
+    #endif
+  }
+
+  private func decodeBase64URL(_ s: String) -> Data? {
+    var b64 = s.replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+    b64 += String(repeating: "=", count: (4 - b64.count % 4) % 4)
+    return Data(base64Encoded: b64)
+  }
+
 }
+

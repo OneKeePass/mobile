@@ -6,6 +6,7 @@
    [onekeepass.mobile.constants :as const]
    [onekeepass.mobile.events.common :as cmn-events :refer [on-ok]]
    [onekeepass.mobile.events.open-database :refer [blank-open-db]]
+   [onekeepass.mobile.translation :refer [lstr-error-dlg-title lstr-pt]]
    [re-frame.core :refer [dispatch reg-event-db reg-event-fx reg-fx reg-sub
                           subscribe]]
    [re-frame.router :refer [dispatch-sync]]))
@@ -19,20 +20,37 @@
 
 (defn sync-initialize
   "Called just before rendering to set all requied values in re-frame db"
-  []
-  (dispatch-sync [:android-af-load-autofill-init-data]))
+  [android-af-context-mode]
+  (dispatch-sync [:android-af-load-autofill-init-data android-af-context-mode]))
 
 ;; Gets all the keyfiles available to use in a select field if required
 (reg-event-fx
- :android-af-load-autofill-init-data
- (fn [{:keys [_db]} [_event-id]]
-   {:fx [[:bg-android-af-list-key-files]]}))
+   :android-af-load-autofill-init-data
+   (fn [{:keys [db]} [_event-id android-af-context-mode]]
+     #_(println "android-af-load-autofill-init-data is called with active-db" android-af-context-mode (cmn-events/active-db-key db))
+     (let [open-db-keys (cmn-events/opened-db-keys db)
+           ;; Silent handler: log errors only, no snackbar, no state dispatch (state already cleared below)
+           silent-close-handler (fn [api-response] (cmn-events/on-error api-response))
+           ;; Clear all opened-db state synchronously before presenting the recent databases list
+           cleared-db (reduce (fn [d k] (dissoc d k))
+                              (-> db
+                                  (assoc :opened-db-list [])
+                                  (assoc :current-db-file-name nil)
+                                  (assoc :pages-stack nil))
+                              open-db-keys)]
+       {:db (-> cleared-db
+                (assoc-in [:android-af-context-mode] android-af-context-mode)
+                (assoc-in [:android-af :pages-stack] '()))
+        ;; Close each opened db in the backend silently, then list key files
+        :fx (into [[:bg-android-af-list-key-files]]
+                  (mapv (fn [k] [:common/bg-close-kdbx [k silent-close-handler]]) open-db-keys))})))
 
+  
 ;; Based on the fn 'db-opened' from the main common 
 ;; We use the main ':opened-db-list' to maintain the list of the recent db list
 ;; which is shared here in autofill events and in the main app' side 
 
-(defn android-af-db-opened
+(defn- android-af-db-opened
   "Updates the db list and current active db key when a new kdbx database is loaded
   The args are the re-frame 'app-db' and KdbxLoaded struct returned by backend API.
   Returns the updated app-db
@@ -75,26 +93,41 @@
 (def LOGIN_PAGE_ID :login)
 (def ENTRY_LIST_PAGE_ID :entry-list)
 (def ENTRY_FORM_PAGE_ID :entry-form)
+(def PASSKEY_ASSERTION_PAGE_ID :android-pk-assertion)
+(def PASSKEY_REGISTRATION_PAGE_ID :android-pk-registration)
 
 (defn to-home []
   (dispatch [:android-af-common/next-page HOME_PAGE_ID "Home"]))
 
 (defn to-page [page-id title]
+  #_(println "calling to-page page-id title" page-id title)
   (dispatch [:android-af-common/next-page page-id title]))
 
 (defn to-entry-form-page []
-  (dispatch [:android-af-common/next-page ENTRY_FORM_PAGE_ID  "Entry"]))
+  (dispatch [:android-af-common/next-page ENTRY_FORM_PAGE_ID (lstr-pt 'entry)]))
 
 (defn to-previous-page
   "Called to navigate to the previous page"
   [current-page-id]
   #_(println "current-page-id in to-previous-page is " current-page-id)
+  (cond
+    ;; Lock the opened db before navigating back to the home page
+    (= current-page-id ENTRY_LIST_PAGE_ID)
+    (do #_(dispatch [:android-af-common/lock-kdbx])
+        (dispatch [:android-af/close-current-db])
+        (dispatch [:android-af-common/previous-page]))
 
-  ;; Lock the opened db before navigating back to the home page
-  (when (= current-page-id ENTRY_LIST_PAGE_ID)
-    (dispatch [:android-af-common/lock-kdbx]))
+    ;; Close the opened db when navigating back from the passkey assertion page
+    (= current-page-id PASSKEY_ASSERTION_PAGE_ID)
+    (do (dispatch [:android-af/close-current-db])
+        (dispatch [:android-af-common/previous-page]))
 
-  (dispatch [:android-af-common/previous-page]))
+    ;; Registration page has internal steps; delegate to step-aware back event
+    (= current-page-id PASSKEY_REGISTRATION_PAGE_ID)
+    (dispatch [:android-pk-registration/back])
+
+    :else
+    (dispatch [:android-af-common/previous-page])))
 
 (defn page-info []
   (subscribe [:android-af-page-info]))
@@ -279,11 +312,11 @@
   [kdbx-file-info-m api-response]
   (let [stored-credentials (on-ok api-response
                                   (fn [error]
-                                    (println "The bg/stored-db-credentials-on-biometric-authentication call returned error " error)
+                                    #_(println "The bg/stored-db-credentials-on-biometric-authentication call returned error " error)
                                     ;; When Backend api 'stored-db-credentials-on-biometric-authentication' results in error 
                                     ;; for whatever reason. Ideally should not happen!
                                     (dispatch [:android-af/database-file-picked kdbx-file-info-m])))]
-    (println "Received stored-credentials " stored-credentials)
+    #_(println "Received stored-credentials " stored-credentials)
 
     (if (nil? stored-credentials)
       ;; Handles the situation the stored-credentials returned from backend api is None
@@ -300,7 +333,7 @@
    ;; Set the credentials fields in :open-database fields so that we can reuse the credentisals if repick is used
    ;; This repick may be asked if 'bg-load-kdbx' call response comes back with error 'FILE_NOT_FOUND' or 'PERMISSION_REQUIRED_TO_READ'
    ;; Particularly we see 'FILE_NOT_FOUND' error code when iCloud file sync is not yet happened 
-   (println "In  :android-af/open-database-db-open-credentials-retrieved " stored-credentials kdbx-file-info-m)
+   #_(println "In  :android-af/open-database-db-open-credentials-retrieved " stored-credentials kdbx-file-info-m)
    {:db (-> db
             (assoc-in [:android-af :open-database :password] password)
             (assoc-in [:android-af :open-database :key-file-name] key-file-name)
@@ -328,20 +361,20 @@
 (reg-fx
  :android-af/bg-authenticate-with-biometric-before-db-open
  (fn [[{:keys [full-file-name-uri] :as kdbx-file-info-m}]]
-   (println "android-af/bg-authenticate-with-biometric-before-db-open is called")
+   #_(println "android-af/bg-authenticate-with-biometric-before-db-open is called")
    (let [;; Need to use 'partial' to create a backend call response handler 
          ;; that holds 'kdbx-file-info-m' for later use 
          cr-response-handler (partial handle-db-credentials-response kdbx-file-info-m)]
-     (println "Going to call  authenticate-with-biometric   " kdbx-file-info-m)
+     #_(println "Going to call  authenticate-with-biometric   " kdbx-file-info-m)
      (bg/authenticate-with-biometric
       (fn [api-response]
         (when-let [result (on-ok api-response
-                                 (fn [error]
+                                 (fn [_error]
                                    ;; As a fallback if there is any error in using biometric call. Not expected
-                                   (println "The bg/authenticate-with-biometric call returned error " error)
+                                   #_(println "The bg/authenticate-with-biometric call returned error " error)
                                    (dispatch [:android-af/database-file-picked kdbx-file-info-m])))]
 
-          (println "Biometric auth is " result)
+          #_(println "Biometric auth is " result)
           ;; The variable 'result' will have some valid value when biometric call works 
           (if (= result const/BIOMETRIC-AUTHENTICATION-SUCCESS)
             ;; Retrieve the auth info for furthur use
@@ -371,7 +404,7 @@
 (reg-fx
  :android-af/bg-load-kdbx
  (fn [[db-file-name password key-file-name biometric-auth-used]]
-   (println "In android-af/bg-load-kdbx " db-file-name password key-file-name biometric-auth-used)
+   #_(println "In android-af/bg-load-kdbx " db-file-name password key-file-name biometric-auth-used)
    (bg/load-kdbx db-file-name password key-file-name biometric-auth-used
                  (fn [api-response]
                    (when-let [kdbx-loaded
@@ -396,24 +429,53 @@
  (fn [{:keys [db]} [_event-id error]]
    {:db  (-> db (assoc-in [:android-af :open-database :error-fields] {})
              (assoc-in [:android-af :open-database :status] :completed))
-    :fx [[:dispatch [:common/error-box-show "Database Open Error" error]]]}))
+    :fx [[:dispatch [:common/error-box-show (lstr-error-dlg-title 'dbOpenError) error]]]}))
 
 ;; Based on :common/kdbx-database-opened but dispatches autofill specific events
+
 (reg-event-fx
  :android-af/kdbx-database-opened
  (fn [{:keys [db]} [_event-id {:keys [db-key _database-name] :as kdbx-loaded}]]
-   ;; TODO: We need to add this opened db to the list, but Main app's current-db-file-name
-   ;; is not be set and instead [:android-af :current-db-file-name] is set
-   ;; The amin app current-db-file-name is not set in db-opened
-   {:db (-> db (android-af-db-opened  kdbx-loaded)
-            ;; Here we store a callback event handler which is called 
-            ;; from main app event. For example, ':close-kdbx-completed' will dispatch to
-            ;; the event ':android-af/main-app-event-happened'
-            (assoc-in [:android-af :main-event-handler] :android-af/main-app-event-happened))
-    :fx [;; Loads the updated recent dbs info in app preferece
-         [:bg-app-preference]
-         ;; Loads the allEntries based entry sumarry list for android autofill 
-         [:android-af/bg-entry-summary-data [db-key CATEGORY_ALL_ENTRIES]]]}))
+   (let [android-af-context-mode (get-in db [:android-af-context-mode])]
+     #_(println "In :android-af/kdbx-database-opened android-af-context-mode" android-af-context-mode)
+     ;; TODO: We need to add this opened db to the list, but Main app's current-db-file-name
+     ;; is not be set and instead [:android-af :current-db-file-name] is set
+     ;; The main app current-db-file-name is not set in db-opened
+     {:db (-> db (android-af-db-opened  kdbx-loaded)
+              ;; Here we store a callback event handler which is called 
+              ;; from main app event. For example, ':close-kdbx-completed' will dispatch to
+              ;; the event ':android-af/main-app-event-happened'
+              (assoc-in [:android-af :main-event-handler] :android-af/main-app-event-happened))
+      :fx [;; Loads the updated recent dbs info in app preferece
+           [:bg-app-preference]
+
+           (condp = android-af-context-mode
+
+             :password-af-context
+             ;; Loads the allEntries based entry sumarry list for android autofill
+             [:android-af/bg-entry-summary-data [db-key CATEGORY_ALL_ENTRIES]]
+
+             :passkey-assertion-context
+             [:dispatch [:android-pk/check-assertion-context]]
+
+             :passkey-registration-context
+             [:dispatch [:android-pk/check-registration-context]])]})))
+
+#_(reg-event-fx
+   :android-af/kdbx-database-opened
+   (fn [{:keys [db]} [_event-id {:keys [db-key _database-name] :as kdbx-loaded}]]
+     ;; TODO: We need to add this opened db to the list, but Main app's current-db-file-name
+     ;; is not be set and instead [:android-af :current-db-file-name] is set
+     ;; The main app current-db-file-name is not set in db-opened
+     {:db (-> db (android-af-db-opened  kdbx-loaded)
+              ;; Here we store a callback event handler which is called 
+              ;; from main app event. For example, ':close-kdbx-completed' will dispatch to
+              ;; the event ':android-af/main-app-event-happened'
+              (assoc-in [:android-af :main-event-handler] :android-af/main-app-event-happened))
+      :fx [;; Loads the updated recent dbs info in app preferece
+           [:bg-app-preference]
+           ;; Loads the allEntries based entry sumarry list for android autofill 
+           [:android-af/bg-entry-summary-data [db-key CATEGORY_ALL_ENTRIES]]]}))
 
 (reg-fx
  :android-af/bg-entry-summary-data
@@ -427,9 +489,23 @@
 ;; Called after retreiving all entries for the opened database
 (reg-event-fx
  :android-af-all-entries-loaded
- (fn [{:keys [_db]} [_event-id db-key entry-summaries]]
+ (fn [{:keys [db]} [_event-id db-key entry-summaries]]
    {:fx [[:dispatch [:android-af/entry-list-load-complete entry-summaries]]
-         [:bg-android-af-autofill-filtered-entries [db-key]]]}))
+         [:bg-android-af-autofill-filtered-entries [db-key]]]}
+   #_(let [assertion-rp-id    (get-in db [:android-af :passkey-assertion :rp-id])
+           registration-rp-id (get-in db [:android-af :passkey-registration :rp-id])
+           allow-ids          (get-in db [:android-af :passkey-assertion :allow-credential-ids] [])]
+
+       (cond
+         (not-empty assertion-rp-id)
+         {:fx [[:dispatch [:android-pk-assertion/fetch assertion-rp-id allow-ids]]]}
+
+         (not-empty registration-rp-id)
+         {:fx [[:dispatch [:android-pk-registration/load-groups]]]}
+
+         :else
+         {:fx [[:dispatch [:android-af/entry-list-load-complete entry-summaries]]
+               [:bg-android-af-autofill-filtered-entries [db-key]]]}))))
 
 ;; Called to load any matching entries based on ios autofill credential identifiers 
 ;; This is called after loading all entries summary - see the above event
@@ -444,7 +520,7 @@
 
 ;; This event name is stored in [:android-af :main-event-handler] and is called 
 ;; by any main app event
-;; At this time, the vent name is stored in the event ':android-af/kdbx-database-opened'
+;; At this time, the event name is stored in the event ':android-af/kdbx-database-opened'
 
 ;; For now, the main app event ':close-kdbx-completed' triggers this event 
 (reg-event-fx
@@ -537,6 +613,28 @@
  (fn [db _query-vec]
    (get-in db [:android-af :search :term])))
 
+
+;;;;;;;;;;;;;;;;;;;;;  DB close related ;;;;;;;;;;;;;;
+
+;; Closes the currently active autofill db silently.
+;; Used when navigating back from pages where a db was opened but not used (e.g. passkey assertion with no matches).
+(reg-event-fx
+ :android-af/close-current-db
+ (fn [{:keys [db]} _]
+   (when-let [db-key (android-af-active-db-key db)]
+     {:fx [[:dispatch [:android-af/close-opened-db db-key]]]})))
+
+;; Silently closes an opened db in the backend and removes it from app-db state.
+;; Used by autofill flows after completing a passkey operation, to avoid the
+;; side effects of the main app's :close-kdbx-db (snackbar, notify-android-af navigation, pref reload).
+(reg-event-fx
+ :android-af/close-opened-db
+ (fn [{:keys [db]} [_ db-key]]
+   (let [dbs (filterv (fn [m] (not= (:db-key m) db-key)) (:opened-db-list db))]
+     {:db (-> db
+              (assoc :opened-db-list dbs)
+              (dissoc db-key))
+      :fx [[:common/bg-close-kdbx [db-key (fn [api-response] (cmn-events/on-error api-response))]]]})))
 
 ;;;;;;;;;;;;;;;;;;;;;  Key files related ;;;;;;;;;;;;;;
 

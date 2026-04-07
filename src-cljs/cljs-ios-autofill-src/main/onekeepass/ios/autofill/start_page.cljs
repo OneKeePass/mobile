@@ -7,7 +7,13 @@
                                                                  HOME_PAGE_ID
                                                                  LOGIN_PAGE_ID
                                                                  ENTRY_FORM_PAGE_ID
-                                                                 ENTRY_LIST_PAGE_ID]]
+                                                                 ENTRY_LIST_PAGE_ID
+                                                                 PASSKEY_ASSERTION_PAGE_ID
+                                                                 PASSKEY_REGISTRATION_PAGE_ID]]
+            [onekeepass.ios.autofill.passkey-assertion :as passkey-assertion]
+            [onekeepass.ios.autofill.events.passkey-assertion]
+            [onekeepass.ios.autofill.passkey-registration :as passkey-registration]
+            [onekeepass.ios.autofill.events.passkey-registration]
             [onekeepass.ios.autofill.app-lock :as app-lock]
             [onekeepass.ios.autofill.events.app-lock :as app-lock-events]
             [onekeepass.ios.autofill.entry-form :as entry-form]
@@ -190,10 +196,18 @@
   [open-db-page])
 
 (defn top-bar-left-action [page]
-  (if (= page ENTRY_FORM_PAGE_ID)
+  (cond
+    (= page ENTRY_FORM_PAGE_ID)
     {:action form-events/cancel-entry-form
      :label (lstr-bl 'back)
      :title (lstr-pt 'entry)}
+
+    (#{PASSKEY_ASSERTION_PAGE_ID PASSKEY_REGISTRATION_PAGE_ID} page)
+    {:action cmn-events/cancel-extension
+     :label (lstr-bl 'cancel)
+     :title (lstr-pt 'autoFillPasskey)}
+
+    :else
     {:action cmn-events/cancel-extension
      :label (lstr-bl 'cancel)
      :title (lstr-pt 'autoFillPassword)}))
@@ -310,6 +324,12 @@
 
          ENTRY_FORM_PAGE_ID
          [show-form]
+
+         PASSKEY_ASSERTION_PAGE_ID
+         [passkey-assertion/content]
+
+         PASSKEY_REGISTRATION_PAGE_ID
+         [passkey-registration/content]
 
          :else
          [home-page])]])

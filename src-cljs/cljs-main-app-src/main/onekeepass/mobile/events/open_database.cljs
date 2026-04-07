@@ -14,7 +14,7 @@
 
 (defn cancel-on-press
   "Called to close the dialog and resets all fields in ':open-database' "
-  [] 
+  []
   (dispatch [:open-database-dialog-close]))
 
 (defn open-database-on-press
@@ -47,11 +47,11 @@
   (dispatch [:repick-confirm-cancel]))
 
 #_(defn reset-new-merging-source-db-wanted
-  "This needs to be called to reset any previously set value of this flag. 
+    "This needs to be called to reset any previously set value of this flag. 
    This flag is set to true when user wants to open a source database for merging
   "
-  []
-  (dispatch [:open-database/new-merging-source-db-wanted false]))
+    []
+    (dispatch [:open-database/new-merging-source-db-wanted false]))
 
 (defn repick-confirm-data []
   (subscribe [:repick-confirm-data]))
@@ -264,7 +264,7 @@
   [kdbx-file-info-m api-response]
   (let [stored-credentials (on-ok api-response
                                   (fn [error]
-                                    (println "The bg/stored-db-credentials-on-biometric-authentication call returned error " error)
+                                    #_(println "The bg/stored-db-credentials-on-biometric-authentication call returned error " error)
                                     ;; When Backend api 'stored-db-credentials-on-biometric-authentication' results in error 
                                     ;; for whatever reason. Ideally should not happen!
                                     (dispatch [:open-database-dialog-show kdbx-file-info-m])))]
@@ -624,14 +624,17 @@
 ;; See desktop's event ':database-change-detected' in common ns
 (reg-event-fx
  :unlock-kdbx-success
- (fn [{:keys [db]} [_event-id kdbx-loaded]]
+ (fn [{:keys [db]} [_event-id {:keys [db-key] :as kdbx-loaded}]]
    {:db (-> db (assoc-in [:open-database :error-fields] {})
             (assoc-in [:open-database :status] :completed))
     :fx [[:dispatch [:open-database-dialog-hide]]
          [:dispatch [:common/unlock-selected-db (:db-key kdbx-loaded)]]
          [:dispatch [:common/set-active-db-key (:db-key kdbx-loaded)]]
          [:dispatch [:app-settings/update-user-active-time (:db-key kdbx-loaded)]]
-         [:dispatch [:common/message-snackbar-open 'databaseUnlocked]]]}))
+         [:dispatch [:common/message-snackbar-open 'databaseUnlocked]]
+         ;; iOS only: check for pending passkeys created by the Autofill extension
+         (when (bg/is-iOS)
+           [:dispatch [:passkey-pending/check db-key]])]}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   Auto open  ;;;;;;;;;;;;;;;;;;;;;;;;
 

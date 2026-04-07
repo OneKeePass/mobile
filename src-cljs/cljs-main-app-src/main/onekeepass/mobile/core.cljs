@@ -12,6 +12,8 @@
    #_[onekeepass.mobile.android.autofill.core :as android-core] ;;;;;;; ;;;;;;; ;;;;;;; ;;;;;;;
    [onekeepass.mobile.appbar :refer [appbar-main-content
                                      hardware-back-pressed]]
+   [onekeepass.mobile.ios.passkey-pending :refer [ios-all-pending-passkeys-notification-dialog]]
+   [onekeepass.mobile.events.ios.passkey-pending :as pp-events]
    [onekeepass.mobile.background :as bg]
    [onekeepass.mobile.common-components :as cc :refer [message-dialog
                                                        message-modal
@@ -43,10 +45,13 @@
      ;; All dialogs that may be used in more than one page are added under this portal 
      [rnp-portal
       [message-snackbar]
+      #_[pending-passkey-snackbar]
       #_[open-db-dialog]
       [save-error-modal @(save-events/save-error-modal-data)]
       [message-modal @(cmn-events/message-modal-data)]
-      [message-dialog @(cmn-events/message-dialog-data)]]]))
+      [message-dialog @(cmn-events/message-dialog-data)]
+      (when (bg/is-iOS)
+        [ios-all-pending-passkeys-notification-dialog])]]))
 
 ;; System back action handler (Android)
 (def ^:private back-handler (atom nil))
@@ -108,12 +113,17 @@
   [rnc/gh-gesture-handler-root-view {:style {:flex 1}}
    [:f> main]])
 
-(defn init-calls []
+(defn init-calls 
+  "A common initialization functionalities for ios, android and android autofill"
+  []
+  (println "Common init-calls is called ...")
   (native-events/register-backend-event-handlers)
   (cmn-events/sync-initialize)
   (as-events/init-session-timeout-tick)
   (t/load-language-translation)
-  (rs-events/load-all-remote-connection-configs))
+  (rs-events/load-all-remote-connection-configs)
+  (when (bg/is-iOS)
+    (pp-events/check-all)))
 
 ;; Main entry point with shadow-cljs
 (defn start
@@ -126,11 +136,17 @@
 
   ;; Andoid 
   #_(render-root "OneKeePassMobile" (fn [props]
-                                      (js/console.log "Android app entry: In main core render-root props is " props)
-                                      (let [{:keys [androidAutofill] :as _options} (js->clj props :keywordize-keys true)]
-                                        (if androidAutofill
-                                          (r/as-element [android-core/app-root])
-                                          (r/as-element [app-root]))))))
+                                    (js/console.log "Android app entry: In main core render-root props is " props)
+                                    ;; Examples 
+                                    ;; { rootTag: 11 } means main app
+                                    ;; Password autofill { androidAutofill: true, rootTag: 11 }
+                                    ;; Passkey assertion { androidPasskeyMode: 'assertion', rootTag: 31 }
+                                    ;; Passkey registration { androidPasskeyMode: 'registration', rootTag: 51 }
+
+                                    (let [{:keys [androidAutofill androidPasskeyMode] :as options} (js->clj props :keywordize-keys true)]
+                                      (if (or androidAutofill androidPasskeyMode)
+                                        (r/as-element [android-core/app-root options])
+                                        (r/as-element [app-root]))))))
 
 (defn init []
   ;; (js/console.log "Args passed " args)
@@ -175,6 +191,5 @@
         (r/as-element [app-root]))))
 
 
-#_{:clj-kondo/ignore [:unresolved-symbol]}
 (comment
   (in-ns 'onekeepass.mobile.core))

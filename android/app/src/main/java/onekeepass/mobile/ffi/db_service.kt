@@ -702,6 +702,12 @@ internal interface UniffiCallbackInterfaceAndroidApiServiceMethod1 : com.sun.jna
 internal interface UniffiCallbackInterfaceAndroidApiServiceMethod2 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`autoFillData`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
 }
+internal interface UniffiCallbackInterfaceAndroidApiServiceMethod3 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`data`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
+}
+internal interface UniffiCallbackInterfaceAndroidApiServiceMethod4 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`data`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
+}
 internal interface UniffiCallbackInterfaceCommonDeviceServiceExMethod0 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`clipData`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
 }
@@ -792,24 +798,30 @@ internal open class UniffiVTableCallbackInterfaceEventDispatch(
     }
 
 }
-@Structure.FieldOrder("clipboardCopyString", "autofillClientAppUrlInfo", "completeAutofill", "uniffiFree")
+@Structure.FieldOrder("clipboardCopyString", "autofillClientAppUrlInfo", "completeAutofill", "completePasskeyAssertion", "storePasskeyRegistrationResponse", "uniffiFree")
 internal open class UniffiVTableCallbackInterfaceAndroidApiService(
     @JvmField internal var `clipboardCopyString`: UniffiCallbackInterfaceAndroidApiServiceMethod0? = null,
     @JvmField internal var `autofillClientAppUrlInfo`: UniffiCallbackInterfaceAndroidApiServiceMethod1? = null,
     @JvmField internal var `completeAutofill`: UniffiCallbackInterfaceAndroidApiServiceMethod2? = null,
+    @JvmField internal var `completePasskeyAssertion`: UniffiCallbackInterfaceAndroidApiServiceMethod3? = null,
+    @JvmField internal var `storePasskeyRegistrationResponse`: UniffiCallbackInterfaceAndroidApiServiceMethod4? = null,
     @JvmField internal var `uniffiFree`: UniffiCallbackInterfaceFree? = null,
 ) : Structure() {
     class UniffiByValue(
         `clipboardCopyString`: UniffiCallbackInterfaceAndroidApiServiceMethod0? = null,
         `autofillClientAppUrlInfo`: UniffiCallbackInterfaceAndroidApiServiceMethod1? = null,
         `completeAutofill`: UniffiCallbackInterfaceAndroidApiServiceMethod2? = null,
+        `completePasskeyAssertion`: UniffiCallbackInterfaceAndroidApiServiceMethod3? = null,
+        `storePasskeyRegistrationResponse`: UniffiCallbackInterfaceAndroidApiServiceMethod4? = null,
         `uniffiFree`: UniffiCallbackInterfaceFree? = null,
-    ): UniffiVTableCallbackInterfaceAndroidApiService(`clipboardCopyString`,`autofillClientAppUrlInfo`,`completeAutofill`,`uniffiFree`,), Structure.ByValue
+    ): UniffiVTableCallbackInterfaceAndroidApiService(`clipboardCopyString`,`autofillClientAppUrlInfo`,`completeAutofill`,`completePasskeyAssertion`,`storePasskeyRegistrationResponse`,`uniffiFree`,), Structure.ByValue
 
    internal fun uniffiSetValue(other: UniffiVTableCallbackInterfaceAndroidApiService) {
         `clipboardCopyString` = other.`clipboardCopyString`
         `autofillClientAppUrlInfo` = other.`autofillClientAppUrlInfo`
         `completeAutofill` = other.`completeAutofill`
+        `completePasskeyAssertion` = other.`completePasskeyAssertion`
+        `storePasskeyRegistrationResponse` = other.`storePasskeyRegistrationResponse`
         `uniffiFree` = other.`uniffiFree`
     }
 
@@ -852,6 +864,10 @@ internal open class UniffiVTableCallbackInterfaceSecureEnclaveCbService(
     }
 
 }
+
+
+
+
 
 
 
@@ -1066,6 +1082,10 @@ fun uniffi_db_service_ffi_checksum_method_androidapiservice_autofill_client_app_
 ): Short
 fun uniffi_db_service_ffi_checksum_method_androidapiservice_complete_autofill(
 ): Short
+fun uniffi_db_service_ffi_checksum_method_androidapiservice_complete_passkey_assertion(
+): Short
+fun uniffi_db_service_ffi_checksum_method_androidapiservice_store_passkey_registration_response(
+): Short
 fun uniffi_db_service_ffi_checksum_method_androidsupportserviceextra_complete_save_as_on_error(
 ): Short
 fun uniffi_db_service_ffi_checksum_method_androidsupportserviceextra_create_kdbx(
@@ -1200,6 +1220,10 @@ fun uniffi_db_service_ffi_fn_method_androidapiservice_clipboard_copy_string(`ptr
 fun uniffi_db_service_ffi_fn_method_androidapiservice_autofill_client_app_url_info(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_db_service_ffi_fn_method_androidapiservice_complete_autofill(`ptr`: Pointer,`autoFillData`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+fun uniffi_db_service_ffi_fn_method_androidapiservice_complete_passkey_assertion(`ptr`: Pointer,`data`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
+fun uniffi_db_service_ffi_fn_method_androidapiservice_store_passkey_registration_response(`ptr`: Pointer,`data`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 fun uniffi_db_service_ffi_fn_clone_androidsupportserviceextra(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
 ): Pointer
@@ -1458,6 +1482,12 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_ffi_checksum_method_androidapiservice_complete_autofill() != 29361.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_ffi_checksum_method_androidapiservice_complete_passkey_assertion() != 42767.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_ffi_checksum_method_androidapiservice_store_passkey_registration_response() != 20251.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_ffi_checksum_method_androidsupportserviceextra_complete_save_as_on_error() != 15929.toShort()) {
@@ -1995,6 +2025,10 @@ public interface AndroidApiService {
     
     fun `completeAutofill`(`autoFillData`: AutoFillDbData)
     
+    fun `completePasskeyAssertion`(`data`: AndroidPasskeyAssertionCallbackData)
+    
+    fun `storePasskeyRegistrationResponse`(`data`: AndroidPasskeyRegistrationCallbackData)
+    
     companion object
 }
 
@@ -2118,6 +2152,30 @@ open class AndroidApiServiceImpl: Disposable, AutoCloseable, AndroidApiService
     
 
     
+    @Throws(ApiCallbackException::class)override fun `completePasskeyAssertion`(`data`: AndroidPasskeyAssertionCallbackData)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(ApiCallbackException) { _status ->
+    UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_method_androidapiservice_complete_passkey_assertion(
+        it, FfiConverterTypeAndroidPasskeyAssertionCallbackData.lower(`data`),_status)
+}
+    }
+    
+    
+
+    
+    @Throws(ApiCallbackException::class)override fun `storePasskeyRegistrationResponse`(`data`: AndroidPasskeyRegistrationCallbackData)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(ApiCallbackException) { _status ->
+    UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_method_androidapiservice_store_passkey_registration_response(
+        it, FfiConverterTypeAndroidPasskeyRegistrationCallbackData.lower(`data`),_status)
+}
+    }
+    
+    
+
+    
 
     
     
@@ -2178,6 +2236,40 @@ internal object uniffiCallbackInterfaceAndroidApiService {
             )
         }
     }
+    internal object `completePasskeyAssertion`: UniffiCallbackInterfaceAndroidApiServiceMethod3 {
+        override fun callback(`uniffiHandle`: Long,`data`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeAndroidApiService.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`completePasskeyAssertion`(
+                    FfiConverterTypeAndroidPasskeyAssertionCallbackData.lift(`data`),
+                )
+            }
+            val writeReturn = { _: Unit -> Unit }
+            uniffiTraitInterfaceCallWithError(
+                uniffiCallStatus,
+                makeCall,
+                writeReturn,
+                { e: ApiCallbackException -> FfiConverterTypeApiCallbackError.lower(e) }
+            )
+        }
+    }
+    internal object `storePasskeyRegistrationResponse`: UniffiCallbackInterfaceAndroidApiServiceMethod4 {
+        override fun callback(`uniffiHandle`: Long,`data`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeAndroidApiService.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`storePasskeyRegistrationResponse`(
+                    FfiConverterTypeAndroidPasskeyRegistrationCallbackData.lift(`data`),
+                )
+            }
+            val writeReturn = { _: Unit -> Unit }
+            uniffiTraitInterfaceCallWithError(
+                uniffiCallStatus,
+                makeCall,
+                writeReturn,
+                { e: ApiCallbackException -> FfiConverterTypeApiCallbackError.lower(e) }
+            )
+        }
+    }
 
     internal object uniffiFree: UniffiCallbackInterfaceFree {
         override fun callback(handle: Long) {
@@ -2189,6 +2281,8 @@ internal object uniffiCallbackInterfaceAndroidApiService {
         `clipboardCopyString`,
         `autofillClientAppUrlInfo`,
         `completeAutofill`,
+        `completePasskeyAssertion`,
+        `storePasskeyRegistrationResponse`,
         uniffiFree,
     )
 
@@ -3738,6 +3832,66 @@ public object FfiConverterTypeSecureEnclaveCbService: FfiConverter<SecureEnclave
         // The Rust code always expects pointers written as 8 bytes,
         // and will fail to compile if they don't fit.
         buf.putLong(Pointer.nativeValue(lower(value)))
+    }
+}
+
+
+
+data class AndroidPasskeyAssertionCallbackData (
+    var `authenticationResponseJson`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAndroidPasskeyAssertionCallbackData: FfiConverterRustBuffer<AndroidPasskeyAssertionCallbackData> {
+    override fun read(buf: ByteBuffer): AndroidPasskeyAssertionCallbackData {
+        return AndroidPasskeyAssertionCallbackData(
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: AndroidPasskeyAssertionCallbackData) = (
+            FfiConverterString.allocationSize(value.`authenticationResponseJson`)
+    )
+
+    override fun write(value: AndroidPasskeyAssertionCallbackData, buf: ByteBuffer) {
+            FfiConverterString.write(value.`authenticationResponseJson`, buf)
+    }
+}
+
+
+
+data class AndroidPasskeyRegistrationCallbackData (
+    var `registrationResponseJson`: kotlin.String, 
+    var `orgDbKey`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAndroidPasskeyRegistrationCallbackData: FfiConverterRustBuffer<AndroidPasskeyRegistrationCallbackData> {
+    override fun read(buf: ByteBuffer): AndroidPasskeyRegistrationCallbackData {
+        return AndroidPasskeyRegistrationCallbackData(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: AndroidPasskeyRegistrationCallbackData) = (
+            FfiConverterString.allocationSize(value.`registrationResponseJson`) +
+            FfiConverterString.allocationSize(value.`orgDbKey`)
+    )
+
+    override fun write(value: AndroidPasskeyRegistrationCallbackData, buf: ByteBuffer) {
+            FfiConverterString.write(value.`registrationResponseJson`, buf)
+            FfiConverterString.write(value.`orgDbKey`, buf)
     }
 }
 

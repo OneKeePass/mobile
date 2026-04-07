@@ -29,7 +29,23 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
   static var serviceIdentifierDisplayName: String?
   
   static var cancelled: Bool = false
+
+  // Passkey assertion state (iOS 17+)
+  static var pendingPasskeyRpId: String?
+  static var pendingPasskeyCredentialIds: [Data] = []
+  static var pendingPasskeyClientDataHash: Data?
+
+  // Passkey registration state (iOS 17+)
+  static var pendingPasskeyRegistrationRpId: String?
+  static var pendingPasskeyRegistrationUserName: String?
+  static var pendingPasskeyRegistrationUserHandle: Data?
+  static var pendingPasskeyRegistrationClientDataHash: Data?
+  // COSE algorithm selected from supportedAlgorithms: -7 (ES256), -8 (EdDSA). Default -7.
+  static var pendingPasskeyRegistrationAlgorithm: Int = -7
+  static var isPasskeyRegistrationMode: Bool = false
   
+  static var prepareViewCalled: Bool = false
+
   private let logger = logger1
   
   //==============================================================================================================//
@@ -70,18 +86,51 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
   
   // ====================================================================================================== //
   
+  static func resetContexts() {
+    
+    Self.extContext = nil
+    Self.cancelled = false
+    Self.isPasskeyRegistrationMode = false
+    
+    Self.pendingPasskeyClientDataHash = nil
+    Self.pendingPasskeyCredentialIds = []
+    Self.pendingPasskeyRegistrationClientDataHash = nil
+    Self.pendingPasskeyRegistrationRpId = nil
+    Self.pendingPasskeyRegistrationAlgorithm = -7
+
+    Self.pendingPasskeyRegistrationUserHandle = nil
+    Self.pendingPasskeyRegistrationUserName =  nil
+    Self.pendingPasskeyRpId = nil
+    
+    Self.serviceIdentifierDisplayName = nil
+    Self.serviceIdentifierDomain = nil
+    Self.serviceIdentifierUrl = nil
+    Self.serviceIdentifierDisplayName = nil
+    
+    Self.prepareViewCalled = false
+    
+    logger1.debug("CredentialProviderViewController - All static variables are reset")
+    
+  }
+  
   static func cancelExtension() {
+    logger1.debug("CredentialProviderViewController - In cancelExtension fn and  current cancelled state is \(cancelled) and extContext is \(String(describing: extContext))")
+    
     if extContext != nil, !cancelled {
-      logger1.debug("Going to cancel the extension view...")
+      logger1.debug("CredentialProviderViewController - Going to cancel the extension view...")
       extContext!.cancelRequest(withError: NSError(domain: ASExtensionErrorDomain, code: ASExtensionError.userCanceled.rawValue))
       cancelled = true
-      logger1.debug("Extension view is cancelled")
+      logger1.debug("CredentialProviderViewController -Extension view is cancelled")
+    } else {
+      logger1.debug("CredentialProviderViewController - Cancelation is not needed/called")
     }
+    
+    resetContexts()
   }
   
   static func credentialSelected(_ user: String, _ password: String) {
     guard extContext != nil else {
-      logger1.error("The func credentialSelected but extContext is not set")
+      logger1.error("CredentialProviderViewController - The func credentialSelected but extContext is not set")
       return
     }
     
@@ -89,6 +138,104 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
     extContext!.completeRequest(withSelectedCredential: passwordCredential, completionHandler: nil)
   }
  
+  // Picks the first algorithm from the RP's supportedAlgorithms that OneKeePass supports.
+  // OneKeePass generates keys in Rust (not the Secure Enclave), so it can produce ES256 and EdDSA.
+  // Use rawValue comparisons to avoid referencing .EdDSA which was only added in iOS 18.
+  // At this time, ios only supports the ES256 algorithm
+  // See https://developer.apple.com/documentation/authenticationservices/ascosealgorithmidentifier 
+  @available(iOS 17.0, *)
+  static func selectPreferredAlgorithm(_ algorithms: [ASCOSEAlgorithmIdentifier]) -> Int {
+    logger1.error("CredentialProviderViewController - selectPreferredAlgorithm  algorithms \(algorithms)")
+    // It seems on ios algorithms is always [__C.ASCOSEAlgorithmIdentifier(rawValue: -7)]
+    // Algorithm ASCOSEAlgorithmIdentifier(rawValue: -7), Rawvalue -7
+    // Because of this while checking with https://webauthn.io and in Registration Settings
+    // only Ed25519 is selected as Supported Public Key Algorithms, though our app side credentials will be created and stored
+    // The https://webauthn.io will fail to register saying
+    // Registration failed: Unsupported crdential public key alg "-7", expectecd one of: [<COSEALgorithmIdentifier.EDDSA -8>]
+    // In such cases, user should not merge back the new passkey to main db
+    
+    for alg in algorithms {
+      logger1.error("Algorithm \(String(describing: alg)), Rawvalue \(alg.rawValue)  ")
+      switch alg.rawValue {
+      case -7: return -7  // ES256
+      case -8: return -8  // EdDSA
+      default: break
+      }
+    }
+    return -7 // ES256 fallback
+  }
+
+  @available(iOS 17.0, *)
+  static func completePasskeyAssertion(
+    credentialIdB64url: String,
+    userHandleB64url: String,
+    signatureB64url: String,
+    authenticatorDataB64url: String,
+    rpId: String
+  ) {
+    
+    guard let ctx = extContext,
+          let credentialIdData = Data(base64URLEncoded: credentialIdB64url),
+          let userHandleData = Data(base64URLEncoded: userHandleB64url),
+          let signatureData = Data(base64URLEncoded: signatureB64url),
+          let authData = Data(base64URLEncoded: authenticatorDataB64url),
+          let clientDataHash = pendingPasskeyClientDataHash
+    else {
+      logger1.error("CredentialProviderViewController - completePasskeyAssertion: missing context or could not decode base64url data")
+      return
+    }
+
+    let credential = ASPasskeyAssertionCredential(
+      userHandle: userHandleData,
+      relyingParty: rpId,
+      signature: signatureData,
+      clientDataHash: clientDataHash,
+      authenticatorData: authData,
+      credentialID: credentialIdData
+    )
+    
+    logger1.debug("CredentialProviderViewController -  ASPasskeyAssertionCredential formed successfully \(credential) and sent to app")
+
+    cancelled = true  // Prevent viewDidDisappear's cancelExtension from racing with this call
+    Task { @MainActor in
+      logger1.debug("CredentialProviderViewController -  completeAssertionRequest Task started — calling completeAssertionRequest")
+      await ctx.completeAssertionRequest(using: credential)
+      logger1.debug("CredentialProviderViewController - completeAssertionRequest Task completed")
+    }
+  }
+
+  @available(iOS 17.0, *)
+  static func completePasskeyRegistration(
+    credentialIdB64url: String,
+    attestationObjectB64url: String,
+    clientDataHash: Data
+  ) {
+    guard let ctx = extContext,
+          let credentialIdData = Data(base64URLEncoded: credentialIdB64url),
+          let attestationObjectData = Data(base64URLEncoded: attestationObjectB64url),
+          let rpId = pendingPasskeyRegistrationRpId
+    else {
+      logger1.error("CredentialProviderViewController - completePasskeyRegistration: missing context or could not decode base64url data")
+      return
+    }
+
+    let credential = ASPasskeyRegistrationCredential(
+      relyingParty: rpId,
+      clientDataHash: clientDataHash,
+      credentialID: credentialIdData,
+      attestationObject: attestationObjectData
+    )
+
+    logger1.debug("CredentialProviderViewController - ASPasskeyRegistrationCredential formed successfully")
+
+    cancelled = true
+    Task { @MainActor in
+      logger1.debug("CredentialProviderViewController - completeRegistrationRequest Task started")
+      await ctx.completeRegistrationRequest(using: credential)
+      logger1.debug("CredentialProviderViewController - completeRegistrationRequest Task completed")
+    }
+  }
+
   static func serviceIdentifiersReceived() -> [String: String] {
     var dict: [String: String] = [:]
     
@@ -103,33 +250,38 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
   override func viewDidLoad() {
     super.viewDidLoad()
     CredentialProviderViewController.extContext = extensionContext
-    debugPrint("viewDidLoad is called")
+    debugPrint("CredentialProviderViewController - viewDidLoad is called")
   }
   
   override func viewWillDisappear(_ animated: Bool) {
     super.viewWillDisappear(animated)
-    debugPrint("viewWillDisappear is called \(animated)")
+    debugPrint("CredentialProviderViewController- viewWillDisappear is called \(animated)")
   }
   
   override func viewDidDisappear(_ animated: Bool) {
     super.viewDidDisappear(animated)
-    logger.debug("CredentialProviderViewController viewDidDisappear is called \(animated)")
+    logger.debug("CredentialProviderViewController - viewDidDisappear is called \(animated)")
+    
+    Self.resetContexts()
+    
     // This needs to be added here when use this class's view directly
     // CredentialProviderViewController.cancelExtension()
   }
   
   override func viewWillAppear(_ animated: Bool) {
     super.viewWillAppear(animated)
-    logger.debug("viewWillAppear is called")
+    logger.debug("CredentialProviderViewController - viewWillAppear is called")
     // This was used when we used the inner clsss 'OkpViewController' till RN 0.78.2
     // This is commented out if  we set this class controllers's view directly
     // See prepareCredentialList where this is called when we set the view directly instead of using the custom controller
-    prepareUI()
+    if !Self.cancelled {
+      prepareUI()
+    }
   }
 
   override func didReceiveMemoryWarning() {
     super.didReceiveMemoryWarning()
-    logger.info("didReceiveMemoryWarning is called")
+    logger.info("CredentialProviderViewController - didReceiveMemoryWarning is called")
   }
   
   // Following used till RN 0.78.2
@@ -156,8 +308,14 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
   // https://github.com/facebook/react-native/issues/54642
   
   func prepareUI() {
+    logger.debug("CredentialProviderViewController - prepareUI is called")
+    if Self.prepareViewCalled {
+      logger.debug("CredentialProviderViewController - prepareUI is already called and not calling again")
+      return
+    }
     let vc = OkpReactViewController()
     present(vc, animated: true, completion: nil)
+    Self.prepareViewCalled = true
   }
   
   // This is another way of adding the RN view directly as a sub view
@@ -187,10 +345,10 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
     prioritize the most relevant credentials in the list.
    */
   override func prepareCredentialList(for serviceIdentifiers: [ASCredentialServiceIdentifier]) {
-    logger.debug("prepareCredentialList is called")
+    logger.debug("CredentialProviderViewController - prepareCredentialList for password auth is called")
     
     Self.cancelled = false
-    
+
     CredentialProviderViewController.serviceIdentifierDomain = nil
     CredentialProviderViewController.serviceIdentifierUrl = nil
     CredentialProviderViewController.serviceIdentifierDisplayName = nil
@@ -198,27 +356,102 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
     for si in serviceIdentifiers {
       switch si.type {
       case .domain:
-        logger.debug("Domain identified \(si.identifier)")
+        logger.debug("CredentialProviderViewController - Domain identified \(si.identifier)")
         CredentialProviderViewController.serviceIdentifierDomain = si.identifier
       
       case .URL:
-        logger.debug("Url identified \(si.identifier)")
+        logger.debug("CredentialProviderViewController -Url identified \(si.identifier)")
         CredentialProviderViewController.serviceIdentifierUrl = si.identifier
       
       case .app:
         // Not yet used
         if #available(iOS 26.2, *) {
-          logger.debug("App displayname \(String(describing: si.displayName))")
+          logger.debug("CredentialProviderViewController - App displayname \(String(describing: si.displayName))")
           CredentialProviderViewController.serviceIdentifierDisplayName = si.displayName
         }
       
       @unknown default:
-        logger.debug("Unknown identifier \(si.type)")
+        logger.debug("CredentialProviderViewController - Unknown identifier \(si.type)")
       }
     }
     // Calling these from here also worked. See viewWillAppear where the view is called
     // directUI()
     // prepareUI()
+  }
+
+  // iOS 17+ passkey assertion entry point via the credential list (no pre-registered identities needed).
+  // Called when the user triggers a WebAuthn assertion on a site and iOS presents the credential picker.
+  // Stores the passkey context so the ClojureScript layer can route to the passkey selection page.
+  @available(iOS 17.0, *)
+  override func prepareCredentialList(
+    for serviceIdentifiers: [ASCredentialServiceIdentifier],
+    requestParameters: ASPasskeyCredentialRequestParameters
+  ) {
+    logger.debug("CredentialProviderViewController - prepareCredentialList(requestParameters:) for passkey auth is called — passkey assertion for rpId: \(requestParameters.relyingPartyIdentifier)")
+    Self.cancelled = false
+    Self.pendingPasskeyRpId = requestParameters.relyingPartyIdentifier
+    Self.pendingPasskeyClientDataHash = requestParameters.clientDataHash
+    Self.pendingPasskeyCredentialIds = requestParameters.allowedCredentials
+    prepareUI()
+  }
+
+  // Called by iOS after provideCredentialWithoutUserInteraction returns userInteractionRequired.
+  // Sets up the passkey assertion state and launches the extension UI so the user can
+  // unlock the database and select the passkey.
+  @available(iOS 17.0, *)
+  override func prepareInterfaceToProvideCredential(for credentialRequest: any ASCredentialRequest) {
+    logger.debug("CredentialProviderViewController - prepareInterfaceToProvideCredential for passkey auth called")
+    Self.cancelled = false
+
+    guard let request = credentialRequest as? ASPasskeyCredentialRequest,
+          let identity = request.credentialIdentity as? ASPasskeyCredentialIdentity
+    else {
+      logger.debug("CredentialProviderViewController - prepareInterfaceToProvideCredential: not a passkey request")
+      return
+    }
+
+    Self.pendingPasskeyRpId = identity.relyingPartyIdentifier
+    Self.pendingPasskeyClientDataHash = request.clientDataHash
+    Self.pendingPasskeyCredentialIds = [identity.credentialID]
+    logger.debug("CredentialProviderViewController - prepareInterfaceToProvideCredential: passkey for rpId=\(identity.relyingPartyIdentifier)")
+    prepareUI()
+  }
+
+  // Called by iOS when it tries to provide a registered passkey identity without showing UI.
+  // Since OneKeePass requires the user to unlock the database, always request user interaction
+  // so iOS falls through to prepareInterfaceToProvideCredential.
+  @available(iOS 17.0, *)
+  override func provideCredentialWithoutUserInteraction(for credentialRequest: any ASCredentialRequest) {
+    logger.debug("CredentialProviderViewController - provideCredentialWithoutUserInteraction called — requiring user interaction")
+    extensionContext.cancelRequest(withError: NSError(
+      domain: ASExtensionErrorDomain,
+      code: ASExtensionError.userInteractionRequired.rawValue))
+  }
+
+  // iOS 17+ passkey registration entry point.
+  // Called when a website requests passkey creation and iOS invokes the autofill extension.
+  @available(iOS 17.0, *)
+  override func prepareInterface(
+    forPasskeyRegistration registrationRequest: ASCredentialRequest
+  ) {
+    logger.debug("CredentialProviderViewController - prepareInterfaceForPasskeyRegistration called")
+    Self.cancelled = false
+
+    guard let request = registrationRequest as? ASPasskeyCredentialRequest,
+          let identity = request.credentialIdentity as? ASPasskeyCredentialIdentity
+    else {
+      logger.error("CredentialProviderViewController - prepareInterfaceForPasskeyRegistration: not a passkey request")
+      return
+    }
+
+    Self.pendingPasskeyRegistrationRpId = identity.relyingPartyIdentifier
+    Self.pendingPasskeyRegistrationUserName = identity.userName
+    Self.pendingPasskeyRegistrationUserHandle = identity.userHandle
+    Self.pendingPasskeyRegistrationClientDataHash = request.clientDataHash
+    Self.pendingPasskeyRegistrationAlgorithm = Self.selectPreferredAlgorithm(request.supportedAlgorithms)
+    Self.isPasskeyRegistrationMode = true
+
+    logger.debug("CredentialProviderViewController - passkey registration for rpId=\(identity.relyingPartyIdentifier), user=\(identity.userName), algorithm=\(Self.pendingPasskeyRegistrationAlgorithm)")
   }
 
   /*
@@ -300,6 +533,27 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
 //    self.view = rootView
 //    // present(self, animated: true, completion: nil)
 //  }
+
+// Decodes a base64url-encoded string (no padding, using - and _ instead of + and /) into Data.
+extension Data {
+  init?(base64URLEncoded string: String) {
+    var base64 = string
+      .replacingOccurrences(of: "-", with: "+")
+      .replacingOccurrences(of: "_", with: "/")
+    let remainder = base64.count % 4
+    if remainder != 0 {
+      base64 += String(repeating: "=", count: 4 - remainder)
+    }
+    self.init(base64Encoded: base64)
+  }
+
+  func base64URLEncodedString() -> String {
+    return base64EncodedString()
+      .replacingOccurrences(of: "+", with: "-")
+      .replacingOccurrences(of: "/", with: "_")
+      .replacingOccurrences(of: "=", with: "")
+  }
+}
 
 /*** ========== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== =====  **/
 /*

@@ -110,6 +110,7 @@
         "veryWeak": "Very Weak",
         "weak": "Weak",
         "wordList": "Word list",
+        "noPendingPasskeys": "No Pending Passkeys",
         "words": "Words"
     },
     "entryTypeTitles": {
@@ -129,6 +130,7 @@
         "cardDetails": "Card Details",
         "loginDetails": "Login Details",
         "notes": "Notes",
+        "passkeyDetails":"Passkey Details",
         "tags": "Tags"
     },
     "entryFieldNames": {
@@ -155,6 +157,11 @@
         "expirationYear": "Expiration Year",
         "expiryDuration": "Expiry Duration",
         "issuingBank": "Issuing Bank",
+        "kpexPasskeyUsername":"Passkey Username",
+        "kpexPasskeyRelyingParty":"Relying Party",
+        "kpexPasskeyUserHandle": "User Handle",
+        "kpexPasskeyCredentialId": "Passkey CredentialId",
+        "kpexPasskeyPrivateKeyPem": "Passkey PrivateKey Pem",
         "notes": "Notes",
         "number": "Number",
         "otp": "otp",
@@ -199,6 +206,7 @@
             "removing": "Removing {{dbFileName}}",
             "reopen": "Reopen",
             "setupOtp": "Set up OTP",
+            "pendingPasskeys": "Pending Passkeys",
             "unlockDatabase": "Unlock database"
         },
         "texts": {
@@ -224,6 +232,9 @@
             "reopenAgain": "Please open the database file {{fileName}} again from its original location",
             "reopenNotOldRef": "The database could not be opened with the old reference",
             "reopenReadPermissionrequired": "Read permission is required again to load this database",
+            "pendingPasskeysMergeNeeded": "There are one or more pending passkeys and they need to be merged to the database",
+            "pendingPasskeysDisableWarning": "There are pending passkeys that have not been committed to the database. Please review them before disabling autofill.",
+            "pendingPasskeysMultiDb": "The following databases have pending passkeys. Open each database to review and save them.",
             "setupOtp": "You can set up TOTP by scanning a QR code or manually entering the secret or an OTPAuth url"
         }
     },
@@ -238,6 +249,8 @@
             "noScanning": "No scanning",
             "scanError": "Scan Error",
             "restricted": "Restricted",
+            "invalidReference": "Invalid reference",
+            "saveAsError": "Save as Error",
             "uploadStatus": "Upload status"
         },
         "texts": {
@@ -245,6 +258,8 @@
             "noScanning": "Please enter the secret code instead of scanning QR code",
             "restricted": "Please enter the secret code instead of scanning QR code",
             "scannedUrlNotOtpUri": "The scanned url is not an otp type url",
+            "dbMovedOrRenamed": "It appears the database file might have been moved or renamed. Please remove the database and reopen the moved or renamed file",
+            "editingDisabledReadOnly": "Editing is disabled as the database is opened in read only mode",
             "uploadStatus": "The uploaded attachment is the same as the existing one"
         }
     },
@@ -252,12 +267,14 @@
         "titles": {
             "biometricDbOpenEnabled": "Attention",
             "noCamera": "No Camera",
-            "dbReadOnly": "Read Only"
+            "dbReadOnly": "Read Only",
+            "saveCompleted": "Save completed"
         },
         "texts": {
             "biometricDbOpenEnabled": "You need to login again for this change to take effect",
             "noCamera": "No camera is found. Please enter the secret code manually",
-            "dbReadOnly": "Database is opened in read only mode as there is no connection to the server"
+            "dbReadOnly": "Database is opened in read only mode as there is no connection to the server",
+            "saveCompleted": "The newly saved database is loaded now"
         }
     },
     "modalDialog": {
@@ -298,6 +315,7 @@
         "keyFileSelected": "Key file selected",
         "newSectionCreated": "New section is created",
         "noCopy": "Nothing to copy",
+        "passkeySaved": "Passkey saved",
         "sectionNameChanged": "Section name is changed",
         "updatedEntry": "Updated entry",
         "updatedSettings": "Updated settings"
@@ -308,6 +326,7 @@
         "appSettings": "App Settings",
         "additionalDbAcccess": "Additional Database Access",
         "autoFillPassword": "AutoFill Password",
+        "autoFillPasskey": "AutoFill Passkey",
         "autofillSettings": "Autofill Settings",
         "category": "Category",
         "databaseAccess": "Database Access",
@@ -330,6 +349,8 @@
         "selectConnection": "Select Connection",
         "settings": "Settings",
         "sftp": "SFTP",
+        "registerPasskey": "Register Passkey",
+        "selectPasskey": "Select Passkey",
         "storageBrowser": "Storage Browser",
         "webdav": "WebDAV"
     },
@@ -364,6 +385,9 @@
         "save": "Save",
         "scanQRcode": "Scan QR Code",
         "setUpOneTimePassword": "Set up One-Time Password",
+        "discard": "Discard",
+        "review": "Review",
+        "saveAll": "Save All",
         "yes": "Yes",
         "webdav": "WebDAV"
     },

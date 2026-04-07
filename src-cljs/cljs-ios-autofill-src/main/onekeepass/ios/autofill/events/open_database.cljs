@@ -6,6 +6,7 @@
    [onekeepass.ios.autofill.events.common :refer [database-preference-by-db-key
                                                    on-ok
                                                   org-db-file-path]]
+   [onekeepass.ios.autofill.translation :refer [lstr-dlg-title lstr-error-dlg-title]]
    [re-frame.core :refer [dispatch reg-event-db reg-event-fx reg-fx reg-sub
                           subscribe]]))
 
@@ -73,7 +74,7 @@
             (assoc-in [:open-database :database-full-file-name] full-file-name-uri)
             (assoc-in [:open-database :dialog-show] true))
 
-    :fx [[:dispatch [:common/next-page LOGIN_PAGE_ID "Unlock Database"]]]}))
+    :fx [[:dispatch [:common/next-page LOGIN_PAGE_ID (lstr-dlg-title 'unlockDatabase)]]]}))
 
 
 (reg-event-fx
@@ -93,7 +94,7 @@
    (if (= error "BiometricCredentialsAuthenticationFailed") 
      {:fx [[:dispatch [:open-database-db-open-with-credentials kdbx-file-info-m]]]}
 
-     {:fx [[:dispatch [:common/error-box-show "Database Open Error" error]]]})))
+     {:fx [[:dispatch [:common/error-box-show (lstr-error-dlg-title 'dbOpenError) error]]]})))
 
 ;; Backend call to get all entries on openning a databse
 ;; This is similar to load-kdbx call in the main app
@@ -106,12 +107,27 @@
                                   #_(dispatch [:entry-list/update-selected-entry-items db-key entry-summaries])
                                   (dispatch [:all-entries-loaded db-key entry-summaries]))))))
 
-;; Called after retreiving all entries for the opened database
+;; Called after retreiving all entries for the opened database.
+;; Routes to the appropriate flow based on context:
+;; 1. Passkey registration (if rp-id is set in registration context)
+;; 2. Passkey assertion (if rp-id is set in assertion context)
+;; 3. Normal credential-service-identifier filtering (default)
 (reg-event-fx
  :all-entries-loaded
- (fn [{:keys [_db]} [_event-id db-key entry-summaries]]
-   {:fx [[:dispatch [:entry-list/update-selected-entry-items db-key entry-summaries]]
-         [:bg-credential-service-identifier-filtering [db-key]]]}))
+ (fn [{:keys [db]} [_event-id db-key entry-summaries]]
+   (let [reg-rp-id (get-in db [:passkey-registration :rp-id])
+         assert-rp-id (get-in db [:passkey-assertion :rp-id])
+         allow-ids (get-in db [:passkey-assertion :allow-credential-ids] [])]
+     {:fx [[:dispatch [:entry-list/update-selected-entry-items db-key entry-summaries]]
+           (cond
+             reg-rp-id
+             [:dispatch [:passkey-registration/load-groups db-key]]
+
+             assert-rp-id
+             [:dispatch [:passkey-assertion/fetch assert-rp-id allow-ids]]
+
+             :else
+             [:bg-credential-service-identifier-filtering [db-key]])]})))
 
 ;; Called to load any matching entries based on ios autofill credential identifiers 
 ;; This is called after loading all entries summary - see the above event
@@ -181,7 +197,7 @@
   (let [stored-credentials
         (on-ok api-response
                (fn [error]
-                 (println "The bg/stored-db-credentials-on-biometric-authentication call returned error " error)
+                 #_(println "The bg/stored-db-credentials-on-biometric-authentication call returned error " error)
                   ;; When Backend api 'stored-db-credentials-on-biometric-authentication' results in error 
                   ;; for whatever reason. Ideally should not happen!
                  (dispatch [:open-database/database-file-picked kdbx-file-info-m])))]
@@ -207,9 +223,9 @@
      (bg/authenticate-with-biometric
       (fn [api-response]
         (when-let [result (on-ok api-response
-                                 (fn [error]
+                                 (fn [_error]
                                    ;; As a fallback if there is any error in using biometric call. Not expected
-                                   (println "The bg/authenticate-with-biometric call returned error " error)
+                                   #_(println "The bg/authenticate-with-biometric call returned error " error)
                                    (dispatch [:open-database/database-file-picked kdbx-file-info-m])))]
 
           ;; The variable 'result' will have some valid when biometric call works 

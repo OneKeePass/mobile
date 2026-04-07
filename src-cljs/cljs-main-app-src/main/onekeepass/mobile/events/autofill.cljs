@@ -19,10 +19,15 @@
   []
   (dispatch [:ios-copy-file-to-group]))
 
-(defn ios-delete-copied-autofill-details 
+(defn ios-delete-copied-autofill-details
   "Called when user removes the current database from using in autofill"
   []
   (dispatch [:ios-delete-copied-autofill-details]))
+
+(defn ios-delete-copied-autofill-details-with-check
+  "Called when user toggles off autofill; checks for pending passkeys first"
+  []
+  (dispatch [:passkey-pending/ios-autofill-disable-check-pending-passkeys]))
 
 (defn ios-autofill-db-info 
   "Gets the autofill use info or nil"
@@ -32,14 +37,16 @@
 (reg-event-fx
  :ios-copy-file-to-group
  (fn [{:keys [db]} [_event-id]]
+   (println "Going to call :bg-ios-copy-file-to-group")
    {:fx [[:bg-ios-copy-file-to-group [(active-db-key db)]]]}))
 
 (reg-fx
  :bg-ios-copy-file-to-group
  (fn [[db-key]]
-   (bg/ios-copy-files-to-group db-key 
+   (bg/ios-copy-files-to-group db-key
                                (fn [api-response]
                                  (when-let [info (on-ok api-response)]
+                                   (println "Response received in :bg-ios-copy-file-to-group" api-response)
                                    (dispatch [:ios-autofill-db-info-updated info]))))))
 
 ;; Navigates to the autofill settings page

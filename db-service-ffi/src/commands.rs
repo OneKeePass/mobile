@@ -223,6 +223,86 @@ pub enum CommandArg {
         auto_open_properties: AutoOpenProperties,
     },
 
+    // Passkey assertion (iOS autofill + Android) — three unique required fields; must come before DbKey.
+    // client_data_json_b64url is Android-only (Firefox path); iOS callers omit it → None.
+    PasskeySignAssertionArg {
+        db_key: String,
+        entry_uuid: String,
+        client_data_hash_b64url: String,
+        client_data_json_b64url: Option<String>,
+    },
+
+    // Bundled passkey registration — create keypair + store pending/in-memory + complete request.
+    // Distinct from PasskeyStorePendingArg (no credential_id_b64url / private_key_pem / origin).
+    // Must come before PasskeyCreateWithHashArg (superset of its fields) and PasskeyStorePendingArg.
+    // client_data_json_b64url is Android-only (Firefox path); iOS callers omit it → None.
+    PasskeyCompleteRegistrationArg {
+        org_db_key: String,
+        rp_id: String,
+        rp_name: String,
+        user_name: String,
+        user_handle_b64url: String,
+        client_data_hash_b64url: String,
+        entry_uuid: Option<String>,
+        new_entry_name: Option<String>,
+        group_uuid: Option<String>,
+        new_group_name: Option<String>,
+        client_data_json_b64url: Option<String>,
+        // COSE algorithm: -7 (ES256/P-256), -8 (EdDSA/Ed25519), -257 (RS256/RSA-2048). Default -7.
+        algorithm: Option<i64>,
+    },
+
+    // Passkey creation with pre-computed clientDataHash (iOS autofill)
+    PasskeyCreateWithHashArg {
+        rp_id: String,
+        rp_name: String,
+        user_name: String,
+        user_handle_b64url: String,
+        client_data_hash_b64url: String,
+        // COSE algorithm: -7 (ES256/P-256), -8 (EdDSA/Ed25519), -257 (RS256/RSA-2048). Default -7.
+        algorithm: Option<i64>,
+    },
+
+    // Pending passkey — store (extension side). Many unique required fields.
+    PasskeyStorePendingArg {
+        org_db_key: String,
+        credential_id_b64url: String,
+        private_key_pem: String,
+        rp_id: String,
+        rp_name: String,
+        username: String,
+        user_handle_b64url: String,
+        origin: String,
+        entry_uuid: Option<String>,
+        new_entry_name: Option<String>,
+        group_uuid: Option<String>,
+        new_group_name: Option<String>,
+    },
+
+    // Passkey lookup — requires db_key + rp_id; must come before DbKey
+    PasskeyFindMatchingArg {
+        db_key: String,
+        rp_id: String,
+        allow_credential_ids: Option<Vec<String>>,
+    },
+
+    // Pending passkey — commit or discard (main app side). Must come before DbKey.
+    PasskeyPendingRecordArg {
+        record_uuid: String,
+        db_key: String,
+    },
+
+    // Pending passkey — list (main app side). Unique field org_db_key.
+    PasskeyPendingListArg {
+        org_db_key: String,
+    },
+
+    // Group entries lookup — has db_key + group_uuid; must come before DbKey.
+    PasskeyGetGroupEntriesArg {
+        db_key: String,
+        group_uuid: String,
+    },
+
     // This variant needs to come last so that other variants starting with db_key is matched before this
     // and this will be matched only if db_key is passed. A kind of descending order with the same field names
     // in diffrent variant. If this variant put before any other variant with db_key field,

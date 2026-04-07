@@ -224,26 +224,10 @@
           (lstr-bl "opendb")]]
 
         [rn-view {:style {:margin-top 20}}
-         [rnc/rnp-divider]]
+         [rnp-divider]]
 
         [rn-view {:style {:flex 1 :width "100%"}}
          [databases-list-content @(cmn-events/recently-used-dbs)]]]])))
-
-
-#_(defn- home-page []
-    [rn-view {:style {:flex 1 :width "100%"}}
-     [rn-view {:style {:flex 1 :justify-content "center" :align-items "center" :margin-top "10%"}}
-      [rn-view {:style {:flex 0.1 :justify-content "center" :width "90%"}}
-       [rnp-button {:mode "contained" :onPress #(android-af-cmn-events/open-database-on-press)}
-        (lstr-bl "opendb")]]
-
-      [rn-view {:style {:margin-top 20}}
-       [rnc/rnp-divider]]
-
-      [rn-view {:style {:flex 1 :width "100%"}}
-       [databases-list-content @(cmn-events/recently-used-dbs)]]]
-     #_[rn-view {:style {:flex 1}}
-        [databases-list-content @(cmn-events/recently-used)]]])
 
 (defn open-page-content []
   [rn-safe-area-view {:style {:flex 1 :background-color @rnc/page-background-color}}

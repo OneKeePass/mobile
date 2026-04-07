@@ -33,6 +33,7 @@ serde_json = "1"
 
 url="2.5.4"
 urlencoding = "2.1.2"
+data-encoding = "2.9.0"
 nom = "7.1.3"
 
 sys-locale = "0.3.1"
@@ -64,9 +65,9 @@ russh-keys = "0.49.2"
 reqwest_dav = {version = "0.1.15", default-features = false,features = ["rustls-tls"]}
 
 ## using from the local crate during dev time
-## onekeepass-core = {path = "../../onekeepass-core", version = "0.19.0"}
+onekeepass-core = {path = "../../onekeepass-core", version = "0.20.0"}
 
-onekeepass-core = {git = "https://github.com/OneKeePass/onekeepass-core.git" , tag="v0.19.0" }
+## onekeepass-core = {git = "https://github.com/OneKeePass/onekeepass-core.git" , tag="v0.19.0" }
 
 [target.'cfg(target_os = "android")'.dependencies]
 android_logger = "0.13.1"

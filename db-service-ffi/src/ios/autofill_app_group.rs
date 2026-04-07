@@ -1,3 +1,6 @@
+mod passkey_service;
+pub use passkey_service::PendingPasskeyRecord;
+
 use std::{
     fs::{self, File},
     path::{Path, PathBuf},
@@ -6,8 +9,8 @@ use std::{
 use log::debug;
 use onekeepass_core::db_service::{
     self,
+    passkey,
     service_util::{self, now_utc_milli_seconds, string_to_simple_hash},
-    EntrySummary,
 };
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -15,15 +18,9 @@ use url::Url;
 use onekeepass_core::error;
 
 use crate::{
-    app_lock,
-    app_preference::{AppLockPreference, DatabasePreference},
-    app_state::AppState,
-    commands::{
-        error_json_str, ok_json_str, result_json_str, CommandArg, InvokeResult, ResponseJson,
-    },
-    parse_command_args_or_err,
-    util::{self, remove_dir_contents},
-    OkpError, OkpResult,
+    OkpError, OkpResult, app_lock, app_preference::{AppLockPreference, DatabasePreference, Preference}, app_state::{AppState, OKP_SHARED_DIR}, commands::{
+        CommandArg, InvokeResult, ResponseJson, error_json_str, ok_json_str, result_json_str
+    }, parse_command_args_or_err, util::{self, remove_dir_contents}
 };
 
 use super::IosApiCallbackImpl;
@@ -57,11 +54,42 @@ pub(crate) fn delete_copied_autofill_details(db_key: &str) -> OkpResult<()> {
     );
 
     AutoFillMeta::read().remove_copied_db_info(&db_key);
+
+    // Build the full list of identities to remove from ASCredentialIdentityStore BEFORE
+    // deleting any files:
+    //   - pending passkeys: registered by autofill extension (separate process, not in session cache)
+    //   - registered passkeys: KDBX passkeys persisted across sessions
+    let pending: Vec<_> = passkey_service::collect_pending_passkeys()
+        .into_iter()
+        .filter(|r| r.org_db_key == db_key)
+        .map(|r| passkey_service::passkey_summary_from_pending(&r))
+        .collect();
+
+    let registered = passkey_service::load_registered_passkeys(db_key);
+
+    let mut all_to_remove = pending;
+    all_to_remove.extend(registered);
+
+    // Delete the files before the callback (old list already captured above)
+    passkey_service::remove_pending_passkeys_for_db(db_key);
+    passkey_service::delete_registered_passkeys_file(db_key);
+
+    // Single call: remove all passkey identities for this db, add nothing
+    if let Err(e) = IosApiCallbackImpl::api_service()
+        .register_passkey_identities(db_key.to_string(), all_to_remove, vec![])
+    {
+        log::error!(
+            "delete_copied_autofill_details: remove passkey identities error: {:?}",
+            e
+        );
+    }
+
     Ok(())
 }
 
-// If this db is used in Autofill extension, then we need to copy the database (with essentail data and kdf adjusted) when it is
-// read or saved
+// This is called in main app. 
+// If this db is used in Autofill extension, then we need to copy the database (with essential data and kdf adjusted in core lib) 
+// when it is read or saved
 
 // We need to copy autofill files during read in addition to save time
 // so that we can ensure the latest opened database is used in autofill
@@ -76,13 +104,28 @@ pub(crate) fn copy_files_to_app_group_on_save_or_read(db_key: &str) {
             "Unexpected error in copying the files for autofill on save: {} ",
             e
         );
+        return;
     }
+
+    debug!("register_passkey_identities_for_db is called in copy_files_to_app_group_on_save_or_read ");
+    // Update ASCredentialIdentityStore with current passkeys for this db
+    passkey_service::register_passkey_identities_for_db(db_key);
 }
 
 // Called during app reset
 // Removes all data and key files. Also the autofill config removed
 pub(crate) fn remove_all_app_extension_contents() {
     if let Ok(path) = app_group_root_sub_dir(AG_DATA_FILES_DIR) {
+        let _ = remove_dir_contents(path);
+    }
+
+    // Also remove pending passkey records
+    if let Ok(path) = app_group_root_sub_dir(passkey_service::PENDING_PASSKEYS_DIR) {
+        let _ = remove_dir_contents(path);
+    }
+
+    // Also remove persisted registered passkey id files
+    if let Ok(path) = app_group_root_sub_dir(passkey_service::REGISTERED_PASSKEY_IDS_DIR) {
         let _ = remove_dir_contents(path);
     }
 
@@ -95,7 +138,6 @@ pub(crate) fn remove_all_app_extension_contents() {
 
 // Gets the app extension root
 // e.g app_group_root/okp
-
 fn app_extension_root() -> OkpResult<PathBuf> {
     let Some(app_group_home_dir) = AppState::app_group_home_dir() else {
         return Err(OkpError::UnexpectedError(
@@ -107,10 +149,29 @@ fn app_extension_root() -> OkpResult<PathBuf> {
     Ok(full_path_dir.to_path_buf())
 }
 
+// Gets the shared root so that both the main app and extension share the contents here
+fn app_extension_shared_root() -> OkpResult<PathBuf> {
+    let Some(app_group_home_dir) = AppState::app_group_home_dir() else {
+        return Err(OkpError::UnexpectedError(
+            "No app group home dir is found".into(),
+        ));
+    };
+
+    let full_path_dir = Path::new(app_group_home_dir).join(OKP_SHARED_DIR);
+    Ok(full_path_dir.to_path_buf())
+}
+
 // Creates a sub dir with the given name under the app group root
 fn app_group_root_sub_dir(sub_dir_name: &str) -> OkpResult<PathBuf> {
     let app_group_home_dir = app_extension_root()?;
     let p = util::create_sub_dir(app_group_home_dir.to_string_lossy().as_ref(), sub_dir_name);
+    Ok(p)
+}
+
+// Creates a sub dir with the given name under the app group shared root
+fn app_group_shared_root_sub_dir(sub_dir_name: &str) -> OkpResult<PathBuf> {
+    let app_shared_group_home_dir = app_extension_shared_root()?;
+    let p = util::create_sub_dir(app_shared_group_home_dir.to_string_lossy().as_ref(), sub_dir_name);
     Ok(p)
 }
 
@@ -382,7 +443,10 @@ struct IosAppGroupSupportService {}
 impl IosAppGroupSupportService {
     fn internal_copy_files_to_app_group(&self, json_args: &str) -> OkpResult<CopiedDbFileInfo> {
         let (db_key,) = parse_command_args_or_err!(json_args, DbKey { db_key });
-        copy_files_to_app_group(&db_key)
+        let result = copy_files_to_app_group(&db_key)?;
+        debug!("IosAppGroupSupportService:copy_files_to_app_group completed");
+        passkey_service::register_passkey_identities_for_db(&db_key);
+        Ok(result)
     }
 
     // Copies the selected db's data content and all key file used to the shared location
@@ -418,7 +482,11 @@ impl IosAppGroupSupportService {
 
     fn autofill_init_data(&self) -> ResponseJson {
         let last_time = AutoFillMeta::read().last_pin_auth_success_time();
-        let mut app_lock_preference = AppState::app_lock_preference();
+        // Read preference fresh from the shared preference.json file on every call
+        // so that updates made by the main app are reflected even when the extension
+        // process is reused across sessions (AppState is only initialized once via OnceCell)
+        let fresh_pref = Preference::read(AppState::preference_home_dir());
+        let mut app_lock_preference = fresh_pref.app_lock_preference().clone();
         let now = service_util::now_utc_milli_seconds();
         if let Some(t) = last_time {
             if (now - t) <= 60000 {
@@ -428,7 +496,7 @@ impl IosAppGroupSupportService {
 
         let af_data = AutoFillInitData {
             copied_dbs_info: AutoFillMeta::read().get_copied_dbs_info().clone(),
-            database_preferences: AppState::database_preferences(),
+            database_preferences: fresh_pref.database_preferences().clone(),
             app_lock_preference,
         };
         result_json_str(Ok(af_data))
@@ -474,7 +542,7 @@ impl IosAppGroupSupportService {
 
     // Gets the list of all entries in a database that is opened in autofill extension
     fn all_entries_on_db_open(&self, json_args: &str) -> ResponseJson {
-        let inner_fn = || -> OkpResult<Vec<EntrySummary>> {
+        let inner_fn = || -> OkpResult<Vec<db_service::EntrySummary>> {
             let (db_file_name, password, key_file_name, biometric_auth_used) = parse_command_args_or_err!(
                 json_args,
                 OpenDbArg {
@@ -504,6 +572,23 @@ impl IosAppGroupSupportService {
                 }
                 _ => e,
             })?;
+
+            // Apply any pending passkey registrations to the in-memory KDBX so that
+            // passkey_find_matching and passkey_sign_assertion can find them within
+            // this extension session. The pending files are NOT deleted here; the main
+            // app commits them via passkey_commit_pending when it has its own UI.
+            for record in passkey_service::collect_pending_passkeys() {
+                if let Err(e) = passkey::store_passkey_entry(
+                    &kdbx_loaded.db_key,
+                    record.passkey_info,
+                ) {
+                    log::warn!(
+                        "Could not apply pending passkey {} to in-memory KDBX: {}",
+                        record.record_uuid,
+                        e
+                    );
+                }
+            }
 
             let r = db_service::entry_summary_data(
                 &kdbx_loaded.db_key,
@@ -564,6 +649,7 @@ impl IosAppGroupSupportService {
 
         result_json_str(inner_fn())
     }
+
 }
 
 // Here we implement all fns of this struct that are exported
@@ -600,6 +686,25 @@ impl IosAppGroupSupportService {
             }
 
             "clipboard_copy" => self.clipboard_copy(json_args),
+
+            "passkey_find_matching" => self.passkey_find_matching(json_args),
+            "passkey_sign_assertion" => self.passkey_sign_assertion(json_args),
+            "passkey_get_all" => self.passkey_get_all(json_args),
+
+            // Pending passkey queue
+            "passkey_store_pending" => self.passkey_store_pending(json_args),
+            "passkey_pending_list" => self.passkey_pending_list(json_args),
+            "passkey_commit_pending" => self.passkey_commit_pending(json_args),
+            "passkey_discard_pending" => self.passkey_discard_pending(json_args),
+
+            // Passkey creation (Phase 3)
+            "passkey_create_with_hash" => self.passkey_create_with_hash(json_args),
+            "passkey_get_db_groups" => self.passkey_get_db_groups(json_args),
+            "passkey_get_group_entries" => self.passkey_get_group_entries(json_args),
+
+            // Bundled commands: sign+complete and create+store+complete in one Rust call
+            "passkey_complete_assertion" => self.passkey_complete_assertion(json_args),
+            "passkey_complete_registration" => self.passkey_complete_registration(json_args),
 
             x => error_json_str(&format!(
                 "Invalid command or args: Command call {} with args {} failed",
