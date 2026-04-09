@@ -36,6 +36,7 @@ OneKeePass is also available for **Windows, macOS and Linux desktops** can be do
 - Supports Light or Dark Theme
 - Multi-language support
 - AutoFill supported
+- Passkey (WebAuthn/FIDO2) support for passwordless sign-in and registration (iOS 17+, Android 14+)
 - Native direct connection support to SFTP or WebDAV server
 - Linked/Child Databases Opening feature
 - Diceware Passphrase generator

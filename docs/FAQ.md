@@ -60,6 +60,24 @@ You can now seamlessly log in to websites and apps while maintaining strong and 
 
 To use Autofill with OneKeePass, you need to enable OneKeePass in the device system settings first
 
+## What are passkeys and how do they work in OneKeePass?
+
+Passkeys are a modern passwordless authentication method based on the WebAuthn/FIDO2 standard. Instead of typing a password, you authenticate using a cryptographic key pair stored securely in your database.
+
+OneKeePass can act as a passkey provider on both iOS (17+) and Android (14+). When a website or app requests a passkey, the OneKeePass AutoFill extension handles the sign-in or registration directly.
+
+**Sign-in (Assertion):** When a website asks for a passkey, OneKeePass finds matching passkeys in your open databases and lets you select one to sign in.
+
+**Registration (Creation):** When creating a new passkey, you can choose which group and entry to store it in, or create a new group during registration.
+
+**iOS:** Passkeys created in the AutoFill extension are saved as pending. When you next open the main app, you can review and commit them to your database.
+
+**Android:** Passkeys are saved directly to your database during registration. Works with Chrome, Firefox, Brave and other browsers that use the system credential manager.
+
+Passkey entries are stored in standard KDBX4 format, compatible with other KeePass-based password managers.
+
+To use passkeys, enable OneKeePass as a credential/passkey provider in your device system settings.
+
 ## How are entries organized ?
 Entries are organized so that you can view them as Entry types or Categories or Group tree or Tagged entries. 
 
