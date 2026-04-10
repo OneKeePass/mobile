@@ -1,5 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Remove permissions auto-injected by manifest merger from react-native-vector-icons -->
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" tools:node="remove" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" tools:node="remove" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove" />
+    
     <!-- Comment out camera feature for APK release meant to be fully FOSS -->
     <uses-feature
         android:name="android.hardware.camera"
