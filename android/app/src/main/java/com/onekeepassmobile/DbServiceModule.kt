@@ -452,6 +452,46 @@ class DbServiceModule(reactContext: ReactApplicationContext) :
         }
     }
 
+    // Adds a custom icon by reading the user-picked image file via SAF
+    // (Android Storage Access Framework) and delegating to the Rust FFI,
+    // which normalizes the bytes to a 64x64 PNG and inserts the icon
+    // into the loaded DB. Mirrors uploadAttachment / handlePickedFile.
+    @ReactMethod
+    fun addCustomIconFromFile(fullKeyFileNameUri: String, jsonArgs: String, promise: Promise) {
+        Log.d(
+            TAG,
+            "addCustomIconFromFile is called with fullFileNameUri $fullKeyFileNameUri and jsonArgs $jsonArgs "
+        )
+        executorService.execute {
+            val uri = Uri.parse(fullKeyFileNameUri);
+            try {
+                val fd: ParcelFileDescriptor? = contentResolver.openFileDescriptor(uri, "r");
+                val fileName = FileUtils.getMetaInfo(contentResolver, uri)?.filename ?: ""
+                if (fd != null) {
+                    promise.resolve(
+                        DbServiceAPI.addCustomIconFromFile(
+                            fd.detachFd().toULong(),
+                            fullKeyFileNameUri,
+                            fileName,
+                            jsonArgs
+                        )
+                    )
+                } else {
+                    promise.reject(E_READ_FIE_DESCRIPTOR_ERROR, "Invalid file descriptor")
+                }
+            } catch (e: SecurityException) {
+                Log.e(TAG, "SecurityException due to in sufficient permission")
+                promise.reject(E_PERMISSION_REQUIRED_TO_READ, e)
+            } catch (e: FileNotFoundException) {
+                Log.e(TAG, "Error in addCustomIconFromFile ${e}")
+                promise.reject(E_FILE_NOT_FOUND, e)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error in addCustomIconFromFile ${e}")
+                promise.reject(E_READ_CALL_FAILED, e)
+            }
+        }
+    }
+
     // This is a follow up method that is called after user picks a file using document picker service
     // TODO: Replace copyKeyFile,uploadAttachment to use this common fn after making required changes in rust side
     @ReactMethod

@@ -1021,6 +1021,8 @@ internal open class UniffiVTableCallbackInterfaceSecureEnclaveCbService(
 
 
 
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -1036,7 +1038,9 @@ internal open class UniffiVTableCallbackInterfaceSecureEnclaveCbService(
 // when the library is loaded.
 internal interface IntegrityCheckingUniffiLib : Library {
     // Integrity check functions only
-    fun uniffi_db_service_ffi_checksum_func_copy_picked_key_file(
+    fun uniffi_db_service_ffi_checksum_func_add_custom_icon_from_file(
+): Short
+fun uniffi_db_service_ffi_checksum_func_copy_picked_key_file(
 ): Short
 fun uniffi_db_service_ffi_checksum_func_create_temp_kdbx(
 ): Short
@@ -1263,6 +1267,8 @@ fun uniffi_db_service_ffi_fn_init_callback_vtable_commondeviceservice(`vtable`: 
 ): Unit
 fun uniffi_db_service_ffi_fn_init_callback_vtable_securekeyoperation(`vtable`: UniffiVTableCallbackInterfaceSecureKeyOperation,
 ): Unit
+fun uniffi_db_service_ffi_fn_func_add_custom_icon_from_file(`fileArgs`: RustBuffer.ByValue,`jsonArgs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_db_service_ffi_fn_func_copy_picked_key_file(`fileArgs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_db_service_ffi_fn_func_create_temp_kdbx(`fileArgs`: RustBuffer.ByValue,`jsonArgs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1415,6 +1421,9 @@ private fun uniffiCheckContractApiVersion(lib: IntegrityCheckingUniffiLib) {
 }
 @Suppress("UNUSED_PARAMETER")
 private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
+    if (lib.uniffi_db_service_ffi_checksum_func_add_custom_icon_from_file() != 30112.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_db_service_ffi_checksum_func_copy_picked_key_file() != 35177.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -4815,7 +4824,16 @@ public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.Str
             FfiConverterString.write(v, buf)
         }
     }
-} fun `copyPickedKeyFile`(`fileArgs`: FileArgs): kotlin.String {
+} fun `addCustomIconFromFile`(`fileArgs`: FileArgs, `jsonArgs`: kotlin.String): kotlin.String {
+            return FfiConverterString.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_func_add_custom_icon_from_file(
+        FfiConverterTypeFileArgs.lower(`fileArgs`),FfiConverterString.lower(`jsonArgs`),_status)
+}
+    )
+    }
+    
+ fun `copyPickedKeyFile`(`fileArgs`: FileArgs): kotlin.String {
             return FfiConverterString.lift(
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_func_copy_picked_key_file(
