@@ -471,10 +471,10 @@ macro_rules! parse_command_args_or_err {
 // such boundaries as word splits, turning "data_b64" into the keyword
 // :data-b-64 instead of :data-b64, which silently breaks destructuring.
 #[derive(Serialize)]
-struct CustomIconDataResponse {
-    uuid: String,
-    name: String,
-    data: String,
+pub(crate) struct CustomIconDataResponse {
+    pub(crate) uuid: String,
+    pub(crate) name: String,
+    pub(crate) data: String,
 }
 
 impl From<CustomIconData> for CustomIconDataResponse {
