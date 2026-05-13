@@ -7,6 +7,7 @@
    [reagent.core :as r]
    [onekeepass.mobile.common-components :refer [confirm-dialog-with-lstr]]
    [onekeepass.mobile.events.custom-icons :as ci-events]
+   [onekeepass.mobile.icons-list :refer [CUSTOM-ICONS-LIST-ICON-SIZE]]
    [onekeepass.mobile.rn-components :refer [icon-color
                                             page-background-color
                                             rn-image
@@ -37,8 +38,11 @@
   (let [data-url @(ci-events/icon-data-url uuid)]
     (if data-url
       [rn-image {:source {:uri data-url}
-                 :style {:width 48 :height 48}}]
-      [rn-view {:style {:width 48 :height 48 :justify-content "center"
+                 :style {:width CUSTOM-ICONS-LIST-ICON-SIZE
+                         :height CUSTOM-ICONS-LIST-ICON-SIZE}}]
+      [rn-view {:style {:width CUSTOM-ICONS-LIST-ICON-SIZE
+                        :height CUSTOM-ICONS-LIST-ICON-SIZE
+                        :justify-content "center"
                         :align-items "center"}}
        [rn-text "…"]])))
 

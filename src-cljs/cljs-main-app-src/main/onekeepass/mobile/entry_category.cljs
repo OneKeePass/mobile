@@ -23,7 +23,8 @@
    [onekeepass.mobile.events.common :as cmn-events]
    [onekeepass.mobile.events.custom-icons :as ci-events]
    [onekeepass.mobile.events.entry-category :as ecat-events]
-   [onekeepass.mobile.icons-list :refer [icon-id->name]]
+   [onekeepass.mobile.icons-list :refer [ENTRY-GROUP-LIST-ICON-SIZE
+                                            icon-id->name]]
    [onekeepass.mobile.ios.passkey-pending :as passkey-pending]
    [onekeepass.mobile.rn-components :as rnc :refer [cust-rnp-divider
                                                     dots-icon-name icon-color
@@ -229,10 +230,15 @@
   (let [data-url (when custom-icon-uuid @(ci-events/icon-data-url custom-icon-uuid))]
     (if data-url
       [rn-view {:style {:margin-left 5 :align-self "center"
-                        :width 24 :height 24}}
+                        :width ENTRY-GROUP-LIST-ICON-SIZE
+                        :height ENTRY-GROUP-LIST-ICON-SIZE}}
        [rn-image {:source (clj->js {:uri data-url})
-                  :style {:width 24 :height 24}}]]
-      [rnp-list-icon {:style {:height 20}
+                  :style {:width ENTRY-GROUP-LIST-ICON-SIZE
+                          :height ENTRY-GROUP-LIST-ICON-SIZE}}]]
+      [rnp-list-icon {:style {:margin-left 5
+                              :align-self "center"
+                              :width ENTRY-GROUP-LIST-ICON-SIZE
+                              :height ENTRY-GROUP-LIST-ICON-SIZE}
                       :icon icon-name
                       :color @icon-color}])))
 

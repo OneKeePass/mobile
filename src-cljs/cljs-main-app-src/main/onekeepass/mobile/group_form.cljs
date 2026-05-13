@@ -64,10 +64,12 @@
     [rnp-text-input-icon
      {:icon (fn []
               (r/as-element
-               [rn-image {:source {:uri custom-data-url}
-                          :style {:width 24 :height 24}}]))
+               [rn-image {:source (clj->js {:uri custom-data-url})
+                          :style {:width icons-list/ENTRY-GROUP-FORM-ICON-SIZE
+                                  :height icons-list/ENTRY-GROUP-FORM-ICON-SIZE}}]))
       :onPress launch-icon-picker}]
     [rnp-text-input-icon {:iconColor @icon-color
+                          :size icons-list/ENTRY-GROUP-FORM-ICON-SIZE
                           :icon icon-name
                           :onPress launch-icon-picker}]))
 

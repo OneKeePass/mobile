@@ -202,11 +202,10 @@
        (form-events/entry-form-data-update-field-value :icon-id icon-id)
        (form-events/entry-form-data-update-field-value :custom-icon-uuid nil)))))
 
-(defn- launch-icon-picker []
+(defn- launch-icon-picker [prefill-url]
   ;; Pre-seed the Add From URL dialog with the entry's URL value so the
   ;; common case of "fetch favicon for this entry's site" is one tap.
-  (let [url @(form-events/entry-form-section-field-value URL)]
-    (cmn-events/show-icons-to-select on-entry-icon-selection url)))
+  (cmn-events/show-icons-to-select on-entry-icon-selection prefill-url))
 
 (defn- title-input-right-icon
   "Right-side affordance for the title text input. When the entry has a
@@ -218,19 +217,21 @@
    rn-pressable + rn-image directly) is silently dropped. So in the
    custom-icon case we still return a TextInput.Icon and use its
    render-function form for `:icon` to inject our rn-image."
-  [icon-name custom-data-url]
+  [icon-name custom-data-url prefill-url]
   (if custom-data-url
     [rnp-text-input-icon
      {:icon (fn []
               (r/as-element
                [rn-image {:source (clj->js {:uri custom-data-url})
-                          :style {:width 24 :height 24}}]))
-      :onPress launch-icon-picker}]
+                          :style {:width icons-list/ENTRY-GROUP-FORM-ICON-SIZE
+                                  :height icons-list/ENTRY-GROUP-FORM-ICON-SIZE}}]))
+      :onPress #(launch-icon-picker prefill-url)}]
     [rnp-text-input-icon {:iconColor @icon-color
+                          :size icons-list/ENTRY-GROUP-FORM-ICON-SIZE
                           :icon icon-name
-                          :onPress launch-icon-picker}]))
+                          :onPress #(launch-icon-picker prefill-url)}]))
 
-(defn android-title-text-input [title icon-name custom-data-url]
+(defn android-title-text-input [title icon-name custom-data-url prefill-url]
   [rnp-text-input {:style {:width "100%"}
                    :label (str (lstr-l 'title) "*")
                    :autoCapitalize "none"
@@ -244,9 +245,9 @@
                    :onChangeText #(form-events/entry-form-data-update-field-value :title %)
                    :right (r/as-element
                            ;;The title-input-right-icon is called directly before r/as-element. Otherwise the icon is not shown
-                           (title-input-right-icon icon-name custom-data-url))}])
+                           (title-input-right-icon icon-name custom-data-url prefill-url))}])
 
-(defn ios-title-text-input [title icon-name custom-data-url]
+(defn ios-title-text-input [title icon-name custom-data-url prefill-url]
   [rnp-text-input {:style {:width "100%"}
                    :label (str (lstr-l 'title) "*")
                    :autoCapitalize "none"
@@ -254,7 +255,7 @@
                    :onChangeText #(form-events/entry-form-data-update-field-value :title %)
                    :right (r/as-element
                            ;;The title-input-right-icon is called directly before r/as-element. Otherwise the icon is not shown
-                           (title-input-right-icon icon-name custom-data-url))}])
+                           (title-input-right-icon icon-name custom-data-url prefill-url))}])
 
 (defn title-with-icon []
   (let [{:keys [title icon-id custom-icon-uuid]}
@@ -266,20 +267,25 @@
         _ (when custom-icon-uuid
             (ci-events/ensure-icon-data-url custom-icon-uuid))
         custom-data-url (when custom-icon-uuid
-                          @(ci-events/icon-data-url custom-icon-uuid))]
+                          @(ci-events/icon-data-url custom-icon-uuid))
+        prefill-url @(form-events/entry-form-section-field-value URL)]
     (if edit
       [rn-view {:style {:margin-top 2 :margin-bottom 2}}
        (if (is-iOS)
-         [ios-title-text-input title icon-name custom-data-url]
-         [android-title-text-input title icon-name custom-data-url])
+         [ios-title-text-input title icon-name custom-data-url prefill-url]
+         [android-title-text-input title icon-name custom-data-url prefill-url])
        (when (contains? error-fields :title)
          [rnp-helper-text {:type "error" :visible (contains? error-fields :title)}
           (:title error-fields)])]
       [rn-view {:style {:flexDirection "row" :justify-content "center" :alignItems "center"}}
        (if custom-data-url
          [rn-image {:source (clj->js {:uri custom-data-url})
-                    :style {:width 28 :height 28}}]
-         [rnp-list-icon {:style {} :icon icon-name :color @icon-color}])
+                    :style {:width icons-list/ENTRY-GROUP-LIST-ICON-SIZE
+                            :height icons-list/ENTRY-GROUP-LIST-ICON-SIZE}}]
+         [rnp-list-icon {:style {:width icons-list/ENTRY-GROUP-LIST-ICON-SIZE
+                                  :height icons-list/ENTRY-GROUP-LIST-ICON-SIZE}
+                         :icon icon-name
+                         :color @icon-color}])
        [rn-view {:style {:width 10}}]
        [rnp-text {:variant "titleLarge"} title]])))
 

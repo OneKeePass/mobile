@@ -95,6 +95,13 @@
 
 (def icons-count (count standard-icons))
 
+(def ENTRY-GROUP-FORM-ICON-SIZE 24)
+(def ENTRY-GROUP-LIST-ICON-SIZE 24)
+
+(def CUSTOM-ICONS-LIST-ICON-SIZE 30)
+
+(def ^:private CUSTOM-ICONS-LIST-ICON-SIZE-2 30)
+
 (defn icon-id->name [index]
   (name (nth standard-icons (if (< index icons-count) index 0))))
 
@@ -103,6 +110,7 @@
    (doall
     (for [[index icon-name] (keep-indexed (fn [i v] [i (name v)]) standard-icons)]
       ^{:key index} [rnp-icon-button {:icon icon-name
+                                      :size 28
                                       :iconColor @icon-color
                                       :onPress #(cmn-events/icon-selected icon-name index)}]))])
 
@@ -112,8 +120,8 @@
   (let [data-url @(ci-events/icon-data-url uuid)]
     (if data-url
       [rn-image {:source {:uri data-url}
-                 :style {:width 40 :height 40}}]
-      [rn-view {:style {:width 40 :height 40 :justify-content "center"
+                 :style {:width CUSTOM-ICONS-LIST-ICON-SIZE-2 :height CUSTOM-ICONS-LIST-ICON-SIZE-2}}]
+      [rn-view {:style {:width CUSTOM-ICONS-LIST-ICON-SIZE-2 :height CUSTOM-ICONS-LIST-ICON-SIZE-2 :justify-content "center"
                         :align-items "center"}}
        [rn-text "…"]])))
 

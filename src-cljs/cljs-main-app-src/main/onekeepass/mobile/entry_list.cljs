@@ -11,7 +11,8 @@
             [onekeepass.mobile.events.entry-list :as elist-events :refer [find-entry-by-id]]
             [onekeepass.mobile.events.move-delete :as md-events]
             [onekeepass.mobile.events.dialogs :as dlg-events]
-            [onekeepass.mobile.icons-list :refer [icon-id->name]]
+            [onekeepass.mobile.icons-list :refer [ENTRY-GROUP-LIST-ICON-SIZE
+                                            icon-id->name]]
             [onekeepass.mobile.rn-components :as rnc :refer [cust-dialog
                                                              icon-color
                                                              page-background-color
@@ -310,12 +311,17 @@
     #_(println "icon-left-element data-url:" data-url)
     (if data-url
       [rn-view {:style {:margin-left 5 :align-self "center"
-                        :width 24 :height 24}}
+                        :width ENTRY-GROUP-LIST-ICON-SIZE
+                        :height ENTRY-GROUP-LIST-ICON-SIZE}}
        [rn-image {:source (clj->js {:uri data-url})
-                  :style {:width 24 :height 24}}]]
+                  :style {:width ENTRY-GROUP-LIST-ICON-SIZE
+                          :height ENTRY-GROUP-LIST-ICON-SIZE}}]]
       [rnp-list-icon {:icon icon-name
                       :color @icon-color
-                      :style {:margin-left 5 :align-self "center"}}])))
+                      :style {:margin-left 5
+                              :align-self "center"
+                              :width ENTRY-GROUP-LIST-ICON-SIZE
+                              :height ENTRY-GROUP-LIST-ICON-SIZE}}])))
 
 (defn row-item []
   (fn [{:keys [title secondary-title icon-id custom-icon-uuid uuid] :as entry-summary}]
