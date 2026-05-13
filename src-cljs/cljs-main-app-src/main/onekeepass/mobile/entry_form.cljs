@@ -243,6 +243,7 @@
                           (when (and (not (nil? ref)) (str/blank? title)) (.clear ref)))
                    :onChangeText #(form-events/entry-form-data-update-field-value :title %)
                    :right (r/as-element
+                           ;;The title-input-right-icon is called directly before r/as-element. Otherwise the icon is not shown
                            (title-input-right-icon icon-name custom-data-url))}])
 
 (defn ios-title-text-input [title icon-name custom-data-url]
@@ -252,6 +253,7 @@
                    :value title
                    :onChangeText #(form-events/entry-form-data-update-field-value :title %)
                    :right (r/as-element
+                           ;;The title-input-right-icon is called directly before r/as-element. Otherwise the icon is not shown
                            (title-input-right-icon icon-name custom-data-url))}])
 
 (defn title-with-icon []

@@ -21,6 +21,7 @@
                                                   UUID_OF_ENTRY_TYPE_LOGIN
                                                   WIRELESS_ROUTER_TYPE_NAME]]
    [onekeepass.mobile.events.common :as cmn-events]
+   [onekeepass.mobile.events.custom-icons :as ci-events]
    [onekeepass.mobile.events.entry-category :as ecat-events]
    [onekeepass.mobile.icons-list :refer [icon-id->name]]
    [onekeepass.mobile.ios.passkey-pending :as passkey-pending]
@@ -29,6 +30,7 @@
                                                     on-primary-color
                                                     page-background-color
                                                     primary-container-color
+                                                    rn-image
                                                     rn-safe-area-view
                                                     rn-section-list rn-view
                                                     rnp-divider rnp-fab
@@ -217,13 +219,30 @@
                        display-name)]
     display-name))
 
+(defn- category-left-icon
+  "Renders the category row's left icon. If the category has a custom
+   icon assigned (group rows whose backing GroupSummary carries
+   :custom-icon-uuid), show the image; otherwise fall back to the
+   MaterialCommunityIcons glyph."
+  [icon-name custom-icon-uuid]
+  (when custom-icon-uuid (ci-events/ensure-icon-data-url custom-icon-uuid))
+  (let [data-url (when custom-icon-uuid @(ci-events/icon-data-url custom-icon-uuid))]
+    (if data-url
+      [rn-view {:style {:margin-left 5 :align-self "center"
+                        :width 24 :height 24}}
+       [rn-image {:source (clj->js {:uri data-url})
+                  :style {:width 24 :height 24}}]]
+      [rnp-list-icon {:style {:height 20}
+                      :icon icon-name
+                      :color @icon-color}])))
+
 (defn category-item
   "category-detail-m is a map representing struct 'CategoryDetail'
    category-key is one of key used in section data - General,Types,Tags,Categories, or Groups
   "
   [_category-detail-m category-key root-group]
   ;; should the following need to accept category-key for react comp?
-  (fn [{:keys [title display-title entries-count groups-count] :as category-detail-m}]
+  (fn [{:keys [title display-title entries-count groups-count custom-icon-uuid] :as category-detail-m}]
     (let [display-name (translate-cat-title category-key title display-title)
           icon-name (category-icon-name category-detail-m)
           items-count (if (= category-key GROUP_SECTION_TITLE) (+ entries-count groups-count) entries-count)]
@@ -246,9 +265,7 @@
                               [rnp-text {:variant "titleMedium"} display-name]) ;;:style {:color @rnc/on-background-color}
 
                       :left (fn [_props] (r/as-element
-                                          [rnp-list-icon {:style {:height 20}
-                                                          :icon icon-name
-                                                          :color @icon-color}]))
+                                          [category-left-icon icon-name custom-icon-uuid]))
 
                       :right (fn [_props] (r/as-element
                                            [rnp-text {:variant "titleMedium"} items-count]))}])))

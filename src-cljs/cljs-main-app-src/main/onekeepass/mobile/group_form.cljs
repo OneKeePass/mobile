@@ -51,6 +51,26 @@
        (update-group-form-data :icon-id icon-id)
        (update-group-form-data :custom-icon-uuid nil)))))
 
+(defn- launch-icon-picker []
+  (cmn-events/show-icons-to-select on-group-icon-selection))
+
+(defn- group-input-right-icon
+  "Paper's TextInput.right only renders TextInput.Icon children; using
+   the render-function form of :icon lets us draw the custom icon's
+   data-URL image inside that slot while keeping the onPress wiring."
+  [icon-name custom-data-url]
+  ;; (println "group-input-right-icon is called with custom-data-url" custom-data-url)
+  (if custom-data-url
+    [rnp-text-input-icon
+     {:icon (fn []
+              (r/as-element
+               [rn-image {:source {:uri custom-data-url}
+                          :style {:width 24 :height 24}}]))
+      :onPress launch-icon-picker}]
+    [rnp-text-input-icon {:iconColor @icon-color
+                          :icon icon-name
+                          :onPress launch-icon-picker}]))
+
 (defn main-content []
   (let [marked-as-category @(gf-events/group-form-data-fields :marked-category)
         icon-id @(gf-events/group-form-data-fields :icon-id)
@@ -61,22 +81,10 @@
                           @(ci-events/icon-data-url custom-icon-uuid))
         error-fields @(gf-events/group-form-field :error-fields)
         right-icon (r/as-element
-                    (if custom-data-url
-                      ;; Wrap the image in a transparent touchable so it
-                      ;; behaves like the standard rnp-text-input-icon —
-                      ;; tap relaunches the picker.
-                      [rnp-touchable-ripple
-                       {:onPress #(cmn-events/show-icons-to-select
-                                   on-group-icon-selection)
-                        :style {:margin-right 8 :align-self "center"
-                                :padding 4 :border-radius 14}}
-                       [rn-image {:source (clj->js {:uri custom-data-url})
-                                  :style {:width 24 :height 24}}]]
-                      [rnp-text-input-icon
-                       {:iconColor @icon-color
-                        :icon icon-name
-                        :onPress #(cmn-events/show-icons-to-select
-                                   on-group-icon-selection)}]))]
+                    ;;The group-input-right-icon is called directly before r/as-element. Otherwise the icon is not shown
+                    (group-input-right-icon icon-name custom-data-url)
+                    #_[group-input-right-icon icon-name custom-data-url])]
+    #_(println "main-content is called with custom-data-url" custom-data-url)
     [rn-view {:style {:flexDirection "column" :justify-content "center" :padding 5}}
 
      [rnp-text-input {:style {:width "100%"}
@@ -89,15 +97,15 @@
        [rnp-helper-text {:type "error" :visible (contains? error-fields :name)}
         (:name error-fields)])
 
-     [rnp-text-input {:style {:width "100%"} 
-                      :multiline true :label 
+     [rnp-text-input {:style {:width "100%"}
+                      :multiline true :label
                       (lstr-l "notes")
                       :defaultValue @(gf-events/group-form-data-fields :notes)
                       :onChangeText #(update-group-form-data :notes %)}]
 
      (when (= :group @(gf-events/group-form-field :kind))
-       [rnp-touchable-ripple {:style {:align-self "center" :margin-top 15  :width "45%"} 
-                              :onPress #(update-group-form-data 
+       [rnp-touchable-ripple {:style {:align-self "center" :margin-top 15  :width "45%"}
+                              :onPress #(update-group-form-data
                                          :marked-category (not marked-as-category))}
         [rn-view {:flexDirection "row" :style {:alignItems "center" :justifyContent "space-between"}}
          [rnp-text (lstr-l "categoryMarked")]
@@ -105,7 +113,7 @@
           [rnp-checkbox {:status (if marked-as-category "checked" "unchecked")}]]]])]))
 
 (defn content []
-  [rn-keyboard-avoiding-view {:style {:flex 1 } 
+  [rn-keyboard-avoiding-view {:style {:flex 1}
                               ;; After Android 'compileSdkVersion = 35 introduction
                               ;; Also see comments in js/components/KeyboardAvoidingDialog.js
                               :behavior "padding" #_(if (is-iOS) "padding" nil)}
