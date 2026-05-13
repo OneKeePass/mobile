@@ -12,6 +12,7 @@
                                                   CAMERA_SCANNER_PAGE_ID
                                                   HOME_PAGE_ID
                                                   KEY_FILE_FORM_PAGE_ID
+                                                  MANAGE_CUSTOM_ICONS_PAGE_ID
                                                   MERGE_DATABASE_PAGE_ID
                                                   PASSKEY_PENDING_REVIEW_PAGE_ID
                                                   RS_CONNECTION_CONFIG_PAGE_ID
@@ -39,6 +40,7 @@
             #_[onekeepass.mobile.events.app-database-settings :as ads-settings]
             [onekeepass.mobile.group-form :as group-form]
             [onekeepass.mobile.icons-list :as icons-list]
+            [onekeepass.mobile.manage-custom-icons :as manage-custom-icons]
             [onekeepass.mobile.key-file-form :as kf-form]
             [onekeepass.mobile.password-generator :as pg]
             [onekeepass.mobile.merging :as merging]
@@ -111,6 +113,7 @@
      (= page RS_CONNECTIONS_LIST_PAGE_ID)
      (= page ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID)
      (= page APP_LOCK_SETTINGS_PAGE_ID)
+     (= page MANAGE_CUSTOM_ICONS_PAGE_ID)
      (= page PASSKEY_PENDING_REVIEW_PAGE_ID))
     (do
       (cmn-events/to-previous-page)
@@ -311,6 +314,7 @@
                            CAMERA_SCANNER_PAGE_ID
                            ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID
                            APP_LOCK_SETTINGS_PAGE_ID
+                           MANAGE_CUSTOM_ICONS_PAGE_ID
                            RS_CONNECTION_CONFIG_PAGE_ID
                            RS_FILES_FOLDERS_PAGE_ID
                            MERGE_DATABASE_PAGE_ID])
@@ -350,6 +354,7 @@
                         ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID
                         APP_LOCK_SETTINGS_PAGE_ID
                         CAMERA_SCANNER_PAGE_ID
+                        MANAGE_CUSTOM_ICONS_PAGE_ID
                         RS_CONNECTION_CONFIG_PAGE_ID
                         KEY_FILE_FORM_PAGE_ID
                         MERGE_DATABASE_PAGE_ID])
@@ -439,6 +444,9 @@
 
     (= page :icons-list)
     [icons-list/content]
+
+    (= page MANAGE_CUSTOM_ICONS_PAGE_ID)
+    [manage-custom-icons/content]
 
     (= page :settings)
     [settings/content]

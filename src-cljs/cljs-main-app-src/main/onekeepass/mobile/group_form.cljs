@@ -1,12 +1,13 @@
 (ns onekeepass.mobile.group-form
   (:require [onekeepass.mobile.background :refer [is-iOS]]
             [onekeepass.mobile.events.common :as cmn-events]
+            [onekeepass.mobile.events.custom-icons :as ci-events]
             [onekeepass.mobile.events.groups :as gf-events :refer [update-group-form-data]]
             [onekeepass.mobile.icons-list :as icons-list]
             [onekeepass.mobile.rn-components
              :as rnc
              :refer [appbar-text-color icon-color page-background-color
-                     page-title-text-variant rn-keyboard-avoiding-view
+                     page-title-text-variant rn-image rn-keyboard-avoiding-view
                      rn-scroll-view rn-view rnp-button rnp-checkbox
                      rnp-helper-text rnp-text rnp-text-input
                      rnp-text-input-icon rnp-touchable-ripple]]
@@ -38,26 +39,52 @@
                 :mode "text" :onPress gf-events/save-group-form}
     (lstr-bl "save")]])
 
-(defn on-group-icon-selection [_icon-name icon-id]
-  (update-group-form-data :icon-id icon-id))
+(defn on-group-icon-selection
+  ([_icon-name icon-id]
+   (on-group-icon-selection _icon-name icon-id nil))
+  ([_icon-name icon-id custom-icon-uuid]
+   (if custom-icon-uuid
+     (do
+       (update-group-form-data :icon-id 0)
+       (update-group-form-data :custom-icon-uuid custom-icon-uuid))
+     (do
+       (update-group-form-data :icon-id icon-id)
+       (update-group-form-data :custom-icon-uuid nil)))))
 
 (defn main-content []
   (let [marked-as-category @(gf-events/group-form-data-fields :marked-category)
-        icon-name (icons-list/icon-id->name @(gf-events/group-form-data-fields :icon-id))
-        error-fields @(gf-events/group-form-field :error-fields)]
+        icon-id @(gf-events/group-form-data-fields :icon-id)
+        custom-icon-uuid @(gf-events/group-form-data-fields :custom-icon-uuid)
+        icon-name (icons-list/icon-id->name icon-id)
+        _ (when custom-icon-uuid (ci-events/ensure-icon-data-url custom-icon-uuid))
+        custom-data-url (when custom-icon-uuid
+                          @(ci-events/icon-data-url custom-icon-uuid))
+        error-fields @(gf-events/group-form-field :error-fields)
+        right-icon (r/as-element
+                    (if custom-data-url
+                      ;; Wrap the image in a transparent touchable so it
+                      ;; behaves like the standard rnp-text-input-icon —
+                      ;; tap relaunches the picker.
+                      [rnp-touchable-ripple
+                       {:onPress #(cmn-events/show-icons-to-select
+                                   on-group-icon-selection)
+                        :style {:margin-right 8 :align-self "center"
+                                :padding 4 :border-radius 14}}
+                       [rn-image {:source (clj->js {:uri custom-data-url})
+                                  :style {:width 24 :height 24}}]]
+                      [rnp-text-input-icon
+                       {:iconColor @icon-color
+                        :icon icon-name
+                        :onPress #(cmn-events/show-icons-to-select
+                                   on-group-icon-selection)}]))]
     [rn-view {:style {:flexDirection "column" :justify-content "center" :padding 5}}
 
-     [rnp-text-input {:style {:width "100%"} 
-                      :multiline true 
+     [rnp-text-input {:style {:width "100%"}
+                      :multiline true
                       :label (lstr-l "name")
                       :defaultValue @(gf-events/group-form-data-fields :name)
                       :onChangeText #(update-group-form-data :name %)
-                      :right (r/as-element 
-                              [rnp-text-input-icon 
-                               {:iconColor @icon-color
-                                :icon icon-name
-                                :onPress #(cmn-events/show-icons-to-select 
-                                           on-group-icon-selection)}])}]
+                      :right right-icon}]
      (when (contains? error-fields :name)
        [rnp-helper-text {:type "error" :visible (contains? error-fields :name)}
         (:name error-fields)])

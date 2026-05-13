@@ -8,9 +8,12 @@ use crate::{app_lock, backup, biometric_auth, util, OkpError, OkpResult};
 use onekeepass_core::async_service::{self, OtpTokenTtlInfoByField, TimerID};
 use onekeepass_core::db_content::AttachmentHashValue;
 use onekeepass_core::db_service::{
-    self, DbSettings, EntryCategory, EntryCategoryGrouping, EntryFormData, Group, KdbxLoaded,
-    NewDatabase, OtpSettings, PassphraseGenerationOptions, PasswordGenerationOptions,
+    self, CustomIconData, CustomIconSummary, DbSettings, EntryCategory, EntryCategoryGrouping,
+    EntryFormData, Group, KdbxLoaded, NewDatabase, OtpSettings, PassphraseGenerationOptions,
+    PasswordGenerationOptions,
 };
+
+use data_encoding::BASE64;
 
 use std::fmt::format;
 use std::{
@@ -303,6 +306,30 @@ pub enum CommandArg {
         group_uuid: String,
     },
 
+    // Custom icon — add from a remote URL (favicon download).
+    // Unique required field 'url' so this never collides with other variants.
+    CustomIconAddUrlArg {
+        db_key: String,
+        url: String,
+    },
+
+    // Custom icon — assign or clear on an entry.
+    // 'custom_icon_uuid' is required (use "" to clear). Required field disambiguates
+    // from PasskeySignAssertionArg / StartEntryOtpArg / DbKeyWithUUIDArg.
+    SetEntryCustomIconArg {
+        db_key: String,
+        entry_uuid: Uuid,
+        custom_icon_uuid: String,
+    },
+
+    // Custom icon — assign or clear on a group.
+    // Required 'custom_icon_uuid' disambiguates from PasskeyGetGroupEntriesArg.
+    SetGroupCustomIconArg {
+        db_key: String,
+        group_uuid: Uuid,
+        custom_icon_uuid: String,
+    },
+
     // This variant needs to come last so that other variants starting with db_key is matched before this
     // and this will be matched only if db_key is passed. A kind of descending order with the same field names
     // in diffrent variant. If this variant put before any other variant with db_key field,
@@ -435,6 +462,43 @@ macro_rules! parse_command_args_or_err {
     };
 }
 
+// PNG bytes returned to the cljs layer as base64. Vec<u8> in CustomIconData
+// would otherwise serialize as a JSON number array, which is wasteful for
+// binary blobs and awkward to turn into a data URL on the JS side.
+//
+// IMPORTANT: keep this field name free of letter→digit transitions
+// (e.g. avoid "data_b64"). camel-snake-kebab on the cljs side treats
+// such boundaries as word splits, turning "data_b64" into the keyword
+// :data-b-64 instead of :data-b64, which silently breaks destructuring.
+#[derive(Serialize)]
+struct CustomIconDataResponse {
+    uuid: String,
+    name: String,
+    data: String,
+}
+
+impl From<CustomIconData> for CustomIconDataResponse {
+    fn from(d: CustomIconData) -> Self {
+        Self {
+            uuid: d.uuid,
+            name: d.name,
+            data: BASE64.encode(&d.data),
+        }
+    }
+}
+
+// Convert the cljs-side string "" / "<uuid>" sentinel to the core's
+// Option<String>. We use a required String field in the CommandArg variant
+// (not Option<String>) so the variant matching is unambiguous against other
+// passkey/entry variants that share db_key + entry_uuid.
+fn opt_uuid(s: String) -> Option<String> {
+    if s.is_empty() {
+        None
+    } else {
+        Some(s)
+    }
+}
+
 pub struct Commands {}
 
 impl Commands {
@@ -563,6 +627,30 @@ impl Commands {
             "search_term" => {
                 db_service_call! (args, SearchArg{db_key,term} => search_term(&db_key,&term))
             }
+
+            // ===== Custom icons =====
+            "list_custom_icons" => {
+                db_service_call! (args, DbKey{db_key} => list_custom_icons(&db_key))
+            }
+
+            "get_custom_icon_data" => Self::get_custom_icon_data(&args),
+
+            "add_custom_icon_from_url" => Self::add_custom_icon_from_url(&args),
+
+            "remove_custom_icon" => {
+                db_service_call! (args, DbKeyWithUUIDArg{db_key,uuid} => remove_custom_icon(&db_key, &uuid.to_string()))
+            }
+
+            "set_entry_custom_icon" => {
+                db_service_call! (args, SetEntryCustomIconArg{db_key,entry_uuid,custom_icon_uuid} =>
+                    set_entry_custom_icon(&db_key, &entry_uuid.to_string(), opt_uuid(custom_icon_uuid)))
+            }
+
+            "set_group_custom_icon" => {
+                db_service_call! (args, SetGroupCustomIconArg{db_key,group_uuid,custom_icon_uuid} =>
+                    set_group_custom_icon(&db_key, &group_uuid.to_string(), opt_uuid(custom_icon_uuid)))
+            }
+            // ========================
 
             "merge_databases" => {
                 service_call! (args, MergeDbs{target_db_key,source_db_key} => Self merge_databases(&target_db_key,&source_db_key))
@@ -742,6 +830,37 @@ impl Commands {
             x => error_json_str(&format!("Invalid command name {} is passed", x)),
         };
         r
+    }
+
+    fn get_custom_icon_data(args: &str) -> ResponseJson {
+        let inner = || -> OkpResult<CustomIconDataResponse> {
+            let CommandArg::DbKeyWithUUIDArg { db_key, uuid } = serde_json::from_str(args)? else {
+                return Err(OkpError::UnexpectedError(format!(
+                    "Unexpected args passed for get_custom_icon_data: {}",
+                    args
+                )));
+            };
+            let data = db_service::get_custom_icon(&db_key, &uuid.to_string())?;
+            Ok(data.into())
+        };
+        result_json_str(inner())
+    }
+
+    fn add_custom_icon_from_url(args: &str) -> ResponseJson {
+        let inner = || -> OkpResult<CustomIconSummary> {
+            let CommandArg::CustomIconAddUrlArg { db_key, url } = serde_json::from_str(args)?
+            else {
+                return Err(OkpError::UnexpectedError(format!(
+                    "Unexpected args passed for add_custom_icon_from_url: {}",
+                    args
+                )));
+            };
+            // Reuse the core's tokio runtime to drive the async favicon download
+            // (avoids spinning up another runtime per call).
+            async_service::async_runtime()
+                .block_on(db_service::download_and_add_custom_icon(&db_key, &url))
+        };
+        result_json_str(inner())
     }
 
     fn new_blank_group(args: String) -> ResponseJson {

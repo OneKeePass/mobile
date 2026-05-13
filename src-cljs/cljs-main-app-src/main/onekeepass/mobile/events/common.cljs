@@ -250,6 +250,7 @@
          [:dispatch [:load-all-tags]]
          [:dispatch [:groups/load]]
          [:dispatch [:common/load-entry-type-headers]]
+         [:dispatch [:custom-icons/load]]
 
          (when (boolean (:no-connection rs-additional-info))
            [:dispatch [:common/message-box-show 'dbReadOnly 'dbReadOnly]])
@@ -879,26 +880,55 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  Icons ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn show-icons-to-select [on-icon-selection]
-  (dispatch [:common/show-icons-to-select on-icon-selection]))
+(defn show-icons-to-select
+  "Navigates to the icons picker. The optional `prefill-url` is read by the
+   custom-icons tab to seed the Add From URL dialog (typically the entry's
+   own URL field, so adding a favicon for the current site is one tap)."
+  ([on-icon-selection]
+   (show-icons-to-select on-icon-selection nil))
+  ([on-icon-selection prefill-url]
+   (dispatch [:common/show-icons-to-select on-icon-selection prefill-url])))
 
-(defn icon-selected [icon-name index]
-  (dispatch [:common/icon-selected icon-name index]))
+(defn icon-selected
+  "Called when the user picks an icon on the icons-list page.
+   - Standard icon: pass icon-name and index (icon-id). custom-icon-uuid is nil.
+   - Custom icon: pass empty name and 0 index, with a non-nil custom-icon-uuid."
+  ([icon-name index]
+   (icon-selected icon-name index nil))
+  ([icon-name index custom-icon-uuid]
+   (dispatch [:common/icon-selected icon-name index custom-icon-uuid])))
+
+(defn icon-picker-prefill-url
+  "Read by the custom-icons tab to pre-populate the Add From URL dialog."
+  []
+  (subscribe [:common/icon-picker-prefill-url]))
 
 (reg-event-fx
  :common/show-icons-to-select
- (fn [{:keys [db]} [_event-id on-icon-selection]]
-   {:db (assoc db :on-icon-selection on-icon-selection)
+ (fn [{:keys [db]} [_event-id on-icon-selection prefill-url]]
+   {:db (-> db
+            (assoc :on-icon-selection on-icon-selection)
+            (assoc :icon-picker-prefill-url prefill-url))
     :fx [[:dispatch [:common/next-page :icons-list "icons"]]]}))
 
 (reg-event-fx
  :common/icon-selected
- (fn [{:keys [db]} [_event-id icon-name index]]
+ (fn [{:keys [db]} [_event-id icon-name index custom-icon-uuid]]
    (let [on-icon-selection-fn (:on-icon-selection db)]
      (when-not (nil? on-icon-selection-fn)
-       (on-icon-selection-fn icon-name index)) ;; side effect ?
-     {:db (assoc db :on-icon-selection nil)
+       ;; Existing callers only take 2 args; the 3rd is opt-in. Reagent /
+       ;; CLJS functions accept arity-2 calls if defined with arity-2,
+       ;; so we always pass 3 args and update the callers to ignore or
+       ;; use the 3rd arg as appropriate.
+       (on-icon-selection-fn icon-name index custom-icon-uuid))
+     {:db (-> db
+              (assoc :on-icon-selection nil)
+              (assoc :icon-picker-prefill-url nil))
       :fx [[:dispatch [:common/previous-page]]]})))
+
+(reg-sub
+ :common/icon-picker-prefill-url
+ (fn [db _] (:icon-picker-prefill-url db)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;; Entry types with uuid ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

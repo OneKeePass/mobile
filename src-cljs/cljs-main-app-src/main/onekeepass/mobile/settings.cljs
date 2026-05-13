@@ -29,6 +29,7 @@
    [onekeepass.mobile.events.app-settings :as as-events]
    [onekeepass.mobile.events.app-database-settings :as ada-events]
    [onekeepass.mobile.events.autofill :as af-events]
+   [onekeepass.mobile.manage-custom-icons :as manage-custom-icons]
    [onekeepass.mobile.constants :as const :refer [ICON-EYE ICON-EYE-OFF]]))
 
 (def ^:private mp-confirm-dialog-data (r/atom false))
@@ -262,6 +263,7 @@
 (def ^:private ^:const SECTION-KEY-ADDITIONAL-DB-ACCESS "AdditionalDatabaseAcccess")
 (def ^:private ^:const SECTION-KEY-APP-SETTINGS "AppSettings")
 (def ^:private ^:const SECTION-KEY-AUTOFILL "AutofillSettings")
+(def ^:private ^:const SECTION-KEY-CUSTOM-ICONS "CustomIcons")
 
 
 (defn field-explain []
@@ -291,6 +293,9 @@
                                   (and (= section-key SECTION-KEY-AUTOFILL) (is-iOS))
                                   (af-events/to-autofill-settings-page)
 
+                                  (= section-key SECTION-KEY-CUSTOM-ICONS)
+                                  (manage-custom-icons/open-page)
+
                                   (= section-key SECTION-KEY-APP-SETTINGS)
                                   (as-events/to-app-settings-page)))
                      :title (r/as-element
@@ -313,6 +318,10 @@
    {:title "additionalDbAcccess"
     :key SECTION-KEY-ADDITIONAL-DB-ACCESS
     :data [{:title "enableDisable"}]}
+
+   {:title "customIcons"
+    :key SECTION-KEY-CUSTOM-ICONS
+    :data [{:title "manageCustomIcons"}]}
 
    ;; For android this is nil and need to be filtered out
    (when (is-iOS)

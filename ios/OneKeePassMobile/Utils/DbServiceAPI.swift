@@ -94,6 +94,11 @@ class DbServiceAPI {
     let fileArgs = FileArgs.fullFileName(fullFileName: fullFileName)
     return OneKeePassMobile.uploadAttachment(fileArgs, jsonArgs)
   }
+
+  static func addCustomIconFromFile(_ fullFileName: String, _ jsonArgs: String) -> String {
+    let fileArgs = FileArgs.fullFileName(fullFileName: fullFileName)
+    return OneKeePassMobile.addCustomIconFromFile(fileArgs, jsonArgs)
+  }
   
   static func handlePickedFile(_ fullFileName: String, _ jsonArgs: String) -> String {
     let fileArgs = FileArgs.fullFileName(fullFileName: fullFileName)

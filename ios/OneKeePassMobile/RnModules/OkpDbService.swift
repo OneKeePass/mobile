@@ -278,6 +278,18 @@ class OkpDbService: NSObject {
       resolve(DbServiceAPI.uploadAttachment(url.absoluteString, jsonArgs))
     }
   }
+
+  // Called to add an image file (PNG/JPEG) as a custom icon.
+  // 'fullFileNameUri' is the file picked by the user via the document picker.
+  @objc
+  func addCustomIconFromFile(_ fullFileNameUri: String, jsonArgs: String,
+                             resolve: @escaping RCTPromiseResolveBlock,
+                             reject: @escaping RCTPromiseRejectBlock)
+  {
+    bookmarkedFileHandler(fullFileNameUri, reject) { url in
+      resolve(DbServiceAPI.addCustomIconFromFile(url.absoluteString, jsonArgs))
+    }
+  }
   
   // A generic handler after user picks a file in an earlier step by using an api call to
   // lauch document picker using 'OkpDocumentPickerService'

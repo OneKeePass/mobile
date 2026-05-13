@@ -91,6 +91,7 @@
                        Button
                        ;;SafeAreaView
                        FlatList
+                       Image
                        KeyboardAvoidingView
                        Pressable
                        TouchableWithoutFeedback

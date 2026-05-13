@@ -6,6 +6,7 @@
             [onekeepass.mobile.constants :as const :refer [ICON-CHECKBOX-BLANK-OUTLINE
                                                            ICON-CHECKBOX-OUTLINE]]
             [onekeepass.mobile.events.common :as cmn-events]
+            [onekeepass.mobile.events.custom-icons :as ci-events]
             [onekeepass.mobile.events.entry-category :as ecat-events]
             [onekeepass.mobile.events.entry-list :as elist-events :refer [find-entry-by-id]]
             [onekeepass.mobile.events.move-delete :as md-events]
@@ -15,6 +16,7 @@
                                                              icon-color
                                                              page-background-color
                                                              primary-container-color
+                                                             rn-image
                                                              rn-safe-area-view
                                                              rn-section-list
                                                              rn-view
@@ -298,8 +300,25 @@
       [rnp-button {:mode "text" :onPress #(md-events/hide-putback-dialog)} (lstr-bl 'cancel)]
       [rnp-button {:mode "text" :onPress #(md-events/on-put-back-dialog-ok)} (lstr-bl 'ok)]]]))
 
+(defn- icon-left-element
+  "Returns a reagent element for the left-icon slot — a custom icon image
+   if `custom-icon-uuid` is set and the data URL has loaded, otherwise the
+   standard MaterialCommunityIcons glyph for `icon-name`."
+  [icon-name custom-icon-uuid]
+  (when custom-icon-uuid (ci-events/ensure-icon-data-url custom-icon-uuid))
+  (let [data-url (when custom-icon-uuid @(ci-events/icon-data-url custom-icon-uuid))]
+    #_(println "icon-left-element data-url:" data-url)
+    (if data-url
+      [rn-view {:style {:margin-left 5 :align-self "center"
+                        :width 24 :height 24}}
+       [rn-image {:source (clj->js {:uri data-url})
+                  :style {:width 24 :height 24}}]]
+      [rnp-list-icon {:icon icon-name
+                      :color @icon-color
+                      :style {:margin-left 5 :align-self "center"}}])))
+
 (defn row-item []
-  (fn [{:keys [title secondary-title icon-id uuid] :as entry-summary}]
+  (fn [{:keys [title secondary-title icon-id custom-icon-uuid uuid] :as entry-summary}]
     (let [icon-name (icon-id->name icon-id)]
       [rnp-list-item {:onPress #(find-entry-by-id uuid)
                       :onLongPress (fn [e]
@@ -307,10 +326,9 @@
                       :title (r/as-element
                               [rnp-text {:variant "titleMedium"} title])
                       :description secondary-title
-                      :left (fn [_props] (r/as-element
-                                          [rnp-list-icon {:icon icon-name
-                                                          :color @icon-color
-                                                          :style {:margin-left 5 :align-self "center"}}]))}])))
+                      :left (fn [_props]
+                              (r/as-element
+                               [icon-left-element icon-name custom-icon-uuid]))}])))
 
 (defn- subgroup-row-item
   "category-detail-m is a map representing struct 'CategoryDetail'
@@ -319,7 +337,8 @@
   "
   [_category-detail-m category-key]
   ;; should the following need to accept section-title for react comp?
-  (fn [{:keys [title display-title entries-count groups-count icon-id] :as category-detail-m}]
+  (fn [{:keys [title display-title entries-count groups-count icon-id custom-icon-uuid]
+        :as category-detail-m}]
     (let [display-name (if (nil? display-title) title display-title)
           icon-name (icon-id->name icon-id)
           items-count (+ entries-count groups-count)]
@@ -328,8 +347,9 @@
                                      (show-group-long-press-menu e category-detail-m))
                       :title (r/as-element
                               [rnp-text {:variant "titleMedium"} display-name])
-                      :left (fn [_props] (r/as-element
-                                          [rnp-list-icon {:style {:height 20} :icon icon-name :color @icon-color}]))
+                      :left (fn [_props]
+                              (r/as-element
+                               [icon-left-element icon-name custom-icon-uuid]))
                       :right (fn [_props] (r/as-element
                                            [rnp-text {:variant "titleMedium"} items-count]))}])))
 

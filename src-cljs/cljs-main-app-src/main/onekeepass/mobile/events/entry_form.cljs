@@ -249,6 +249,23 @@
      ;; a vector field names
      (select-keys data fields))))
 
+(defn entry-form-section-field-value
+  "Returns an atom that resolves to the value of the section field whose
+   :key matches `field-name` (e.g. \"URL\"). Searches across all sections.
+   nil when not found."
+  [field-name]
+  (subscribe [:entry-form-section-field-value field-name]))
+
+(reg-sub
+ :entry-form-section-field-value
+ :<- [:entry-form-data]
+ (fn [data [_query-id field-name]]
+   (->> (:section-fields data)
+        vals
+        (apply concat)
+        (some (fn [{:keys [key value]}]
+                (when (= key field-name) value))))))
+
 ;; Is this entry Favorites ?
 (reg-sub
  :entry-form/favorites-status

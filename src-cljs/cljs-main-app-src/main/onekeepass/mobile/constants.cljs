@@ -107,6 +107,8 @@
 
 (def PASSKEY_PENDING_REVIEW_PAGE_ID :passkey-pending-review)
 
+(def MANAGE_CUSTOM_ICONS_PAGE_ID :manage-custom-icons)
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

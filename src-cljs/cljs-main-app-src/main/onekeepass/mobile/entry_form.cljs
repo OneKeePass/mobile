@@ -33,6 +33,7 @@
                                                         section-menu-dialog-show
                                                         show-attachment-long-press-menu]]
             [onekeepass.mobile.events.common :as cmn-events]
+            [onekeepass.mobile.events.custom-icons :as ci-events]
             [onekeepass.mobile.events.dialogs :as dlg-events]
             [onekeepass.mobile.events.entry-form :as form-events :refer [place-holder-resolved-value]]
             [onekeepass.mobile.icons-list :as icons-list]
@@ -42,7 +43,8 @@
              :refer [appbar-text-color dots-icon-name icon-color
                      on-primary-color page-background-color
                      page-title-text-variant primary-container-color
-                     rn-keyboard rn-keyboard-avoiding-view rn-scroll-view
+                     rn-image rn-keyboard rn-keyboard-avoiding-view
+                     rn-scroll-view
                      rn-section-list rn-view rnp-button rnp-chip rnp-divider
                      rnp-helper-text rnp-icon-button rnp-list-icon
                      rnp-list-item rnp-portal rnp-text rnp-text-input
@@ -185,12 +187,50 @@
       [title-with-icon])))
 
 (defn on-entry-icon-selection
-  "A callback function that is called from :common/icon-selected event handler when the user selects a new icon"
-  [_icon-name icon-id]
-  (form-events/edit-mode-on-press)
-  (form-events/entry-form-data-update-field-value :icon-id icon-id))
+  "A callback function that is called from :common/icon-selected event handler
+   when the user selects a new icon. When `custom-icon-uuid` is non-nil the
+   user picked a custom icon — clear the standard icon-id and set the uuid."
+  ([_icon-name icon-id]
+   (on-entry-icon-selection _icon-name icon-id nil))
+  ([_icon-name icon-id custom-icon-uuid]
+   (form-events/edit-mode-on-press)
+   (if custom-icon-uuid
+     (do
+       (form-events/entry-form-data-update-field-value :icon-id 0)
+       (form-events/entry-form-data-update-field-value :custom-icon-uuid custom-icon-uuid))
+     (do
+       (form-events/entry-form-data-update-field-value :icon-id icon-id)
+       (form-events/entry-form-data-update-field-value :custom-icon-uuid nil)))))
 
-(defn android-title-text-input [title icon-name]
+(defn- launch-icon-picker []
+  ;; Pre-seed the Add From URL dialog with the entry's URL value so the
+  ;; common case of "fetch favicon for this entry's site" is one tap.
+  (let [url @(form-events/entry-form-section-field-value URL)]
+    (cmn-events/show-icons-to-select on-entry-icon-selection url)))
+
+(defn- title-input-right-icon
+  "Right-side affordance for the title text input. When the entry has a
+   custom icon, render its image; otherwise render the standard
+   MaterialCommunityIcons glyph. Both tap to launch the icon picker.
+
+   IMPORTANT: react-native-paper's `TextInput.right` only renders a
+   `TextInput.Icon` node — wrapping anything else around it (e.g.
+   rn-pressable + rn-image directly) is silently dropped. So in the
+   custom-icon case we still return a TextInput.Icon and use its
+   render-function form for `:icon` to inject our rn-image."
+  [icon-name custom-data-url]
+  (if custom-data-url
+    [rnp-text-input-icon
+     {:icon (fn []
+              (r/as-element
+               [rn-image {:source (clj->js {:uri custom-data-url})
+                          :style {:width 24 :height 24}}]))
+      :onPress launch-icon-picker}]
+    [rnp-text-input-icon {:iconColor @icon-color
+                          :icon icon-name
+                          :onPress launch-icon-picker}]))
+
+(defn android-title-text-input [title icon-name custom-data-url]
   [rnp-text-input {:style {:width "100%"}
                    :label (str (lstr-l 'title) "*")
                    :autoCapitalize "none"
@@ -198,42 +238,47 @@
                    :ref (fn [^js/Ref ref]
                           ;; Keys found in ref for textinput
                           ;; are #js ["focus" "clear" "setNativeProps" "isFocused" "blur" "forceFocus"]
-                          ;; Need to call clear directly as the previous value is not getting cleared 
+                          ;; Need to call clear directly as the previous value is not getting cleared
                           ;; when there is a change in entry type selection name
                           (when (and (not (nil? ref)) (str/blank? title)) (.clear ref)))
                    :onChangeText #(form-events/entry-form-data-update-field-value :title %)
                    :right (r/as-element
-                           [rnp-text-input-icon {:iconColor @icon-color
-                                                 :icon icon-name
-                                                 :onPress #(cmn-events/show-icons-to-select on-entry-icon-selection)}])}])
+                           (title-input-right-icon icon-name custom-data-url))}])
 
-(defn ios-title-text-input [title icon-name]
+(defn ios-title-text-input [title icon-name custom-data-url]
   [rnp-text-input {:style {:width "100%"}
                    :label (str (lstr-l 'title) "*")
                    :autoCapitalize "none"
                    :value title
                    :onChangeText #(form-events/entry-form-data-update-field-value :title %)
                    :right (r/as-element
-                           [rnp-text-input-icon {:iconColor @icon-color
-                                                 :icon icon-name
-                                                 :onPress #(cmn-events/show-icons-to-select on-entry-icon-selection)}])}])
+                           (title-input-right-icon icon-name custom-data-url))}])
 
 (defn title-with-icon []
-  (let [{:keys [title icon-id]} @(form-events/entry-form-data-fields [:title :icon-id])
+  (let [{:keys [title icon-id custom-icon-uuid]}
+        @(form-events/entry-form-data-fields [:title :icon-id :custom-icon-uuid])
         icon-name (icons-list/icon-id->name icon-id)
         edit @(form-events/form-edit-mode)
-        error-fields @(form-events/entry-form-field :error-fields)]
+        error-fields @(form-events/entry-form-field :error-fields)
+        ;; Trigger lazy fetch of the icon bytes when a custom icon is set.
+        _ (when custom-icon-uuid
+            (ci-events/ensure-icon-data-url custom-icon-uuid))
+        custom-data-url (when custom-icon-uuid
+                          @(ci-events/icon-data-url custom-icon-uuid))]
     (if edit
       [rn-view {:style {:margin-top 2 :margin-bottom 2}}
        (if (is-iOS)
-         [ios-title-text-input title icon-name]
-         [android-title-text-input title icon-name])
+         [ios-title-text-input title icon-name custom-data-url]
+         [android-title-text-input title icon-name custom-data-url])
        (when (contains? error-fields :title)
          [rnp-helper-text {:type "error" :visible (contains? error-fields :title)}
           (:title error-fields)])]
       [rn-view {:style {:flexDirection "row" :justify-content "center" :alignItems "center"}}
-       [rnp-list-icon {:style {} :icon icon-name :color @icon-color}]
-       [rn-view {:style {:width 10}}] ;; gap
+       (if custom-data-url
+         [rn-image {:source (clj->js {:uri custom-data-url})
+                    :style {:width 28 :height 28}}]
+         [rnp-list-icon {:style {} :icon icon-name :color @icon-color}])
+       [rn-view {:style {:width 10}}]
        [rnp-text {:variant "titleLarge"} title]])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
