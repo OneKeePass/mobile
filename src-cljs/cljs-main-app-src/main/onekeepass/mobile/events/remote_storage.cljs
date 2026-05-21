@@ -110,6 +110,13 @@
   [connection-id]
   (dispatch [:remote-storage-config-view-or-edit connection-id true]))
 
+(defn remote-storage-kdbx-source-config-view
+  "Read-only view of a kdbx-entry-backed connection config. Triggers a
+   backend fetch (kdbx-entry source first, blob fallback) and then opens
+   the rs config form in view mode."
+  [connection-id]
+  (dispatch [:remote-storage-kdbx-source-config-view-start connection-id]))
+
 (defn remote-storage-file-picked [connection-id parent-dir file-name]
   (dispatch [:remote-storage-file-picked connection-id parent-dir file-name]))
 
@@ -279,6 +286,32 @@
          name (kw-type-to-enum-tag curr-kw-type)]
 
      {:db (-> db (set-type-form-data curr-kw-type form-data))
+      :fx [[:dispatch [:common/next-page const/RS_CONNECTION_CONFIG_PAGE_ID name]]]})))
+
+;; View action for a kdbx-source connection row. The config isn't cached
+;; in app-db, so we round-trip to the backend, which checks the kdbx
+;; entry source first then falls back to the blob store.
+(reg-event-fx
+ :remote-storage-kdbx-source-config-view-start
+ (fn [{:keys [db]} [_query-id connection-id]]
+   (let [kw-type (get-current-rs-type db)]
+     {:fx [[:bg-rs-get-remote-storage-config [kw-type connection-id]]]})))
+
+(reg-fx
+ :bg-rs-get-remote-storage-config
+ (fn [[kw-type connection-id]]
+   (bg-rs/get-remote-storage-config
+    kw-type connection-id
+    (fn [api-response]
+      (when-let [{:keys [content]} (on-ok api-response)]
+        (dispatch [:remote-storage-kdbx-source-config-loaded kw-type content]))))))
+
+(reg-event-fx
+ :remote-storage-kdbx-source-config-loaded
+ (fn [{:keys [db]} [_query-id kw-type config]]
+   (let [form-data (merge-type-form-data kw-type config false)
+         name (kw-type-to-enum-tag kw-type)]
+     {:db (-> db (set-type-form-data kw-type form-data))
       :fx [[:dispatch [:common/next-page const/RS_CONNECTION_CONFIG_PAGE_ID name]]]})))
 
 ; Called from the configs listing page to view a selected remote connection config form details
@@ -477,7 +510,10 @@
     :db (-> db (assoc-in [:remote-storage :current-rs-type] kw-type)
             (assoc-in [:remote-storage :browse-rs-type] kw-browse-type)
             (assoc-in [:remote-storage :new-db-data] new-db-data))
-    :fx [[:bg-rs-remote-storage-configs-for-type [kw-type]]]}))
+    :fx [[:bg-rs-remote-storage-configs-for-type [kw-type]]
+         ;; Also load REMOTE_CONNECTION_* entries from any open dbs so the
+         ;; picker can show kdbx-source connections alongside blob ones.
+         [:bg-rs-list-kdbx-source-connections [kw-type]]]}))
 
 ;; Calls the backend api and gets a vec of stored connection config infos for Sftp or Webdav
 (reg-fx
@@ -487,6 +523,88 @@
                                  (fn [api-response]
                                    (when-let [info (on-ok api-response)]
                                      (dispatch [:remote-storage-connection-configs-loaded info]))))))
+
+;; -------- kdbx-source connections (REMOTE_CONNECTION_SFTP / _WEBDAV entries) ----------
+
+(defn load-kdbx-source-connections
+  "Loads the list of REMOTE_CONNECTION_* entries across all open dbs for the
+   given storage type. Used by the connection picker to merge kdbx-source
+   connections with the legacy blob source."
+  [kw-type]
+  (dispatch [:remote-storage-load-kdbx-source-connections kw-type]))
+
+(reg-event-fx
+ :remote-storage-load-kdbx-source-connections
+ (fn [{:keys [_db]} [_query-id kw-type]]
+   {:fx [[:bg-rs-list-kdbx-source-connections [kw-type]]]}))
+
+(reg-fx
+ :bg-rs-list-kdbx-source-connections
+ (fn [[kw-type]]
+   (bg-rs/list-kdbx-source-connections
+    kw-type
+    (fn [api-response]
+      (when-let [entries (on-ok api-response
+                                #(dispatch [:common/default-error
+                                            "Error listing kdbx-source connections" %]))]
+        (dispatch [:remote-storage-kdbx-source-connections-loaded kw-type entries]))))))
+
+(reg-event-db
+ :remote-storage-kdbx-source-connections-loaded
+ (fn [db [_query-id kw-type entries]]
+   (assoc-in db [:remote-storage :kdbx-source-connections kw-type]
+             (if (sequential? entries) (vec entries) []))))
+
+(defn remote-storage-kdbx-source-connections
+  "Subscription accessor: vec of kdbx-source connection summaries for kw-type.
+   Each item: {:db-key :connection-id :title :entry-type-uuid}."
+  [kw-type]
+  (subscribe [:remote-storage-kdbx-source-connections kw-type]))
+
+(reg-sub
+ :remote-storage-kdbx-source-connections
+ (fn [db [_query-id kw-type]]
+   (get-in db [:remote-storage :kdbx-source-connections kw-type] [])))
+
+;; -------- Save target + migration (scaffolding for plan §4.5 / §3.6) ------------------
+
+;; The save target chosen by the user when adding a new connection. Default
+;; ':secure-store' preserves the existing behaviour. ':kdbx-entry' triggers
+;; the kdbx-entry creation path (NOT yet wired end-to-end — see TODO below).
+(defn remote-storage-save-target
+  "Subscription accessor for the currently chosen save target for new
+   connections. Returns :secure-store (default) or :kdbx-entry."
+  [kw-type]
+  (subscribe [:remote-storage-save-target kw-type]))
+
+(reg-sub
+ :remote-storage-save-target
+ (fn [db [_query-id kw-type]]
+   (get-in db [:remote-storage kw-type :form-data :save-target] :secure-store)))
+
+(defn remote-storage-set-save-target
+  "Sets the save target for new connections. :secure-store or :kdbx-entry."
+  [kw-type target-kw]
+  (dispatch [:remote-storage-set-save-target kw-type target-kw]))
+
+(reg-event-db
+ :remote-storage-set-save-target
+ (fn [db [_query-id kw-type target-kw]]
+   (assoc-in db [:remote-storage kw-type :form-data :save-target] target-kw)))
+
+;; TODO: end-to-end "save as kdbx entry" flow. Populating
+;; EntryFormData.section_fields requires walking the blank form returned by
+;; new-entry-form-data and substituting the rs form's host/port/user-name/
+;; password/etc into the matching KeyValueData entries, then calling
+;; insert-entry. SFTP private-key attachment upload is a follow-on step.
+;; For now, users can manually create REMOTE_CONNECTION_SFTP /
+;; REMOTE_CONNECTION_WEBDAV entries from the normal entry-create UI; the
+;; resolver picks them up automatically. See plan §3.1 / §3.7.
+
+;; TODO: migration utility (plan §3.6). Iterates the user's blob
+;; connections, creates corresponding kdbx entries in a target db, and
+;; reports success/failure per connection. Pending the save-as-kdbx-entry
+;; flow above.
 
 ;; Deletes the remote config found by connection-id permanently
 (reg-event-fx

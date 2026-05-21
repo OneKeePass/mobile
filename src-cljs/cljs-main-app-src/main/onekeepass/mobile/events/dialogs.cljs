@@ -151,7 +151,16 @@
 
 (defn-generic-dialog-subs-events :ios-all-pending-passkeys-notification-dialog [[data nil]])
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; This dialog uses 'confirm-dialog' from common components to show message content and actions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; :confirm-adding-rs-config-in-secure-store-dialog  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn-generic-dialog-disp-events :confirm-adding-rs-config-in-secure-store-dialog [[close nil]
+                                                                                   [show nil]])
+
+(defn-generic-dialog-subs-events :confirm-adding-rs-config-in-secure-store-dialog [[data nil]])
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 (defn- init-dialog-map

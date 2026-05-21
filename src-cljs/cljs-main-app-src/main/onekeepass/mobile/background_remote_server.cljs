@@ -23,11 +23,30 @@
 ;; keys = [:type :connection-info :connection-id :parent-dir :sub-dir :file-name]
 
 (defn remote-storage-configs
-  "The arg 'connect-request' is a map (type enum RemoteStorageOperationType) and has  
+  "The arg 'connect-request' is a map (type enum RemoteStorageOperationType) and has
    a key :type with value 'Sftp' or 'Webdav'
    Gets a vec of stored connection config infos for Sftp or Webdav "
   [connect-request dispatch-fn]
   (invoke-api "rs_remote_storage_configs" {:rs-operation-type connect-request}  dispatch-fn))
+
+(defn list-kdbx-source-connections
+  "Lists every REMOTE_CONNECTION_SFTP / _WEBDAV entry across the currently
+   open kdbx databases. Each item is a map with :db-key, :connection-id,
+   :title, :entry-type-uuid."
+  [type dispatch-fn]
+  (invoke-api "rs_list_kdbx_source_connections"
+              {:rs-storage-type (as-rs-type type)}
+              dispatch-fn))
+
+(defn get-remote-storage-config
+  "Read-only fetch of one connection config by id. Resolves from the kdbx
+   entry source first, then the legacy blob store. The result is the
+   adjacently-tagged enum {:type 'Sftp'/'Webdav' :content {..config..}}."
+  [type connection-id dispatch-fn]
+  (invoke-api "rs_get_remote_storage_config"
+              {:rs-storage-type (as-rs-type type)
+               :connection-id connection-id}
+              dispatch-fn))
 
 (defn delete-config [type connection-id dispatch-fn]
   (invoke-api "rs_delete_config" {:rs-operation-type

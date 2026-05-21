@@ -366,31 +366,47 @@
                                  (assoc m :read-value (place-holder-resolved-value parsed-fields key)))
                                section-data)
 
-        adjusted-section-data  (if (not= entry-type-uuid const/UUID_OF_ENTRY_TYPE_AUTO_OPEN)
-                                 adjusted-section-data
-                                 (mapv
-                                  (fn [{:keys [key] :as m}]
-                                    ;; Note the use of lstr-field-name vs tr-entry-field-name-cv
-                                    ;; lstr-field-name is fn and tr-entry-field-name-cv is a macro 
-                                    (cond
-                                      (= key URL)
-                                      ;; for now read-value is not used 
-                                      ;;:read-value (:url-field-value m)
-                                      (assoc m :field-name (lstr-field-name "autoOpenKdbxFileOpen"))
+        adjusted-section-data
+        (cond
+          (= entry-type-uuid const/UUID_OF_ENTRY_TYPE_AUTO_OPEN)
+          (mapv
+           (fn [{:keys [key] :as m}]
+             ;; Note the use of lstr-field-name vs tr-entry-field-name-cv
+             ;; lstr-field-name is fn and tr-entry-field-name-cv is a macro
+             (cond
+               (= key URL)
+               ;; for now read-value is not used
+               ;;:read-value (:url-field-value m)
+               (assoc m :field-name (lstr-field-name "autoOpenKdbxFileOpen"))
 
-                                      (= key USERNAME)
-                                      (assoc m :field-name (lstr-field-name 'autoOpenKeyFile)
-                                             :read-value (place-holder-resolved-value parsed-fields key)) ;; :read-value (:key-file-path m)
+               (= key USERNAME)
+               (assoc m :field-name (lstr-field-name 'autoOpenKeyFile)
+                      :read-value (place-holder-resolved-value parsed-fields key)) ;; :read-value (:key-file-path m)
 
-                                      (= key PASSWORD)
-                                      (assoc m  :read-value (place-holder-resolved-value parsed-fields key))
+               (= key PASSWORD)
+               (assoc m  :read-value (place-holder-resolved-value parsed-fields key))
 
-                                      (= key IFDEVICE)
-                                      (assoc m :field-name (lstr-field-name "autoOpenIfDevice"))
+               (= key IFDEVICE)
+               (assoc m :field-name (lstr-field-name "autoOpenIfDevice"))
 
-                                      :else
-                                      m))
-                                  adjusted-section-data))]
+               :else
+               m))
+           adjusted-section-data)
+
+          (= entry-type-uuid const/UUID_OF_ENTRY_TYPE_REMOTE_CONNECTION_SFTP)
+          ;; The Password field on a REMOTE_CONNECTION_SFTP entry is
+          ;; dual-use: login password OR private-key passphrase. The kv key
+          ;; stays "Password" so the resolver is unaffected; only the
+          ;; display label changes so the user understands the dual use.
+          (mapv
+           (fn [{:keys [key] :as m}]
+             (if (= key PASSWORD)
+               (assoc m :field-name (lstr-field-name "sftpPasswordOrPassphrase"))
+               m))
+           adjusted-section-data)
+
+          :else
+          adjusted-section-data)]
     adjusted-section-data))
 
 (defn section-content [{:keys [edit section-name section-data]}]
@@ -463,6 +479,15 @@
     ;; section-names is a list of section names
     ;; section-fields is a list of map - one map for each field in that section
     [rn-view {:style box-style-2}
+     ;; Banner explaining the dual-use Password field and the
+     ;; attach-private-key flow for REMOTE_CONNECTION_SFTP entries.
+     (when (and edit (= entry-type-uuid const/UUID_OF_ENTRY_TYPE_REMOTE_CONNECTION_SFTP))
+       [rn-view {:style {:padding 10
+                         :margin-bottom 5
+                         :background-color @rnc/secondary-container-color
+                         :borderRadius 4}}
+        [rnp-text {:style {:font-size 12}}
+         (lstr-l "sftpEntryAuthHint")]])
      (doall
       (for [section-name section-names]
         ^{:key section-name} [section-content {:edit edit

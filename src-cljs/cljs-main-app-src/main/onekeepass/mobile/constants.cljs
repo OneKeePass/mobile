@@ -6,6 +6,12 @@
 ;; This is the entry type id for Auto Open entry type
 (def UUID_OF_ENTRY_TYPE_AUTO_OPEN "389368a9-73a9-4256-8247-321a2e60b2c7")
 
+;; Entry type ids for remote-storage connection entries (SFTP / WebDAV).
+;; The remote-storage resolver uses the entry uuid (= connection id) to find
+;; the connection details across all open dbs.
+(def UUID_OF_ENTRY_TYPE_REMOTE_CONNECTION_SFTP "c5a57a41-4cca-4a46-bac1-78a8803f4da0")
+(def UUID_OF_ENTRY_TYPE_REMOTE_CONNECTION_WEBDAV "0a14d76d-8c38-4c62-9ad7-390dc020a2af")
+
 (def UUID-DEFAULT "00000000-0000-0000-0000-000000000000")
 
 (def GROUPING_LABEL_TYPES "Types")
@@ -22,12 +28,16 @@
 (def PASSPORT_TYPE_NAME "Passport")
 (def BANK_ACCOUNT_TYPE_NAME "Bank Account")
 (def AUTO_DB_OPEN_TYPE_NAME "Auto Database Open")
+(def REMOTE_CONNECTION_SFTP_TYPE_NAME "SFTP Connection")
+(def REMOTE_CONNECTION_WEBDAV_TYPE_NAME "WebDAV Connection")
 
 (def STANDARD_ENTRY_TYPES [LOGIN_TYPE_NAME
                            CREDIT_DEBIT_CARD_TYPE_NAME
                            WIRELESS_ROUTER_TYPE_NAME
                            BANK_ACCOUNT_TYPE_NAME
-                           AUTO_DB_OPEN_TYPE_NAME])
+                           AUTO_DB_OPEN_TYPE_NAME
+                           REMOTE_CONNECTION_SFTP_TYPE_NAME
+                           REMOTE_CONNECTION_WEBDAV_TYPE_NAME])
 
 ;; Based on the enum 'EntryCategory'
 (def CATEGORY_ALL_ENTRIES "AllEntries")

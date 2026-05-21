@@ -106,6 +106,65 @@ pub(crate) fn rs_create_kdbx(json_args: &str) -> ResponseJson {
     result_json_str(rs_create_file(json_args))
 }
 
+// Lists every REMOTE_CONNECTION_* entry in the currently open databases.
+// Powers the merged connection picker (kdbx-entry source alongside the
+// legacy blob source) and the migration command.
+pub(crate) fn rs_list_kdbx_source_connections(json_args: &str) -> ResponseJson {
+    use crate::commands::CommandArg;
+
+    let Ok(CommandArg::RemoteStorageTypeArg { rs_storage_type }) =
+        serde_json::from_str::<CommandArg>(json_args)
+    else {
+        return crate::commands::error_json_str(
+            "Invalid command args: expected RemoteStorageTypeArg",
+        );
+    };
+
+    let entry_type_uuid_bytes = match rs_storage_type {
+        RemoteStorageType::Sftp => db_service::entry_type_uuid::REMOTE_CONNECTION_SFTP,
+        RemoteStorageType::Webdav => db_service::entry_type_uuid::REMOTE_CONNECTION_WEBDAV,
+    };
+
+    let Some(entry_type_uuid) = uuid::Builder::from_slice(entry_type_uuid_bytes)
+        .ok()
+        .map(|b| b.into_uuid())
+    else {
+        return crate::commands::error_json_str("Failed to build entry-type uuid");
+    };
+
+    let summaries = db_service::list_remote_connection_entries(&entry_type_uuid);
+    crate::commands::ok_json_str(summaries)
+}
+
+// Read-only fetch of a single SFTP/WebDAV connection config by id. Checks
+// the kdbx-entry source first (across currently open databases), then
+// falls back to the legacy blob store. Powers the View action on the
+// connection picker for db-entry rows.
+pub(crate) fn rs_get_remote_storage_config(json_args: &str) -> ResponseJson {
+    use crate::commands::CommandArg;
+    use crate::remote_storage::storage_service::ConnectionConfigs;
+    use uuid::Uuid;
+
+    let Ok(CommandArg::RemoteStorageConfigLookupArg {
+        rs_storage_type,
+        connection_id,
+    }) = serde_json::from_str::<CommandArg>(json_args)
+    else {
+        return crate::commands::error_json_str(
+            "Invalid command args: expected RemoteStorageConfigLookupArg",
+        );
+    };
+
+    let Ok(u_id) = Uuid::parse_str(&connection_id) else {
+        return crate::commands::error_json_str("Invalid connection_id (uuid)");
+    };
+
+    match ConnectionConfigs::find_remote_storage_config(&u_id, rs_storage_type) {
+        Some(config) => crate::commands::ok_json_str(config),
+        None => crate::commands::error_json_str("Connection config not found"),
+    }
+}
+
 /// ----------------------------------------------------------------------
 
 // We need to parse the passed db_key and extracts the remote operation type, connection_id and the file path part

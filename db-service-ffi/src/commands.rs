@@ -218,6 +218,20 @@ pub enum CommandArg {
         rs_operation_type: remote_storage::RemoteStorageOperationType,
     },
 
+    // Fetch a single connection config by id; resolves from the kdbx-entry
+    // source first, then falls back to the legacy blob store. Used by the
+    // read-only View action on db-entry rows.
+    RemoteStorageConfigLookupArg {
+        rs_storage_type: remote_storage::RemoteStorageType,
+        connection_id: String,
+    },
+
+    // Slim variant for callers that only need to indicate the storage flavour
+    // (no live connection object). Used by rs_list_kdbx_source_connections.
+    RemoteStorageTypeArg {
+        rs_storage_type: remote_storage::RemoteStorageType,
+    },
+
     PickedFileHandlerArg {
         picked_file_handler: PickedFileHandler,
     },
@@ -812,6 +826,19 @@ impl Commands {
             "rs_create_kdbx" => crate::remote_storage::rs_create_kdbx(&args),
 
             "rs_read_configs" => result_json_str(remote_storage::read_configs()),
+
+            // Lists every REMOTE_CONNECTION_SFTP / _WEBDAV entry across all
+            // currently open kdbx databases. The picker uses this to merge
+            // kdbx-source connections with the legacy blob source.
+            "rs_list_kdbx_source_connections" => {
+                crate::remote_storage::rs_list_kdbx_source_connections(&args)
+            }
+
+            // Read-only fetch of one connection config (kdbx-entry or blob).
+            // Powers the View action on the connection picker.
+            "rs_get_remote_storage_config" => {
+                crate::remote_storage::rs_get_remote_storage_config(&args)
+            }
 
             "rs_delete_config" => {
                 service_call_closure!(args,RemoteServerOperationArg {rs_operation_type} => move || {

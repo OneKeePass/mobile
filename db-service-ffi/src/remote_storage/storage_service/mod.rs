@@ -6,7 +6,7 @@ pub mod webdav;
 
 pub use server_connection_config::{
     read_configs, set_config_reader_writer, ConnectionConfigReaderWriter,
-    ConnectionConfigReaderWriterType,
+    ConnectionConfigReaderWriterType, ConnectionConfigs,
 };
 
 pub use calls::{RemoteStorageOperation,RemoteStorageOperationType};

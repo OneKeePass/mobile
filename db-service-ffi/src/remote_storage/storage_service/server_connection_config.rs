@@ -1,10 +1,12 @@
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use log::{debug, info};
+use onekeepass_core::db_service::entry_keyvalue_key as kv_key;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::db_service::error::{self, Result};
+use crate::db_service::error::{self, Error, Result};
 
 use super::RemoteStorageType;
 
@@ -98,11 +100,69 @@ pub struct SftpConnectionConfig {
     pub password: Option<String>,
     // All files and sub dirs from this will be shown as root
     pub start_dir: Option<String>,
+    // In-memory only. Populated when the config is built from a kdbx
+    // attachment (REMOTE_CONNECTION_SFTP entry). The sftp connect path
+    // prefers these bytes over reading private_key_full_file_name from disk.
+    #[serde(skip)]
+    pub private_key_data: Option<Vec<u8>>,
 }
 
 impl ConnectionId for SftpConnectionConfig {
     fn connection_id(&self) -> &Uuid {
         &self.connection_id
+    }
+}
+
+impl SftpConnectionConfig {
+    // Builds a config from a kdbx REMOTE_CONNECTION_SFTP entry's kvs.
+    // The connection_id is the entry uuid; the entry's title becomes the
+    // connection name. private_key_data must be assigned separately by the
+    // caller from the corresponding entry attachment (if any).
+    pub fn from_kvs(
+        connection_id: Uuid,
+        name: Option<String>,
+        kvs: &HashMap<String, String>,
+    ) -> Result<Self> {
+        let host = kvs
+            .get(kv_key::HOST)
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .ok_or(Error::DataError("SFTP connection entry: missing Host"))?;
+
+        // Port defaults to the standard SSH port when missing or invalid.
+        let port = kvs
+            .get(kv_key::PORT)
+            .and_then(|s| s.trim().parse::<u16>().ok())
+            .unwrap_or(22);
+
+        let user_name = kvs
+            .get(kv_key::USER_NAME)
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .ok_or(Error::DataError("SFTP connection entry: missing UserName"))?;
+
+        let password = kvs
+            .get(kv_key::PASSWORD)
+            .cloned()
+            .filter(|s| !s.is_empty());
+
+        let start_dir = kvs
+            .get(kv_key::START_DIR)
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+
+        Ok(SftpConnectionConfig {
+            connection_id,
+            name,
+            host,
+            port,
+            private_key_full_file_name: None,
+            private_key_file_name: None,
+            user_name,
+            password,
+            start_dir,
+            private_key_data: None,
+        })
     }
 }
 
@@ -123,6 +183,55 @@ pub struct WebdavConnectionConfig {
 impl ConnectionId for WebdavConnectionConfig {
     fn connection_id(&self) -> &Uuid {
         &self.connection_id
+    }
+}
+
+impl WebdavConnectionConfig {
+    // Builds a config from a kdbx REMOTE_CONNECTION_WEBDAV entry's kvs. The
+    // connection_id is the entry uuid; the entry's title becomes the
+    // connection name. The URL field is used as the root_url.
+    pub fn from_kvs(
+        connection_id: Uuid,
+        name: String,
+        kvs: &HashMap<String, String>,
+    ) -> Result<Self> {
+        let root_url = kvs
+            .get(kv_key::URL)
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .ok_or(Error::DataError("WebDAV connection entry: missing URL"))?;
+
+        let user_name = kvs
+            .get(kv_key::USER_NAME)
+            .map(|s| s.trim().to_string())
+            .unwrap_or_default();
+
+        let password = kvs
+            .get(kv_key::PASSWORD)
+            .cloned()
+            .unwrap_or_default();
+
+        // Bool field; absent or unparseable values default to false (untrusted
+        // certs are off unless the user explicitly opted in).
+        let allow_untrusted_cert = kvs
+            .get(kv_key::ALLOW_UNTRUSTED_CERT)
+            .map(|s| matches!(s.trim().to_ascii_lowercase().as_str(), "true" | "1" | "yes"))
+            .unwrap_or(false);
+
+        let start_dir = kvs
+            .get(kv_key::START_DIR)
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+
+        Ok(WebdavConnectionConfig {
+            connection_id,
+            name,
+            root_url,
+            user_name,
+            password,
+            allow_untrusted_cert,
+            start_dir,
+        })
     }
 }
 
@@ -179,6 +288,82 @@ impl ConnectionConfigs {
     pub(crate) fn find_remote_storage_config(
         connection_id: &Uuid,
         request: RemoteStorageType,
+    ) -> Option<RemoteStorageTypeConfig> {
+        // Kdbx-entry source wins: walk all open dbs looking for a
+        // REMOTE_CONNECTION_SFTP / _WEBDAV entry whose uuid matches.
+        if let Some(config) = Self::find_in_kdbx_entry_source(connection_id, &request) {
+            return Some(config);
+        }
+
+        // Legacy blob (mobile-only secure-enclave store).
+        Self::find_in_blob_store(connection_id, &request)
+    }
+
+    fn find_in_kdbx_entry_source(
+        connection_id: &Uuid,
+        request: &RemoteStorageType,
+    ) -> Option<RemoteStorageTypeConfig> {
+        let expected_type_uuid = match request {
+            RemoteStorageType::Sftp => uuid::Builder::from_slice(
+                onekeepass_core::db_service::entry_type_uuid::REMOTE_CONNECTION_SFTP,
+            )
+            .ok()?
+            .into_uuid(),
+            RemoteStorageType::Webdav => uuid::Builder::from_slice(
+                onekeepass_core::db_service::entry_type_uuid::REMOTE_CONNECTION_WEBDAV,
+            )
+            .ok()?
+            .into_uuid(),
+        };
+
+        let located = onekeepass_core::db_service::find_remote_connection_entry(
+            connection_id,
+            &expected_type_uuid,
+        )?;
+
+        let kvs =
+            onekeepass_core::db_service::entry_key_value_fields(&located.db_key, connection_id)
+                .ok()?;
+
+        // Entry title (if any) becomes the connection name.
+        let title = kvs
+            .get(kv_key::TITLE)
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+
+        match request {
+            RemoteStorageType::Sftp => {
+                let mut config =
+                    SftpConnectionConfig::from_kvs(*connection_id, title, &kvs).ok()?;
+
+                // Load the private key (if attached) from the entry's first
+                // binary attachment. Failure to read attachment bytes is not
+                // fatal — the connect step will retry password auth if the
+                // entry also has a password.
+                if let Ok(Some((file_name, bytes))) =
+                    onekeepass_core::db_service::entry_first_attachment(
+                        &located.db_key,
+                        connection_id,
+                    )
+                {
+                    config.private_key_file_name = Some(file_name);
+                    config.private_key_data = Some(bytes);
+                }
+
+                Some(RemoteStorageTypeConfig::Sftp(config))
+            }
+            RemoteStorageType::Webdav => {
+                let name = title.unwrap_or_default();
+                let config =
+                    WebdavConnectionConfig::from_kvs(*connection_id, name, &kvs).ok()?;
+                Some(RemoteStorageTypeConfig::Webdav(config))
+            }
+        }
+    }
+
+    fn find_in_blob_store(
+        connection_id: &Uuid,
+        request: &RemoteStorageType,
     ) -> Option<RemoteStorageTypeConfig> {
         let configs = config_store().lock().unwrap();
         match request {

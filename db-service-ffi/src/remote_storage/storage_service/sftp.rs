@@ -400,6 +400,7 @@ impl SftpConnection {
             private_key_file_name: _,
             user_name,
             password,
+            private_key_data,
             // Omits the remaining fields
             ..
         } = connection_info;
@@ -415,9 +416,19 @@ impl SftpConnection {
 
         debug!("Sftp::connect russh connected");
 
-        let session_authenticated = if let Some(full_file_path) = private_key_full_file_name {
-            // let full_file_path = CallbackServiceProvider::common_callback_service().sftp_private_key_file_full_path(file_name);
-
+        // Private key auth: prefer in-memory bytes (kdbx-attachment source),
+        // fall back to reading the file on disk (legacy blob source). Both
+        // paths funnel into russh::keys::decode_secret_key under the hood,
+        // so behaviour is identical from russh's perspective.
+        let private_key = if let Some(bytes) = private_key_data.as_ref() {
+            let secret = std::str::from_utf8(bytes).map_err(|_| {
+                Error::DataError("SFTP private key bytes are not valid UTF-8")
+            })?;
+            Some(
+                russh::keys::decode_secret_key(secret, password.as_deref())
+                    .map_err(convert_russh_keys_error)?,
+            )
+        } else if let Some(full_file_path) = private_key_full_file_name {
             debug!(
                 "Sftp::connect Private key full path is {:?}",
                 &full_file_path
@@ -425,8 +436,15 @@ impl SftpConnection {
 
             // Note load_secret_key calls the fn decode_secret_key(&secret, password)
             // where secret is a String that has the text of the private key
-            let key = russh::keys::load_secret_key(full_file_path, password.as_ref().map(|x| x.as_str()))
-                .map_err(convert_russh_keys_error)?;
+            Some(
+                russh::keys::load_secret_key(full_file_path, password.as_deref())
+                    .map_err(convert_russh_keys_error)?,
+            )
+        } else {
+            None
+        };
+
+        let session_authenticated = if let Some(key) = private_key {
             client_handle
                 .authenticate_publickey(user_name, russh::keys::PrivateKeyWithHashAlg::new(Arc::new(key),Some(russh::keys::HashAlg::Sha256)))
                 .await
