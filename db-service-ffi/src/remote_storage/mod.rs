@@ -1,10 +1,15 @@
-mod callback_service;
+// Phase B refactor: callback_service and storage_service now live in
+// onekeepass-core so the same SFTP/WebDAV implementation can be reused by
+// desktop. Mobile keeps only the host-side glue (callback_service_provider
+// and secure_store impls) and the orchestration layer below in this file.
 pub(crate) mod callback_service_provider;
 pub(crate) mod secure_store;
-mod storage_service;
 
-pub use storage_service::{
-    read_configs, RemoteStorageOperation, RemoteStorageOperationType, RemoteStorageType,
+pub use onekeepass_core::remote_storage::{
+    callback_service,
+    storage_service::{
+        self, read_configs, RemoteStorageOperation, RemoteStorageOperationType, RemoteStorageType,
+    },
 };
 
 use std::fs;
@@ -123,6 +128,8 @@ pub(crate) fn rs_list_kdbx_source_connections(json_args: &str) -> ResponseJson {
     let entry_type_uuid_bytes = match rs_storage_type {
         RemoteStorageType::Sftp => db_service::entry_type_uuid::REMOTE_CONNECTION_SFTP,
         RemoteStorageType::Webdav => db_service::entry_type_uuid::REMOTE_CONNECTION_WEBDAV,
+        // RemoteStorageType is #[non_exhaustive] across the crate boundary.
+        _ => return crate::commands::error_json_str("Unsupported remote storage type"),
     };
 
     let Some(entry_type_uuid) = uuid::Builder::from_slice(entry_type_uuid_bytes)
