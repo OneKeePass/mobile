@@ -104,7 +104,11 @@
 
 (defn check-remote-modified
   "Asks the backend whether the remote file's mtime has diverged from the
-   backup-cached value. Returns boolean."
+   backup-cached value. Returns a map {:modified bool :remote-mtime <int|nil>}.
+   :remote-mtime (seconds) lets callers key the Ignore snooze on the specific
+   remote state, so a NEW change re-surfaces the dialog while an already-ignored
+   one stays quiet. :remote-mtime is nil only when the server reports no mtime
+   (in which case :modified is always false)."
   [db-key dispatch-fn]
   (invoke-api "rs_check_remote_modified" {:db-key db-key} dispatch-fn))
 

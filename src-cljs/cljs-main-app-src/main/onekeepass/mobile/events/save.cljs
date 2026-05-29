@@ -229,8 +229,8 @@
  (fn [{:keys [db]} [_event-id]]
    ;; (println "overwrite-on-save-error is called ...fn is " (get-in-key-db db [:save-api-response-handler]))
    ;; User explicitly resolved the conflict by overwriting — clear any
-   ;; external-change-ignored snooze so future remote changes resurface.
-   {:db (update db (active-db-key db) dissoc :external-change-ignored)
+   ;; external-change Ignore snooze so future remote changes resurface.
+   {:db (update db (active-db-key db) dissoc :external-change-ignored-mtime)
     :fx [[:dispatch [:common/message-modal-show nil 'overwritingDb]]
          [:dispatch [:save-error-modal-hide]]
          [:bg-save-kdbx [(active-db-key db) true (get-in-key-db db [:save-api-response-handler])]]
@@ -278,8 +278,8 @@
  :merge-on-save-error
  (fn [{:keys [db]} [_event-id]]
    ;; User explicitly resolved the conflict by merging — clear any
-   ;; external-change-ignored snooze so future remote changes resurface.
-   {:db (update db (active-db-key db) dissoc :external-change-ignored)
+   ;; external-change Ignore snooze so future remote changes resurface.
+   {:db (update db (active-db-key db) dissoc :external-change-ignored-mtime)
     :fx [[:dispatch [:save-error-modal-hide]]
          [:dispatch [:common/message-modal-show nil "Merging remote changes..."]]
          [:bg-save-error-merge-with-remote [(active-db-key db)]]]}))

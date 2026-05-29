@@ -461,11 +461,23 @@ fn is_rs_file_modified(
     }
 }
 
+// Result of a proactive remote-modification check. We return the remote mtime
+// (not just the boolean) so the cljs layer can key its "Ignore" snooze on the
+// specific remote state that was ignored — a genuinely NEW change (different
+// mtime) re-surfaces the dialog, while the already-ignored change stays quiet.
+// remote_mtime is None when the server doesn't report an mtime (in which case
+// modified is always false, since we can't reason about divergence).
+#[derive(Serialize)]
+pub(crate) struct RemoteModifiedStatus {
+    modified: bool,
+    remote_mtime: Option<u64>,
+}
+
 // Proactive remote-modification check used by the foreground poll and the
 // manual menu item. Mirrors desktop's `rs_check_remote_modified` semantics:
-// returns Ok(false) defensively when either the server doesn't report mtime
-// or no cached backup exists, to avoid spurious prompts.
-pub(crate) fn rs_check_remote_modified(db_key: &str) -> OkpResult<bool> {
+// reports modified=false defensively when either the server doesn't report
+// mtime or no cached backup exists, to avoid spurious prompts.
+pub(crate) fn rs_check_remote_modified(db_key: &str) -> OkpResult<RemoteModifiedStatus> {
     let rs_operation_type = parse_db_key_to_rs_type_opertaion(db_key)?;
 
     rs_operation_type.connect_by_id().map_err(|e| {
@@ -482,12 +494,18 @@ pub(crate) fn rs_check_remote_modified(db_key: &str) -> OkpResult<bool> {
 
     // No remote mtime reported -> can't reason about divergence, don't prompt.
     let Some(remote_mtime) = rmd.modified else {
-        return Ok(false);
+        return Ok(RemoteModifiedStatus {
+            modified: false,
+            remote_mtime: None,
+        });
     };
 
     // No cached backup -> can't compare. Don't prompt.
     let Some(bk_full_path) = backup::latest_backup_file_path(db_key) else {
-        return Ok(false);
+        return Ok(RemoteModifiedStatus {
+            modified: false,
+            remote_mtime: Some(remote_mtime),
+        });
     };
 
     let bk_mtime = bk_full_path
@@ -497,10 +515,16 @@ pub(crate) fn rs_check_remote_modified(db_key: &str) -> OkpResult<bool> {
         .ok();
 
     let Some(bk_mtime) = bk_mtime else {
-        return Ok(false);
+        return Ok(RemoteModifiedStatus {
+            modified: false,
+            remote_mtime: Some(remote_mtime),
+        });
     };
 
-    Ok(remote_mtime != bk_mtime)
+    Ok(RemoteModifiedStatus {
+        modified: remote_mtime != bk_mtime,
+        remote_mtime: Some(remote_mtime),
+    })
 }
 
 // User chose "Ignore" on the change dialog. Refreshes the backup file's mtime

@@ -43,8 +43,8 @@
 (defn external-change-merge-start [db-key]
   (dispatch [:external-db-change-merge-start db-key]))
 
-(defn external-change-ignore [db-key]
-  (dispatch [:external-db-change-ignore db-key]))
+(defn external-change-ignore [db-key remote-mtime]
+  (dispatch [:external-db-change-ignore db-key remote-mtime]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; events ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -66,7 +66,7 @@
      (when (and db-key (remote-db-key? db-key))
        ;; Clear the session-level Ignore snooze first — manual check is an
        ;; explicit re-ask, so a still-modified remote must re-surface the dialog.
-       {:db (update db db-key dissoc :external-change-ignored)
+       {:db (update db db-key dissoc :external-change-ignored-mtime)
         :fx [[:bg-rs-check-remote-modified [db-key true]]]}))))
 
 (reg-fx
@@ -77,15 +77,15 @@
     db-key
     (fn [api-response]
       (if manual?
-        (when-some [modified? (on-ok api-response)]
-          (println "In :bg-rs-check-remote-modified modified?" modified?)
-          (if modified?
-            (dispatch [:external-db-change/db-file-changed-externally db-key])
+        (when-some [{:keys [modified remote-mtime]} (on-ok api-response)]
+          (println "In :bg-rs-check-remote-modified modified?" modified)
+          (if modified
+            (dispatch [:external-db-change/db-file-changed-externally db-key remote-mtime])
             (dispatch [:common/message-snackbar-open 'remoteUpToDate])))
         ;; auto-poll path: pass a no-op error fn so failures don't snackbar
-        (when-some [modified? (on-ok api-response (fn [_err] nil))]
-          (when modified?
-            (dispatch [:external-db-change/db-file-changed-externally db-key]))))))))
+        (when-some [{:keys [modified remote-mtime]} (on-ok api-response (fn [_err] nil))]
+          (when modified
+            (dispatch [:external-db-change/db-file-changed-externally db-key remote-mtime]))))))))
 
 ;; Routes the change-detected notification. The dialog is mounted globally
 ;; (see core.cljs), so it can pop on whichever page the user is currently on.
@@ -97,22 +97,26 @@
 ;; Otherwise, show the dialog immediately.
 (reg-event-fx
  :external-db-change/db-file-changed-externally
- (fn [{:keys [db]} [_event-id db-key]]
+ (fn [{:keys [db]} [_event-id db-key remote-mtime]]
    (cond
      ;; Save-error-modal owns the conflict resolution right now — do nothing.
      (get-in db [:save-error-modal :dialog-show])
      {}
 
-     ;; Session-level Ignore snooze — user already dismissed this change.
-     ;; Cleared by manual check (the explicit re-ask path).
-     (get-in db [db-key :external-change-ignored])
+     ;; Identity snooze — the user already dismissed THIS exact remote state
+     ;; (same mtime). A genuinely new change (different mtime) falls through and
+     ;; re-surfaces. Cleared by manual check (the explicit re-ask path) and save.
+     (and (some? remote-mtime)
+          (= remote-mtime (get-in db [db-key :external-change-ignored-mtime])))
      {}
 
      (and (= db-key (active-db-key db)) (not (is-db-locked db db-key)))
-     {:fx [[:dispatch [:external-db-change-show-dialog db-key]]]}
+     {:fx [[:dispatch [:external-db-change-show-dialog db-key remote-mtime]]]}
 
      :else
-     {:db (assoc-in db [db-key :external-change-pending] true)
+     {:db (-> db
+              (assoc-in [db-key :external-change-pending] true)
+              (assoc-in [db-key :external-change-pending-mtime] remote-mtime))
       :fx [[:dispatch [:common/message-snackbar-open 'externalChangePending]]]})))
 
 ;; Called after unlock or tab switch to surface a stashed pending change. If no
@@ -123,7 +127,8 @@
    (cond
      (get-in db [db-key :external-change-pending])
      {:db (assoc-in db [db-key :external-change-pending] false)
-      :fx [[:dispatch [:external-db-change-show-dialog db-key]]]}
+      :fx [[:dispatch [:external-db-change-show-dialog db-key
+                       (get-in db [db-key :external-change-pending-mtime])]]]}
 
      (remote-db-key? db-key)
      {:fx [[:bg-rs-check-remote-modified [db-key false]]]}
@@ -133,10 +138,10 @@
 
 (reg-event-fx
  :external-db-change-show-dialog
- (fn [{:keys [_db]} [_event-id db-key]]
+ (fn [{:keys [_db]} [_event-id db-key remote-mtime]]
    {:fx [[:dispatch [:generic-dialog-show-with-state
                      :external-db-change-dialog
-                     {:data {:db-key db-key}}]]]}))
+                     {:data {:db-key db-key :remote-mtime remote-mtime}}]]]}))
 
 ;; User picked Merge on the external-db-change dialog. With smart routing on
 ;; (default), this either reloads (save_pending=false) or true-merges and
@@ -220,8 +225,13 @@
 
 (reg-event-fx
  :external-db-change-merge-completed
- (fn [{:keys [_db]} [_event-id merge-result]]
-   {:fx [[:dispatch [:common/message-modal-hide]]
+ (fn [{:keys [db]} [_event-id merge-result]]
+   ;; After reload/merge the backup mtime now matches remote, so future checks
+   ;; report modified=false anyway. Clear the snooze/pending bookkeeping to keep
+   ;; state tidy.
+   {:db (update db (active-db-key db) dissoc
+                :external-change-ignored-mtime :external-change-pending-mtime)
+    :fx [[:dispatch [:common/message-modal-hide]]
          [:dispatch [:common/refresh-forms]]
          [:dispatch [:generic-dialog-show-with-state :merge-result-dialog {:data merge-result}]]
          [:dispatch [:common/message-snackbar-open 'remoteUpdated]]]}))
@@ -232,16 +242,17 @@
    {:fx [[:dispatch [:common/message-modal-hide]]
          [:dispatch [:common/error-box-show 'mergeFailed error]]]}))
 
-;; Session-level snooze. Sets a cljs flag (not a backend acknowledge), so:
-;;   - Foreground poll suppresses the dialog while the flag is set.
+;; Session-level snooze keyed on the ignored remote mtime (not a backend
+;; acknowledge), so:
+;;   - Foreground poll suppresses the dialog only while the remote still matches
+;;     the ignored mtime; a NEW change (different mtime) re-surfaces the dialog.
 ;;   - The save-time guard (rs_write_file → is_rs_file_modified) stays accurate;
 ;;     a subsequent Save still triggers save-error-modal as a safety net.
-;;   - Manual check clears the flag (the explicit re-ask path).
-;;   - Flag is in-memory only; lost on app restart, so a fresh foreground poll
+;;   - Manual check clears the snooze (the explicit re-ask path).
+;;   - Snooze is in-memory only; lost on app restart, so a fresh foreground poll
 ;;     after restart will re-detect.
 (reg-event-fx
  :external-db-change-ignore
- (fn [{:keys [db]} [_event-id db-key]]
-   {:db (assoc-in db [db-key :external-change-ignored] true)
-    :fx [[:dispatch [:generic-dialog-close :external-db-change-dialog]]
-         [:dispatch [:common/message-box-show 'externalDbChangedIgnored 'externalDbChangedIgnored]]]}))
+ (fn [{:keys [db]} [_event-id db-key remote-mtime]]
+   {:db (assoc-in db [db-key :external-change-ignored-mtime] remote-mtime)
+    :fx [[:dispatch [:generic-dialog-close :external-db-change-dialog]]]}))
