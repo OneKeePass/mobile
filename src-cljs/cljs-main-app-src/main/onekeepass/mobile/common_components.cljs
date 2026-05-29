@@ -229,7 +229,7 @@
       ^{:key label} [rnp-button {:mode "text"
                                  :on-press on-press} label])]])
 
-(defn vertical-buttons [actions]
+(defn- vertical-buttons [actions]
   [rn-view {:style {}}
    (for [{:keys [label disabled on-press]} actions]
      ^{:key label} [rnp-button {:mode "text"

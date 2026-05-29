@@ -4,12 +4,22 @@
    [cljs.core.async :refer [<! go timeout]]
    [clojure.string :as str]
    [onekeepass.mobile.background :as bg :refer [is-Android]]
-   [onekeepass.mobile.constants :as const :refer [HOME_PAGE_ID]]
+   [onekeepass.mobile.constants :as const :refer [HOME_PAGE_ID
+                                                  REMOTE_CONNECTION_TYPE_NAMES]]
    [onekeepass.mobile.utils :as u :refer [str->int tags->vec]]
    [re-frame.core :refer [dispatch dispatch-sync reg-event-db reg-event-fx
                           reg-fx reg-sub subscribe]]))
 
 (def home-page-title "home")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Remote connections related ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn remote-connection-entry-type?
+  "True when the given entry-type-name is an SFTP/WebDAV connection entry."
+  [entry-type-name]
+  (contains? REMOTE_CONNECTION_TYPE_NAMES entry-type-name))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn sync-initialize
   "Called just before rendering to set all requied values in re-frame db"

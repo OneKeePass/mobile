@@ -26,6 +26,7 @@
    [onekeepass.mobile.events.remote-storage :as rs-events]
    [onekeepass.mobile.events.save :as save-events]
    [onekeepass.mobile.external-db-change :as external-db-change]
+   [onekeepass.mobile.remote-connection-unavailable :as remote-connection-unavailable]
    [onekeepass.mobile.merging :refer [merge-result-dialog-mounted]]
    [onekeepass.mobile.rn-components :as rnc :refer [react-use-effect
                                                     reset-colors
@@ -55,6 +56,7 @@
       [message-dialog @(cmn-events/message-dialog-data)]
       [merge-result-dialog-mounted]
       [external-db-change/external-db-change-dialog-mounted]
+      [remote-connection-unavailable/remote-connection-unavailable-dialog-mounted]
       (when (bg/is-iOS)
         [ios-all-pending-passkeys-notification-dialog])]]))
 

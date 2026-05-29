@@ -31,6 +31,9 @@
 (def REMOTE_CONNECTION_SFTP_TYPE_NAME "SFTP Connection")
 (def REMOTE_CONNECTION_WEBDAV_TYPE_NAME "WebDAV Connection")
 
+(def REMOTE_CONNECTION_TYPE_NAMES #{REMOTE_CONNECTION_SFTP_TYPE_NAME
+                                    REMOTE_CONNECTION_WEBDAV_TYPE_NAME})
+
 (def STANDARD_ENTRY_TYPES [LOGIN_TYPE_NAME
                            CREDIT_DEBIT_CARD_TYPE_NAME
                            WIRELESS_ROUTER_TYPE_NAME
@@ -57,6 +60,10 @@
 (def PERMISSION_REQUIRED_TO_READ "PERMISSION_REQUIRED_TO_READ")
 (def FILE_NOT_FOUND "FILE_NOT_FOUND")
 (def COORDINATOR_CALL_FAILED "COORDINATOR_CALL_FAILED")
+;; Remote db open: server reachable check / connection config resolution.
+;; These match the Display strings of the corresponding onekeepass-core errors.
+(def NO_REMOTE_STORAGE_CONNECTION "NoRemoteStorageConnection")
+(def REMOTE_STORAGE_CONFIG_NOT_AVAILABLE "RemoteStorageConfigNotAvailable")
 (def BOOK_MARK_STALE "BOOK_MARK_STALE")
 (def BOOK_MARK_NOT_FOUND "BOOK_MARK_NOT_FOUND")
 (def SAVE_CALL_FAILED "SAVE_CALL_FAILED")
@@ -79,6 +86,8 @@
 (def PASSWORD "Password")
 (def USERNAME "UserName")
 (def URL "URL")
+;; Host field key on a REMOTE_CONNECTION_SFTP entry (matches core constants::HOST)
+(def HOST "Host")
 (def IFDEVICE "IfDevice")
 
 (def ASCENDING "Ascending")

@@ -12,6 +12,7 @@
             [onekeepass.mobile.events.entry-category :as ecat-events]
             [onekeepass.mobile.events.entry-list :as elist-events :refer [find-entry-by-id]]
             [onekeepass.mobile.events.move-delete :as md-events]
+            [onekeepass.mobile.events.remote-storage :as rs-events]
             [onekeepass.mobile.icons-list :refer [ENTRY-GROUP-LIST-ICON-SIZE
                                                   icon-id->name]]
             [onekeepass.mobile.rn-components :as rnc :refer [cust-dialog
@@ -85,10 +86,10 @@
 
 (defn entry-long-press-menu [{:keys [show x y entry-summary]}]
   (let [deleted-cat @(elist-events/deleted-category-showing)
-        {:keys [uuid parent-group-uuid]} entry-summary]
+        {:keys [uuid parent-group-uuid entry-type-name]} entry-summary]
     (if-not deleted-cat
       [rnp-menu {:visible show :key (str show) :onDismiss hide-entry-long-press-menu :anchor (clj->js {:x x :y y})}
-       ;; TODO: Need to add a rust api to toggle an entry as Favorites or not and then enable this 
+       ;; TODO: Need to add a rust api to toggle an entry as Favorites or not and then enable this
        #_[rnp-menu-item {:title "Favorites" :onPress #()  :trailingIcon "check"}]
        [rnp-menu-item {:title (lstr-ml "move")
                        :disabled @(cmn-events/current-db-disable-edit)
@@ -97,6 +98,12 @@
        [rnp-menu-item {:title (lstr-ml "delete")
                        :disabled @(cmn-events/current-db-disable-edit)
                        :onPress (entry-long-press-menu-action cc/show-entry-delete-confirm-dialog uuid)}]
+
+       ;; Launch the remote Storage Browser using this connection entry
+       (when (cmn-events/remote-connection-entry-type? entry-type-name)
+         [rnp-menu-item {:title (lstr-ml "openRemote")
+                         :onPress (entry-long-press-menu-action
+                                   rs-events/open-entry-remote entry-type-name uuid)}])
 
 
 

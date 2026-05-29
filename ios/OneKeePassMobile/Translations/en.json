@@ -150,6 +150,7 @@
         "additionalUrLs": "Additional URLs",
         "addressLine1": "Address Line1",
         "addressLine2": "Address Line2",
+        "allowUntrustedCert": "Allow Untrusted Cert",
         "autoOpenIfDevice": "Device ids to include or exclude",
         "autoOpenKdbxFileOpen": "KDBX file to open",
         "autoOpenKeyFile": "Key file",
@@ -166,6 +167,7 @@
         "expirationMonth": "Expiration Month",
         "expirationYear": "Expiration Year",
         "expiryDuration": "Expiry Duration",
+        "host": "Host",
         "issuingBank": "Issuing Bank",
         "kpexPasskeyCredentialId": "Passkey CredentialId",
         "kpexPasskeyPrivateKeyPem": "Passkey PrivateKey Pem",
@@ -178,6 +180,7 @@
         "password": "Password",
         "phoneNumber": "Phone Number",
         "pin": "PIN",
+        "port": "Port",
         "sftpPasswordOrPassphrase": "Password / Passphrase",
         "state": "State",
         "swift": "SWIFT",
@@ -222,7 +225,9 @@
             "reopen": "Reopen",
             "setupOtp": "Set up OTP",
             "pendingPasskeys": "Pending Passkeys",
-            "unlockDatabase": "Unlock database"
+            "unlockDatabase": "Unlock database",
+            "remoteConfigNotAvailable": "Connection Not Available",
+            "remoteServerUnreachable": "Server Unreachable"
         },
         "texts": {
             "addRemoteConnectionConfig": "This connection will be saved securely in this app on this device only — it won't be available on your other devices. To share connections across devices, save it as an entry (type: SFTP Connection or WebDAV Connection) inside one of your databases instead.",
@@ -253,7 +258,9 @@
             "pendingPasskeysMergeNeeded": "There are one or more pending passkeys and they need to be merged to the database",
             "pendingPasskeysDisableWarning": "There are pending passkeys that have not been committed to the database. Please review them before disabling autofill.",
             "pendingPasskeysMultiDb": "The following databases have pending passkeys. Open each database to review and save them.",
-            "setupOtp": "You can set up TOTP by scanning a QR code or manually entering the secret or an OTPAuth url"
+            "setupOtp": "You can set up TOTP by scanning a QR code or manually entering the secret or an OTPAuth url",
+            "remoteConfigNotAvailable": "This database's connection details are stored in another database that is not currently open. Open that database first and then reopen this one — or open this one read-only from the latest backup.",
+            "remoteServerUnreachable": "Could not connect to the remote server. You can open this database read-only from the latest backup, or cancel and try again later."
         }
     },
     "errorDialog": {
@@ -287,14 +294,12 @@
             "biometricDbOpenEnabled": "Attention",
             "noCamera": "No Camera",
             "dbReadOnly": "Read Only",
-            "externalDbChangedIgnored": "External Change Ignored",
             "saveCompleted": "Save completed"
         },
         "texts": {
             "biometricDbOpenEnabled": "You need to login again for this change to take effect",
             "noCamera": "No camera is found. Please enter the secret code manually",
             "dbReadOnly": "Database is opened in read only mode as there is no connection to the server",
-            "externalDbChangedIgnored": "The remote change has been ignored. Your current data is unchanged. If you save now, your local version will overwrite the server.",
             "saveCompleted": "The newly saved database is loaded now"
         }
     },
@@ -315,6 +320,7 @@
     },
     "snackbarMessages": {
         "addedConfig": "Added new configuration",
+        "unsupportedRemoteType": "Unsupported remote connection type",
         "actionCompleted": "Action completed",
         "attachmentAdded": "Attachment added",
         "attachmentDeleted": "Attachment deleted",
@@ -406,6 +412,7 @@
         "notNow": "Not Now",
         "ok": "Ok",
         "opendb": "Open Database",
+        "openReadOnly": "Open Read-Only",
         "pickDbAgain": "Pick the database again",
         "refresh": "Refresh",
         "removePassword": "Remove password",
@@ -455,6 +462,7 @@
         "modifyCustomField": "Modify Custom Field",
         "move": "Move",
         "modifiedTime": "Modified Time",
+        "openRemote": "Open Remote ..",
         "privacyPolicy": "Privacy Policy",
         "pwdGenerator": "Password Generator",
         "putback": "Put Back",

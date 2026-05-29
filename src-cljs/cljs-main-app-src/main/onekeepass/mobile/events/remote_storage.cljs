@@ -411,6 +411,28 @@
    {:fx [[:dispatch [:common/message-modal-show nil 'connecting]]
          [:bg-rs-connect-by-id-and-retrieve-root-dir [kw-type connection-id]]]}))
 
+;; Launch the remote Storage Browser for an SFTP/WebDAV connection ENTRY. The
+;; connection entry's uuid is used as the connection-id. Reuses the existing
+;; connect-by-id flow (which navigates to the storage browser on success).
+;; Called from the entry list long-press menu and the entry form (launch icon /
+;; menu) for remote-connection entries.
+(defn open-entry-remote [entry-type-name entry-uuid]
+  (dispatch [:remote-storage-open-entry-remote entry-type-name entry-uuid]))
+
+(reg-event-fx
+ :remote-storage-open-entry-remote
+ (fn [{:keys [db]} [_query-id entry-type-name entry-uuid]]
+   (let [kw-type (condp = entry-type-name
+                   const/REMOTE_CONNECTION_SFTP_TYPE_NAME :sftp
+                   const/REMOTE_CONNECTION_WEBDAV_TYPE_NAME :webdav
+                   nil)]
+     (if kw-type
+       ;; Set current-rs-type so the storage browser's sub-dir / back actions
+       ;; (which read get-current-rs-type) work after we land on the page.
+       {:db (assoc-in db [:remote-storage :current-rs-type] kw-type)
+        :fx [[:dispatch [:remote-storage-connect-by-id-start kw-type entry-uuid]]]}
+       {:fx [[:dispatch [:common/message-snackbar-open 'unsupportedRemoteType]]]}))))
+
 (reg-fx
  :bg-rs-connect-by-id-and-retrieve-root-dir
  (fn [[kw-type connection-id]]

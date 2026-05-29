@@ -22,7 +22,7 @@ use crate::backup::{
     self, latest_backup_file_path, latest_backup_full_file_name, matching_backup_exists,
 };
 use crate::commands::{result_json_str, CommandArg, ResponseJson};
-use crate::db_backup_read::{read_latest_backup_db_arg, KdbxLoadedEx};
+use crate::db_backup_read::KdbxLoadedEx;
 use crate::udl_types::FileInfo;
 use crate::{biometric_auth, open_backup_file, parse_command_args_or_err};
 use crate::{OkpError, OkpResult};
@@ -259,6 +259,32 @@ fn parse_db_key_to_rs_type_opertaion(db_key: &str) -> OkpResult<RemoteStorageOpe
     Ok(rt)
 }
 
+// Returns true when the connection config for this remote db_key can be
+// resolved right now — either from an open kdbx db (entry-based source) or the
+// legacy blob store. Returns false when it cannot (e.g. an entry-based config
+// whose holding db is not open, or a removed config), in which case a live
+// connection is impossible.
+fn is_remote_config_available(db_key: &str) -> bool {
+    use uuid::Uuid;
+
+    let Ok((_remaining, parsed)) = parse_db_key(db_key) else {
+        return false;
+    };
+
+    let storage_type = match parsed.rs_type_name {
+        "Sftp" => RemoteStorageType::Sftp,
+        "Webdav" => RemoteStorageType::Webdav,
+        _ => return false,
+    };
+
+    let Ok(connection_id) = Uuid::parse_str(parsed.connection_id) else {
+        return false;
+    };
+
+    storage_service::ConnectionConfigs::find_remote_storage_config(&connection_id, storage_type)
+        .is_some()
+}
+
 fn rs_read_file(json_args: &str) -> OkpResult<KdbxLoadedEx> {
     let (db_file_name, password, key_file_name, biometric_auth_used) = parse_command_args_or_err!(
         json_args,
@@ -272,16 +298,25 @@ fn rs_read_file(json_args: &str) -> OkpResult<KdbxLoadedEx> {
 
     let rs_operation_type = parse_db_key_to_rs_type_opertaion(&db_file_name)?;
 
-    // Ensure that the remote connection is established
-    // If the remote server is not available, send an error to UI and user determines what to do
+    // Determine whether the connection config can be resolved at all before we
+    // attempt to connect. Entry-based (kdbx-source) configs are only resolvable
+    // while the db holding the connection entry is open; blob configs are always
+    // resolvable. If we cannot resolve it, the concerned db is most likely not
+    // open (or the config was removed). Rather than silently opening a read-only
+    // backup, surface a distinct error so the UI can prompt the user to open the
+    // concerned db (or explicitly choose read-only).
+    if !is_remote_config_available(&db_file_name) {
+        info!("Remote connection config not available for {}. The concerned db is likely not open.", &db_file_name);
+        return Err(error::Error::RemoteStorageConfigNotAvailable);
+    }
 
+    // Config is resolvable; attempt the live connection. If the server is not
+    // reachable, surface NoRemoteStorageConnection so the UI can offer
+    // read-only vs cancel. We no longer auto-open the read-only backup here; the
+    // UI drives that choice explicitly via read_latest_backup.
     if let Err(e) = rs_operation_type.connect_by_id() {
-        info!("Connection to remote server is not available and read only mode from backup. The remote call error details:{}", e);
-
-        // If the db file is read earlier, then we should have at least one backup. Otherwise an error is returned
-        
-        let file_name = rs_operation_type.file_name().map(|v| v.to_string());
-        return read_latest_backup_db_arg(&db_file_name, &password, &key_file_name,&file_name);
+        info!("Connection to remote server is not available. The remote call error details:{}", e);
+        return Err(error::Error::NoRemoteStorageConnection);
     }
 
     debug!("Remote server connected");

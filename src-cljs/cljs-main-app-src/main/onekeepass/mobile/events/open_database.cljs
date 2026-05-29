@@ -440,6 +440,31 @@
           (and (string? error) (= error "BiometricCredentialsAuthenticationFailed"))
           [[:dispatch [:open-database-db-open-with-credentials kdbx-file-info-m]]]
 
+          ;; Remote db: connection config could not be resolved (entry-based
+          ;; connection whose holding db is not open, or a removed config).
+          ;; Prompt the user to open the concerned db or open read-only.
+          (= error const/REMOTE_STORAGE_CONFIG_NOT_AVAILABLE)
+          (let [{:keys [database-full-file-name password key-file-name]} (get-in db [:open-database])]
+            [[:dispatch [:open-database-dialog-hide]]
+             [:dispatch [:generic-dialog-show-with-state
+                         :remote-connection-unavailable-dialog
+                         {:data {:kind :config-not-available
+                                 :db-file-name database-full-file-name
+                                 :password password
+                                 :key-file-name key-file-name}}]]])
+
+          ;; Remote db: config resolved but the remote server is unreachable.
+          ;; Prompt the user to open read-only or cancel.
+          (= error const/NO_REMOTE_STORAGE_CONNECTION)
+          (let [{:keys [database-full-file-name password key-file-name]} (get-in db [:open-database])]
+            [[:dispatch [:open-database-dialog-hide]]
+             [:dispatch [:generic-dialog-show-with-state
+                         :remote-connection-unavailable-dialog
+                         {:data {:kind :server-unreachable
+                                 :db-file-name database-full-file-name
+                                 :password password
+                                 :key-file-name key-file-name}}]]])
+
           ;; error is a map
           (= (:code error) const/PERMISSION_REQUIRED_TO_READ)
           [[:dispatch [:repick-confirm-show const/PERMISSION_REQUIRED_TO_READ]]
@@ -476,6 +501,42 @@
  :open-database/new-merging-source-db-wanted
  (fn [{:keys [db]} [_event-id wanted?]]
    {:db (-> db (assoc-in [:open-new-merging-source] wanted?))}))
+
+;;;;;;;;;;;;;;;;;;;;;; remote-connection-unavailable-dialog ;;;;;;;;;;;;;;;;;;;;
+
+;; Shown (from :open-database-read-kdbx-error) when a remote db could not be
+;; opened live: either the connection config is unresolvable (concerned db not
+;; open) or the server is unreachable. Actions below are invoked from the dialog.
+
+(defn remote-connection-unavailable-open-read-only [{:keys [db-file-name password key-file-name]}]
+  (dispatch [:remote-connection-unavailable-open-read-only db-file-name password key-file-name]))
+
+(defn remote-connection-unavailable-open-concerned-db []
+  (dispatch [:remote-connection-unavailable-open-concerned-db]))
+
+(defn remote-connection-unavailable-cancel []
+  (dispatch [:generic-dialog-close :remote-connection-unavailable-dialog]))
+
+;; Open read-only from the latest backup (explicit user choice). Reuses the
+;; existing backup-read fx, which routes back through :open-database-db-opened.
+(reg-event-fx
+ :remote-connection-unavailable-open-read-only
+ (fn [{:keys [_db]} [_event-id db-file-name password key-file-name]]
+   {:fx [[:dispatch [:generic-dialog-close :remote-connection-unavailable-dialog]]
+         [:dispatch [:common/message-modal-show nil 'loading]]
+         [:bg-read-latest-backup-kdbx [{:db-file-name db-file-name
+                                        :password password
+                                        :key-file-name key-file-name
+                                        :biometric-auth-used false}]]]}))
+
+;; Send the user to the home page so they can open the db that holds this
+;; connection's entry. After that, they re-tap this remote db from recent (v1:
+;; manual re-tap, no auto-resume).
+(reg-event-fx
+ :remote-connection-unavailable-open-concerned-db
+ (fn [{:keys [_db]} [_event-id]]
+   {:fx [[:dispatch [:generic-dialog-close :remote-connection-unavailable-dialog]]
+         [:dispatch [:common/to-home-page]]]}))
 
 (reg-event-db
  :repick-confirm-show
