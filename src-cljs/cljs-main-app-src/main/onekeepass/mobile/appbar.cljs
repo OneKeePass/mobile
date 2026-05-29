@@ -1,9 +1,10 @@
 (ns onekeepass.mobile.appbar
-  (:require [onekeepass.mobile.ios.passkey-pending :as passkey-pending]
-            [onekeepass.mobile.about :as about :refer [about-content
+  (:require [onekeepass.mobile.about :as about :refer [about-content
                                                        privacy-policy-content]]
-            [onekeepass.mobile.app-settings :as app-settings]
             [onekeepass.mobile.app-database-settings :as app-db-settings]
+            [onekeepass.mobile.app-lock :as app-lock]
+            [onekeepass.mobile.app-lock-settings :as app-lock-settings]
+            [onekeepass.mobile.app-settings :as app-settings]
             [onekeepass.mobile.autofill :as af-settings]
             [onekeepass.mobile.common-components :as cc :refer [menu-action-factory]]
             [onekeepass.mobile.constants  :refer [ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID
@@ -22,28 +23,24 @@
             [onekeepass.mobile.entry-form :as entry-form]
             [onekeepass.mobile.entry-history-list :as entry-history-list]
             [onekeepass.mobile.entry-list :as entry-list :refer [entry-list-content]]
-            [onekeepass.mobile.rs-configs :as rs-configs]
-            [onekeepass.mobile.rs-config-form :as rs-form]
-            [onekeepass.mobile.rs-files-folders :as rs-files-folders]
-            [onekeepass.mobile.app-lock :as app-lock]
-            [onekeepass.mobile.app-lock-settings :as app-lock-settings]
-            [onekeepass.mobile.events.app-settings :as as-events]
             [onekeepass.mobile.events.app-lock :as app-lock-events]
+            [onekeepass.mobile.events.app-settings :as as-events]
             [onekeepass.mobile.events.common :as cmn-events]
             [onekeepass.mobile.events.entry-form :as ef-events]
             [onekeepass.mobile.events.entry-list :as elist-events]
+            [onekeepass.mobile.events.external-db-change :as ext-change-events]
+            [onekeepass.mobile.events.merging :as merging-events]
             [onekeepass.mobile.events.password-generator :as pg-events]
+            [onekeepass.mobile.events.remote-storage :as rs-events]
             [onekeepass.mobile.events.search :as search-events]
             [onekeepass.mobile.events.settings :as stgs-events]
-            [onekeepass.mobile.events.remote-storage :as rs-events]
-            [onekeepass.mobile.events.merging :as merging-events]
-            #_[onekeepass.mobile.events.app-database-settings :as ads-settings]
             [onekeepass.mobile.group-form :as group-form]
             [onekeepass.mobile.icons-list :as icons-list]
-            [onekeepass.mobile.manage-custom-icons :as manage-custom-icons]
+            [onekeepass.mobile.ios.passkey-pending :as passkey-pending]
             [onekeepass.mobile.key-file-form :as kf-form]
-            [onekeepass.mobile.password-generator :as pg]
+            [onekeepass.mobile.manage-custom-icons :as manage-custom-icons]
             [onekeepass.mobile.merging :as merging]
+            [onekeepass.mobile.password-generator :as pg]
             [onekeepass.mobile.rn-components :as rnc :refer [background-color
                                                              cust-rnp-divider
                                                              dots-icon-name
@@ -56,6 +53,9 @@
                                                              rnp-appbar-header
                                                              rnp-menu
                                                              rnp-menu-item]]
+            [onekeepass.mobile.rs-config-form :as rs-form]
+            [onekeepass.mobile.rs-configs :as rs-configs]
+            [onekeepass.mobile.rs-files-folders :as rs-files-folders]
             [onekeepass.mobile.scan-otp-qr :as scan-otp-qr]
             [onekeepass.mobile.search :as search]
             [onekeepass.mobile.settings :as settings :refer [db-settings-form-content]]
@@ -143,7 +143,7 @@
 (def header-menu-action (menu-action-factory header-menu-hide))
 
 (defn header-menu [{:keys [show x y]} {:keys [page]}]
-  
+
   ;; https://github.com/callstack/react-native-paper/issues/4807
   ;; Workaround to make menu popup work always by adding :key (str show)
   ;; See rn_components.cljs where rnp-menu is defined
@@ -186,6 +186,9 @@
       [rnp-menu-item {:title (lstr-ml "mergeDatabases")
                       :disabled  @(cmn-events/current-db-disable-edit)
                       :onPress (header-menu-action merging-events/merging-databases-page)}]
+      [rnp-menu-item {:title (lstr-ml "checkRemoteChanges")
+                      :disabled (not (cmn-events/remote-db-key? @(cmn-events/active-db-key)))
+                      :onPress (header-menu-action ext-change-events/manual-check-remote-changes)}]
       [cust-rnp-divider]
       [rnp-menu-item {:title (lstr-ml "settings")
                       :onPress (header-menu-action stgs-events/load-db-settings)}]]

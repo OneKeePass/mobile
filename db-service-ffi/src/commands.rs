@@ -845,6 +845,41 @@ impl Commands {
                     result_json_str(rs_operation_type.delete_config())
                 })
             }
+
+            "rs_check_remote_modified" => {
+                service_call_closure!(args, DbKey {db_key} => move || {
+                    result_json_str(crate::remote_storage::rs_check_remote_modified(&db_key))
+                })
+            }
+
+            "rs_acknowledge_remote_change" => {
+                service_call_closure!(args, DbKey {db_key} => move || {
+                    result_json_str(crate::remote_storage::rs_acknowledge_remote_change(&db_key))
+                })
+            }
+
+            "rs_merge_with_remote" => {
+                service_call_closure!(args, DbKey {db_key} => move || {
+                    result_json_str(crate::remote_storage::rs_merge_with_remote(&db_key))
+                })
+            }
+
+            "rs_reload_with_remote" => {
+                service_call_closure!(args, DbKey {db_key} => move || {
+                    result_json_str(crate::remote_storage::rs_reload_with_remote(&db_key))
+                })
+            }
+
+            // Returns just the save_pending bool from the in-memory db context.
+            // Used by the external-db-change merge flow to decide whether to do a
+            // true three-way merge (preserves in-memory edits) vs. a reload.
+            "kdbx_save_pending" => {
+                service_call_closure!(args, DbKey {db_key} => move || {
+                    result_json_str(
+                        db_service::kdbx_context_statuses(&db_key).map(|s| s.save_pending),
+                    )
+                })
+            }
             ////
             "read_latest_backup" => {
                 result_json_str(crate::db_backup_read::read_latest_backup(&args))

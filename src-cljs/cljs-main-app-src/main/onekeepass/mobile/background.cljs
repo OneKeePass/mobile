@@ -377,6 +377,13 @@
     (call-api-async (fn [] (.saveKdbx okp-db-service full-file-name overwrite)) dispatch-fn :error-transform true)
     (bg-rs/save-kdbx full-file-name overwrite dispatch-fn)))
 
+(defn kdbx-save-pending
+  "Returns a boolean indicating whether the in-memory db has unsaved edits.
+   Used by the external-db-change merge flow to choose between true merge
+   (preserves in-memory edits) and reload (replaces in-memory state)."
+  [db-key dispatch-fn]
+  (invoke-api "kdbx_save_pending" {:db-key db-key} dispatch-fn))
+
 ;; Deprecate
 #_(defn categories-to-show [db-key dispatch-fn]
     (invoke-api "categories_to_show" {:db-key db-key} dispatch-fn))

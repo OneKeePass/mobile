@@ -4,12 +4,16 @@
             [onekeepass.mobile.background :refer [is-Android is-iOS]]
             [onekeepass.mobile.common-components :as cc :refer [select-field
                                                                 select-tags-dialog]]
-            [onekeepass.mobile.constants :as const :refer [URL USERNAME PASSWORD IFDEVICE
-                                                           ADDITIONAL_ONE_TIME_PASSWORDS
-                                                           ONE_TIME_PASSWORD_TYPE]]
+            [onekeepass.mobile.constants :as const :refer [ADDITIONAL_ONE_TIME_PASSWORDS
+                                                           IFDEVICE
+                                                           ONE_TIME_PASSWORD_TYPE
+                                                           PASSWORD URL
+                                                           USERNAME]]
             [onekeepass.mobile.date-utils :refer [utc-str-to-local-datetime-str]]
             [onekeepass.mobile.entry-form-dialogs :refer [add-modify-section-field-dialog
                                                           add-modify-section-name-dialog
+                                                          auto-open-db-file-required-info-dialog
+                                                          auto-open-key-file-pick-required-info-dialog
                                                           confirm-delete-otp-field-dialog
                                                           delete-attachment-dialog-info
                                                           delete-field-confirm-dialog
@@ -19,10 +23,7 @@
                                                           rename-attachment-name-dialog
                                                           rename-attachment-name-dialog-data
                                                           setup-otp-action-dialog
-                                                          setup-otp-action-dialog-show
-                                                          ;;auto-open-key-file-required-dialog
-                                                          auto-open-key-file-pick-required-info-dialog
-                                                          auto-open-db-file-required-info-dialog]]
+                                                          setup-otp-action-dialog-show]]
             [onekeepass.mobile.entry-form-fields :refer [otp-field text-field]]
             [onekeepass.mobile.entry-form-menus :refer [attachment-long-press-menu
                                                         attachment-long-press-menu-data
@@ -32,24 +33,24 @@
                                                         section-menu-dialog-data
                                                         section-menu-dialog-show
                                                         show-attachment-long-press-menu]]
+            [onekeepass.mobile.entry-list :as entry-list]
             [onekeepass.mobile.events.common :as cmn-events]
             [onekeepass.mobile.events.custom-icons :as ci-events]
             [onekeepass.mobile.events.dialogs :as dlg-events]
             [onekeepass.mobile.events.entry-form :as form-events :refer [place-holder-resolved-value]]
             [onekeepass.mobile.icons-list :as icons-list]
-            [onekeepass.mobile.entry-list :as entry-list]
             [onekeepass.mobile.rn-components
              :as rnc
              :refer [appbar-text-color dots-icon-name icon-color
                      on-primary-color page-background-color
-                     page-title-text-variant primary-container-color
-                     rn-image rn-keyboard rn-keyboard-avoiding-view
-                     rn-scroll-view
+                     page-title-text-variant primary-container-color rn-image
+                     rn-keyboard rn-keyboard-avoiding-view rn-scroll-view
                      rn-section-list rn-view rnp-button rnp-chip rnp-divider
                      rnp-helper-text rnp-icon-button rnp-list-icon
                      rnp-list-item rnp-portal rnp-text rnp-text-input
                      rnp-text-input-icon]]
-            [onekeepass.mobile.translation :refer [lstr-bl lstr-l lstr-pt lstr-field-name
+            [onekeepass.mobile.translation :refer [lstr-bl lstr-field-name
+                                                   lstr-l lstr-pt
                                                    lstr-section-name]]
             [onekeepass.mobile.utils :as u]
             [reagent.core :as r]))
@@ -658,7 +659,7 @@
       [cc/entry-delete-confirm-dialog form-events/delete-entry]
       [auto-open-db-file-required-info-dialog]
       [auto-open-key-file-pick-required-info-dialog]
-
+      
       ;; Note: 
       ;; We are refering this dialog from ns entry-list. 
       ;; We may need to move some common ns if there is any circular reference issue comes up

@@ -96,11 +96,40 @@
 
 (defn create-kdbx
   "Creates a new db and writes to the remote storage location
-   The connection-id, file path etc are parsed using the field new_db.database_file_name 
+   The connection-id, file path etc are parsed using the field new_db.database_file_name
    which has the formed 'db-key'
    "
   [new-db dispatch-fn]
   (invoke-api "rs_create_kdbx" {:new-db new-db} dispatch-fn))
+
+(defn check-remote-modified
+  "Asks the backend whether the remote file's mtime has diverged from the
+   backup-cached value. Returns boolean."
+  [db-key dispatch-fn]
+  (invoke-api "rs_check_remote_modified" {:db-key db-key} dispatch-fn))
+
+(defn acknowledge-remote-change
+  "User accepted the remote divergence (chose 'Ignore'). Refreshes the cached
+   mtime so subsequent polls don't re-prompt."
+  [db-key dispatch-fn]
+  (invoke-api "rs_acknowledge_remote_change" {:db-key db-key} dispatch-fn))
+
+(defn merge-with-remote
+  "Downloads remote bytes and three-way-merges into the in-memory db. Sets
+   save_pending in the backend; user still needs to save to upload.
+   Used by the save-error merge flow."
+  [db-key dispatch-fn]
+  (invoke-api "rs_merge_with_remote" {:db-key db-key} dispatch-fn))
+
+(defn reload-with-remote
+  "Downloads remote bytes, replaces the in-memory db, persists merged content to
+   the backup file (not just mtime), copies to the iOS autofill app group, and
+   clears save_pending. Returns the same MergeResult shape as merge-with-remote
+   (counts are 'what changed on remote' when local has no pending edits).
+   Used by the external-db-change flow (foreground poll / post-unlock / manual
+   menu check) where save_pending is expected to be false."
+  [db-key dispatch-fn]
+  (invoke-api "rs_reload_with_remote" {:db-key db-key} dispatch-fn))
 
 ;; This is mainly to load the content of root dir using the connection-id
 #_(defn list-dir

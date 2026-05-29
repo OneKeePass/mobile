@@ -24,15 +24,14 @@
    [onekeepass.mobile.events.custom-icons :as ci-events]
    [onekeepass.mobile.events.entry-category :as ecat-events]
    [onekeepass.mobile.icons-list :refer [ENTRY-GROUP-LIST-ICON-SIZE
-                                            icon-id->name]]
+                                         icon-id->name]]
    [onekeepass.mobile.ios.passkey-pending :as passkey-pending]
    [onekeepass.mobile.rn-components :as rnc :refer [cust-rnp-divider
                                                     dots-icon-name icon-color
                                                     on-primary-color
                                                     page-background-color
                                                     primary-container-color
-                                                    rn-image
-                                                    rn-safe-area-view
+                                                    rn-image rn-safe-area-view
                                                     rn-section-list rn-view
                                                     rnp-divider rnp-fab
                                                     rnp-icon-button

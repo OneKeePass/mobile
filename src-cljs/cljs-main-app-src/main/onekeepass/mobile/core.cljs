@@ -9,7 +9,7 @@
    ;; and this will ensure that all android autofill related code are excluded
    ;; Though this will also work for ios, the main bundle size will be more
    ;; than required as all android autofill related code will be included needlessly
-   [onekeepass.mobile.android.autofill.core :as android-core] ;;;;;;; ;;;;;;; ;;;;;;; ;;;;;;;
+   #_[onekeepass.mobile.android.autofill.core :as android-core] ;;;;;;; ;;;;;;; ;;;;;;; ;;;;;;;
    [onekeepass.mobile.appbar :refer [appbar-main-content
                                      hardware-back-pressed]]
    [onekeepass.mobile.ios.passkey-pending :refer [ios-all-pending-passkeys-notification-dialog]]
@@ -21,9 +21,12 @@
    [onekeepass.mobile.constants :refer [DARK-THEME]]
    [onekeepass.mobile.events.app-settings :as as-events :refer [app-theme]]
    [onekeepass.mobile.events.common :as cmn-events]
+   [onekeepass.mobile.events.external-db-change]
    [onekeepass.mobile.events.native-events :as native-events]
    [onekeepass.mobile.events.remote-storage :as rs-events]
    [onekeepass.mobile.events.save :as save-events]
+   [onekeepass.mobile.external-db-change :as external-db-change]
+   [onekeepass.mobile.merging :refer [merge-result-dialog-mounted]]
    [onekeepass.mobile.rn-components :as rnc :refer [react-use-effect
                                                     reset-colors
                                                     rnp-portal
@@ -50,6 +53,8 @@
       [save-error-modal @(save-events/save-error-modal-data)]
       [message-modal @(cmn-events/message-modal-data)]
       [message-dialog @(cmn-events/message-dialog-data)]
+      [merge-result-dialog-mounted]
+      [external-db-change/external-db-change-dialog-mounted]
       (when (bg/is-iOS)
         [ios-all-pending-passkeys-notification-dialog])]]))
 
@@ -132,10 +137,10 @@
   (init-calls)
 
   ;; iOS
-  #_(render-root "OneKeePassMobile" (r/as-element [app-root]))
+  (render-root "OneKeePassMobile" (r/as-element [app-root]))
 
   ;; Andoid 
-  (render-root "OneKeePassMobile" (fn [props]
+  #_(render-root "OneKeePassMobile" (fn [props]
                                     (js/console.log "Android app entry: In main core render-root props is " props)
                                     ;; Examples 
                                     ;; { rootTag: 11 } means main app

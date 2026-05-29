@@ -123,6 +123,14 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   merge-result-dialog   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   external-db-change-dialog   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn-generic-dialog-disp-events :external-db-change-dialog [[show-with-state state-m] [close nil]])
+
+(defn-generic-dialog-subs-events :external-db-change-dialog [[data nil]])
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   external-db-change-dialog   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defn-generic-dialog-disp-events :move-group-or-entry-dialog  [[close nil]
                                                                [show-with-state state-m]
                                                                [update-with-map state-m]])

@@ -208,11 +208,19 @@
 
 (defn opened-db-keys
   "Gets a vec of all opened db-keys from the opened database list
-   This fn is also used in subscriber event :common/opened-database-file-names 
+   This fn is also used in subscriber event :common/opened-database-file-names
    TODO: Combine these two to a single name fn
    "
   [app-db]
   (mapv (fn [m] (:db-key m)) (:opened-db-list app-db)))
+
+(defn remote-db-key?
+  "True when db-key was minted by the remote-storage open/create flow
+   (prefixed Sftp- or Webdav-)."
+  [db-key]
+  (and (string? db-key)
+       (or (str/starts-with? db-key (str const/V-SFTP "-"))
+           (str/starts-with? db-key (str const/V-WEBDAV "-")))))
 
 (defn opened-database-file-names
   "Gets just the db-keys from the opened database list"
@@ -744,7 +752,8 @@
 (reg-event-fx
  :common/unlock-selected-db
  (fn [{:keys [db]} [_event-id db-key]]
-   {:db (assoc-in-selected-db db db-key [:locked] false)}))
+   {:db (assoc-in-selected-db db db-key [:locked] false)
+    :fx [[:dispatch [:external-db-change/check-external-change-pending db-key]]]}))
 
 (reg-sub
  :current-db-locked

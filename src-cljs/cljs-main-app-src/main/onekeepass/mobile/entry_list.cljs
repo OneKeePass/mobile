@@ -1,5 +1,6 @@
 (ns onekeepass.mobile.entry-list
   (:require [onekeepass.mobile.background :refer [is-Android]]
+            [onekeepass.mobile.bottom-navigator :as bn]
             [onekeepass.mobile.common-components :as cc :refer [confirm-dialog
                                                                 menu-action-factory
                                                                 select-field]]
@@ -7,12 +8,12 @@
                                                            ICON-CHECKBOX-OUTLINE]]
             [onekeepass.mobile.events.common :as cmn-events]
             [onekeepass.mobile.events.custom-icons :as ci-events]
+            [onekeepass.mobile.events.dialogs :as dlg-events]
             [onekeepass.mobile.events.entry-category :as ecat-events]
             [onekeepass.mobile.events.entry-list :as elist-events :refer [find-entry-by-id]]
             [onekeepass.mobile.events.move-delete :as md-events]
-            [onekeepass.mobile.events.dialogs :as dlg-events]
             [onekeepass.mobile.icons-list :refer [ENTRY-GROUP-LIST-ICON-SIZE
-                                            icon-id->name]]
+                                                  icon-id->name]]
             [onekeepass.mobile.rn-components :as rnc :refer [cust-dialog
                                                              icon-color
                                                              page-background-color
@@ -21,25 +22,22 @@
                                                              rn-safe-area-view
                                                              rn-section-list
                                                              rn-view
-                                                             ;;rnp-bottom-navigation-bar
                                                              rnp-button
                                                              rnp-dialog-actions
                                                              rnp-dialog-content
                                                              rnp-dialog-title
                                                              rnp-divider
                                                              rnp-helper-text
-                                                             rnp-icon-button
                                                              rnp-list-icon
                                                              rnp-list-item
                                                              rnp-menu
                                                              rnp-menu-item
                                                              rnp-text]]
-            [onekeepass.mobile.bottom-navigator :as bn]
-            [onekeepass.mobile.utils :as u]
             [onekeepass.mobile.translation :refer [lstr-bl lstr-cv
                                                    lstr-dlg-text
                                                    lstr-dlg-title lstr-l
                                                    lstr-ml]]
+            [onekeepass.mobile.utils :as u]
             [reagent.core :as r]))
 
 ;;;;;;;;;;; Menus ;;;;;;;;;;;;;;
@@ -457,7 +455,7 @@
    ;; Otherwise we may see error like 
    ;; 'VirtualizedLists should never be nested inside plain ScrollViews with the same 
    ;;  orientation because it can break windowing and other functionality - use another VirtualizedList-backed container instead'
-
+   
    [rnc/rn-scroll-view {:style {} :contentContainerStyle {:flexGrow 1 :background-color @page-background-color}}
     [main-content]]
    [:f> bottom-nav-bar]

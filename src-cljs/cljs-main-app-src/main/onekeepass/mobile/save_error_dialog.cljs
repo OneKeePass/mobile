@@ -33,7 +33,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn save-error-modal [{:keys [dialog-show file-name error-type error-message merge-save-called]}]
+(defn save-error-modal [{:keys [dialog-show file-name error-type error-message merge-save-called remote-db?]}]
   [rnp-modal {:style {:margin-right 25
                       :margin-left 25}
               :visible dialog-show
@@ -41,7 +41,7 @@
               :dismissableBackButton false
               ;;:onDismiss #() 
               :contentContainerStyle {:borderRadius 15
-                                      :height "60%"
+                                      :height "75%"
                                       :backgroundColor
                                       "white"
                                       :padding 10}}
@@ -69,6 +69,17 @@
 
      [rnp-divider]
      [rn-view {:style {:flex 00.70}}
+      (when (and (= error-type :content-change-detected) remote-db?)
+        [:<>
+         [rn-view {:style {:margin-top 10 :margin-bottom 10 :align-items "center"}}
+          [rnp-button {:style {:width "50%"}
+                       :labelStyle {:fontWeight "bold"}
+                       :mode "text"
+                       :on-press save-events/merge-on-save-error} "Merge"]
+          [rnp-text {:style {:textAlign "justify"}}
+           "Merge the external changes with your changes and save the merged database."]]
+         [rnp-divider]])
+
       [rn-view {:style {:margin-top 10 :margin-bottom 10 :align-items "center"}}
        [rnp-button {:style {:width "50%"}
                     :labelStyle {:fontWeight "bold"}
