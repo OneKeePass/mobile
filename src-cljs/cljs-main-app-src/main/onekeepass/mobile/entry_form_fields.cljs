@@ -14,7 +14,7 @@
             [onekeepass.mobile.rn-components
              :as rnc :refer [animated-circular-progress dots-icon-name
                              page-background-color rn-view rnp-button rnp-helper-text
-                             rnp-icon-button rnp-text rnp-text-input
+                             rnp-icon-button rnp-switch rnp-text rnp-text-input
                              rnp-text-input-icon]]
             [onekeepass.mobile.translation :refer [lstr-bl lstr-field-name
                                                    lstr-l]]
@@ -284,6 +284,25 @@
      ;; Any error text below the field
      (when (and edit (not (nil? error-text)))
        [rnp-helper-text {:type "error" :visible true} error-text])]))
+
+(defn bool-field
+  "Renders a boolean field (core FieldDataType::Bool, e.g. allowUntrustedCert) in
+   edit mode as a labeled Switch row. The value is stored as a string; the core
+   treats true/1/yes (case-insensitive) as true, so we write back \"true\"/\"false\".
+   Non-edit (read) mode is not handled here - it falls through to the plain
+   text-field so the value is shown as text."
+  [{:keys [value on-change-text] :as kv}]
+  (let [label (to-field-label kv)
+        checked? (contains? #{"true" "1" "yes"}
+                            (-> (str value) str/trim str/lower-case))]
+    [rn-view {:style {:flexDirection "row" :min-height 60 :justify-content "space-between"}}
+     [rnp-text {:style {:align-self "center" :padding-left 15} :variant "bodySmall"} label]
+     [rn-view {:style {:padding-right 10 :align-self "center"}}
+      [rnp-switch {:style {:align-self "center"}
+                   :value checked?
+                   :onValueChange (fn []
+                                    (when on-change-text
+                                      (on-change-text (if checked? "false" "true"))))}]]]))
 
 (defn formatted-token
   "Groups digits with spaces between them for easy reading"

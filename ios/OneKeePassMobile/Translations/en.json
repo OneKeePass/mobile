@@ -182,6 +182,7 @@
         "pin": "PIN",
         "port": "Port",
         "sftpPasswordOrPassphrase": "Password / Passphrase",
+        "startDir": "Start Directory",
         "state": "State",
         "swift": "SWIFT",
         "title": "Title",

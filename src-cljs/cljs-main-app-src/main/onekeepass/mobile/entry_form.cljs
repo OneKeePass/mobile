@@ -5,6 +5,7 @@
             [onekeepass.mobile.common-components :as cc :refer [select-field
                                                                 select-tags-dialog]]
             [onekeepass.mobile.constants :as const :refer [ADDITIONAL_ONE_TIME_PASSWORDS
+                                                           BOOL_TYPE
                                                            IFDEVICE
                                                            ONE_TIME_PASSWORD_TYPE
                                                            PASSWORD URL
@@ -24,7 +25,7 @@
                                                           rename-attachment-name-dialog-data
                                                           setup-otp-action-dialog
                                                           setup-otp-action-dialog-show]]
-            [onekeepass.mobile.entry-form-fields :refer [otp-field text-field]]
+            [onekeepass.mobile.entry-form-fields :refer [bool-field otp-field text-field]]
             [onekeepass.mobile.entry-form-menus :refer [attachment-long-press-menu
                                                         attachment-long-press-menu-data
                                                         custom-field-menu
@@ -444,6 +445,14 @@
                                                 :edit edit
                                                 :section-name section-name
                                                 :standard-field standard-field)]
+
+                  ;; Boolean field (e.g. allowUntrustedCert) in edit mode shows a
+                  ;; Switch. In non-edit mode it falls through to the plain text-field.
+                  (and edit (= data-type BOOL_TYPE))
+                  ^{:key key} [bool-field (assoc kv
+                                                 :section-name section-name
+                                                 :on-change-text #(form-events/update-section-value-on-change
+                                                                   section-name key %))]
 
                   :else
                   ^{:key key} [text-field (assoc kv
