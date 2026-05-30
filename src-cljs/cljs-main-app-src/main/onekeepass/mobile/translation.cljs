@@ -120,6 +120,13 @@
     (lstr (str "messageDialog.texts." txt-key))
     txt-key))
 
+(defn lstr-modal-dlg-title
+  "Adds prefix 'modalDialog.titles' to the key before getting the translation"
+  [txt-key]
+  (if (symbol? txt-key)
+    (lstr (str "modalDialog.titles." txt-key))
+    txt-key))
+
 (defn lstr-modal-dlg-text
   "Adds prefix 'modalDialog.texts' to the key before getting the translation"
   [txt-key]

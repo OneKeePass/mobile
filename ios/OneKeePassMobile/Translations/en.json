@@ -305,17 +305,28 @@
         }
     },
     "modalDialog": {
+        "titles": {
+            "overwriting": "Overwriting",
+            "saveError": "Database Save Error"
+        },
         "texts": {
             "addingCustomIcon": "Adding custom icon...",
             "connecting": "Connecting...",
+            "contentChangedSinceLoad": "The database content has changed since you have loaded",
+            "discardChangesDesc": "Ignore all changes made here",
             "downloadingFavicon": "Downloading favicon...",
             "entryInsertOrUpdate": "Entry insert/update ...",
             "deletingEntry": "Deleting entry ...",
             "deletingAllEntries": "Deleting all entries ...",
             "deletingGroup": "Deleting group ...",
+            "mergeExternalChangesDesc": "Merge the external changes with your changes and save the merged database.",
+            "noRemoteServerConnection": "The remote server connection is not available at this time",
+            "overwriteConfirm": "This will overwrite the target database. Are you sure?",
+            "overwriteDbDesc": "This database will overwrite the target database with your changes",
             "overwritingDb": "Overwriting the database ...",
             "loading": "Loading ...",
             "preparingExportData": "Preparing data to export",
+            "saveAsConflictDesc": "You can save the database file with all your changes to another file and later manually resolve the conflicts",
             "saving": "Saving..."
         }
     },
@@ -400,6 +411,7 @@
         "connectAndSave": "Connect & Save",
         "continue": "Continue",
         "create": "Create",
+        "discardAndCloseDb": "Discard & Close Database",
         "edit": "Edit",
         "enterManually": "Enter Manually",
         "filePicker": "File Picker",
@@ -414,6 +426,7 @@
         "ok": "Ok",
         "opendb": "Open Database",
         "openReadOnly": "Open Read-Only",
+        "overwrite": "Overwrite",
         "pickDbAgain": "Pick the database again",
         "refresh": "Refresh",
         "removePassword": "Remove password",
@@ -421,6 +434,7 @@
         "selectFolder": "Select this folder",
         "sftp": "SFTP",
         "save": "Save",
+        "saveAs": "Save As",
         "scanQRcode": "Scan QR Code",
         "setUpOneTimePassword": "Set up One-Time Password",
         "discard": "Discard",
