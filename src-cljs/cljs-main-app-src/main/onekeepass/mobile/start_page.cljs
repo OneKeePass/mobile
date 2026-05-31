@@ -31,7 +31,7 @@
 ;;(set! *warn-on-infer* true)
 
 (defn- divider [ht]
-  [rnc/cust-rnp-divider {:style {:margin-top 10 :height ht :background-color @rnc/background-color}}])
+  [cust-rnp-divider {:style {:margin-top 10 :height ht :background-color @rnc/background-color}}])
 
 (defn store-sel-button [label on-press]
   [rn-view {:style {:min-height 50}} ;;:align-items "center"
@@ -98,10 +98,10 @@
                       :align-items "center"
                       :flex 0.12}}
 
-     [rnp-text {:style {:color @rnc/primary-color}
+     [rnp-text {:style {:color @primary-color}
                 :variant "titleLarge"}
       "Opening Database"]
-     [rnp-text {:style {:color @rnc/primary-color} :variant "titleSmall"} file-name]]
+     [rnp-text {:style {:color @primary-color} :variant "titleSmall"} file-name]]
 
     [divider 0.5]
 
@@ -631,7 +631,7 @@
        (lstr-bl "opendb")]]
 
      [rn-view {:style {:margin-top 20}}
-      [rnc/rnp-divider]]
+      [rnp-divider]]
 
      [rn-view {:style {:flex 0.9 :width "100%"}}
       [databases-list-content recent-uses]]]))

@@ -429,7 +429,13 @@
      (if kw-type
        ;; Set current-rs-type so the storage browser's sub-dir / back actions
        ;; (which read get-current-rs-type) work after we land on the page.
-       {:db (assoc-in db [:remote-storage :current-rs-type] kw-type)
+       ;; Force browse-rs-type to :db-open so the browser opens in "open a
+       ;; database" mode (files are selectable / tap-to-open) - otherwise it
+       ;; would inherit a stale :db-new value from a previous New-DB flow,
+       ;; which greys out files and shows the "Select folder" FAB instead.
+       {:db (-> db
+                (assoc-in [:remote-storage :current-rs-type] kw-type)
+                (assoc-in [:remote-storage :browse-rs-type] const/BROWSE-TYPE-DB-OPEN))
         :fx [[:dispatch [:remote-storage-connect-by-id-start kw-type entry-uuid]]]}
        {:fx [[:dispatch [:common/message-snackbar-open 'unsupportedRemoteType]]]}))))
 
