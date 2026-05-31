@@ -57,6 +57,7 @@
                        {:key "zh" :label "zh - 中文"}
                        {:key "ar" :label "ar - العربية"}
                        {:key "id" :label "id - Bahasa Indonesia"}
+                       {:key "pt-BR" :label "pt-BR - Português do Brasil"}
                        ;; See at the bottom of this file for more languages to be added in future
                        ])
 
@@ -239,16 +240,16 @@
                                                 (r/as-element [settings-section-header title])))}]))
 
 (defn language-update-feedback []
-  [rnc/rn-view {:style {:flex 1 :justify-content "center" :backgroundColor @page-background-color}}
+  [rn-view {:style {:flex 1 :justify-content "center" :backgroundColor @page-background-color}}
    (let [rtl-changed (t/set-rtl-or-not)]
      (if-not @(cmn-events/language-translation-loading-completed)
-       [rnc/rnp-text {:style {:text-align "center"}} "Please wait..."]
+       [rnp-text {:style {:text-align "center"}} "Please wait..."]
        (if rtl-changed
-         [rnc/rn-view
-          [rnc/rnp-text {:style {:text-align "center"
+         [rn-view
+          [rnp-text {:style {:text-align "center"
                                  :color @rnc/error-color}} "Restart the app to apply the language change."]]
-         [rnc/rn-view
-          [rnc/rnp-text {:style {:text-align "center"}} (lstr-mt 'appSettings 'languageTransLoaded)]
+         [rn-view
+          [rnp-text {:style {:text-align "center"}} (lstr-mt 'appSettings 'languageTransLoaded)]
           [rnc/rnp-button {:style {:margin-top 10}
                            :mode "text"
                            :onPress cmn-events/to-previous-page} (lstr-bl 'refresh)]])))])
