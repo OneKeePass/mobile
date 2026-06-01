@@ -7,15 +7,33 @@
             [onekeepass.mobile.app-settings :as app-settings]
             [onekeepass.mobile.autofill :as af-settings]
             [onekeepass.mobile.common-components :as cc :refer [menu-action-factory]]
-            [onekeepass.mobile.constants  :refer [ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID
+            [onekeepass.mobile.constants  :refer [ABOUT_PAGE_ID
+                                                  ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID
                                                   APP_LOCK_SETTINGS_PAGE_ID
+                                                  APP_SETTINGS_PAGE_ID
                                                   AUTOFILL_SETTINGS_PAGE_ID
+                                                  BLANK_PAGE_ID
                                                   CAMERA_SCANNER_PAGE_ID
+                                                  ENTRY_CATEGORY_PAGE_ID
+                                                  ENTRY_FORM_PAGE_ID
+                                                  ENTRY_HISTORY_LIST_PAGE_ID
+                                                  ENTRY_LIST_PAGE_ID
+                                                  GROUP_FORM_PAGE_ID
                                                   HOME_PAGE_ID
+                                                  ICONS_LIST_PAGE_ID
                                                   KEY_FILE_FORM_PAGE_ID
                                                   MANAGE_CUSTOM_ICONS_PAGE_ID
                                                   MERGE_DATABASE_PAGE_ID
+                                                  PASSWORD_GENERATOR_PAGE_ID
                                                   PASSKEY_PENDING_REVIEW_PAGE_ID
+                                                  PRIVACY_POLICY_PAGE_ID
+                                                  SEARCH_PAGE_ID
+                                                  SETTINGS_CREDENTIALS_PAGE_ID
+                                                  SETTINGS_ENCRYPTION_PAGE_ID
+                                                  SETTINGS_GENERAL_PAGE_ID
+                                                  SETTINGS_KDF_PAGE_ID
+                                                  SETTINGS_PAGE_ID
+                                                  SETTINGS_SECURITY_PAGE_ID
                                                   RS_CONNECTION_CONFIG_PAGE_ID
                                                   RS_CONNECTIONS_LIST_PAGE_ID
                                                   RS_FILES_FOLDERS_PAGE_ID]]
@@ -81,7 +99,7 @@
     (= page HOME_PAGE_ID)
     false
 
-    (= page :entry-list)
+    (= page ENTRY_LIST_PAGE_ID)
     (do
       (elist-events/entry-list-back-action)
       true)
@@ -95,20 +113,20 @@
         true)
 
     (or
-     (= page :entry-category)
-     (= page :entry-form)
-     (= page :entry-history-list)
-     (= page :icons-list)
-     (= page :search)
-     (= page :password-generator)
-     (= page :group-form)
-     (= page :settings)
-     (= page :app-settings)
+     (= page ENTRY_CATEGORY_PAGE_ID)
+     (= page ENTRY_FORM_PAGE_ID)
+     (= page ENTRY_HISTORY_LIST_PAGE_ID)
+     (= page ICONS_LIST_PAGE_ID)
+     (= page SEARCH_PAGE_ID)
+     (= page PASSWORD_GENERATOR_PAGE_ID)
+     (= page GROUP_FORM_PAGE_ID)
+     (= page SETTINGS_PAGE_ID)
+     (= page APP_SETTINGS_PAGE_ID)
      (= page AUTOFILL_SETTINGS_PAGE_ID)
      (= page KEY_FILE_FORM_PAGE_ID)
      (= page CAMERA_SCANNER_PAGE_ID)
-     (= page :about)
-     (= page :privacy-policy)
+     (= page ABOUT_PAGE_ID)
+     (= page PRIVACY_POLICY_PAGE_ID)
      (= page RS_CONNECTION_CONFIG_PAGE_ID)
      (= page RS_CONNECTIONS_LIST_PAGE_ID)
      (= page ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID)
@@ -162,7 +180,7 @@
       [rnp-menu-item {:title (lstr-ml "privacyPolicy")
                       :onPress (header-menu-action cmn-events/to-privacy-policy-page)}]]
 
-     (and (= page :entry-list) @(elist-events/deleted-category-showing))
+     (and (= page ENTRY_LIST_PAGE_ID) @(elist-events/deleted-category-showing))
      (let [items @(elist-events/selected-entry-items)]
        ;; items is all entry summary items found under 'Deleted' category and disable this if it is empty
        [rnp-menu-item {:title (lstr-ml "deleteAll")
@@ -170,7 +188,7 @@
                        :onPress (header-menu-action
                                  entry-list/show-delete-all-entries-permanent-confirm-dialog items)}])
 
-     (or (= page :entry-category) (= page :entry-list))
+     (or (= page ENTRY_CATEGORY_PAGE_ID) (= page ENTRY_LIST_PAGE_ID))
      [:<>
       [rnp-menu-item {:title (lstr-ml "home")
                       :onPress (header-menu-action cmn-events/to-home-page)}]
@@ -193,13 +211,13 @@
       [rnp-menu-item {:title (lstr-ml "settings")
                       :onPress (header-menu-action stgs-events/load-db-settings)}]]
 
-     (= page :entry-history-list)
+     (= page ENTRY_HISTORY_LIST_PAGE_ID)
      [:<>
       [rnp-menu-item {:title (lstr-ml "deleteAll")
                       :disabled  @(cmn-events/current-db-disable-edit)
                       :onPress (header-menu-action ef-events/show-history-entry-delete-all-confirm-dialog)}]]
 
-     (and (= page :entry-form) @(ef-events/history-entry-form?))
+     (and (= page ENTRY_FORM_PAGE_ID) @(ef-events/history-entry-form?))
      [:<>
       [rnp-menu-item {:title (lstr-ml "restore")
                       :disabled  @(cmn-events/current-db-disable-edit)
@@ -208,7 +226,7 @@
                       :disabled  @(cmn-events/current-db-disable-edit)
                       :onPress (header-menu-action ef-events/show-history-entry-delete-confirm-dialog)}]]
 
-     (= page :entry-form)
+     (= page ENTRY_FORM_PAGE_ID)
      (let [fav @(ef-events/favorites?)
            entry-uuid @(ef-events/entry-form-uuid)
            parent-group-uuid @(ef-events/entry-form-parent-group-uuid)]
@@ -238,7 +256,7 @@
                              :backgroundColor @primary-color})
 
 (defn is-settings-page [page]
-  (u/contains-val? [:settings-general :settings-credentials :settings-security :settings-encryption :settings-kdf] page))
+  (u/contains-val? [SETTINGS_GENERAL_PAGE_ID SETTINGS_CREDENTIALS_PAGE_ID SETTINGS_SECURITY_PAGE_ID SETTINGS_ENCRYPTION_PAGE_ID SETTINGS_KDF_PAGE_ID] page))
 
 ;; If we have more than one appbar action icon on right side, the title text is not centered
 ;; One solution is to use appbar content with absolute position based on the discussion here
@@ -259,13 +277,13 @@
                         ;; For some forms provides its own appbar title
                         :title (cond
 
-                                 (= page :entry-form)
+                                 (= page ENTRY_FORM_PAGE_ID)
                                  (r/as-element [entry-form/appbar-title])
 
-                                 (= page :group-form)
+                                 (= page GROUP_FORM_PAGE_ID)
                                  (r/as-element [group-form/appbar-title title])
 
-                                 (= page :password-generator)
+                                 (= page PASSWORD_GENERATOR_PAGE_ID)
                                  (r/as-element [pg/appbar-title])
 
                                  (is-settings-page page)
@@ -283,11 +301,11 @@
                                  ;;TODO 
                                  ;; Need to add translation of titles for Entry types and General cat types
                                  ;; Something similar one used in entry category page
-                                 (= page :entry-list)
+                                 (= page ENTRY_LIST_PAGE_ID)
                                  title
 
                                  ;; No translation of text
-                                 (= page :entry-category)
+                                 (= page ENTRY_CATEGORY_PAGE_ID)
                                  title
 
                                  ;; Title for all other pages 
@@ -299,19 +317,19 @@
                                  :else
                                  "No Title")}]])
 
-(def page-id-based-title-providers [:entry-form
-                                    :password-generator
+(def page-id-based-title-providers [ENTRY_FORM_PAGE_ID
+                                    PASSWORD_GENERATOR_PAGE_ID
                                     RS_CONNECTIONS_LIST_PAGE_ID
                                     PASSKEY_PENDING_REVIEW_PAGE_ID])
 
 (def title-provider-pages [HOME_PAGE_ID
-                           :about
-                           :privacy-policy
-                           :entry-history-list
-                           :search
-                           :icons-list
-                           :settings
-                           :app-settings
+                           ABOUT_PAGE_ID
+                           PRIVACY_POLICY_PAGE_ID
+                           ENTRY_HISTORY_LIST_PAGE_ID
+                           SEARCH_PAGE_ID
+                           ICONS_LIST_PAGE_ID
+                           SETTINGS_PAGE_ID
+                           APP_SETTINGS_PAGE_ID
                            AUTOFILL_SETTINGS_PAGE_ID
                            KEY_FILE_FORM_PAGE_ID
                            CAMERA_SCANNER_PAGE_ID
@@ -329,13 +347,13 @@
     [positioned-title :title title]
 
     ;; Both page and title are required
-    (= page :entry-list)
+    (= page ENTRY_LIST_PAGE_ID)
     [positioned-title :page page :title @(elist-events/current-page-title)  :titleStyle {:max-width "50%"}] ;;
 
-    (= page :entry-category)
+    (= page ENTRY_CATEGORY_PAGE_ID)
     [positioned-title :page page :title @(cmn-events/current-database-name) :titleStyle {:max-width "50%"}]
 
-    (= page :group-form)
+    (= page GROUP_FORM_PAGE_ID)
     [positioned-title :page page :title title]
 
     ;; page id is required and title is provided by page specific app 'appbar-title' fn
@@ -345,14 +363,14 @@
     [positioned-title :page page]))
 
 ;; All pages that has back action using default "<" button
-(def back-button-pages [:about
-                        :privacy-policy
-                        :qr-scanner
-                        :entry-history-list
-                        :icons-list
-                        :search
-                        :settings
-                        :app-settings
+(def back-button-pages [ABOUT_PAGE_ID
+                        PRIVACY_POLICY_PAGE_ID
+                        CAMERA_SCANNER_PAGE_ID
+                        ENTRY_HISTORY_LIST_PAGE_ID
+                        ICONS_LIST_PAGE_ID
+                        SEARCH_PAGE_ID
+                        SETTINGS_PAGE_ID
+                        APP_SETTINGS_PAGE_ID
                         AUTOFILL_SETTINGS_PAGE_ID
                         ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID
                         APP_LOCK_SETTINGS_PAGE_ID
@@ -373,7 +391,7 @@
      ;; Component for the back icon with onpress event handlers
      ;; Note: Some page provide its own back action handler
      (cond
-       (= page :entry-list)
+       (= page ENTRY_LIST_PAGE_ID)
        [rnp-appbar-back-action {:style {}
                                 :color @background-color
                                 :onPress (fn [] (elist-events/entry-list-back-action))}]
@@ -396,13 +414,13 @@
      ;; The right side action icons component (dots icon, search icon .. ) and are shown for certain pages only
      (when (or
             (= page HOME_PAGE_ID)
-            (= page :entry-category)
-            (= page :entry-list)
-            (and (= page :entry-form) (not @(ef-events/deleted-category-showing))) ;; Do not show in deleted entry form 
-            (= page :entry-history-list))
+            (= page ENTRY_CATEGORY_PAGE_ID)
+            (= page ENTRY_LIST_PAGE_ID)
+            (and (= page ENTRY_FORM_PAGE_ID) (not @(ef-events/deleted-category-showing))) ;; Do not show in deleted entry form
+            (= page ENTRY_HISTORY_LIST_PAGE_ID))
        [:<>
         [header-menu @header-menu-data page-info]
-        (when-not (or (= page HOME_PAGE_ID) (= page :entry-form) (= page :entry-history-list))
+        (when-not (or (= page HOME_PAGE_ID) (= page ENTRY_FORM_PAGE_ID) (= page ENTRY_HISTORY_LIST_PAGE_ID))
           [rnp-appbar-action {:style {:backgroundColor @primary-color
                                       ;;:position "absolute" :right 50
                                       :margin-right -9}
@@ -424,37 +442,37 @@
     (= page HOME_PAGE_ID)
     [open-page-content]
 
-    (= page :entry-category)
+    (= page ENTRY_CATEGORY_PAGE_ID)
     [entry-category-content]
 
-    (= page :entry-list)
+    (= page ENTRY_LIST_PAGE_ID)
     [entry-list-content]
 
-    (= page :entry-history-list)
+    (= page ENTRY_HISTORY_LIST_PAGE_ID)
     [entry-history-list/content]
 
-    (= page :group-form)
+    (= page GROUP_FORM_PAGE_ID)
     (group-form/content)
 
-    (= page :entry-form)
+    (= page ENTRY_FORM_PAGE_ID)
     [entry-form/content]
 
-    (= page :search)
+    (= page SEARCH_PAGE_ID)
     [search/content]
 
-    (= page :password-generator)
+    (= page PASSWORD_GENERATOR_PAGE_ID)
     [pg/content]
 
-    (= page :icons-list)
+    (= page ICONS_LIST_PAGE_ID)
     [icons-list/content]
 
     (= page MANAGE_CUSTOM_ICONS_PAGE_ID)
     [manage-custom-icons/content]
 
-    (= page :settings)
+    (= page SETTINGS_PAGE_ID)
     [settings/content]
 
-    (= page :app-settings)
+    (= page APP_SETTINGS_PAGE_ID)
     [app-settings/content]
 
     (= page AUTOFILL_SETTINGS_PAGE_ID)
@@ -463,14 +481,14 @@
     (= page KEY_FILE_FORM_PAGE_ID)
     (kf-form/content)
 
-    (u/contains-val? [:settings-general :settings-credentials
-                      :settings-security :settings-encryption :settings-kdf] page)
+    (u/contains-val? [SETTINGS_GENERAL_PAGE_ID SETTINGS_CREDENTIALS_PAGE_ID
+                      SETTINGS_SECURITY_PAGE_ID SETTINGS_ENCRYPTION_PAGE_ID SETTINGS_KDF_PAGE_ID] page)
     (db-settings-form-content page)
 
-    (= page :about)
+    (= page ABOUT_PAGE_ID)
     [about-content]
 
-    (= page :privacy-policy)
+    (= page PRIVACY_POLICY_PAGE_ID)
     [privacy-policy-content]
 
     (= page CAMERA_SCANNER_PAGE_ID)
@@ -499,10 +517,10 @@
 
     ;; For now, this page is shown after loading the newly selected language translation
     ;; Other attempts to refresh the app settings page itself did not work
-    (= page :blank)
+    (= page BLANK_PAGE_ID)
     (app-settings/language-update-feedback)
 
-    ;; (= page :qr-scanner)
+    ;; (= page CAMERA_SCANNER_PAGE_ID)
     ;; [totp/content]
     ))
 

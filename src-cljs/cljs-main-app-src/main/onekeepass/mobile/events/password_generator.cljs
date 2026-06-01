@@ -3,7 +3,8 @@
    [clojure.string :as str]
    [re-frame.core :refer [reg-event-db reg-event-fx reg-fx reg-sub dispatch subscribe]]
    [onekeepass.mobile.events.common :as cmn-events :refer [on-ok]]
-   [onekeepass.mobile.background :as bg]))
+   [onekeepass.mobile.background :as bg]
+   [onekeepass.mobile.constants :as const]))
 
 
 (def PASS-PHRASE-OPTIONS :pass-phrase-options)
@@ -177,7 +178,7 @@
             (assoc-in  [:generator :data :slider-value] (:length password-result)))
     ;; Need to navigate to the generator page if not yet already
     ;; This is an idempotent action
-    :fx [[:dispatch [:common/next-page :password-generator  "generator"]]]}))
+    :fx [[:dispatch [:common/next-page const/PASSWORD_GENERATOR_PAGE_ID  "generator"]]]}))
 
 ;; Called when panel selection is changed
 (reg-event-fx
@@ -304,8 +305,8 @@
      {:db (-> db
               (assoc-in  [:generator :data :password-result] gen-pass-phrase)
               (assoc-in  [:generator :data :slider-value] words))
-         ;; This is an idempotent action and nothing happens if the page is already in ':password-generator' page
-      :fx [[:dispatch [:common/next-page :password-generator  "generator"]]]})))
+         ;; This is an idempotent action and nothing happens if the page is already on PASSWORD_GENERATOR_PAGE_ID
+      :fx [[:dispatch [:common/next-page const/PASSWORD_GENERATOR_PAGE_ID  "generator"]]]})))
 
 ;; Returns all pass phrase option fields to generate pass phrase
 (reg-sub

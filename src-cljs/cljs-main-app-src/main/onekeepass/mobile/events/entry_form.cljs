@@ -21,6 +21,7 @@
    [clojure.string :as str]
    [onekeepass.mobile.utils :as u :refer [contains-val?]]
    [onekeepass.mobile.background :as bg]
+   [onekeepass.mobile.constants :as const]
    ;; Need to be called here so that events are registered
    ;; Should it be moved to core.cljs ? 
    #_{:clj-kondo/ignore [:unused-namespace]}
@@ -172,7 +173,7 @@
  (fn [{:keys [db]} [_event-id entry-form-data navigate?]]
    ;; When navigate? is false, we just set the loaded entry data and not change the page 
    {:db  (set-on-entry-load db entry-form-data)
-    :fx [(when navigate? [:dispatch [:common/next-page :entry-form  "entry"]])]}))
+    :fx [(when navigate? [:dispatch [:common/next-page const/ENTRY_FORM_PAGE_ID  "entry"]])]}))
 
 ;; Update a field found in :data
 (reg-event-db
@@ -738,8 +739,8 @@
               (assoc-in-key-db [entry-form-key :group-selection-info] group-info)
               (assoc-in-key-db [entry-form-key :edit] true)
               (assoc-in-key-db [entry-form-key :error-fields] {}))
-      :fx [(when-not (= :entry-form curr-page)
-             [:dispatch [:common/next-page :entry-form  "entry"]])]})))
+      :fx [(when-not (= const/ENTRY_FORM_PAGE_ID curr-page)
+             [:dispatch [:common/next-page const/ENTRY_FORM_PAGE_ID  "entry"]])]})))
 
 (reg-event-db
  :entry-form-group-selected
@@ -946,7 +947,7 @@
    {:db (-> db
             (assoc-in-key-db [entry-form-key :entry-history-form] {})
             (assoc-in-key-db [entry-form-key :entry-history-form :entries-summary-list] summary-list))
-    :fx [[:dispatch [:common/next-page :entry-history-list "histories"]]]}))
+    :fx [[:dispatch [:common/next-page const/ENTRY_HISTORY_LIST_PAGE_ID "histories"]]]}))
 
 
 (reg-event-fx
@@ -973,7 +974,7 @@
             (assoc-in-key-db [entry-form-key :edit] false)
             (assoc-in-key-db [entry-form-key :error-fields] {})
             (assoc-in-key-db [entry-form-key :showing] :history-entry))
-    :fx [[:dispatch [:common/next-page :entry-form  "historyEntries"]]]}))
+    :fx [[:dispatch [:common/next-page const/ENTRY_FORM_PAGE_ID  "historyEntries"]]]}))
 
 
 (reg-event-fx
@@ -1005,7 +1006,7 @@
 (reg-event-fx
  :history-entry-delete-complete
  (fn [{:keys [db]} [_event-id entry-id]]
-   (let [in-entry-form? (= (current-page db) :entry-form)]
+   (let [in-entry-form? (= (current-page db) const/ENTRY_FORM_PAGE_ID)]
      {:fx [[:dispatch [:history-entry-delete-confirm-open false]]
            ;; Closes the history entry form and reloads the entry data without making 
            ;; it as current page and goes to the history list
@@ -1068,7 +1069,7 @@
 (reg-event-fx
  :history-entry-restore-complete
  (fn [{:keys [db]} [_event-id]]
-   (let [in-entry-form? (= (current-page db) :entry-form)
+   (let [in-entry-form? (= (current-page db) const/ENTRY_FORM_PAGE_ID)
          entry-id (get-in-key-db db [entry-form-key :data :uuid])]
      {:db (-> db (assoc-in-key-db [entry-form-key :entry-history-form :history-entry-restore-confirmed] false))
       :fx [[:dispatch [:history-entry-restore-confirm-open false]]

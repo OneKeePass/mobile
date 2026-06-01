@@ -4,7 +4,12 @@
    [cljs.core.async :refer [<! go timeout]]
    [clojure.string :as str]
    [onekeepass.mobile.background :as bg :refer [is-Android]]
-   [onekeepass.mobile.constants :as const :refer [HOME_PAGE_ID
+   [onekeepass.mobile.constants :as const :refer [ABOUT_PAGE_ID
+                                                  BLANK_PAGE_ID
+                                                  ENTRY_CATEGORY_PAGE_ID
+                                                  HOME_PAGE_ID
+                                                  ICONS_LIST_PAGE_ID
+                                                  PRIVACY_POLICY_PAGE_ID
                                                   REMOTE_CONNECTION_TYPE_NAMES]]
    [onekeepass.mobile.utils :as u :refer [str->int tags->vec]]
    [re-frame.core :refer [dispatch dispatch-sync reg-event-db reg-event-fx
@@ -264,7 +269,7 @@
    ;;(println "kdbx-loaded-ex is " kdbx-loaded-ex)
    {:db (db-opened db kdbx-loaded-ex) ;; current-db-file-name is set in db-opened
     :fx [[:dispatch [:entry-category/load-categories-to-show]]
-         [:dispatch [:common/next-page :entry-category database-name]]
+         [:dispatch [:common/next-page ENTRY_CATEGORY_PAGE_ID database-name]]
          [:dispatch [:load-all-tags]]
          [:dispatch [:groups/load]]
          [:dispatch [:common/load-entry-type-headers]]
@@ -329,7 +334,7 @@
      {:db (assoc db :current-db-file-name full-file-name-uri)
       ;; For now, the category page of the chosen db is shown irrespective of the previous active page
       :fx [[:dispatch [:entry-category/load-categories-to-show]]
-           [:dispatch [:common/next-page :entry-category database-name]]
+           [:dispatch [:common/next-page ENTRY_CATEGORY_PAGE_ID database-name]]
            ;; Re-entering an already open db: surface any external change that was
            ;; detected and stashed while the user was on the home page (or any
            ;; non-db page). For a remote db with nothing pending this also does a
@@ -426,7 +431,7 @@
    {:db (assoc-in db [:background-loading-statuses :load-language-translation] false)
     ;; When language translations are loaded in settings page, we could not update the page with new language
     ;; As a workaround, this page is shown and allows user to reresh  with the newly loaded translation data
-    :fx [[:dispatch [:common/next-page :blank nil]]]}))
+    :fx [[:dispatch [:common/next-page BLANK_PAGE_ID nil]]]}))
 
 (reg-sub
  :language-translation-loading-completed
@@ -829,12 +834,12 @@
 (reg-event-fx
  :to-about-page
  (fn [{:keys [db]} [_event-id]]
-   {:fx [[:dispatch [:common/next-page :about "about"]]]}))
+   {:fx [[:dispatch [:common/next-page ABOUT_PAGE_ID "about"]]]}))
 
 (reg-event-fx
  :to-privacy-policy-page
  (fn [{:keys [db]} [_event-id]]
-   {:fx [[:dispatch [:common/next-page :privacy-policy "privacyPolicy"]]]}))
+   {:fx [[:dispatch [:common/next-page PRIVACY_POLICY_PAGE_ID "privacyPolicy"]]]}))
 
 ;; Called when user navigates to the next page
 ;; Calling multiple times with the same page id will remain in that page - that it is an idempotent action
@@ -933,7 +938,7 @@
    {:db (-> db
             (assoc :on-icon-selection on-icon-selection)
             (assoc :icon-picker-prefill-url prefill-url))
-    :fx [[:dispatch [:common/next-page :icons-list "icons"]]]}))
+    :fx [[:dispatch [:common/next-page ICONS_LIST_PAGE_ID "icons"]]]}))
 
 (reg-event-fx
  :common/icon-selected

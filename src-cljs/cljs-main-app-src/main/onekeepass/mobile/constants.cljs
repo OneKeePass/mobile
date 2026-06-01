@@ -110,13 +110,32 @@
 
 ;;;;;;;;;;;;;;;;;;;;   Page ids ;;;;;;;;;;;;;;;;;;;;
 
+(def ABOUT_PAGE_ID :about)
 (def ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID :additional-db-access-settings)
 (def APP_LOCK_SETTINGS_PAGE_ID :app-lock-settings)
+(def APP_SETTINGS_PAGE_ID :app-settings)
 (def AUTOFILL_SETTINGS_PAGE_ID :autofill-settings)
+(def BLANK_PAGE_ID :blank)
 (def CAMERA_SCANNER_PAGE_ID :scan-otp-qr)
+(def ENTRY_CATEGORY_PAGE_ID :entry-category)
+(def ENTRY_FORM_PAGE_ID :entry-form)
+(def ENTRY_HISTORY_LIST_PAGE_ID :entry-history-list)
+(def ENTRY_LIST_PAGE_ID :entry-list)
+(def GROUP_FORM_PAGE_ID :group-form)
 (def HOME_PAGE_ID :home)
+(def ICONS_LIST_PAGE_ID :icons-list)
 (def KEY_FILE_FORM_PAGE_ID :key-file-form)
 (def MERGE_DATABASE_PAGE_ID :merge-database)
+(def PASSWORD_GENERATOR_PAGE_ID :password-generator)
+(def PRIVACY_POLICY_PAGE_ID :privacy-policy)
+(def SEARCH_PAGE_ID :search)
+(def SETTINGS_PAGE_ID :settings)
+
+(def SETTINGS_CREDENTIALS_PAGE_ID :settings-credentials)
+(def SETTINGS_ENCRYPTION_PAGE_ID :settings-encryption)
+(def SETTINGS_GENERAL_PAGE_ID :settings-general)
+(def SETTINGS_KDF_PAGE_ID :settings-kdf)
+(def SETTINGS_SECURITY_PAGE_ID :settings-security)
 
 
 ;; All remote storage related page ids

@@ -5,6 +5,7 @@
   (:require
    [onekeepass.mobile.background :as bg]
    [onekeepass.mobile.background-remote-server :as bg-rs]
+   [onekeepass.mobile.constants :as const]
    [onekeepass.mobile.events.common :refer [active-db-key
                                             current-page
                                             is-db-locked
@@ -40,7 +41,12 @@
 ;; surfaced when the user next enters the db (:common/set-active-db-key on
 ;; re-tapping the db name, or unlock via :common/unlock-selected-db).
 (def ^:private db-content-pages
-  #{:entry-category :entry-list :entry-form :entry-history-list :group-form :search})
+  #{const/ENTRY_CATEGORY_PAGE_ID
+    const/ENTRY_LIST_PAGE_ID
+    const/ENTRY_FORM_PAGE_ID
+    const/ENTRY_HISTORY_LIST_PAGE_ID
+    const/GROUP_FORM_PAGE_ID
+    const/SEARCH_PAGE_ID})
 
 (defn- on-db-content-page?
   "True when the current page is one that shows the open database's content."

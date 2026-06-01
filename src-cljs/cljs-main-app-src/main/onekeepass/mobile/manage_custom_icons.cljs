@@ -3,6 +3,7 @@
    × delete button (confirms before removing) plus Add From URL / Add From
    File buttons. Mirrors the desktop dialog of the same name."
   (:require
+   [onekeepass.mobile.constants :as const]
    [re-frame.core :refer [dispatch]]
    [reagent.core :as r]
    [onekeepass.mobile.common-components :refer [confirm-dialog-with-lstr]]
@@ -135,4 +136,4 @@
 (defn open-page
   "Navigate to the Manage Custom Icons page."
   []
-  (dispatch [:common/next-page :manage-custom-icons "manageCustomIcons"]))
+  (dispatch [:common/next-page const/MANAGE_CUSTOM_ICONS_PAGE_ID "manageCustomIcons"]))

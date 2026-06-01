@@ -211,7 +211,7 @@
      {:db db
       :fx [[:dispatch [:update-selected-entry-items result]] 
            (when-not reloaded?
-             [:dispatch [:common/next-page :entry-list page-title]])]})))
+             [:dispatch [:common/next-page const/ENTRY_LIST_PAGE_ID page-title]])]})))
 
 (reg-event-fx
  :entry-list-sort-key-changed

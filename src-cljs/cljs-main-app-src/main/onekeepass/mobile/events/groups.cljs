@@ -12,7 +12,8 @@
                           reg-fx
                           subscribe]]
    [onekeepass.mobile.utils :as u :refer [contains-val?]]
-   [onekeepass.mobile.background :as bg :refer []]))
+   [onekeepass.mobile.background :as bg :refer []]
+   [onekeepass.mobile.constants :as const]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;  Group form ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -74,7 +75,7 @@
      {:db (-> db (assoc-in-key-db [:group-form :data] group)
               (assoc-in-key-db [:group-form :error-fields] {})
               (assoc-in-key-db [:group-form :undo-data] group))
-      :fx [[:dispatch [:common/next-page :group-form (if (= kind :group) "group" "category")]]]})))
+      :fx [[:dispatch [:common/next-page const/GROUP_FORM_PAGE_ID (if (= kind :group) "group" "category")]]]})))
 
 
 (reg-event-fx
@@ -101,7 +102,7 @@
               (assoc-in-key-db [:group-form :undo-data] blank-group))
       ;; TODO: Use "page.titles.newGroup" "page.titles.newCategory" after finding a way to show longer texts
       ;; We may use the same technique as in Database settings page title ?
-      :fx [[:dispatch [:common/next-page :group-form
+      :fx [[:dispatch [:common/next-page const/GROUP_FORM_PAGE_ID
                        (if (= kind :group) "group" "category")]]]})))
 
 (reg-event-fx

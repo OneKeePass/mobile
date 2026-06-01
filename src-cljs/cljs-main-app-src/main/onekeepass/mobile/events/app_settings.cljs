@@ -2,7 +2,8 @@
   (:require
    [cljs.core.async :refer [<! go-loop timeout]]
    [onekeepass.mobile.background :as bg]
-   [onekeepass.mobile.constants :refer [DEFAULT-SYSTEM-THEME]]
+   [onekeepass.mobile.constants :refer [APP_SETTINGS_PAGE_ID
+                                          DEFAULT-SYSTEM-THEME]]
    [onekeepass.mobile.events.common :as cmn-events :refer [active-db-key
                                                            on-error
                                                            preference-field-data
@@ -160,7 +161,7 @@
 (reg-event-fx
  :to-app-settings
  (fn [{:keys [_db]} [_event-id]]
-   {:fx [[:dispatch [:common/next-page :app-settings "appSettings"]]]}))
+   {:fx [[:dispatch [:common/next-page APP_SETTINGS_PAGE_ID "appSettings"]]]}))
 
 (reg-event-fx
  :db-session-timeout-update

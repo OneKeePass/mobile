@@ -347,7 +347,7 @@
  (fn [{:keys [db]} [_event-id merge-result]]
    {:fx [[:dispatch [:common/refresh-forms]]
          [:dispatch [:common/message-modal-hide]]
-         [:dispatch [:common/next-page :entry-category (current-database-name db)]]
+         [:dispatch [:common/next-page const/ENTRY_CATEGORY_PAGE_ID (current-database-name db)]]
          [:dispatch [:generic-dialog-show-with-state
                      :merge-result-dialog
                      {:data merge-result
