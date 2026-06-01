@@ -56,6 +56,7 @@
                        {:key "de" :label "de - Deutsch"}
                        {:key "zh" :label "zh - 中文"}
                        {:key "ar" :label "ar - العربية"}
+                       {:key "ru" :label "ru - Русский"}
                        {:key "id" :label "id - Bahasa Indonesia"}
                        {:key "pt-BR" :label "pt-BR - Português do Brasil"}
                        ;; See at the bottom of this file for more languages to be added in future
@@ -262,48 +263,47 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-#_(def future-languagse [{:key "ru" :label "ru - Русский"}
-                       {:key "pt" :label "pt - Português"}
-                       {:key "ja" :label "ja - 日本語"}
-                       {:key "hi" :label "hi - हिंदी"}
-                       {:key "it" :label "it - Italiano"}
-                       {:key "ko" :label "ko - 한국어"}
-                       {:key "nl" :label "nl - Nederlands"}
-                       {:key "tr" :label "tr - Türkçe"}
-                       {:key "sv" :label "sv - Svenska"}
-                       {:key "pl" :label "pl - Polski"}
-                       {:key "uk" :label "uk - Українська"}
-                       {:key "vi" :label "vi - Tiếng Việt"}
-                       {:key "cs" :label "cs - Čeština"}
-                       {:key "ro" :label "ro - Română"}
-                       {:key "hu" :label "hu - Magyar"}
-                       {:key "el" :label "el - Ελληνικά"}
-                       {:key "da" :label "da - Dansk"}
-                       {:key "fi" :label "fi - Suomi"}
-                       {:key "no" :label "no - Norsk"}
-                       {:key "he" :label "he - עברית"}
-                       {:key "th" :label "th - ไทย"}
-                       {:key "sr" :label "sr - Српски"}
-                       {:key "hr" :label "hr - Hrvatski"}
-                       {:key "bg" :label "bg - Български"}
-                       {:key "lt" :label "lt - Lietuvių"}
-                       {:key "sl" :label "sl - Slovenščina"}
-                       {:key "ms" :label "ms - Bahasa Melayu"}
-                       {:key "ca" :label "ca - Català"}
-                       {:key "et" :label "et - Eesti"}
-                       {:key "lv" :label "lv - Latviešu"}
-                       {:key "is" :label "is - Íslenska"}
-                       {:key "eu" :label "eu - Euskara"}
-                       {:key "gl" :label "gl - Galego"}
-                       {:key "mk" :label "mk - Македонски"}
-                       {:key "af" :label "af - Afrikaans"}
-                       {:key "sq" :label "sq - Shqip"}
-                       {:key "sw" :label "sw - Kiswahili"}
-                       {:key "bn" :label "bn - বাংলা"}
-                       {:key "te" :label "te - తెలుగు"}
-                       {:key "ta" :label "ta - தமிழ்"}
-                       {:key "ml" :label "ml - മലയാളം"}
-                       {:key "mr" :label "mr - मराठी"}
-                       {:key "gu" :label "gu - ગુજરાતી"}
-                       {:key "kn" :label "kn - ಕನ್ನಡ"}
-                       {:key "pa" :label "pa - ਪੰਜਾਬੀ"}])
+#_(def future-languagse [{:key "pt" :label "pt - Português"}
+                         {:key "ja" :label "ja - 日本語"}
+                         {:key "hi" :label "hi - हिंदी"}
+                         {:key "it" :label "it - Italiano"}
+                         {:key "ko" :label "ko - 한국어"}
+                         {:key "nl" :label "nl - Nederlands"}
+                         {:key "tr" :label "tr - Türkçe"}
+                         {:key "sv" :label "sv - Svenska"}
+                         {:key "pl" :label "pl - Polski"}
+                         {:key "uk" :label "uk - Українська"}
+                         {:key "vi" :label "vi - Tiếng Việt"}
+                         {:key "cs" :label "cs - Čeština"}
+                         {:key "ro" :label "ro - Română"}
+                         {:key "hu" :label "hu - Magyar"}
+                         {:key "el" :label "el - Ελληνικά"}
+                         {:key "da" :label "da - Dansk"}
+                         {:key "fi" :label "fi - Suomi"}
+                         {:key "no" :label "no - Norsk"}
+                         {:key "he" :label "he - עברית"}
+                         {:key "th" :label "th - ไทย"}
+                         {:key "sr" :label "sr - Српски"}
+                         {:key "hr" :label "hr - Hrvatski"}
+                         {:key "bg" :label "bg - Български"}
+                         {:key "lt" :label "lt - Lietuvių"}
+                         {:key "sl" :label "sl - Slovenščina"}
+                         {:key "ms" :label "ms - Bahasa Melayu"}
+                         {:key "ca" :label "ca - Català"}
+                         {:key "et" :label "et - Eesti"}
+                         {:key "lv" :label "lv - Latviešu"}
+                         {:key "is" :label "is - Íslenska"}
+                         {:key "eu" :label "eu - Euskara"}
+                         {:key "gl" :label "gl - Galego"}
+                         {:key "mk" :label "mk - Македонски"}
+                         {:key "af" :label "af - Afrikaans"}
+                         {:key "sq" :label "sq - Shqip"}
+                         {:key "sw" :label "sw - Kiswahili"}
+                         {:key "bn" :label "bn - বাংলা"}
+                         {:key "te" :label "te - తెలుగు"}
+                         {:key "ta" :label "ta - தமிழ்"}
+                         {:key "ml" :label "ml - മലയാളം"}
+                         {:key "mr" :label "mr - मराठी"}
+                         {:key "gu" :label "gu - ગુજરાતી"}
+                         {:key "kn" :label "kn - ಕನ್ನಡ"}
+                         {:key "pa" :label "pa - ਪੰਜਾਬੀ"}])
