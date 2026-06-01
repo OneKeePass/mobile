@@ -260,8 +260,14 @@
    {:db (update db (active-db-key db) dissoc
                 :external-change-ignored-mtime :external-change-pending-mtime)
     :fx [[:dispatch [:common/message-modal-hide]]
+         ;; The reload/merge replaced the whole in-memory db, so any deeper view
+         ;; (entry-list / entry-form) the user triggered the merge from may now be
+         ;; stale. Return them to the db's entry-category root, and pass
+         ;; stay-on-page? so the merge-result dialog's Close doesn't then pop a
+         ;; page off that (the default Close behaviour suits the regular merge flow).
+         [:dispatch [:common/to-entry-category-page]]
          [:dispatch [:common/refresh-forms]]
-         [:dispatch [:generic-dialog-show-with-state :merge-result-dialog {:data merge-result}]]
+         [:dispatch [:generic-dialog-show-with-state :merge-result-dialog {:data merge-result :stay-on-page? true}]]
          [:dispatch [:common/message-snackbar-open 'remoteUpdated]]]}))
 
 (reg-event-fx

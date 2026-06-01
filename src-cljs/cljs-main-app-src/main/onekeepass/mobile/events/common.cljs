@@ -810,6 +810,12 @@
   []
   (dispatch [:common/previous-page]))
 
+(defn to-entry-category-page
+  "Called to navigate back to the active db's entry-category (root) page,
+   popping any intermediate db pages (entry-list, entry-form, ...) on top of it."
+  []
+  (dispatch [:common/to-entry-category-page]))
+
 (defn page-info []
   (subscribe [:page-info]))
 
@@ -876,6 +882,21 @@
          ;; The following rest call removes the first item and returns the remaining pages
          pages-stack (rest pages-stack)]
      (assoc-in db [:pages-stack] pages-stack))))
+
+;; Pops the page stack down to the active db's entry-category (root) page.
+;; Used e.g. after a remote-db external-change merge, where the in-memory db is
+;; reloaded and any deeper view (entry-list / entry-form) the user was on may be
+;; stale, so we return them to the db's root rather than the immediate previous
+;; page. If entry-category is not in the stack (unexpected while a db is open),
+;; the stack is left unchanged so we never accidentally drop to the home page.
+(reg-event-db
+ :common/to-entry-category-page
+ (fn [db [_event-id]]
+   (let [pages-stack (get-in db [:pages-stack])]
+     (if (some (fn [{:keys [page]}] (= page ENTRY_CATEGORY_PAGE_ID)) pages-stack)
+       (assoc-in db [:pages-stack]
+                 (drop-while (fn [{:keys [page]}] (not= page ENTRY_CATEGORY_PAGE_ID)) pages-stack))
+       db))))
 
 (def ^:private rs-pages [const/RS_CONNECTIONS_LIST_PAGE_ID const/RS_FILES_FOLDERS_PAGE_ID])
 
