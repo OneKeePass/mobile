@@ -6,6 +6,7 @@
    [onekeepass.mobile.background :as bg]
    [onekeepass.mobile.background-remote-server :as bg-rs]
    [onekeepass.mobile.events.common :refer [active-db-key
+                                            current-page
                                             is-db-locked
                                             on-ok
                                             opened-db-keys
@@ -30,6 +31,21 @@
 ;; the rare sticky in-memory edits): set this to false.
 (def ^:private smart-route-by-save-pending? true)
 ;; ============================================================================
+
+;; Pages that display an open database's own content. The external-change Merge
+;; dialog only auto-pops while the user is on one of these — i.e. actually
+;; viewing the affected db. On app-level pages such as :home (where a db can be
+;; open and active but not in view, and several dbs may be open at once) popping
+;; the dialog is ambiguous/confusing, so the change is stashed as pending and
+;; surfaced when the user next enters the db (:common/set-active-db-key on
+;; re-tapping the db name, or unlock via :common/unlock-selected-db).
+(def ^:private db-content-pages
+  #{:entry-category :entry-list :entry-form :entry-history-list :group-form :search})
+
+(defn- on-db-content-page?
+  "True when the current page is one that shows the open database's content."
+  [db]
+  (contains? db-content-pages (current-page db)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; public defns ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -110,7 +126,13 @@
           (= remote-mtime (get-in db [db-key :external-change-ignored-mtime])))
      {}
 
-     (and (= db-key (active-db-key db)) (not (is-db-locked db db-key)))
+     ;; Show immediately only when the affected db is the active one, is unlocked,
+     ;; AND the user is actually viewing that db's content. On :home and other
+     ;; app-level pages we fall through to stash a pending change instead, so the
+     ;; dialog doesn't pop in an ambiguous context (see db-content-pages above).
+     (and (= db-key (active-db-key db))
+          (not (is-db-locked db db-key))
+          (on-db-content-page? db))
      {:fx [[:dispatch [:external-db-change-show-dialog db-key remote-mtime]]]}
 
      :else

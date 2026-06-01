@@ -329,7 +329,12 @@
      {:db (assoc db :current-db-file-name full-file-name-uri)
       ;; For now, the category page of the chosen db is shown irrespective of the previous active page
       :fx [[:dispatch [:entry-category/load-categories-to-show]]
-           [:dispatch [:common/next-page :entry-category database-name]]]})))
+           [:dispatch [:common/next-page :entry-category database-name]]
+           ;; Re-entering an already open db: surface any external change that was
+           ;; detected and stashed while the user was on the home page (or any
+           ;; non-db page). For a remote db with nothing pending this also does a
+           ;; fresh remote check; for a local db it is a no-op.
+           [:dispatch [:external-db-change/check-external-change-pending full-file-name-uri]]]})))
 
 (defn notify-android-af
   "Wrapps android autofill specific events if required from main app events

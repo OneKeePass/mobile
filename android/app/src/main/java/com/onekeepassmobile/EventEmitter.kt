@@ -58,11 +58,21 @@ object EventEmitter {
     }
 
     fun emitAppBecomesActive() {
+        // 'reactApplicationContext' is initialized in DbServiceModule's init block which RN
+        // constructs asynchronously. The very first MainActivity.onResume during a cold start
+        // can fire before that, so we guard against the lateinit not being set yet.
+        // A missed event here is harmless as no database is open at that point.
+        if (!::reactApplicationContext.isInitialized) {
+            return
+        }
         reactApplicationContext.getJSModule(RCTDeviceEventEmitter::class.java)
             .emit(EVENT_APP_BECOMES_ACTIVE, "{}")
     }
 
     fun emitAppBecomesInactive() {
+        if (!::reactApplicationContext.isInitialized) {
+            return
+        }
         reactApplicationContext.getJSModule(RCTDeviceEventEmitter::class.java)
             .emit(EVENT_APP_BECOMES_INACTIVE, "{}")
     }
