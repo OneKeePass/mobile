@@ -100,7 +100,7 @@
 
      [rnp-text {:style {:color @primary-color}
                 :variant "titleLarge"}
-      "Opening Database"]
+      (lstr-dlg-title 'openingDatabase)]
      [rnp-text {:style {:color @primary-color} :variant "titleSmall"} file-name]]
 
     [divider 0.5]
@@ -118,7 +118,7 @@
                           :margin-bottom 10
                           :padding 10
                           :color @rnc/on-background-color}}
-        "You are about to open the database using a previously system provided file reference "]
+        (lstr-dlg-text 'openingDbFileRefInfo)]
 
        [rn-view {:style {:flexDirection "column"
                          :padding 10
@@ -129,7 +129,7 @@
         [rn-view {:style {:height 10}}]
 
         [rn-view {:style {:justify-content "space-between"} :flexDirection "row"}
-         [rnp-text "Source"]
+         [rnp-text (lstr-l 'Source)]
          [rnp-text location]]
 
         [rn-view {:style {:height 10}}]
@@ -137,7 +137,7 @@
         [rn-view {:style {:height 10}}]
 
         [rn-view {:style {:justify-content "space-between"} :flexDirection "row"}
-         [rnp-text "Last Accessed"]
+         [rnp-text (lstr-l 'lastAccessed)]
          [rnp-text (utc-to-local-datetime-str last-accessed "LLL dd,yyyy hh:mm:ss aaa")]]
 
         [rn-view {:style {:height 10}}]
@@ -146,13 +146,12 @@
        [rnp-text {:style {:margin-top 10
                           :padding 10
                           :color @rnc/tertiary-color}}
-        "If this database was modified in another app, you may need to pick the file again from the same location to load the latest content"]
-       ;;Otherwise you can continue to load
+        (lstr-dlg-text 'openingDbModifiedHint)]
 
        [rnp-text {:style {:margin-top 10
                           :padding 10
                           :color @rnc/tertiary-color}}
-        "Otherwise you can continue to load"]]]]
+        (lstr-dlg-text 'openingDbContinueHint)]]]]
 
     [divider 0.5]
 
@@ -166,14 +165,14 @@
                   :mode "text"
                   :on-press  (fn []
                                (dlg-events/before-storage-selection-info-dialog-close)
-                               (opndb-events/open-selected-database file-name db-file-path))} "Continue"]
+                               (opndb-events/open-selected-database file-name db-file-path))} (lstr-bl 'continue)]
 
      [rnp-button {:style {:width "70%"}
                   :labelStyle {:fontWeight "bold"}
                   :mode "text"
                   :on-press (fn []
                               (dlg-events/before-storage-selection-info-dialog-close)
-                              (opndb-events/open-database-on-press))} "Pick the database again"]
+                              (opndb-events/open-database-on-press))} (lstr-bl 'pickDbAgain)]
      [rnp-button {:style {:width "70%"}
                   :labelStyle {:fontWeight "bold"}
                   :mode "text"
@@ -356,30 +355,30 @@
 (defn file-info-dialog [{:keys [dialog-show file-size location last-modified db-file-path] :as _data}]
   [cust-dialog {:style {}
                 :visible dialog-show :onDismiss #(cmn-events/close-file-info-dialog)}
-   [rnp-dialog-title "File Info"]
+   [rnp-dialog-title (lstr-dlg-title 'fileInfo)]
    [rnp-dialog-content
     [rn-view {:style {:flexDirection "column"  :justify-content "center"}}
      [rn-view {:style {:justify-content "space-between"} :flexDirection "row"}
-      [rnp-text "File Size"]
-      [rnp-text (str file-size " " "bytes")]]
+      [rnp-text (lstr-l 'fileSize)]
+      [rnp-text (str file-size " " (lstr-l 'bytes))]]
      [rn-view {:style {:height 10}}]
      [rnp-divider]
      [rn-view {:style {:height 10}}]
      [rn-view {:style {:justify-content "space-between"} :flexDirection "row"}
-      [rnp-text "Location"]
+      [rnp-text (lstr-l 'location)]
       [rnp-text location]]
      [rn-view {:style {:height 10}}]
      [rnp-divider]
      [rn-view {:style {:height 10}}]
      [rn-view {:style {:justify-content "space-between"} :flexDirection "row"}
-      [rnp-text "Last Modified"]
+      [rnp-text (lstr-l 'lastModified)]
       [rnp-text (utc-to-local-datetime-str last-modified "LLL dd,yyyy hh:mm:ss aaa")]]
      [rn-view {:style {:height 10}}]
      [rnp-divider]
 
      [rn-view {:style {:margin-top 10}}
       [rnp-text  {:style {:margin-bottom 10}}
-       "File Reference"]
+       (lstr-l 'fileReference)]
       [rnp-text  {:style {}
                   :on-press #(cmn-events/write-string-to-clipboard
                               {:field-name "file-ref"
