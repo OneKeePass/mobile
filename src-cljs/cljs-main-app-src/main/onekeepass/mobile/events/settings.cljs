@@ -1,6 +1,7 @@
 (ns onekeepass.mobile.events.settings
   (:require [clojure.string :as str]
             [onekeepass.mobile.background :as bg]
+            [onekeepass.mobile.constants :as const]
             [onekeepass.mobile.events.common :refer [active-db-key
                                                      assoc-in-key-db
                                                      get-in-key-db on-error
@@ -115,14 +116,14 @@
 (defn- validate-required-fields
   [db panel]
   (cond
-    (= panel :settings-general)
+    (= panel const/SETTINGS_GENERAL_PAGE_ID)
     (when (str/blank? (get-in-key-db db [:db-settings :data :meta :database-name]))
       {:database-name (lstr-mt 'dbSettings 'databaseName)})
 
-    (= panel :settings-credentials)
+    (= panel const/SETTINGS_CREDENTIALS_PAGE_ID)
     (validate-credential-fields db)
 
-    (= panel :settings-security)
+    (= panel const/SETTINGS_SECURITY_PAGE_ID)
     (validate-security-fields db)))
 
 (reg-event-fx
@@ -156,9 +157,9 @@
               (assoc-in-key-db  [:db-settings :errors] nil)
               (assoc-in-key-db [:db-settings :status] :completed))
 
-      :fx [[:dispatch [:common/next-page :settings "settings"]]]})))
+      :fx [[:dispatch [:common/next-page const/SETTINGS_PAGE_ID "settings"]]]})))
 
-;; Valid values for panel-id are :settings-general, :settings-credentials, :settings-encryption, :settings-kdf
+;; Valid values for panel-id are SETTINGS_*_PAGE_ID constants.
 (reg-event-fx
  :db-settings-panel-select
  (fn [{:keys [db]} [_event-id panel-id]]

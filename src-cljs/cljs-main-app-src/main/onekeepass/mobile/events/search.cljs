@@ -1,6 +1,7 @@
 (ns onekeepass.mobile.events.search
   (:require
    [re-frame.core :refer [reg-event-db reg-event-fx reg-fx reg-sub dispatch subscribe]]
+   [onekeepass.mobile.constants :as const]
    [onekeepass.mobile.events.common :refer [on-ok
                                             assoc-in-key-db
                                             get-in-key-db
@@ -9,7 +10,7 @@
    [onekeepass.mobile.background :as bg]))
 
 (defn to-search-page []
-  (dispatch [:common/next-page :search "search"]))
+  (dispatch [:common/next-page const/SEARCH_PAGE_ID "search"]))
 
 (defn show-selected-entry [entry-id]
   (dispatch [:entry-form/find-entry-by-id entry-id]))

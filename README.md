@@ -38,11 +38,14 @@ OneKeePass is also available for **Windows, macOS and Linux desktops** can be do
 - AutoFill supported
 - Passkey (WebAuthn/FIDO2) support for passwordless sign-in and registration (iOS 17+, Android 14+)
 - Native direct connection support to SFTP or WebDAV server
+- Remote server credentials stored as **SFTP Connection** or **WebDAV Connection** entries inside the database — no need to re-enter credentials each time
+- Custom icons support — upload icons from a file or fetch from a URL/favicon; assign to entries and groups; visible in the AutoFill extension
 - Linked/Child Databases Opening feature
 - Diceware Passphrase generator
 - App protection with PIN locking
 - Merging of databases
 - Moving an entry or a group from one group to another
+- External database change detection and merge
 
 
 

@@ -177,6 +177,17 @@ object DbServiceAPI {
         return onekeepass.mobile.ffi.handlePickedFile(fileArgs, jsonArgs)
     }
 
+    fun addCustomIconFromFile(
+        fd: ULong,
+        fullFileName: String,
+        fileName: String,
+        jsonArgs: String
+    ): String {
+        val fileArgs =
+            onekeepass.mobile.ffi.FileArgs.FileDecriptorWithFullFileName(fd, fullFileName, fileName)
+        return onekeepass.mobile.ffi.addCustomIconFromFile(fileArgs, jsonArgs)
+    }
+
     fun formJsonWithFileName(fullFileName: String): String {
         return jsonService.formWithFileName(fullFileName)
     }

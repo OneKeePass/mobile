@@ -62,7 +62,13 @@
         app-db (assoc app-db :opened-db-list dbs)]
     (-> app-db
         (assoc-in [:android-af :current-db-file-name] db-key)
-        #_(assoc :current-db-file-name db-key)
+        ;; Also mirror to the top-level :current-db-file-name so the shared
+        ;; main-app events (e.g. events/custom-icons, which reads via
+        ;; cmn-events/active-db-key) operate against this DB while the
+        ;; Android autofill flow is active. The autofill RN context is
+        ;; typically torn down on completion, so this won't leak into the
+        ;; main app state across runs.
+        (assoc :current-db-file-name db-key)
         ;; opened-db-list is a vec of map with keys [db-key database-name file-name user-action-time]
         ;; :database-name is different from :file-name found in the the map Preference -> RecentlyUsed
         ;; See ':recently-used' subscription 
@@ -633,6 +639,11 @@
    (let [dbs (filterv (fn [m] (not= (:db-key m) db-key)) (:opened-db-list db))]
      {:db (-> db
               (assoc :opened-db-list dbs)
+              ;; Pair with the mirroring in kdbx-database-opened-handler:
+              ;; clear the global :current-db-file-name so leftover custom-icons
+              ;; state doesn't shadow a future main-app session in the same
+              ;; RN process (rare on Android, but cheap to clean up).
+              (assoc :current-db-file-name nil)
               (dissoc db-key))
       :fx [[:common/bg-close-kdbx [db-key (fn [api-response] (cmn-events/on-error api-response))]]]})))
 

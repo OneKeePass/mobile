@@ -12,7 +12,8 @@
                           reg-fx
                           subscribe]]
    [onekeepass.mobile.utils :as u :refer [contains-val?]]
-   [onekeepass.mobile.background :as bg :refer []]))
+   [onekeepass.mobile.background :as bg :refer []]
+   [onekeepass.mobile.constants :as const]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;  Group form ;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -74,7 +75,7 @@
      {:db (-> db (assoc-in-key-db [:group-form :data] group)
               (assoc-in-key-db [:group-form :error-fields] {})
               (assoc-in-key-db [:group-form :undo-data] group))
-      :fx [[:dispatch [:common/next-page :group-form (if (= kind :group) "group" "category")]]]})))
+      :fx [[:dispatch [:common/next-page const/GROUP_FORM_PAGE_ID (if (= kind :group) "group" "category")]]]})))
 
 
 (reg-event-fx
@@ -101,7 +102,7 @@
               (assoc-in-key-db [:group-form :undo-data] blank-group))
       ;; TODO: Use "page.titles.newGroup" "page.titles.newCategory" after finding a way to show longer texts
       ;; We may use the same technique as in Database settings page title ?
-      :fx [[:dispatch [:common/next-page :group-form
+      :fx [[:dispatch [:common/next-page const/GROUP_FORM_PAGE_ID
                        (if (= kind :group) "group" "category")]]]})))
 
 (reg-event-fx
@@ -307,6 +308,7 @@
      {:title (get root-group :name)
       :uuid (get root-group :uuid)
       :icon-id (:icon-id root-group)
+      :custom-icon-uuid (:custom-icon-uuid root-group)
       :entries-count (-> root-group :entry-uuids count)
       :groups-count (count children-group-uuids)})))
 
@@ -320,11 +322,13 @@
          ;; Need to exlude the recycle bin group showing 
          children-group-uuids (filterv (fn [gid] (not= gid recycle-bin-uuid)) group-uuids)
          summaries (reduce (fn [acc id]
-                             (let [{:keys [name uuid icon-id entry-uuids group-uuids parent-group-uuid]} (get groups id)]
+                             (let [{:keys [name uuid icon-id custom-icon-uuid
+                                           entry-uuids group-uuids parent-group-uuid]} (get groups id)]
                                (conj acc {:title name
                                           :uuid uuid
                                           :parent-group-uuid parent-group-uuid
                                           :icon-id icon-id
+                                          :custom-icon-uuid custom-icon-uuid
                                           :groups-count (count group-uuids)
                                           :entries-count (count entry-uuids)}))) [] children-group-uuids)]
      summaries)))

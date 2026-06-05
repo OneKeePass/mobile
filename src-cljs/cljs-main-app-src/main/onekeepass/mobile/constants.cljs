@@ -6,6 +6,12 @@
 ;; This is the entry type id for Auto Open entry type
 (def UUID_OF_ENTRY_TYPE_AUTO_OPEN "389368a9-73a9-4256-8247-321a2e60b2c7")
 
+;; Entry type ids for remote-storage connection entries (SFTP / WebDAV).
+;; The remote-storage resolver uses the entry uuid (= connection id) to find
+;; the connection details across all open dbs.
+(def UUID_OF_ENTRY_TYPE_REMOTE_CONNECTION_SFTP "c5a57a41-4cca-4a46-bac1-78a8803f4da0")
+(def UUID_OF_ENTRY_TYPE_REMOTE_CONNECTION_WEBDAV "0a14d76d-8c38-4c62-9ad7-390dc020a2af")
+
 (def UUID-DEFAULT "00000000-0000-0000-0000-000000000000")
 
 (def GROUPING_LABEL_TYPES "Types")
@@ -22,12 +28,19 @@
 (def PASSPORT_TYPE_NAME "Passport")
 (def BANK_ACCOUNT_TYPE_NAME "Bank Account")
 (def AUTO_DB_OPEN_TYPE_NAME "Auto Database Open")
+(def REMOTE_CONNECTION_SFTP_TYPE_NAME "SFTP Connection")
+(def REMOTE_CONNECTION_WEBDAV_TYPE_NAME "WebDAV Connection")
+
+(def REMOTE_CONNECTION_TYPE_NAMES #{REMOTE_CONNECTION_SFTP_TYPE_NAME
+                                    REMOTE_CONNECTION_WEBDAV_TYPE_NAME})
 
 (def STANDARD_ENTRY_TYPES [LOGIN_TYPE_NAME
                            CREDIT_DEBIT_CARD_TYPE_NAME
                            WIRELESS_ROUTER_TYPE_NAME
                            BANK_ACCOUNT_TYPE_NAME
-                           AUTO_DB_OPEN_TYPE_NAME])
+                           AUTO_DB_OPEN_TYPE_NAME
+                           REMOTE_CONNECTION_SFTP_TYPE_NAME
+                           REMOTE_CONNECTION_WEBDAV_TYPE_NAME])
 
 ;; Based on the enum 'EntryCategory'
 (def CATEGORY_ALL_ENTRIES "AllEntries")
@@ -47,6 +60,10 @@
 (def PERMISSION_REQUIRED_TO_READ "PERMISSION_REQUIRED_TO_READ")
 (def FILE_NOT_FOUND "FILE_NOT_FOUND")
 (def COORDINATOR_CALL_FAILED "COORDINATOR_CALL_FAILED")
+;; Remote db open: server reachable check / connection config resolution.
+;; These match the Display strings of the corresponding onekeepass-core errors.
+(def NO_REMOTE_STORAGE_CONNECTION "NoRemoteStorageConnection")
+(def REMOTE_STORAGE_CONFIG_NOT_AVAILABLE "RemoteStorageConfigNotAvailable")
 (def BOOK_MARK_STALE "BOOK_MARK_STALE")
 (def BOOK_MARK_NOT_FOUND "BOOK_MARK_NOT_FOUND")
 (def SAVE_CALL_FAILED "SAVE_CALL_FAILED")
@@ -69,12 +86,16 @@
 (def PASSWORD "Password")
 (def USERNAME "UserName")
 (def URL "URL")
+;; Host field key on a REMOTE_CONNECTION_SFTP entry (matches core constants::HOST)
+(def HOST "Host")
 (def IFDEVICE "IfDevice")
 
 (def ASCENDING "Ascending")
 (def DESCENDING "Descending")
 
 (def ONE_TIME_PASSWORD_TYPE "Field type" "OneTimePassword")
+
+(def BOOL_TYPE "Field type - matches core FieldDataType::Bool" "Bool")
 
 (def OTP "Standard field name used" "otp")
 
@@ -89,13 +110,32 @@
 
 ;;;;;;;;;;;;;;;;;;;;   Page ids ;;;;;;;;;;;;;;;;;;;;
 
+(def ABOUT_PAGE_ID :about)
 (def ADDITIONAL_DATABASE_ACCESS_SETTINGS_PAGE_ID :additional-db-access-settings)
 (def APP_LOCK_SETTINGS_PAGE_ID :app-lock-settings)
+(def APP_SETTINGS_PAGE_ID :app-settings)
 (def AUTOFILL_SETTINGS_PAGE_ID :autofill-settings)
+(def BLANK_PAGE_ID :blank)
 (def CAMERA_SCANNER_PAGE_ID :scan-otp-qr)
+(def ENTRY_CATEGORY_PAGE_ID :entry-category)
+(def ENTRY_FORM_PAGE_ID :entry-form)
+(def ENTRY_HISTORY_LIST_PAGE_ID :entry-history-list)
+(def ENTRY_LIST_PAGE_ID :entry-list)
+(def GROUP_FORM_PAGE_ID :group-form)
 (def HOME_PAGE_ID :home)
+(def ICONS_LIST_PAGE_ID :icons-list)
 (def KEY_FILE_FORM_PAGE_ID :key-file-form)
 (def MERGE_DATABASE_PAGE_ID :merge-database)
+(def PASSWORD_GENERATOR_PAGE_ID :password-generator)
+(def PRIVACY_POLICY_PAGE_ID :privacy-policy)
+(def SEARCH_PAGE_ID :search)
+(def SETTINGS_PAGE_ID :settings)
+
+(def SETTINGS_CREDENTIALS_PAGE_ID :settings-credentials)
+(def SETTINGS_ENCRYPTION_PAGE_ID :settings-encryption)
+(def SETTINGS_GENERAL_PAGE_ID :settings-general)
+(def SETTINGS_KDF_PAGE_ID :settings-kdf)
+(def SETTINGS_SECURITY_PAGE_ID :settings-security)
 
 
 ;; All remote storage related page ids
@@ -106,6 +146,8 @@
 (def RS_FILES_FOLDERS_PAGE_ID :rs-files-folders)
 
 (def PASSKEY_PENDING_REVIEW_PAGE_ID :passkey-pending-review)
+
+(def MANAGE_CUSTOM_ICONS_PAGE_ID :manage-custom-icons)
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

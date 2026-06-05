@@ -2,6 +2,8 @@ package com.onekeepassmobile
 
 import android.net.Uri
 import android.os.Build
+import android.os.CancellationSignal
+import android.os.OperationCanceledException
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import androidx.fragment.app.FragmentActivity
@@ -12,6 +14,8 @@ import java.io.FileNotFoundException
 import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.TimeUnit
 import org.json.JSONObject
 
 
@@ -21,6 +25,11 @@ class DbServiceModule(reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactContext) {
     private val contentResolver = reactContext.contentResolver
     private val executorService: ExecutorService = Executors.newFixedThreadPool(4)
+
+    // issue #19: one-thread scheduler used only to time out a blocking
+    // ContentResolver.refresh() call (see refreshCloudDocumentBeforeRead).
+    private val refreshTimeoutScheduler: ScheduledExecutorService =
+        Executors.newSingleThreadScheduledExecutor()
     private val biometricService: BiometricService = BiometricService(reactContext)
     override fun getName() = "OkpDbService"
 
@@ -111,6 +120,10 @@ class DbServiceModule(reactContext: ReactApplicationContext) :
             val uri = Uri.parse(fullFileNameUri);
             try {
                 if (fullFileNameUri.startsWith("content://")) {
+                    // issue #19: nudge cloud providers (e.g. OneDrive) to sync the
+                    // document before we read, so opening from the recent list does not
+                    // return a stale cached copy. Safe no-op for local files.
+                    refreshCloudDocumentBeforeRead(uri)
                     val fd: ParcelFileDescriptor? = contentResolver.openFileDescriptor(uri, "r");
                     //fd will be null if the provider recently crashed
                     if (fd != null) {
@@ -452,6 +465,46 @@ class DbServiceModule(reactContext: ReactApplicationContext) :
         }
     }
 
+    // Adds a custom icon by reading the user-picked image file via SAF
+    // (Android Storage Access Framework) and delegating to the Rust FFI,
+    // which normalizes the bytes to a 64x64 PNG and inserts the icon
+    // into the loaded DB. Mirrors uploadAttachment / handlePickedFile.
+    @ReactMethod
+    fun addCustomIconFromFile(fullKeyFileNameUri: String, jsonArgs: String, promise: Promise) {
+        Log.d(
+            TAG,
+            "addCustomIconFromFile is called with fullFileNameUri $fullKeyFileNameUri and jsonArgs $jsonArgs "
+        )
+        executorService.execute {
+            val uri = Uri.parse(fullKeyFileNameUri);
+            try {
+                val fd: ParcelFileDescriptor? = contentResolver.openFileDescriptor(uri, "r");
+                val fileName = FileUtils.getMetaInfo(contentResolver, uri)?.filename ?: ""
+                if (fd != null) {
+                    promise.resolve(
+                        DbServiceAPI.addCustomIconFromFile(
+                            fd.detachFd().toULong(),
+                            fullKeyFileNameUri,
+                            fileName,
+                            jsonArgs
+                        )
+                    )
+                } else {
+                    promise.reject(E_READ_FIE_DESCRIPTOR_ERROR, "Invalid file descriptor")
+                }
+            } catch (e: SecurityException) {
+                Log.e(TAG, "SecurityException due to in sufficient permission")
+                promise.reject(E_PERMISSION_REQUIRED_TO_READ, e)
+            } catch (e: FileNotFoundException) {
+                Log.e(TAG, "Error in addCustomIconFromFile ${e}")
+                promise.reject(E_FILE_NOT_FOUND, e)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error in addCustomIconFromFile ${e}")
+                promise.reject(E_READ_CALL_FAILED, e)
+            }
+        }
+    }
+
     // This is a follow up method that is called after user picks a file using document picker service
     // TODO: Replace copyKeyFile,uploadAttachment to use this common fn after making required changes in rust side
     @ReactMethod
@@ -514,9 +567,55 @@ class DbServiceModule(reactContext: ReactApplicationContext) :
         }
     }
 
+    // issue #19: Ask a SAF document provider to sync the document with its backing
+    // store before we open it for reading.
+    //
+    // Why: OneDrive (and some other cloud providers) return a lazily-synced, possibly
+    // stale local copy from openFileDescriptor("r") when a db is opened from the recent
+    // list, so the user sees days-old content. ContentResolver.refresh() nudges the
+    // provider to pull the current version first. It is best-effort and advisory:
+    // providers that don't implement it (or local / Downloads files) simply no-op, so
+    // this is safe to call for every content:// uri.
+    //
+    // This runs on the background executor thread (callers wrap it in
+    // executorService.execute { ... }), so it never blocks the UI thread. But refresh()
+    // itself blocks while the provider syncs, so we cap it with REFRESH_TIMEOUT_MS: a
+    // scheduled task cancels the signal, which aborts refresh(), and we then read with
+    // whatever copy the provider already has.
+    //
+    // EASY DISABLE: flip REFRESH_CLOUD_DOC_BEFORE_READ (companion object) to false to
+    // turn this off everywhere. Both call sites then become no-ops with no other change.
+    private fun refreshCloudDocumentBeforeRead(uri: Uri) {
+        if (!REFRESH_CLOUD_DOC_BEFORE_READ) return
+        // ContentResolver.refresh(Uri, Bundle, CancellationSignal) is API 26+; minSdk is 24.
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+
+        val signal = CancellationSignal()
+        // Abort the (blocking) refresh if the provider takes too long to sync.
+        val timeoutFuture = refreshTimeoutScheduler.schedule(
+            { signal.cancel() }, REFRESH_TIMEOUT_MS, TimeUnit.MILLISECONDS
+        )
+        try {
+            val refreshed = contentResolver.refresh(uri, null, signal)
+            Log.d(TAG, "refresh() for $uri returned $refreshed")
+        } catch (e: OperationCanceledException) {
+            // Timed out via signal.cancel(); read the already-available copy.
+            Log.w(TAG, "refresh() timed out after ${REFRESH_TIMEOUT_MS}ms for $uri; reading current copy")
+        } catch (e: Exception) {
+            // Provider may not support refresh or may reject it; we read regardless.
+            Log.w(TAG, "refresh() not honored by provider for $uri: $e")
+        } finally {
+            // refresh() already returned/threw, so stop the pending cancel.
+            timeoutFuture.cancel(false)
+        }
+    }
+
     // Will throw exception
     private fun verifyDbFileChanged(fullFileNameUri: String, promise: Promise): Boolean {
         val uri = Uri.parse(fullFileNameUri);
+        // issue #19: compare the change-check against the current remote bytes, not a
+        // stale cloud cache. Safe no-op for local files / unsupported providers.
+        refreshCloudDocumentBeforeRead(uri)
         // Will throw exception
         val fd: ParcelFileDescriptor? = contentResolver.openFileDescriptor(uri, "r");
         if (fd != null) {
@@ -542,6 +641,15 @@ class DbServiceModule(reactContext: ReactApplicationContext) :
     }
 
     companion object {
+        // issue #19: master switch for the pre-read cloud-document refresh.
+        // Set to false to disable refreshCloudDocumentBeforeRead() everywhere (e.g. if
+        // the on-device flow misbehaves) without touching the call sites.
+        private const val REFRESH_CLOUD_DOC_BEFORE_READ = true
+
+        // issue #19: upper bound on the blocking ContentResolver.refresh() sync before we
+        // give up and read the currently-available copy. Tune if cloud syncs need longer.
+        private const val REFRESH_TIMEOUT_MS = 10_000L
+
         private const val E_PERMISSION_REQUIRED_TO_READ = "PERMISSION_REQUIRED_TO_READ"
         private const val E_PERMISSION_REQUIRED_TO_WRITE = "PERMISSION_REQUIRED_TO_WRITE"
         private const val E_READ_CALL_FAILED = "READ_CALL_FAILED"

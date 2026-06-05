@@ -10,10 +10,11 @@
             [onekeepass.mobile.events.common :as cmn-events]
             [onekeepass.mobile.events.entry-form :as form-events]
             [onekeepass.mobile.events.password-generator :as pg-events]
+            [onekeepass.mobile.events.remote-storage :as rs-events]
             [onekeepass.mobile.rn-components
              :as rnc :refer [animated-circular-progress dots-icon-name
                              page-background-color rn-view rnp-button rnp-helper-text
-                             rnp-icon-button rnp-text rnp-text-input
+                             rnp-icon-button rnp-switch rnp-text rnp-text-input
                              rnp-text-input-icon]]
             [onekeepass.mobile.translation :refer [lstr-bl lstr-field-name
                                                    lstr-l]]
@@ -209,8 +210,18 @@
     :as kvm}]
   (let [cust-color @page-background-color
         is-password-edit? (and edit (= key PASSWORD))
-        ;; kdbx:// or https:// or http
-        non-edit-kdbx-url (and (not edit) (= key URL))
+        entry-type-name @(form-events/entry-form-data-fields :entry-type-name)
+        entry-uuid @(form-events/entry-form-uuid)
+        ;; Read-mode launch of the remote Storage Browser from the connection
+        ;; field of an SFTP/WebDAV connection entry: Host for SFTP, URL for WebDAV.
+        rs-conn-launch? (and (not edit)
+                             (or (and (= entry-type-name const/REMOTE_CONNECTION_SFTP_TYPE_NAME)
+                                      (= key const/HOST))
+                                 (and (= entry-type-name const/REMOTE_CONNECTION_WEBDAV_TYPE_NAME)
+                                      (= key URL))))
+        ;; kdbx:// or https:// or http. For a WebDAV connection entry the URL
+        ;; field shows the storage-launch icon instead of the open-url icon.
+        non-edit-kdbx-url (and (not edit) (= key URL) (not rs-conn-launch?))
         custom-field-edit-focused? (if (is-iOS)
                                      (and
                                       edit
@@ -259,12 +270,39 @@
         [rn-view {:style {:margin-left -5 :backgroundColor cust-color :position "absolute" :right 0}}
          [rnp-icon-button {:style {:margin-right 0}
                            :icon const/ICON-LAUNCH
-                           :onPress (fn [] 
-                                      (ef-ao/entry-form-open-url value))}]])]
+                           :onPress (fn []
+                                      (ef-ao/entry-form-open-url value))}]])
+
+      ;; Launch the remote Storage Browser using this connection entry
+      (when rs-conn-launch?
+        [rn-view {:style {:margin-left -5 :backgroundColor cust-color :position "absolute" :right 0}}
+         [rnp-icon-button {:style {:margin-right 0}
+                           :icon const/ICON-LAUNCH
+                           :onPress (fn []
+                                      (rs-events/open-entry-remote entry-type-name entry-uuid))}]])]
 
      ;; Any error text below the field
      (when (and edit (not (nil? error-text)))
        [rnp-helper-text {:type "error" :visible true} error-text])]))
+
+(defn bool-field
+  "Renders a boolean field (core FieldDataType::Bool, e.g. allowUntrustedCert) in
+   edit mode as a labeled Switch row. The value is stored as a string; the core
+   treats true/1/yes (case-insensitive) as true, so we write back \"true\"/\"false\".
+   Non-edit (read) mode is not handled here - it falls through to the plain
+   text-field so the value is shown as text."
+  [{:keys [value on-change-text] :as kv}]
+  (let [label (to-field-label kv)
+        checked? (contains? #{"true" "1" "yes"}
+                            (-> (str value) str/trim str/lower-case))]
+    [rn-view {:style {:flexDirection "row" :min-height 60 :justify-content "space-between"}}
+     [rnp-text {:style {:align-self "center" :padding-left 15} :variant "bodySmall"} label]
+     [rn-view {:style {:padding-right 10 :align-self "center"}}
+      [rnp-switch {:style {:align-self "center"}
+                   :value checked?
+                   :onValueChange (fn []
+                                    (when on-change-text
+                                      (on-change-text (if checked? "false" "true"))))}]]]))
 
 (defn formatted-token
   "Groups digits with spaces between them for easy reading"

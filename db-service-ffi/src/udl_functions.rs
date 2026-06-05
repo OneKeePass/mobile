@@ -1,8 +1,10 @@
 use log::debug;
 use onekeepass_core::{
-    db_service::{self, db_checksum_hash, AttachmentUploadInfo},
+    db_service::{self, db_checksum_hash, AttachmentUploadInfo, CustomIconSummary},
     error,
 };
+
+use std::io::Read;
 //use reqwest_dav::re_exports::serde_xml_rs::de;
 
 use crate::{
@@ -502,6 +504,52 @@ pub(crate) fn copy_picked_key_file(file_args: FileArgs) -> String {
             file_name,
             file_size: None,
         })
+    };
+
+    commands::result_json_str(inner())
+}
+
+// Adds a custom icon by reading the picked image file (via Files app on iOS or
+// SAF on Android), normalizing it to a 64x64 PNG, and inserting it into the DB.
+// Returns CustomIconSummary so the cljs layer can immediately assign the new
+// uuid to the entry/group without a follow-up list call.
+pub(crate) fn add_custom_icon_from_file(file_args: FileArgs, json_args: &str) -> ResponseJson {
+    let inner = || -> OkpResult<CustomIconSummary> {
+        let OpenedFile {
+            mut file,
+            file_name,
+            ..
+        } = OpenedFile::open_to_read(&file_args)?;
+
+        let CommandArg::DbKey { db_key } = serde_json::from_str(json_args)? else {
+            return Err(OkpError::UnexpectedError(format!(
+                "Unexpected argument {:?} for add_custom_icon_from_file api call",
+                json_args
+            )));
+        };
+
+        let mut bytes = Vec::new();
+        file.read_to_end(&mut bytes)?;
+
+        let png_bytes = db_service::normalize_image_to_png(&bytes)?;
+
+        // Use the file's basename (without extension) as the display name.
+        let name = Path::new(&file_name)
+            .file_stem()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_else(|| file_name.clone());
+
+        let uuid_str = db_service::add_custom_icon(&db_key, name, png_bytes)?;
+        let summaries = db_service::list_custom_icons(&db_key)?;
+        summaries
+            .into_iter()
+            .find(|s| s.uuid == uuid_str)
+            .ok_or_else(|| {
+                OkpError::UnexpectedError(format!(
+                    "Newly added custom icon {} not found in list",
+                    uuid_str
+                ))
+            })
     };
 
     commands::result_json_str(inner())

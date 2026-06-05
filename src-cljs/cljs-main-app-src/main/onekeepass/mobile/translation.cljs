@@ -120,6 +120,13 @@
     (lstr (str "messageDialog.texts." txt-key))
     txt-key))
 
+(defn lstr-modal-dlg-title
+  "Adds prefix 'modalDialog.titles' to the key before getting the translation"
+  [txt-key]
+  (if (symbol? txt-key)
+    (lstr (str "modalDialog.titles." txt-key))
+    txt-key))
+
 (defn lstr-modal-dlg-text
   "Adds prefix 'modalDialog.texts' to the key before getting the translation"
   [txt-key]
@@ -299,9 +306,12 @@
    :read (fn [language _namespace callback]
            #_(println "language ids from translations map are " (keys translations))
            #_(println "create-back-end language namespace callback " language namespace callback)
-           ;; language is a string type whereas the keys in translations map are keyword
-           #_(println "data  is... " (clj->js (get translations (keyword language))))
-           (callback nil (clj->js (get translations (keyword language)))))})
+           ;; language is a string type whereas the keys in translations map are keyword.
+           ;; The keys were produced by 'transform-api-response' via csk/->kebab-case-keyword,
+           ;; so a region-tagged id like "pt-BR" is stored as :pt-br (region lowercased).
+           ;; We must look up with the same transform; (keyword "pt-BR") => :pt-BR would not match.
+           #_(println "data  is... " (clj->js (get translations (csk/->kebab-case-keyword language))))
+           (callback nil (clj->js (get translations (csk/->kebab-case-keyword language)))))})
 
 ;; Android issue 
 ;; When we use ':compatibilityJSON "v4"' to support 'PluralRules', we see the error

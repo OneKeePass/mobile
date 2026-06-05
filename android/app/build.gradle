@@ -133,8 +133,8 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // Need to use next increment in 'versionCode' as it needs to be unique for each release
-        versionCode 18
-        versionName "0.20.0"
+        versionCode 19
+        versionName "0.21.0"
     }
 
     signingConfigs {

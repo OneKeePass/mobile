@@ -8,6 +8,9 @@ alias shexre := shadow-cljs-ios-ext-clean-release
 
 shadow_cljs_version := "3.3.5"
 
+shadow-cljs-compile:
+    npx shadow-cljs@{{shadow_cljs_version}} compile app
+
 shadow-cljs-clean-watch:
     rm -rf cljs-main-app-out
     npx shadow-cljs@{{shadow_cljs_version}} watch app  

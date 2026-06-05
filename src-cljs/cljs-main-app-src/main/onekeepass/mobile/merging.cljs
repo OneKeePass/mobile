@@ -23,6 +23,7 @@
    [onekeepass.mobile.events.dialogs :as dlg-events]
    [onekeepass.mobile.events.common :as cmn-events]
    [onekeepass.mobile.events.merging :as merging-events]
+   [onekeepass.mobile.events.save :as save-events]
    [reagent.core :as r]))
 
 
@@ -113,7 +114,7 @@
                                     (r/as-element [rnp-divider]))
           :renderSectionHeader nil}]]]))
 
-(defn merge-result-dialog [{:keys [dialog-show data]}]
+(defn- merge-result-dialog [{:keys [dialog-show data stay-on-page? show-save-error-after?]}]
   [cust-dialog {:style {} :dismissable false :visible dialog-show :onDismiss #()}
    [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1} (lstr-dlg-title "mergeResults")]
    [rnp-dialog-content {:style {:min-height 100}}
@@ -121,9 +122,22 @@
    [rnp-dialog-actions
     [rnp-button {:mode "text"
                  :onPress (fn []
-                            (dlg-events/merge-result-dialog-close)
-                            (cmn-events/to-previous-page))}
+                            (cond
+                              ;; Auto-save after merge failed; close the dialog
+                              ;; and then surface the save-error-modal carrying
+                              ;; the stashed error.
+                              show-save-error-after?
+                              (save-events/merge-result-dialog-close-and-show-save-error)
+
+                              :else
+                              (do
+                                (dlg-events/merge-result-dialog-close)
+                                (when-not stay-on-page?
+                                  (cmn-events/to-previous-page)))))}
      (lstr-bl "close")]]])
+
+(defn merge-result-dialog-mounted []
+  [merge-result-dialog @(dlg-events/merge-result-dialog-data)])
 
 ;;;;;;;;
 
@@ -192,10 +206,9 @@
         [opened-dbs-list-content dbs]])]))
 
 (defn main-content []
-  [rn-safe-area-view {:style {:flex 1 :background-color @rnc/page-background-color}}
+  [rn-safe-area-view {:style {:flex 1 :background-color @page-background-color}}
    [content]
    [rnp-portal
-    [merge-result-dialog @(dlg-events/merge-result-dialog-data)]
     [start-page/start-page-storage-selection-dialog]
     [start-page/open-db-dialog]
     [cc/message-dialog]]])

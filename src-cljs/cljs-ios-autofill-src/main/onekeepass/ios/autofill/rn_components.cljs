@@ -81,6 +81,7 @@
                        ;; See comments above about SafeAreaView
                        ;; SafeAreaView
                        FlatList
+                       Image
                        KeyboardAvoidingView
                        Pressable
                        TouchableWithoutFeedback

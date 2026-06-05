@@ -1,10 +1,15 @@
-mod callback_service;
+// Phase B refactor: callback_service and storage_service now live in
+// onekeepass-core so the same SFTP/WebDAV implementation can be reused by
+// desktop. Mobile keeps only the host-side glue (callback_service_provider
+// and secure_store impls) and the orchestration layer below in this file.
 pub(crate) mod callback_service_provider;
 pub(crate) mod secure_store;
-mod storage_service;
 
-pub use storage_service::{
-    read_configs, RemoteStorageOperation, RemoteStorageOperationType, RemoteStorageType,
+pub use onekeepass_core::remote_storage::{
+    callback_service,
+    storage_service::{
+        self, read_configs, RemoteStorageOperation, RemoteStorageOperationType, RemoteStorageType,
+    },
 };
 
 use std::fs;
@@ -17,7 +22,7 @@ use crate::backup::{
     self, latest_backup_file_path, latest_backup_full_file_name, matching_backup_exists,
 };
 use crate::commands::{result_json_str, CommandArg, ResponseJson};
-use crate::db_backup_read::{read_latest_backup_db_arg, KdbxLoadedEx};
+use crate::db_backup_read::KdbxLoadedEx;
 use crate::udl_types::FileInfo;
 use crate::{biometric_auth, open_backup_file, parse_command_args_or_err};
 use crate::{OkpError, OkpResult};
@@ -104,6 +109,67 @@ pub(crate) fn rs_save_kdbx(json_args: &str) -> ResponseJson {
 #[inline]
 pub(crate) fn rs_create_kdbx(json_args: &str) -> ResponseJson {
     result_json_str(rs_create_file(json_args))
+}
+
+// Lists every REMOTE_CONNECTION_* entry in the currently open databases.
+// Powers the merged connection picker (kdbx-entry source alongside the
+// legacy blob source) and the migration command.
+pub(crate) fn rs_list_kdbx_source_connections(json_args: &str) -> ResponseJson {
+    use crate::commands::CommandArg;
+
+    let Ok(CommandArg::RemoteStorageTypeArg { rs_storage_type }) =
+        serde_json::from_str::<CommandArg>(json_args)
+    else {
+        return crate::commands::error_json_str(
+            "Invalid command args: expected RemoteStorageTypeArg",
+        );
+    };
+
+    let entry_type_uuid_bytes = match rs_storage_type {
+        RemoteStorageType::Sftp => db_service::entry_type_uuid::REMOTE_CONNECTION_SFTP,
+        RemoteStorageType::Webdav => db_service::entry_type_uuid::REMOTE_CONNECTION_WEBDAV,
+        // RemoteStorageType is #[non_exhaustive] across the crate boundary.
+        _ => return crate::commands::error_json_str("Unsupported remote storage type"),
+    };
+
+    let Some(entry_type_uuid) = uuid::Builder::from_slice(entry_type_uuid_bytes)
+        .ok()
+        .map(|b| b.into_uuid())
+    else {
+        return crate::commands::error_json_str("Failed to build entry-type uuid");
+    };
+
+    let summaries = db_service::list_remote_connection_entries(&entry_type_uuid);
+    crate::commands::ok_json_str(summaries)
+}
+
+// Read-only fetch of a single SFTP/WebDAV connection config by id. Checks
+// the kdbx-entry source first (across currently open databases), then
+// falls back to the legacy blob store. Powers the View action on the
+// connection picker for db-entry rows.
+pub(crate) fn rs_get_remote_storage_config(json_args: &str) -> ResponseJson {
+    use crate::commands::CommandArg;
+    use crate::remote_storage::storage_service::ConnectionConfigs;
+    use uuid::Uuid;
+
+    let Ok(CommandArg::RemoteStorageConfigLookupArg {
+        rs_storage_type,
+        connection_id,
+    }) = serde_json::from_str::<CommandArg>(json_args)
+    else {
+        return crate::commands::error_json_str(
+            "Invalid command args: expected RemoteStorageConfigLookupArg",
+        );
+    };
+
+    let Ok(u_id) = Uuid::parse_str(&connection_id) else {
+        return crate::commands::error_json_str("Invalid connection_id (uuid)");
+    };
+
+    match ConnectionConfigs::find_remote_storage_config(&u_id, rs_storage_type) {
+        Some(config) => crate::commands::ok_json_str(config),
+        None => crate::commands::error_json_str("Connection config not found"),
+    }
 }
 
 /// ----------------------------------------------------------------------
@@ -193,6 +259,32 @@ fn parse_db_key_to_rs_type_opertaion(db_key: &str) -> OkpResult<RemoteStorageOpe
     Ok(rt)
 }
 
+// Returns true when the connection config for this remote db_key can be
+// resolved right now — either from an open kdbx db (entry-based source) or the
+// legacy blob store. Returns false when it cannot (e.g. an entry-based config
+// whose holding db is not open, or a removed config), in which case a live
+// connection is impossible.
+fn is_remote_config_available(db_key: &str) -> bool {
+    use uuid::Uuid;
+
+    let Ok((_remaining, parsed)) = parse_db_key(db_key) else {
+        return false;
+    };
+
+    let storage_type = match parsed.rs_type_name {
+        "Sftp" => RemoteStorageType::Sftp,
+        "Webdav" => RemoteStorageType::Webdav,
+        _ => return false,
+    };
+
+    let Ok(connection_id) = Uuid::parse_str(parsed.connection_id) else {
+        return false;
+    };
+
+    storage_service::ConnectionConfigs::find_remote_storage_config(&connection_id, storage_type)
+        .is_some()
+}
+
 fn rs_read_file(json_args: &str) -> OkpResult<KdbxLoadedEx> {
     let (db_file_name, password, key_file_name, biometric_auth_used) = parse_command_args_or_err!(
         json_args,
@@ -206,16 +298,25 @@ fn rs_read_file(json_args: &str) -> OkpResult<KdbxLoadedEx> {
 
     let rs_operation_type = parse_db_key_to_rs_type_opertaion(&db_file_name)?;
 
-    // Ensure that the remote connection is established
-    // If the remote server is not available, send an error to UI and user determines what to do
+    // Determine whether the connection config can be resolved at all before we
+    // attempt to connect. Entry-based (kdbx-source) configs are only resolvable
+    // while the db holding the connection entry is open; blob configs are always
+    // resolvable. If we cannot resolve it, the concerned db is most likely not
+    // open (or the config was removed). Rather than silently opening a read-only
+    // backup, surface a distinct error so the UI can prompt the user to open the
+    // concerned db (or explicitly choose read-only).
+    if !is_remote_config_available(&db_file_name) {
+        info!("Remote connection config not available for {}. The concerned db is likely not open.", &db_file_name);
+        return Err(error::Error::RemoteStorageConfigNotAvailable);
+    }
 
+    // Config is resolvable; attempt the live connection. If the server is not
+    // reachable, surface NoRemoteStorageConnection so the UI can offer
+    // read-only vs cancel. We no longer auto-open the read-only backup here; the
+    // UI drives that choice explicitly via read_latest_backup.
     if let Err(e) = rs_operation_type.connect_by_id() {
-        info!("Connection to remote server is not available and read only mode from backup. The remote call error details:{}", e);
-
-        // If the db file is read earlier, then we should have at least one backup. Otherwise an error is returned
-        
-        let file_name = rs_operation_type.file_name().map(|v| v.to_string());
-        return read_latest_backup_db_arg(&db_file_name, &password, &key_file_name,&file_name);
+        info!("Connection to remote server is not available. The remote call error details:{}", e);
+        return Err(error::Error::NoRemoteStorageConnection);
     }
 
     debug!("Remote server connected");
@@ -326,6 +427,13 @@ fn read_with_backup<R: Read + Seek>(
         debug!("Created backup file for the db_key {}", &db_key);
     }
 
+    // Ensure the latest backup's mtime reflects the remote file's mtime, so a
+    // later rs_check_remote_modified poll won't false-positive on a re-opened
+    // db where the matching backup was reused (the inside-if path above only
+    // fires when a new backup is created).
+    let latest_bk = backup::latest_backup_full_file_name(db_key);
+    set_backup_modified_time(&latest_bk.as_ref(), file_modified_time);
+
     backup::prune_backup_history_files(&db_key);
 
     // AppState::add_recent_db_use_info2(db_key, file_name);
@@ -386,6 +494,186 @@ fn is_rs_file_modified(
     } else {
         Ok(true)
     }
+}
+
+// Result of a proactive remote-modification check. We return the remote mtime
+// (not just the boolean) so the cljs layer can key its "Ignore" snooze on the
+// specific remote state that was ignored — a genuinely NEW change (different
+// mtime) re-surfaces the dialog, while the already-ignored change stays quiet.
+// remote_mtime is None when the server doesn't report an mtime (in which case
+// modified is always false, since we can't reason about divergence).
+#[derive(Serialize)]
+pub(crate) struct RemoteModifiedStatus {
+    modified: bool,
+    remote_mtime: Option<u64>,
+}
+
+// Proactive remote-modification check used by the foreground poll and the
+// manual menu item. Mirrors desktop's `rs_check_remote_modified` semantics:
+// reports modified=false defensively when either the server doesn't report
+// mtime or no cached backup exists, to avoid spurious prompts.
+pub(crate) fn rs_check_remote_modified(db_key: &str) -> OkpResult<RemoteModifiedStatus> {
+    let rs_operation_type = parse_db_key_to_rs_type_opertaion(db_key)?;
+
+    rs_operation_type.connect_by_id().map_err(|e| {
+        info!("Remote check connection error: {}", e);
+        error::Error::NoRemoteStorageConnection
+    })?;
+
+    let rmd = rs_operation_type.file_metadata().map_err(|e| {
+        error::Error::UnRecoverableError(format!(
+            "Getting modified time of remote file failed. Error details {:?}",
+            e
+        ))
+    })?;
+
+    // No remote mtime reported -> can't reason about divergence, don't prompt.
+    let Some(remote_mtime) = rmd.modified else {
+        return Ok(RemoteModifiedStatus {
+            modified: false,
+            remote_mtime: None,
+        });
+    };
+
+    // No cached backup -> can't compare. Don't prompt.
+    let Some(bk_full_path) = backup::latest_backup_file_path(db_key) else {
+        return Ok(RemoteModifiedStatus {
+            modified: false,
+            remote_mtime: Some(remote_mtime),
+        });
+    };
+
+    let bk_mtime = bk_full_path
+        .metadata()
+        .and_then(|m| m.modified())
+        .map(|t| service_util::system_time_to_seconds(t))
+        .ok();
+
+    let Some(bk_mtime) = bk_mtime else {
+        return Ok(RemoteModifiedStatus {
+            modified: false,
+            remote_mtime: Some(remote_mtime),
+        });
+    };
+
+    Ok(RemoteModifiedStatus {
+        modified: remote_mtime != bk_mtime,
+        remote_mtime: Some(remote_mtime),
+    })
+}
+
+// User chose "Ignore" on the change dialog. Refreshes the backup file's mtime
+// to match the current remote so the next poll won't re-prompt for the same
+// divergence. Caveat: this also makes the next save-time conflict guard treat
+// the local edits as safe to upload — the user's explicit "accept overwrite"
+// decision.
+pub(crate) fn rs_acknowledge_remote_change(db_key: &str) -> OkpResult<()> {
+    let rs_operation_type = parse_db_key_to_rs_type_opertaion(db_key)?;
+
+    rs_operation_type.connect_by_id().map_err(|e| {
+        info!("Remote acknowledge connection error: {}", e);
+        error::Error::NoRemoteStorageConnection
+    })?;
+
+    let rmd = rs_operation_type.file_metadata().map_err(|e| {
+        error::Error::UnRecoverableError(format!(
+            "Getting modified time of remote file failed. Error details {:?}",
+            e
+        ))
+    })?;
+
+    let bk = backup::latest_backup_full_file_name(db_key);
+    set_backup_modified_time(&bk.as_ref(), &rmd.modified.map(|t| t as i64));
+    Ok(())
+}
+
+// User chose "Merge" from the save-error modal. Downloads remote bytes, runs
+// three-way merge into the in-memory db via core's merge_kdbx_with_reader
+// (sets save_pending=true), then refreshes the backup mtime to match the
+// just-fetched remote mtime so subsequent polls won't re-prompt for the same
+// divergence. The caller is expected to chain a save_kdbx call that writes the
+// merged content to the backup file and uploads to remote.
+pub(crate) fn rs_merge_with_remote(db_key: &str) -> OkpResult<db_service::MergeResult> {
+    let rs_operation_type = parse_db_key_to_rs_type_opertaion(db_key)?;
+
+    rs_operation_type.connect_by_id().map_err(|e| {
+        info!("Remote merge connection error: {}", e);
+        error::Error::NoRemoteStorageConnection
+    })?;
+
+    let r = rs_operation_type.read()?;
+    let remote_mtime = r.meta.modified.map(|t| t as i64);
+
+    let mut reader = Cursor::new(&r.data);
+    let merge_result = db_service::merge_kdbx_with_reader(db_key, &mut reader)?;
+
+    let bk = backup::latest_backup_full_file_name(db_key);
+    set_backup_modified_time(&bk.as_ref(), &remote_mtime);
+
+    Ok(merge_result)
+}
+
+// User chose "Merge" from the external-db-change dialog (foreground poll,
+// post-unlock, or manual menu check). Unlike rs_merge_with_remote, this path
+// runs when there are no local pending edits (save_pending is false in all the
+// trigger cases), so the "merge" is degenerate and equivalent to a reload.
+// Steps:
+//   1. Download remote bytes.
+//   2. merge_kdbx_with_reader: produces accurate diff counts vs. previous
+//      local AND replaces in-memory db. Sets save_pending=true as a side effect.
+//   3. save_kdbx_to_writer to a fresh backup file: persists the merged content
+//      (not just mtime) and CLEARS save_pending back to false.
+//   4. Refresh checksum and update backup mtime to match remote.
+//   5. iOS: copy to autofill extension app-group folder so autofill sees the
+//      updated entries without waiting for the user to save.
+// The MergeResult counts are returned so the UI can show the existing
+// merge-result-dialog (the counts equal "what changed on remote" when local
+// has no diff).
+pub(crate) fn rs_reload_with_remote(db_key: &str) -> OkpResult<db_service::MergeResult> {
+    let rs_operation_type = parse_db_key_to_rs_type_opertaion(db_key)?;
+
+    rs_operation_type.connect_by_id().map_err(|e| {
+        info!("Remote reload connection error: {}", e);
+        error::Error::NoRemoteStorageConnection
+    })?;
+
+    let r = rs_operation_type.read()?;
+    let remote_mtime = r.meta.modified.map(|t| t as i64);
+
+    let mut reader = Cursor::new(&r.data);
+    let merge_result = db_service::merge_kdbx_with_reader(db_key, &mut reader)?;
+
+    let file_name = rs_operation_type
+        .file_name()
+        .ok_or(error::Error::DataError(
+            "File name is not found in the rs operation type formed from the db key parsing",
+        ))?;
+
+    let backup_file_name = backup::generate_backup_history_file_name(db_key, file_name);
+
+    if let Some(mut bf_writer) = open_backup_file(backup_file_name.as_ref()) {
+        // save_kdbx_to_writer writes the merged in-memory db to the backup file
+        // and sets save_pending=false so the UI won't prompt the user to save.
+        db_service::save_kdbx_to_writer(&mut bf_writer, db_key)?;
+        let rewind_r = bf_writer.sync_all().and(bf_writer.rewind());
+        rewind_r?;
+        // Recompute checksum against the just-written backup so the in-memory
+        // checksum tracks the on-disk state.
+        db_service::calculate_and_set_db_file_checksum(db_key, &mut bf_writer)?;
+    }
+
+    // Match remote mtime so the next foreground poll doesn't re-prompt.
+    set_backup_modified_time(&backup_file_name.as_ref(), &remote_mtime);
+
+    #[cfg(target_os = "ios")]
+    {
+        crate::ios::autofill_app_group::copy_files_to_app_group_on_save_or_read(db_key);
+    }
+
+    AppState::update_recent_db_file_info(db_key);
+    backup::prune_backup_history_files(db_key);
+
+    Ok(merge_result)
 }
 
 fn rs_write_file(json_args: &str) -> OkpResult<KdbxSaved> {

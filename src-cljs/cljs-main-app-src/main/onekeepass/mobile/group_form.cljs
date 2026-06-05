@@ -1,12 +1,13 @@
 (ns onekeepass.mobile.group-form
   (:require [onekeepass.mobile.background :refer [is-iOS]]
             [onekeepass.mobile.events.common :as cmn-events]
+            [onekeepass.mobile.events.custom-icons :as ci-events]
             [onekeepass.mobile.events.groups :as gf-events :refer [update-group-form-data]]
             [onekeepass.mobile.icons-list :as icons-list]
             [onekeepass.mobile.rn-components
              :as rnc
              :refer [appbar-text-color icon-color page-background-color
-                     page-title-text-variant rn-keyboard-avoiding-view
+                     page-title-text-variant rn-image rn-keyboard-avoiding-view
                      rn-scroll-view rn-view rnp-button rnp-checkbox
                      rnp-helper-text rnp-text rnp-text-input
                      rnp-text-input-icon rnp-touchable-ripple]]
@@ -38,39 +39,75 @@
                 :mode "text" :onPress gf-events/save-group-form}
     (lstr-bl "save")]])
 
-(defn on-group-icon-selection [_icon-name icon-id]
-  (update-group-form-data :icon-id icon-id))
+(defn on-group-icon-selection
+  ([_icon-name icon-id]
+   (on-group-icon-selection _icon-name icon-id nil))
+  ([_icon-name icon-id custom-icon-uuid]
+   (if custom-icon-uuid
+     (do
+       (update-group-form-data :icon-id 0)
+       (update-group-form-data :custom-icon-uuid custom-icon-uuid))
+     (do
+       (update-group-form-data :icon-id icon-id)
+       (update-group-form-data :custom-icon-uuid nil)))))
+
+(defn- launch-icon-picker []
+  (cmn-events/show-icons-to-select on-group-icon-selection))
+
+(defn- group-input-right-icon
+  "Paper's TextInput.right only renders TextInput.Icon children; using
+   the render-function form of :icon lets us draw the custom icon's
+   data-URL image inside that slot while keeping the onPress wiring."
+  [icon-name custom-data-url]
+  ;; (println "group-input-right-icon is called with custom-data-url" custom-data-url)
+  (if custom-data-url
+    [rnp-text-input-icon
+     {:icon (fn []
+              (r/as-element
+               [rn-image {:source (clj->js {:uri custom-data-url})
+                          :style {:width icons-list/ENTRY-GROUP-FORM-ICON-SIZE
+                                  :height icons-list/ENTRY-GROUP-FORM-ICON-SIZE}}]))
+      :onPress launch-icon-picker}]
+    [rnp-text-input-icon {:iconColor @icon-color
+                          :size icons-list/ENTRY-GROUP-FORM-ICON-SIZE
+                          :icon icon-name
+                          :onPress launch-icon-picker}]))
 
 (defn main-content []
   (let [marked-as-category @(gf-events/group-form-data-fields :marked-category)
-        icon-name (icons-list/icon-id->name @(gf-events/group-form-data-fields :icon-id))
-        error-fields @(gf-events/group-form-field :error-fields)]
+        icon-id @(gf-events/group-form-data-fields :icon-id)
+        custom-icon-uuid @(gf-events/group-form-data-fields :custom-icon-uuid)
+        icon-name (icons-list/icon-id->name icon-id)
+        _ (when custom-icon-uuid (ci-events/ensure-icon-data-url custom-icon-uuid))
+        custom-data-url (when custom-icon-uuid
+                          @(ci-events/icon-data-url custom-icon-uuid))
+        error-fields @(gf-events/group-form-field :error-fields)
+        right-icon (r/as-element
+                    ;;The group-input-right-icon is called directly before r/as-element. Otherwise the icon is not shown
+                    (group-input-right-icon icon-name custom-data-url)
+                    #_[group-input-right-icon icon-name custom-data-url])]
+    #_(println "main-content is called with custom-data-url" custom-data-url)
     [rn-view {:style {:flexDirection "column" :justify-content "center" :padding 5}}
 
-     [rnp-text-input {:style {:width "100%"} 
-                      :multiline true 
+     [rnp-text-input {:style {:width "100%"}
+                      :multiline true
                       :label (lstr-l "name")
                       :defaultValue @(gf-events/group-form-data-fields :name)
                       :onChangeText #(update-group-form-data :name %)
-                      :right (r/as-element 
-                              [rnp-text-input-icon 
-                               {:iconColor @icon-color
-                                :icon icon-name
-                                :onPress #(cmn-events/show-icons-to-select 
-                                           on-group-icon-selection)}])}]
+                      :right right-icon}]
      (when (contains? error-fields :name)
        [rnp-helper-text {:type "error" :visible (contains? error-fields :name)}
         (:name error-fields)])
 
-     [rnp-text-input {:style {:width "100%"} 
-                      :multiline true :label 
+     [rnp-text-input {:style {:width "100%"}
+                      :multiline true :label
                       (lstr-l "notes")
                       :defaultValue @(gf-events/group-form-data-fields :notes)
                       :onChangeText #(update-group-form-data :notes %)}]
 
      (when (= :group @(gf-events/group-form-field :kind))
-       [rnp-touchable-ripple {:style {:align-self "center" :margin-top 15  :width "45%"} 
-                              :onPress #(update-group-form-data 
+       [rnp-touchable-ripple {:style {:align-self "center" :margin-top 15  :width "45%"}
+                              :onPress #(update-group-form-data
                                          :marked-category (not marked-as-category))}
         [rn-view {:flexDirection "row" :style {:alignItems "center" :justifyContent "space-between"}}
          [rnp-text (lstr-l "categoryMarked")]
@@ -78,7 +115,7 @@
           [rnp-checkbox {:status (if marked-as-category "checked" "unchecked")}]]]])]))
 
 (defn content []
-  [rn-keyboard-avoiding-view {:style {:flex 1 } 
+  [rn-keyboard-avoiding-view {:style {:flex 1}
                               ;; After Android 'compileSdkVersion = 35 introduction
                               ;; Also see comments in js/components/KeyboardAvoidingDialog.js
                               :behavior "padding" #_(if (is-iOS) "padding" nil)}

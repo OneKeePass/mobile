@@ -56,8 +56,8 @@
 
 (defn register-app-becomes-active []
   (bg/register-event-listener EVENT_APP_BECOMES_ACTIVE
-                              (fn [event-message]
-                                #_(println "EVENT_APP_BECOMES_ACTIVE event-message is " (bg/transform-api-response event-message {})))))
+                              (fn [_event-message]
+                                (dispatch [:external-db-change/poll-open-remote-dbs]))))
 
 (defn register-app-becomes-inactive []
   (bg/register-event-listener EVENT_APP_BECOMES_INACTIVE

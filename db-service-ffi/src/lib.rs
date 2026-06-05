@@ -33,8 +33,8 @@ use udl_types::{
 };
 
 use udl_functions::{
-    copy_picked_key_file, db_service_enable_logging, invoke_command, read_kdbx, save_kdbx,
-    upload_attachment, verify_db_file_checksum, write_to_backup_on_error,
+    add_custom_icon_from_file, copy_picked_key_file, db_service_enable_logging, invoke_command,
+    read_kdbx, save_kdbx, upload_attachment, verify_db_file_checksum, write_to_backup_on_error,
 };
 
 use log::{debug, logger};

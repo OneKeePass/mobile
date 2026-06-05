@@ -113,6 +113,40 @@ Then choose any of a valid keepass database file to merge with the currently ope
 
 Please keep a backup copy of the database before merging into that database
 
+## How do I use custom icons for entries and groups?
+
+You can assign custom icons to any entry or group. Icons can be added from a local image file or automatically fetched as a favicon from a website URL.
+
+To manage all custom icons stored in a database, go to **Settings -> Manage Icons** (while the database is open). From there you can upload new icons, add icons by URL, and delete icons that are no longer needed.
+
+To assign an icon to an entry, open the entry form in edit mode and select the icon field. To assign an icon to a group, open the group form and select the icon field.
+
+Custom icons are stored inside the KDBX database file, are compatible with other KeePass-based applications, and are also displayed in the AutoFill extension.
+
+## Can I store my database on a remote SFTP or WebDAV server?
+
+Yes. OneKeePass supports creating and opening databases stored directly on SFTP and WebDAV servers.
+
+**Opening a remote database:** Use the **Open Remote** option and choose SFTP or WebDAV. Enter your server details to browse and select a database file.
+
+**Creating a new remote database:** Use the **New Database** option and choose to save to a remote server location.
+
+**Remote connection entries:** You can store your SFTP or WebDAV server credentials securely inside the database using the built-in entry types **SFTP Connection** and **WebDAV Connection**. When these entries exist, OneKeePass uses them automatically to reconnect to the server, so you do not have to re-enter credentials each time.
+
+## What are "SFTP Connection" and "WebDAV Connection" entry types?
+
+These are built-in entry types for storing remote server connection credentials inside your database.
+
+An **SFTP Connection** entry holds the host, port, username, and optionally a private key for an SSH/SFTP server.
+
+A **WebDAV Connection** entry holds the server URL, username, and password for a WebDAV server. You can also enable **Allow Untrusted Certificate** in the entry if your server uses a self-signed certificate.
+
+Once these entries exist in your database, OneKeePass uses them automatically when you open or save a remote database on that server.
+
+## What happens if my database file is changed remotely?
+
+OneKeePass detects when the remote database file has been changed by another device or instance. When this happens, you are notified and can choose to merge the remote changes into your current session. The merge follows the same conflict-resolution rules as the local external-change detection.
+
 
 
 

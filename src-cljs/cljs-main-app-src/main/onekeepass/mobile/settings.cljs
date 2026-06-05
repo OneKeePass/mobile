@@ -29,6 +29,7 @@
    [onekeepass.mobile.events.app-settings :as as-events]
    [onekeepass.mobile.events.app-database-settings :as ada-events]
    [onekeepass.mobile.events.autofill :as af-events]
+   [onekeepass.mobile.manage-custom-icons :as manage-custom-icons]
    [onekeepass.mobile.constants :as const :refer [ICON-EYE ICON-EYE-OFF]]))
 
 (def ^:private mp-confirm-dialog-data (r/atom false))
@@ -72,7 +73,7 @@
                     :disabled save-diabled
                     :mode "text" :onPress (fn [_e]
                                             (cond
-                                              (= page-id :settings-credentials)
+                                              (= page-id const/SETTINGS_CREDENTIALS_PAGE_ID)
                                               (reset! mp-confirm-dialog-data true)
 
                                               :else
@@ -248,13 +249,13 @@
 
 (defn db-settings-form-content [page-id]
   (cond
-    (= page-id :settings-general)
+    (= page-id const/SETTINGS_GENERAL_PAGE_ID)
     [general-content]
 
-    (= page-id :settings-credentials)
+    (= page-id const/SETTINGS_CREDENTIALS_PAGE_ID)
     [credential-content]
 
-    (= page-id :settings-security)
+    (= page-id const/SETTINGS_SECURITY_PAGE_ID)
     [security-content]))
 
 
@@ -262,6 +263,7 @@
 (def ^:private ^:const SECTION-KEY-ADDITIONAL-DB-ACCESS "AdditionalDatabaseAcccess")
 (def ^:private ^:const SECTION-KEY-APP-SETTINGS "AppSettings")
 (def ^:private ^:const SECTION-KEY-AUTOFILL "AutofillSettings")
+(def ^:private ^:const SECTION-KEY-CUSTOM-ICONS "CustomIcons")
 
 
 (defn field-explain []
@@ -275,7 +277,7 @@
 
 (defn row-item [_m]
   (fn [{:keys [title page-id]} section-key]
-    ;; page-id is string and need to be convereted to a keyword to get the settings panel id
+    ;; page-id comes back from React Native SectionList as a string after clj->js/js->clj.
     ;; title is a key to i18n map
     [rn-view {:style {}}
      [rnp-list-item {:style {}
@@ -290,6 +292,9 @@
 
                                   (and (= section-key SECTION-KEY-AUTOFILL) (is-iOS))
                                   (af-events/to-autofill-settings-page)
+
+                                  (= section-key SECTION-KEY-CUSTOM-ICONS)
+                                  (manage-custom-icons/open-page)
 
                                   (= section-key SECTION-KEY-APP-SETTINGS)
                                   (as-events/to-app-settings-page)))
@@ -306,13 +311,17 @@
 (defn sections-data []
   [{:title "dbSettings"
     :key SECTION-KEY-DB-SETTINGS
-    :data [{:title "general" :page-id :settings-general}
-           {:title "credentials" :page-id :settings-credentials}
-           {:title "security" :page-id :settings-security}]}
+    :data [{:title "general" :page-id const/SETTINGS_GENERAL_PAGE_ID}
+           {:title "credentials" :page-id const/SETTINGS_CREDENTIALS_PAGE_ID}
+           {:title "security" :page-id const/SETTINGS_SECURITY_PAGE_ID}]}
 
    {:title "additionalDbAcccess"
     :key SECTION-KEY-ADDITIONAL-DB-ACCESS
     :data [{:title "enableDisable"}]}
+
+   {:title "customIcons"
+    :key SECTION-KEY-CUSTOM-ICONS
+    :data [{:title "manageCustomIcons"}]}
 
    ;; For android this is nil and need to be filtered out
    (when (is-iOS)

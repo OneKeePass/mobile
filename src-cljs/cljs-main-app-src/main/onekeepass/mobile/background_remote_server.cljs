@@ -23,11 +23,30 @@
 ;; keys = [:type :connection-info :connection-id :parent-dir :sub-dir :file-name]
 
 (defn remote-storage-configs
-  "The arg 'connect-request' is a map (type enum RemoteStorageOperationType) and has  
+  "The arg 'connect-request' is a map (type enum RemoteStorageOperationType) and has
    a key :type with value 'Sftp' or 'Webdav'
    Gets a vec of stored connection config infos for Sftp or Webdav "
   [connect-request dispatch-fn]
   (invoke-api "rs_remote_storage_configs" {:rs-operation-type connect-request}  dispatch-fn))
+
+(defn list-kdbx-source-connections
+  "Lists every REMOTE_CONNECTION_SFTP / _WEBDAV entry across the currently
+   open kdbx databases. Each item is a map with :db-key, :connection-id,
+   :title, :entry-type-uuid."
+  [type dispatch-fn]
+  (invoke-api "rs_list_kdbx_source_connections"
+              {:rs-storage-type (as-rs-type type)}
+              dispatch-fn))
+
+(defn get-remote-storage-config
+  "Read-only fetch of one connection config by id. Resolves from the kdbx
+   entry source first, then the legacy blob store. The result is the
+   adjacently-tagged enum {:type 'Sftp'/'Webdav' :content {..config..}}."
+  [type connection-id dispatch-fn]
+  (invoke-api "rs_get_remote_storage_config"
+              {:rs-storage-type (as-rs-type type)
+               :connection-id connection-id}
+              dispatch-fn))
 
 (defn delete-config [type connection-id dispatch-fn]
   (invoke-api "rs_delete_config" {:rs-operation-type
@@ -77,11 +96,44 @@
 
 (defn create-kdbx
   "Creates a new db and writes to the remote storage location
-   The connection-id, file path etc are parsed using the field new_db.database_file_name 
+   The connection-id, file path etc are parsed using the field new_db.database_file_name
    which has the formed 'db-key'
    "
   [new-db dispatch-fn]
   (invoke-api "rs_create_kdbx" {:new-db new-db} dispatch-fn))
+
+(defn check-remote-modified
+  "Asks the backend whether the remote file's mtime has diverged from the
+   backup-cached value. Returns a map {:modified bool :remote-mtime <int|nil>}.
+   :remote-mtime (seconds) lets callers key the Ignore snooze on the specific
+   remote state, so a NEW change re-surfaces the dialog while an already-ignored
+   one stays quiet. :remote-mtime is nil only when the server reports no mtime
+   (in which case :modified is always false)."
+  [db-key dispatch-fn]
+  (invoke-api "rs_check_remote_modified" {:db-key db-key} dispatch-fn))
+
+(defn acknowledge-remote-change
+  "User accepted the remote divergence (chose 'Ignore'). Refreshes the cached
+   mtime so subsequent polls don't re-prompt."
+  [db-key dispatch-fn]
+  (invoke-api "rs_acknowledge_remote_change" {:db-key db-key} dispatch-fn))
+
+(defn merge-with-remote
+  "Downloads remote bytes and three-way-merges into the in-memory db. Sets
+   save_pending in the backend; user still needs to save to upload.
+   Used by the save-error merge flow."
+  [db-key dispatch-fn]
+  (invoke-api "rs_merge_with_remote" {:db-key db-key} dispatch-fn))
+
+(defn reload-with-remote
+  "Downloads remote bytes, replaces the in-memory db, persists merged content to
+   the backup file (not just mtime), copies to the iOS autofill app group, and
+   clears save_pending. Returns the same MergeResult shape as merge-with-remote
+   (counts are 'what changed on remote' when local has no pending edits).
+   Used by the external-db-change flow (foreground poll / post-unlock / manual
+   menu check) where save_pending is expected to be false."
+  [db-key dispatch-fn]
+  (invoke-api "rs_reload_with_remote" {:db-key db-key} dispatch-fn))
 
 ;; This is mainly to load the content of root dir using the connection-id
 #_(defn list-dir

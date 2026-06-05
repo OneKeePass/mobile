@@ -5,10 +5,12 @@
             [onekeepass.mobile.android.autofill.events.entry-list :as el-events]
             [onekeepass.mobile.common-components :refer [menu-action-factory]]
             [onekeepass.mobile.constants :refer [TR-KEY-AUTOFILL]]
+            [onekeepass.mobile.events.custom-icons :as ci-events]
             [onekeepass.mobile.icons-list :refer [icon-id->name]]
             [onekeepass.mobile.rn-components :as rnc :refer [icon-color
                                                              page-background-color
                                                              primary-container-color
+                                                             rn-image
                                                              rn-safe-area-view
                                                              rn-section-list
                                                              rn-view
@@ -41,8 +43,23 @@
      [rnp-menu-item {:title (lstr-ml 'entryDetails)
                      :onPress (entry-long-press-menu-action android-af-cmn-events/to-entry-form-page)}]]))
 
+(defn- icon-left-element
+  "Custom icon image when `custom-icon-uuid` is set and the data URL has
+   loaded; standard MaterialCommunityIcons glyph otherwise."
+  [icon-name custom-icon-uuid]
+  (when custom-icon-uuid (ci-events/ensure-icon-data-url custom-icon-uuid))
+  (let [data-url (when custom-icon-uuid @(ci-events/icon-data-url custom-icon-uuid))]
+    (if data-url
+      [rn-view {:style {:margin-left 5 :align-self "center"
+                        :width 24 :height 24}}
+       [rn-image {:source (clj->js {:uri data-url})
+                  :style {:width 24 :height 24}}]]
+      [rnp-list-icon {:icon icon-name
+                      :color @icon-color
+                      :style {:margin-left 5 :align-self "center"}}])))
+
 (defn row-item []
-  (fn [{:keys [title secondary-title icon-id uuid] :as _entry-summary}]
+  (fn [{:keys [title secondary-title icon-id custom-icon-uuid uuid] :as _entry-summary}]
     (let [icon-name (icon-id->name icon-id)]
       [rnp-list-item {:onPress (fn [e]
                                  (show-entry-long-press-menu e uuid))
@@ -52,9 +69,7 @@
                               [rnp-text {:variant "titleMedium"} title])
                       :description secondary-title
                       :left (fn [_props] (r/as-element
-                                          [rnp-list-icon {:icon icon-name
-                                                          :color @icon-color
-                                                          :style {:margin-left 5 :align-self "center"}}]))}])))
+                                          [icon-left-element icon-name custom-icon-uuid]))}])))
 
 (defn section-header [title]
   [rn-view  {:style {:flexDirection "row"

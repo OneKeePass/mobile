@@ -123,6 +123,22 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   merge-result-dialog   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   external-db-change-dialog   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn-generic-dialog-disp-events :external-db-change-dialog [[show-with-state state-m] [close nil]])
+
+(defn-generic-dialog-subs-events :external-db-change-dialog [[data nil]])
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   external-db-change-dialog   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   remote-connection-unavailable-dialog   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn-generic-dialog-disp-events :remote-connection-unavailable-dialog [[show-with-state state-m] [close nil]])
+
+(defn-generic-dialog-subs-events :remote-connection-unavailable-dialog [[data nil]])
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   remote-connection-unavailable-dialog   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defn-generic-dialog-disp-events :move-group-or-entry-dialog  [[close nil]
                                                                [show-with-state state-m]
                                                                [update-with-map state-m]])
@@ -151,7 +167,16 @@
 
 (defn-generic-dialog-subs-events :ios-all-pending-passkeys-notification-dialog [[data nil]])
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; This dialog uses 'confirm-dialog' from common components to show message content and actions
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; :confirm-adding-rs-config-in-secure-store-dialog  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn-generic-dialog-disp-events :confirm-adding-rs-config-in-secure-store-dialog [[close nil]
+                                                                                   [show nil]])
+
+(defn-generic-dialog-subs-events :confirm-adding-rs-config-in-secure-store-dialog [[data nil]])
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 (defn- init-dialog-map

@@ -19,7 +19,7 @@ use onekeepass_core::error;
 
 use crate::{
     OkpError, OkpResult, app_lock, app_preference::{AppLockPreference, DatabasePreference, Preference}, app_state::{AppState, OKP_SHARED_DIR}, commands::{
-        CommandArg, InvokeResult, ResponseJson, error_json_str, ok_json_str, result_json_str
+        CommandArg, CustomIconDataResponse, InvokeResult, ResponseJson, error_json_str, ok_json_str, result_json_str
     }, parse_command_args_or_err, util::{self, remove_dir_contents}
 };
 
@@ -650,6 +650,24 @@ impl IosAppGroupSupportService {
         result_json_str(inner_fn())
     }
 
+    fn list_custom_icons(&self, json_args: &str) -> ResponseJson {
+        let inner_fn = || -> OkpResult<Vec<db_service::CustomIconSummary>> {
+            let (db_key,) = parse_command_args_or_err!(json_args, DbKey { db_key });
+            db_service::list_custom_icons(&db_key)
+        };
+        result_json_str(inner_fn())
+    }
+
+    fn get_custom_icon_data(&self, json_args: &str) -> ResponseJson {
+        let inner_fn = || -> OkpResult<CustomIconDataResponse> {
+            let (db_key, uuid) =
+                parse_command_args_or_err!(json_args, DbKeyWithUUIDArg { db_key, uuid });
+            let data = db_service::get_custom_icon(&db_key, &uuid.to_string())?;
+            Ok(data.into())
+        };
+        result_json_str(inner_fn())
+    }
+
 }
 
 // Here we implement all fns of this struct that are exported
@@ -686,6 +704,12 @@ impl IosAppGroupSupportService {
             }
 
             "clipboard_copy" => self.clipboard_copy(json_args),
+
+            // Read-only custom icon access for the autofill extension. Only
+            // listing + byte fetch are exposed here; add / remove / assign live
+            // on the main app's invoke_command surface.
+            "list_custom_icons" => self.list_custom_icons(json_args),
+            "get_custom_icon_data" => self.get_custom_icon_data(json_args),
 
             "passkey_find_matching" => self.passkey_find_matching(json_args),
             "passkey_sign_assertion" => self.passkey_sign_assertion(json_args),

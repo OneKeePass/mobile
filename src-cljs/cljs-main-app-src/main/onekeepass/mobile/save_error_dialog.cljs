@@ -10,6 +10,8 @@
                                             rnp-text
                                             rn-view]]
    [onekeepass.mobile.common-components :refer [confirm-dialog-factory]]
+   [onekeepass.mobile.translation :refer [lstr-bl lstr-modal-dlg-text
+                                          lstr-modal-dlg-title]]
    [onekeepass.mobile.events.save :as save-events]))
 
 ;;;;;;;;;;;;;;; confirm dialog ;;;;;;;;;;;;;;
@@ -25,15 +27,15 @@
 ;; When we use 'lstr' fn, we need to define inside a component as it requires react context
 (defn overwrite-on-press []
   (swap! ovewrite-confirm-dialog-data assoc
-         :title "Overwriting"
-         :confirm-text   "This will overwrite the target databses. Are you sure?"
+         :title (lstr-modal-dlg-title 'overwriting)
+         :confirm-text (lstr-modal-dlg-text 'overwriteConfirm)
          :call-on-ok-fn save-events/overwrite-on-save-error)
 
   ((:show overwrite-confirm-dialog-info)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn save-error-modal [{:keys [dialog-show file-name error-type error-message merge-save-called]}]
+(defn save-error-modal [{:keys [dialog-show file-name error-type error-message merge-save-called remote-db?]}]
   [rnp-modal {:style {:margin-right 25
                       :margin-left 25}
               :visible dialog-show
@@ -41,7 +43,7 @@
               :dismissableBackButton false
               ;;:onDismiss #() 
               :contentContainerStyle {:borderRadius 15
-                                      :height "60%"
+                                      :height "75%"
                                       :backgroundColor
                                       "white"
                                       :padding 10}}
@@ -49,17 +51,17 @@
    [rn-scroll-view {:centerContent "true" :style {:backgroundColor "white"}}
     [rn-view {:style {:height "100%" :backgroundColor "white"}}
      [rn-view {:style {:flex 0.1  :justify-content "center" :align-items "center"}}
-      [rnp-text {:style {:color @tertiary-color} :variant "titleLarge"} "Database Save Error"]
+      [rnp-text {:style {:color @tertiary-color} :variant "titleLarge"} (lstr-modal-dlg-title 'saveError)]
       [rnp-text {:style {:color @tertiary-color} :variant "titleSmall"} file-name]]
 
      [rn-view {:style {:flex 0.2  :min-height 50 :justify-content "center" :align-items "center"}}
 
       (condp =  error-type
         :content-change-detected
-        [rnp-text {:style {:textAlign "justify"}} "The database content has changed since you have loaded"]
+        [rnp-text {:style {:textAlign "justify"}} (lstr-modal-dlg-text 'contentChangedSinceLoad)]
 
         :no-remote-storage-connection
-        [rnp-text {:style {:textAlign "justify"}} "The remote server connection is not available at this time"]
+        [rnp-text {:style {:textAlign "justify"}} (lstr-modal-dlg-text 'noRemoteServerConnection)]
 
         [rnp-text {:style {:textAlign "justify"}} error-message])
 
@@ -69,22 +71,33 @@
 
      [rnp-divider]
      [rn-view {:style {:flex 00.70}}
+      (when (and (= error-type :content-change-detected) remote-db?)
+        [:<>
+         [rn-view {:style {:margin-top 10 :margin-bottom 10 :align-items "center"}}
+          [rnp-button {:style {:width "50%"}
+                       :labelStyle {:fontWeight "bold"}
+                       :mode "text"
+                       :on-press save-events/merge-on-save-error} (lstr-bl "merge")]
+          [rnp-text {:style {:textAlign "justify"}}
+           (lstr-modal-dlg-text 'mergeExternalChangesDesc)]]
+         [rnp-divider]])
+
       [rn-view {:style {:margin-top 10 :margin-bottom 10 :align-items "center"}}
        [rnp-button {:style {:width "50%"}
                     :labelStyle {:fontWeight "bold"}
                     :mode "text"
-                    :on-press save-events/save-as-on-error} "Save as .."]
+                    :on-press save-events/save-as-on-error} (lstr-bl "saveAs")]
        [rnp-text {:style {:textAlign "justify"}}
-        "You can save the database file with all your changes to another file and later manually resolve the conflicts"]]
+        (lstr-modal-dlg-text 'saveAsConflictDesc)]]
 
       [rnp-divider]
       [rn-view {:style {:margin-top 10 :margin-bottom 10 :align-items "center"}}
        [rnp-button {:style {:width "70%"}
                     :labelStyle {:fontWeight "bold"}
                     :mode "text"
-                    :on-press save-events/discard-on-save-error} "Discard & Close database"]
+                    :on-press save-events/discard-on-save-error} (lstr-bl "discardAndCloseDb")]
        [rnp-text {:style {:textAlign "justify"}}
-        "Ignore all changes made here"]]
+        (lstr-modal-dlg-text 'discardChangesDesc)]]
 
       (when (= error-type :content-change-detected)
         [:<>
@@ -94,9 +107,9 @@
                        :labelStyle {:fontWeight "bold"}
                        :textColor "red"
                        :mode "text"
-                       :on-press overwrite-on-press} "Overwrite"]
+                       :on-press overwrite-on-press} (lstr-bl "overwrite")]
           [rnp-text {:style {:textAlign "justify"}}
-           "This database will overwrite the target database with your changes"]]])
+           (lstr-modal-dlg-text 'overwriteDbDesc)]]])
 
       [rnp-divider]
       ;; Hide the cancel button for any save error happened during merge save call
@@ -105,7 +118,7 @@
          [rnp-button {:style {:width "70%"}
                       :labelStyle {:fontWeight "bold"}
                       :mode "text"
-                      :on-press save-events/save-error-modal-cancel} "Cancel"]
+                      :on-press save-events/save-error-modal-cancel} (lstr-bl "cancel")]
          [rnp-text {:style {:textAlign "justify"}} ""]])]]]
 
    ;; Anchoring the overwrite confirm dialog to this modal 

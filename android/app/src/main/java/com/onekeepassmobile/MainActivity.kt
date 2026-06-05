@@ -105,6 +105,11 @@ class MainActivity : ReactActivity() {
     override fun onResume() {
         super.onResume()
         Log.d("MainActivity", "On resume is called...")
+        // Symmetric to onPause's emitAppBecomesInactive. The UI side listens for this event
+        // (see onekeepass/mobile/events/native_events.cljs register-app-becomes-active) to poll
+        // open remote (SFTP/WebDAV) databases for external changes and show the Merge dialog.
+        // iOS does the same in SceneDelegate.sceneDidBecomeActive. This was missing on Android.
+        EventEmitter.emitAppBecomesActive()
     }
 
     companion object {

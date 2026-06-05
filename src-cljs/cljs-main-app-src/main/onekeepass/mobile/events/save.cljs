@@ -2,13 +2,16 @@
   (:require
    [clojure.string :as str]
    [onekeepass.mobile.background :as bg]
+   [onekeepass.mobile.background-remote-server :as bg-rs]
    [onekeepass.mobile.constants :as const]
    [onekeepass.mobile.events.common :refer [active-db-key
                                             assoc-in-key-db
                                             current-database-file-name
+                                            current-database-name
                                             current-db-disable-edit
                                             get-in-key-db on-error
-                                            on-ok]]
+                                            on-ok
+                                            remote-db-key?]]
    [onekeepass.mobile.translation :refer [lstr-error-dlg-title lstr-error-dlg-text
                                           lstr-msg-dlg-title lstr-msg-dlg-text]]
    [re-frame.core :refer [dispatch reg-event-db reg-event-fx reg-fx
@@ -21,6 +24,9 @@
 
 (defn overwrite-on-save-error []
   (dispatch [:overwrite-on-save-error]))
+
+(defn merge-on-save-error []
+  (dispatch [:merge-on-save-error]))
 
 (defn discard-on-save-error []
   (dispatch [:discard-on-save-error]))
@@ -89,17 +95,18 @@
 
 (defn save-api-response-handler
   [{:keys [error-title merge-save-called on-save-ok on-save-error]} api-response]
-  ;; (println "api-response " api-response)
   ;; api-response :ok value is a map corresponding to struct KdbxSaved
   ;; Here we are checking only the :error key and :ok value is ignored
   (when-not (on-error api-response
                       (fn [error]
-                        (handle-save-error {:error error
-                                            :merge-save-called merge-save-called
-                                            :error-title error-title})
-                        ;; on-save-error is not yet used
-                        ;; Need to review its use required or not
-                        (when on-save-error (on-save-error error))))
+                        ;; When on-save-error is provided the caller takes full responsibility
+                        ;; for surfacing the failure (see :save-error-merge-completed, which
+                        ;; needs to show the merge-result-dialog before the save-error-modal).
+                        (if on-save-error
+                          (on-save-error error)
+                          (handle-save-error {:error error
+                                              :merge-save-called merge-save-called
+                                              :error-title error-title}))))
     (dispatch [:common/message-modal-hide])
     (when on-save-ok (on-save-ok))))
 
@@ -221,7 +228,10 @@
  :overwrite-on-save-error
  (fn [{:keys [db]} [_event-id]]
    ;; (println "overwrite-on-save-error is called ...fn is " (get-in-key-db db [:save-api-response-handler]))
-   {:fx [[:dispatch [:common/message-modal-show nil 'overwritingDb]]
+   ;; User explicitly resolved the conflict by overwriting — clear any
+   ;; external-change Ignore snooze so future remote changes resurface.
+   {:db (update db (active-db-key db) dissoc :external-change-ignored-mtime)
+    :fx [[:dispatch [:common/message-modal-show nil 'overwritingDb]]
          [:dispatch [:save-error-modal-hide]]
          [:bg-save-kdbx [(active-db-key db) true (get-in-key-db db [:save-api-response-handler])]]
          #_[:bg-overwrite-kdbx [(active-db-key db)]]]}))
@@ -257,9 +267,100 @@
               (assoc-in [:save-error-modal :error-type] error-type)
               (assoc-in [:save-error-modal :error-message] message)
               (assoc-in [:save-error-modal :file-name] file-name)
+              (assoc-in [:save-error-modal :remote-db?] (remote-db-key? (active-db-key db)))
               (assoc-in [:save-error-modal :merge-save-called] merge-save-called))
 
       :fx [[:dispatch [:common/message-modal-hide]]]})))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;; Merge on save conflict ;;;;;;;;;;;;;;;;
+
+(reg-event-fx
+ :merge-on-save-error
+ (fn [{:keys [db]} [_event-id]]
+   ;; User explicitly resolved the conflict by merging — clear any
+   ;; external-change Ignore snooze so future remote changes resurface.
+   {:db (update db (active-db-key db) dissoc :external-change-ignored-mtime)
+    :fx [[:dispatch [:save-error-modal-hide]]
+         [:dispatch [:common/message-modal-show nil "Merging remote changes..."]]
+         [:bg-save-error-merge-with-remote [(active-db-key db)]]]}))
+
+(reg-fx
+ :bg-save-error-merge-with-remote
+ (fn [[db-key]]
+   (bg-rs/merge-with-remote
+    db-key
+    (fn [api-response]
+      (when-some [merge-result (on-ok api-response
+                                      (fn [error]
+                                        (dispatch [:save-error-merge-error error])))]
+        (dispatch [:save-error-merge-completed merge-result]))))))
+
+(reg-event-fx
+ :save-error-merge-completed
+ (fn [{:keys [_db]} [_event-id merge-result]]
+   {:fx [[:dispatch [:save/save-current-kdbx
+                     {:error-title "Save after remote changes merging"
+                      :save-message "Merging and saving..."
+                      :merge-save-called true
+                      :on-save-ok (fn []
+                                    (dispatch [:save-error-merge-save-completed merge-result]))
+                      :on-save-error (fn [error]
+                                       (dispatch [:save-error-merge-save-failed merge-result error]))}]]]}))
+
+;; Auto-save after merge failed. Show the merge-result-dialog FIRST so the user
+;; sees what was merged (the in-memory db has it, even though the upload failed),
+;; and stash the save error to surface in the save-error-modal once the dialog
+;; is closed.
+(reg-event-fx
+ :save-error-merge-save-failed
+ (fn [{:keys [db]} [_event-id merge-result error]]
+   {:db (assoc db :pending-merge-save-failure
+               {:error error
+                :error-title "Save after remote changes merging"})
+    :fx [[:dispatch [:common/message-modal-hide]]
+         [:dispatch [:generic-dialog-show-with-state
+                     :merge-result-dialog
+                     {:data merge-result
+                      :stay-on-page? true
+                      :show-save-error-after? true}]]]}))
+
+(defn merge-result-dialog-close-and-show-save-error []
+  (dispatch [:merge-result-dialog-close-and-show-save-error]))
+
+(reg-event-fx
+ :merge-result-dialog-close-and-show-save-error
+ (fn [{:keys [db]} _]
+   (let [{:keys [error error-title]} (:pending-merge-save-failure db)]
+     {:db (dissoc db :pending-merge-save-failure)
+      :fx [[:dispatch [:generic-dialog-close :merge-result-dialog]]
+           [:run-handle-save-error {:error error
+                                    :error-title error-title
+                                    :merge-save-called true}]]})))
+
+(reg-fx
+ :run-handle-save-error
+ (fn [m]
+   (handle-save-error m)))
+
+(reg-event-fx
+ :save-error-merge-save-completed
+ (fn [{:keys [db]} [_event-id merge-result]]
+   {:fx [[:dispatch [:common/refresh-forms]]
+         [:dispatch [:common/message-modal-hide]]
+         [:dispatch [:common/next-page const/ENTRY_CATEGORY_PAGE_ID (current-database-name db)]]
+         [:dispatch [:generic-dialog-show-with-state
+                     :merge-result-dialog
+                     {:data merge-result
+                      :stay-on-page? true}]]]}))
+
+(reg-event-fx
+ :save-error-merge-error
+ (fn [{:keys [db]} [_event-id error]]
+   {:fx [[:dispatch [:common/message-modal-hide]]
+         ;; Clean up the "backup on error" left from the initial failed save so
+         ;; the user isn't stuck with leaked backup state when merge itself fails.
+         [:bg-save-conflict-resolution-cancel [(active-db-key db)]]
+         [:dispatch [:common/error-box-show 'mergeFailed error]]]}))
 
 (reg-event-fx
  :save-error-modal-cancel

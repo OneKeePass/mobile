@@ -4,12 +4,17 @@
             [onekeepass.mobile.background :refer [is-Android is-iOS]]
             [onekeepass.mobile.common-components :as cc :refer [select-field
                                                                 select-tags-dialog]]
-            [onekeepass.mobile.constants :as const :refer [URL USERNAME PASSWORD IFDEVICE
-                                                           ADDITIONAL_ONE_TIME_PASSWORDS
-                                                           ONE_TIME_PASSWORD_TYPE]]
+            [onekeepass.mobile.constants :as const :refer [ADDITIONAL_ONE_TIME_PASSWORDS
+                                                           BOOL_TYPE
+                                                           IFDEVICE
+                                                           ONE_TIME_PASSWORD_TYPE
+                                                           PASSWORD URL
+                                                           USERNAME]]
             [onekeepass.mobile.date-utils :refer [utc-str-to-local-datetime-str]]
             [onekeepass.mobile.entry-form-dialogs :refer [add-modify-section-field-dialog
                                                           add-modify-section-name-dialog
+                                                          auto-open-db-file-required-info-dialog
+                                                          auto-open-key-file-pick-required-info-dialog
                                                           confirm-delete-otp-field-dialog
                                                           delete-attachment-dialog-info
                                                           delete-field-confirm-dialog
@@ -19,11 +24,8 @@
                                                           rename-attachment-name-dialog
                                                           rename-attachment-name-dialog-data
                                                           setup-otp-action-dialog
-                                                          setup-otp-action-dialog-show
-                                                          ;;auto-open-key-file-required-dialog
-                                                          auto-open-key-file-pick-required-info-dialog
-                                                          auto-open-db-file-required-info-dialog]]
-            [onekeepass.mobile.entry-form-fields :refer [otp-field text-field]]
+                                                          setup-otp-action-dialog-show]]
+            [onekeepass.mobile.entry-form-fields :refer [bool-field otp-field text-field]]
             [onekeepass.mobile.entry-form-menus :refer [attachment-long-press-menu
                                                         attachment-long-press-menu-data
                                                         custom-field-menu
@@ -32,22 +34,24 @@
                                                         section-menu-dialog-data
                                                         section-menu-dialog-show
                                                         show-attachment-long-press-menu]]
+            [onekeepass.mobile.entry-list :as entry-list]
             [onekeepass.mobile.events.common :as cmn-events]
+            [onekeepass.mobile.events.custom-icons :as ci-events]
             [onekeepass.mobile.events.dialogs :as dlg-events]
             [onekeepass.mobile.events.entry-form :as form-events :refer [place-holder-resolved-value]]
             [onekeepass.mobile.icons-list :as icons-list]
-            [onekeepass.mobile.entry-list :as entry-list]
             [onekeepass.mobile.rn-components
              :as rnc
              :refer [appbar-text-color dots-icon-name icon-color
                      on-primary-color page-background-color
-                     page-title-text-variant primary-container-color
+                     page-title-text-variant primary-container-color rn-image
                      rn-keyboard rn-keyboard-avoiding-view rn-scroll-view
                      rn-section-list rn-view rnp-button rnp-chip rnp-divider
                      rnp-helper-text rnp-icon-button rnp-list-icon
                      rnp-list-item rnp-portal rnp-text rnp-text-input
                      rnp-text-input-icon]]
-            [onekeepass.mobile.translation :refer [lstr-bl lstr-l lstr-pt lstr-field-name
+            [onekeepass.mobile.translation :refer [lstr-bl lstr-field-name
+                                                   lstr-l lstr-pt
                                                    lstr-section-name]]
             [onekeepass.mobile.utils :as u]
             [reagent.core :as r]))
@@ -185,12 +189,51 @@
       [title-with-icon])))
 
 (defn on-entry-icon-selection
-  "A callback function that is called from :common/icon-selected event handler when the user selects a new icon"
-  [_icon-name icon-id]
-  (form-events/edit-mode-on-press)
-  (form-events/entry-form-data-update-field-value :icon-id icon-id))
+  "A callback function that is called from :common/icon-selected event handler
+   when the user selects a new icon. When `custom-icon-uuid` is non-nil the
+   user picked a custom icon — clear the standard icon-id and set the uuid."
+  ([_icon-name icon-id]
+   (on-entry-icon-selection _icon-name icon-id nil))
+  ([_icon-name icon-id custom-icon-uuid]
+   (form-events/edit-mode-on-press)
+   (if custom-icon-uuid
+     (do
+       (form-events/entry-form-data-update-field-value :icon-id 0)
+       (form-events/entry-form-data-update-field-value :custom-icon-uuid custom-icon-uuid))
+     (do
+       (form-events/entry-form-data-update-field-value :icon-id icon-id)
+       (form-events/entry-form-data-update-field-value :custom-icon-uuid nil)))))
 
-(defn android-title-text-input [title icon-name]
+(defn- launch-icon-picker [prefill-url]
+  ;; Pre-seed the Add From URL dialog with the entry's URL value so the
+  ;; common case of "fetch favicon for this entry's site" is one tap.
+  (cmn-events/show-icons-to-select on-entry-icon-selection prefill-url))
+
+(defn- title-input-right-icon
+  "Right-side affordance for the title text input. When the entry has a
+   custom icon, render its image; otherwise render the standard
+   MaterialCommunityIcons glyph. Both tap to launch the icon picker.
+
+   IMPORTANT: react-native-paper's `TextInput.right` only renders a
+   `TextInput.Icon` node — wrapping anything else around it (e.g.
+   rn-pressable + rn-image directly) is silently dropped. So in the
+   custom-icon case we still return a TextInput.Icon and use its
+   render-function form for `:icon` to inject our rn-image."
+  [icon-name custom-data-url prefill-url]
+  (if custom-data-url
+    [rnp-text-input-icon
+     {:icon (fn []
+              (r/as-element
+               [rn-image {:source (clj->js {:uri custom-data-url})
+                          :style {:width icons-list/ENTRY-GROUP-FORM-ICON-SIZE
+                                  :height icons-list/ENTRY-GROUP-FORM-ICON-SIZE}}]))
+      :onPress #(launch-icon-picker prefill-url)}]
+    [rnp-text-input-icon {:iconColor @icon-color
+                          :size icons-list/ENTRY-GROUP-FORM-ICON-SIZE
+                          :icon icon-name
+                          :onPress #(launch-icon-picker prefill-url)}]))
+
+(defn android-title-text-input [title icon-name custom-data-url prefill-url]
   [rnp-text-input {:style {:width "100%"}
                    :label (str (lstr-l 'title) "*")
                    :autoCapitalize "none"
@@ -198,42 +241,54 @@
                    :ref (fn [^js/Ref ref]
                           ;; Keys found in ref for textinput
                           ;; are #js ["focus" "clear" "setNativeProps" "isFocused" "blur" "forceFocus"]
-                          ;; Need to call clear directly as the previous value is not getting cleared 
+                          ;; Need to call clear directly as the previous value is not getting cleared
                           ;; when there is a change in entry type selection name
                           (when (and (not (nil? ref)) (str/blank? title)) (.clear ref)))
                    :onChangeText #(form-events/entry-form-data-update-field-value :title %)
                    :right (r/as-element
-                           [rnp-text-input-icon {:iconColor @icon-color
-                                                 :icon icon-name
-                                                 :onPress #(cmn-events/show-icons-to-select on-entry-icon-selection)}])}])
+                           ;;The title-input-right-icon is called directly before r/as-element. Otherwise the icon is not shown
+                           (title-input-right-icon icon-name custom-data-url prefill-url))}])
 
-(defn ios-title-text-input [title icon-name]
+(defn ios-title-text-input [title icon-name custom-data-url prefill-url]
   [rnp-text-input {:style {:width "100%"}
                    :label (str (lstr-l 'title) "*")
                    :autoCapitalize "none"
                    :value title
                    :onChangeText #(form-events/entry-form-data-update-field-value :title %)
                    :right (r/as-element
-                           [rnp-text-input-icon {:iconColor @icon-color
-                                                 :icon icon-name
-                                                 :onPress #(cmn-events/show-icons-to-select on-entry-icon-selection)}])}])
+                           ;;The title-input-right-icon is called directly before r/as-element. Otherwise the icon is not shown
+                           (title-input-right-icon icon-name custom-data-url prefill-url))}])
 
 (defn title-with-icon []
-  (let [{:keys [title icon-id]} @(form-events/entry-form-data-fields [:title :icon-id])
+  (let [{:keys [title icon-id custom-icon-uuid]}
+        @(form-events/entry-form-data-fields [:title :icon-id :custom-icon-uuid])
         icon-name (icons-list/icon-id->name icon-id)
         edit @(form-events/form-edit-mode)
-        error-fields @(form-events/entry-form-field :error-fields)]
+        error-fields @(form-events/entry-form-field :error-fields)
+        ;; Trigger lazy fetch of the icon bytes when a custom icon is set.
+        _ (when custom-icon-uuid
+            (ci-events/ensure-icon-data-url custom-icon-uuid))
+        custom-data-url (when custom-icon-uuid
+                          @(ci-events/icon-data-url custom-icon-uuid))
+        prefill-url @(form-events/entry-form-section-field-value URL)]
     (if edit
       [rn-view {:style {:margin-top 2 :margin-bottom 2}}
        (if (is-iOS)
-         [ios-title-text-input title icon-name]
-         [android-title-text-input title icon-name])
+         [ios-title-text-input title icon-name custom-data-url prefill-url]
+         [android-title-text-input title icon-name custom-data-url prefill-url])
        (when (contains? error-fields :title)
          [rnp-helper-text {:type "error" :visible (contains? error-fields :title)}
           (:title error-fields)])]
       [rn-view {:style {:flexDirection "row" :justify-content "center" :alignItems "center"}}
-       [rnp-list-icon {:style {} :icon icon-name :color @icon-color}]
-       [rn-view {:style {:width 10}}] ;; gap
+       (if custom-data-url
+         [rn-image {:source (clj->js {:uri custom-data-url})
+                    :style {:width icons-list/ENTRY-GROUP-LIST-ICON-SIZE
+                            :height icons-list/ENTRY-GROUP-LIST-ICON-SIZE}}]
+         [rnp-list-icon {:style {:width icons-list/ENTRY-GROUP-LIST-ICON-SIZE
+                                  :height icons-list/ENTRY-GROUP-LIST-ICON-SIZE}
+                         :icon icon-name
+                         :color @icon-color}])
+       [rn-view {:style {:width 10}}]
        [rnp-text {:variant "titleLarge"} title]])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -313,31 +368,47 @@
                                  (assoc m :read-value (place-holder-resolved-value parsed-fields key)))
                                section-data)
 
-        adjusted-section-data  (if (not= entry-type-uuid const/UUID_OF_ENTRY_TYPE_AUTO_OPEN)
-                                 adjusted-section-data
-                                 (mapv
-                                  (fn [{:keys [key] :as m}]
-                                    ;; Note the use of lstr-field-name vs tr-entry-field-name-cv
-                                    ;; lstr-field-name is fn and tr-entry-field-name-cv is a macro 
-                                    (cond
-                                      (= key URL)
-                                      ;; for now read-value is not used 
-                                      ;;:read-value (:url-field-value m)
-                                      (assoc m :field-name (lstr-field-name "autoOpenKdbxFileOpen"))
+        adjusted-section-data
+        (cond
+          (= entry-type-uuid const/UUID_OF_ENTRY_TYPE_AUTO_OPEN)
+          (mapv
+           (fn [{:keys [key] :as m}]
+             ;; Note the use of lstr-field-name vs tr-entry-field-name-cv
+             ;; lstr-field-name is fn and tr-entry-field-name-cv is a macro
+             (cond
+               (= key URL)
+               ;; for now read-value is not used
+               ;;:read-value (:url-field-value m)
+               (assoc m :field-name (lstr-field-name "autoOpenKdbxFileOpen"))
 
-                                      (= key USERNAME)
-                                      (assoc m :field-name (lstr-field-name 'autoOpenKeyFile)
-                                             :read-value (place-holder-resolved-value parsed-fields key)) ;; :read-value (:key-file-path m)
+               (= key USERNAME)
+               (assoc m :field-name (lstr-field-name 'autoOpenKeyFile)
+                      :read-value (place-holder-resolved-value parsed-fields key)) ;; :read-value (:key-file-path m)
 
-                                      (= key PASSWORD)
-                                      (assoc m  :read-value (place-holder-resolved-value parsed-fields key))
+               (= key PASSWORD)
+               (assoc m  :read-value (place-holder-resolved-value parsed-fields key))
 
-                                      (= key IFDEVICE)
-                                      (assoc m :field-name (lstr-field-name "autoOpenIfDevice"))
+               (= key IFDEVICE)
+               (assoc m :field-name (lstr-field-name "autoOpenIfDevice"))
 
-                                      :else
-                                      m))
-                                  adjusted-section-data))]
+               :else
+               m))
+           adjusted-section-data)
+
+          (= entry-type-uuid const/UUID_OF_ENTRY_TYPE_REMOTE_CONNECTION_SFTP)
+          ;; The Password field on a REMOTE_CONNECTION_SFTP entry is
+          ;; dual-use: login password OR private-key passphrase. The kv key
+          ;; stays "Password" so the resolver is unaffected; only the
+          ;; display label changes so the user understands the dual use.
+          (mapv
+           (fn [{:keys [key] :as m}]
+             (if (= key PASSWORD)
+               (assoc m :field-name (lstr-field-name "sftpPasswordOrPassphrase"))
+               m))
+           adjusted-section-data)
+
+          :else
+          adjusted-section-data)]
     adjusted-section-data))
 
 (defn section-content [{:keys [edit section-name section-data]}]
@@ -375,6 +446,14 @@
                                                 :section-name section-name
                                                 :standard-field standard-field)]
 
+                  ;; Boolean field (e.g. allowUntrustedCert) in edit mode shows a
+                  ;; Switch. In non-edit mode it falls through to the plain text-field.
+                  (and edit (= data-type BOOL_TYPE))
+                  ^{:key key} [bool-field (assoc kv
+                                                 :section-name section-name
+                                                 :on-change-text #(form-events/update-section-value-on-change
+                                                                   section-name key %))]
+
                   :else
                   ^{:key key} [text-field (assoc kv
                                                  :required false ;; make all fields as optional 
@@ -410,6 +489,15 @@
     ;; section-names is a list of section names
     ;; section-fields is a list of map - one map for each field in that section
     [rn-view {:style box-style-2}
+     ;; Banner explaining the dual-use Password field and the
+     ;; attach-private-key flow for REMOTE_CONNECTION_SFTP entries.
+     (when (and edit (= entry-type-uuid const/UUID_OF_ENTRY_TYPE_REMOTE_CONNECTION_SFTP))
+       [rn-view {:style {:padding 10
+                         :margin-bottom 5
+                         :background-color @rnc/secondary-container-color
+                         :borderRadius 4}}
+        [rnp-text {:style {:font-size 12}}
+         (lstr-l "sftpEntryAuthHint")]])
      (doall
       (for [section-name section-names]
         ^{:key section-name} [section-content {:edit edit
@@ -580,7 +668,7 @@
       [cc/entry-delete-confirm-dialog form-events/delete-entry]
       [auto-open-db-file-required-info-dialog]
       [auto-open-key-file-pick-required-info-dialog]
-
+      
       ;; Note: 
       ;; We are refering this dialog from ns entry-list. 
       ;; We may need to move some common ns if there is any circular reference issue comes up
