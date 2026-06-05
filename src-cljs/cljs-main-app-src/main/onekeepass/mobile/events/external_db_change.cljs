@@ -267,6 +267,7 @@
          ;; page off that (the default Close behaviour suits the regular merge flow).
          [:dispatch [:common/to-entry-category-page]]
          [:dispatch [:common/refresh-forms]]
+         [:dispatch [:custom-icons/refresh]]
          [:dispatch [:generic-dialog-show-with-state :merge-result-dialog {:data merge-result :stay-on-page? true}]]
          [:dispatch [:common/message-snackbar-open 'remoteUpdated]]]}))
 
