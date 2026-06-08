@@ -1,0 +1,101 @@
+diff --git a/node_modules/react-native-paper/src/components/Searchbar.tsx b/node_modules/react-native-paper/src/components/Searchbar.tsx
+index 891df22..4542e27 100644
+--- a/node_modules/react-native-paper/src/components/Searchbar.tsx
++++ b/node_modules/react-native-paper/src/components/Searchbar.tsx
+@@ -317,6 +317,13 @@ const Searchbar = forwardRef<TextInputHandles, Props>(
+           returnKeyType="search"
+           keyboardAppearance={dark ? 'dark' : 'light'}
+           accessibilityRole="search"
++          // OKP: disable font scaling only in the iOS autofill extension bundle
++          // (RN #54642 — RCTFontSizeMultiplier() is 0 in an app extension, which
++          // collapses the spread `font` fontSize to 0). Undefined elsewhere keeps
++          // default behavior.
++          allowFontScaling={
++            (globalThis as any).__OKP_NO_FONT_SCALING__ ? false : undefined
++          }
+           ref={root}
+           value={value}
+           testID={testID}
+diff --git a/node_modules/react-native-paper/src/components/TextInput/TextInput.tsx b/node_modules/react-native-paper/src/components/TextInput/TextInput.tsx
+index 7c289d9..afa9831 100644
+--- a/node_modules/react-native-paper/src/components/TextInput/TextInput.tsx
++++ b/node_modules/react-native-paper/src/components/TextInput/TextInput.tsx
+@@ -193,7 +193,19 @@ type TextInputHandles = Pick<
+   'focus' | 'clear' | 'blur' | 'isFocused' | 'setNativeProps' | 'setSelection'
+ >;
+ 
+-const DefaultRenderer = (props: RenderProps) => <NativeTextInput {...props} />;
++const DefaultRenderer = (props: RenderProps) => (
++  // OKP: disable font scaling only in the iOS autofill extension bundle
++  // (facebook/react-native#54642 — RCTFontSizeMultiplier returns 0 in an .appex,
++  // shrinking the input text to ~0). Gated by a global flag set in
++  // index.ios.autofill.extension.js; before {...props} so explicit props win.
++  // This is the default renderer TextInput passes to TextInputFlat/Outlined.
++  <NativeTextInput
++    allowFontScaling={
++      (globalThis as any).__OKP_NO_FONT_SCALING__ ? false : undefined
++    }
++    {...props}
++  />
++);
+ 
+ /**
+  * A component to allow users to input text.
+diff --git a/node_modules/react-native-paper/src/components/Typography/AnimatedText.tsx b/node_modules/react-native-paper/src/components/Typography/AnimatedText.tsx
+index 6504ad4..3015f33 100644
+--- a/node_modules/react-native-paper/src/components/Typography/AnimatedText.tsx
++++ b/node_modules/react-native-paper/src/components/Typography/AnimatedText.tsx
+@@ -63,6 +63,11 @@ const AnimatedText = forwardRef<Text & HTMLElement, Props<never>>(
+       return (
+         <Animated.Text
+           ref={ref}
++          // OKP: autofill-only font-scaling disable (facebook/react-native#54642);
++          // gated by a global flag set in index.ios.autofill.extension.js.
++          allowFontScaling={
++            (globalThis as any).__OKP_NO_FONT_SCALING__ ? false : undefined
++          }
+           {...rest}
+           style={[
+             font,
+@@ -81,6 +86,10 @@ const AnimatedText = forwardRef<Text & HTMLElement, Props<never>>(
+       return (
+         <Animated.Text
+           ref={ref}
++          // OKP: autofill-only font-scaling disable (facebook/react-native#54642).
++          allowFontScaling={
++            (globalThis as any).__OKP_NO_FONT_SCALING__ ? false : undefined
++          }
+           {...rest}
+           style={[
+             styles.text,
+diff --git a/node_modules/react-native-paper/src/components/Typography/Text.tsx b/node_modules/react-native-paper/src/components/Typography/Text.tsx
+index 17c29b6..753714e 100644
+--- a/node_modules/react-native-paper/src/components/Typography/Text.tsx
++++ b/node_modules/react-native-paper/src/components/Typography/Text.tsx
+@@ -146,6 +146,15 @@ const Text = (
+     return (
+       <NativeText
+         ref={root}
++        // OKP: disable font scaling only in the iOS autofill extension bundle
++        // (facebook/react-native#54642 — RCTFontSizeMultiplier returns 0 in an
++        // .appex, collapsing Paper's themed lineHeight to 0 -> invisible text).
++        // Gated by a global flag set in index.ios.autofill.extension.js so the
++        // main app keeps dynamic-type scaling. Placed before {...rest} so an
++        // explicit allowFontScaling prop still wins.
++        allowFontScaling={
++          (globalThis as any).__OKP_NO_FONT_SCALING__ ? false : undefined
++        }
+         style={[
+           styles.text,
+           { writingDirection, color: theme.colors.onSurface },
+@@ -162,6 +171,10 @@ const Text = (
+     };
+     return (
+       <NativeText
++        // OKP: see note above — autofill-only font-scaling disable (#54642).
++        allowFontScaling={
++          (globalThis as any).__OKP_NO_FONT_SCALING__ ? false : undefined
++        }
+         {...rest}
+         ref={root}
+         style={[styles.text, textStyle, { writingDirection }, style]}
