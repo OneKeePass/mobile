@@ -55,7 +55,11 @@
 (defn theme-to-use [prefered-theme]
   (let [theme (if (= prefered-theme DEFAULT-SYSTEM-THEME)
                 (do
-                  (.setColorScheme appearance nil)
+                  ;; RN 0.85 (New Arch): Appearance.setColorScheme's param is non-null
+                  ;; ColorSchemeName ('light' | 'dark' | 'unspecified'). "unspecified"
+                  ;; means "follow the OS scheme" — the old `nil` now crashes with
+                  ;; "Parameter specified as non-null is null ... setColorScheme".
+                  (.setColorScheme appearance "unspecified")
                   (.getColorScheme appearance))
                 prefered-theme)]
     theme))
