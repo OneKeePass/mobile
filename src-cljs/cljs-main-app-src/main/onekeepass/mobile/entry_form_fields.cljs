@@ -202,6 +202,8 @@
            edit
            on-change-text
            error-text
+           helper-text
+           data-type
            section-name]
     :or {edit false
          protected false
@@ -209,6 +211,13 @@
          required false}
     :as kvm}]
   (let [cust-color @page-background-color
+        ;; Date fields (core FieldDataType::Date) have no native picker on mobile yet, so they
+        ;; render as a plain text field. We softly flag a value that is not a 'yyyy-MM-dd' string
+        ;; (display-only; it does not block saving).
+        date-format-error? (and edit
+                                (= data-type const/DATE_TYPE)
+                                (not (str/blank? value))
+                                (not (re-matches #"\d{4}-\d{2}-\d{2}" value)))
         is-password-edit? (and edit (= key PASSWORD))
         entry-type-name @(form-events/entry-form-data-fields :entry-type-name)
         entry-uuid @(form-events/entry-form-uuid)
@@ -281,9 +290,16 @@
                            :onPress (fn []
                                       (rs-events/open-entry-remote entry-type-name entry-uuid))}]])]
 
-     ;; Any error text below the field
-     (when (and edit (not (nil? error-text)))
-       [rnp-helper-text {:type "error" :visible true} error-text])]))
+     ;; Any error text below the field, then the date-format hint/error, then the field's helper text
+     (cond
+       (and edit (not (nil? error-text)))
+       [rnp-helper-text {:type "error" :visible true} error-text]
+
+       (and date-format-error? (not (str/blank? helper-text)))
+       [rnp-helper-text {:type "error" :visible true} helper-text]
+
+       (and edit (not (str/blank? helper-text)))
+       [rnp-helper-text {:type "info" :visible true} helper-text])]))
 
 (defn bool-field
   "Renders a boolean field (core FieldDataType::Bool, e.g. allowUntrustedCert) in

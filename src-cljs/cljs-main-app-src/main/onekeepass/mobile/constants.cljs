@@ -30,14 +30,38 @@
 (def AUTO_DB_OPEN_TYPE_NAME "Auto Database Open")
 (def REMOTE_CONNECTION_SFTP_TYPE_NAME "SFTP Connection")
 (def REMOTE_CONNECTION_WEBDAV_TYPE_NAME "WebDAV Connection")
+(def IDENTITY_TYPE_NAME "Identity")
+(def DRIVER_LICENSE_TYPE_NAME "Driver License")
+(def EMAIL_ACCOUNT_TYPE_NAME "Email Account")
+(def SSH_LOGIN_TYPE_NAME "SSH Login")
+(def API_CREDENTIAL_TYPE_NAME "API Credential")
+(def DATABASE_CREDENTIAL_TYPE_NAME "Database Credential")
+(def SOFTWARE_LICENSE_TYPE_NAME "Software License")
+(def MEMBERSHIP_TYPE_NAME "Membership")
+(def CRYPTO_WALLET_TYPE_NAME "Crypto Wallet")
+(def INSURANCE_POLICY_TYPE_NAME "Insurance Policy")
 
 (def REMOTE_CONNECTION_TYPE_NAMES #{REMOTE_CONNECTION_SFTP_TYPE_NAME
                                     REMOTE_CONNECTION_WEBDAV_TYPE_NAME})
 
+;; Standard entry type names. The new-entry type menu is built from the
+;; backend entry-type headers; this list is used to decide whether an entry
+;; type name should be translated. All standard type names must appear here.
 (def STANDARD_ENTRY_TYPES [LOGIN_TYPE_NAME
                            CREDIT_DEBIT_CARD_TYPE_NAME
-                           WIRELESS_ROUTER_TYPE_NAME
                            BANK_ACCOUNT_TYPE_NAME
+                           IDENTITY_TYPE_NAME
+                           PASSPORT_TYPE_NAME
+                           DRIVER_LICENSE_TYPE_NAME
+                           EMAIL_ACCOUNT_TYPE_NAME
+                           SSH_LOGIN_TYPE_NAME
+                           API_CREDENTIAL_TYPE_NAME
+                           DATABASE_CREDENTIAL_TYPE_NAME
+                           SOFTWARE_LICENSE_TYPE_NAME
+                           MEMBERSHIP_TYPE_NAME
+                           CRYPTO_WALLET_TYPE_NAME
+                           INSURANCE_POLICY_TYPE_NAME
+                           WIRELESS_ROUTER_TYPE_NAME
                            AUTO_DB_OPEN_TYPE_NAME
                            REMOTE_CONNECTION_SFTP_TYPE_NAME
                            REMOTE_CONNECTION_WEBDAV_TYPE_NAME])
@@ -96,6 +120,8 @@
 (def ONE_TIME_PASSWORD_TYPE "Field type" "OneTimePassword")
 
 (def BOOL_TYPE "Field type - matches core FieldDataType::Bool" "Bool")
+
+(def DATE_TYPE "Field type - matches core FieldDataType::Date" "Date")
 
 (def OTP "Standard field name used" "otp")
 
@@ -271,6 +297,20 @@
 (def ICON-CREDIT-CARD-OUTLINE  "credit-card-outline")
 
 (def ICON-LAUNCH "launch")
+
+;; Icons for the extended standard entry types
+(def ICON-CARD-ACCOUNT-DETAILS-OUTLINE "card-account-details-outline") ;; Identity
+(def ICON-PASSPORT "passport")
+(def ICON-CAR-OUTLINE "car-outline")                                   ;; Driver License
+(def ICON-EMAIL-OUTLINE "email-outline")                               ;; Email Account
+(def ICON-SERVER "server")                                             ;; SSH Login
+(def ICON-API "api")                                                   ;; API Credential
+(def ICON-CERTIFICATE-OUTLINE "certificate-outline")                   ;; Software License
+(def ICON-WALLET-MEMBERSHIP "wallet-membership")                       ;; Membership
+(def ICON-WALLET-OUTLINE "wallet-outline")                             ;; Crypto Wallet
+(def ICON-SHIELD-CHECK-OUTLINE "shield-check-outline")                 ;; Insurance Policy
+(def ICON-FOLDER-NETWORK-OUTLINE "folder-network-outline")            ;; SFTP Connection
+(def ICON-CLOUD-OUTLINE "cloud-outline")                               ;; WebDAV Connection
 
 ;;"checkbox-outline" "checkbox-blank-outline"
 

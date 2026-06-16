@@ -182,7 +182,20 @@
                      BANK_ACCOUNT_TYPE_NAME const/ICON-BANK-OUTLINE
                      WIRELESS_ROUTER_TYPE_NAME const/ICON-ROUTER-WIRELESS
                      CREDIT_DEBIT_CARD_TYPE_NAME const/ICON-CREDIT-CARD-OUTLINE
-                     AUTO_DB_OPEN_TYPE_NAME const/ICON-LAUNCH})
+                     AUTO_DB_OPEN_TYPE_NAME const/ICON-LAUNCH
+                     const/PASSPORT_TYPE_NAME const/ICON-PASSPORT
+                     const/IDENTITY_TYPE_NAME const/ICON-CARD-ACCOUNT-DETAILS-OUTLINE
+                     const/DRIVER_LICENSE_TYPE_NAME const/ICON-CAR-OUTLINE
+                     const/EMAIL_ACCOUNT_TYPE_NAME const/ICON-EMAIL-OUTLINE
+                     const/SSH_LOGIN_TYPE_NAME const/ICON-SERVER
+                     const/API_CREDENTIAL_TYPE_NAME const/ICON-API
+                     const/DATABASE_CREDENTIAL_TYPE_NAME const/ICON-DATABASE-OUTLINE
+                     const/SOFTWARE_LICENSE_TYPE_NAME const/ICON-CERTIFICATE-OUTLINE
+                     const/MEMBERSHIP_TYPE_NAME const/ICON-WALLET-MEMBERSHIP
+                     const/CRYPTO_WALLET_TYPE_NAME const/ICON-WALLET-OUTLINE
+                     const/INSURANCE_POLICY_TYPE_NAME const/ICON-SHIELD-CHECK-OUTLINE
+                     const/REMOTE_CONNECTION_SFTP_TYPE_NAME const/ICON-FOLDER-NETWORK-OUTLINE
+                     const/REMOTE_CONNECTION_WEBDAV_TYPE_NAME const/ICON-CLOUD-OUTLINE})
 
 (defn category-icon-name
   "Called to get icon name for General categories or Entry types category or Group as Category or Group "
