@@ -119,6 +119,8 @@
 
 (def ONE_TIME_PASSWORD_TYPE "Field type" "OneTimePassword")
 
+(def TEXT_TYPE "Field type - matches core FieldDataType::Text" "Text")
+
 (def BOOL_TYPE "Field type - matches core FieldDataType::Bool" "Bool")
 
 (def DATE_TYPE "Field type - matches core FieldDataType::Date" "Date")

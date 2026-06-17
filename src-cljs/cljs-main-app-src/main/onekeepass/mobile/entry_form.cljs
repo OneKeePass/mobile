@@ -447,10 +447,11 @@
                                                 :section-name section-name
                                                 :standard-field standard-field)]
 
-                  ;; Boolean field (e.g. allowUntrustedCert) in edit mode shows a
-                  ;; Switch. In non-edit mode it falls through to the plain text-field.
-                  (and edit (= data-type BOOL_TYPE))
+                  ;; Boolean field (e.g. allowUntrustedCert) shows a Switch in both edit
+                  ;; and non-edit mode; in non-edit mode the Switch is shown but disabled.
+                  (= data-type BOOL_TYPE)
                   ^{:key key} [bool-field (assoc kv
+                                                 :edit edit
                                                  :section-name section-name
                                                  :on-change-text #(form-events/update-section-value-on-change
                                                                    section-name key %))]
@@ -459,6 +460,7 @@
                   ;; In non-edit mode it falls through to the plain text-field.
                   (and edit (= data-type DATE_TYPE))
                   ^{:key key} [date-field (assoc kv
+                                                 :edit edit
                                                  :section-name section-name
                                                  :on-change-text #(form-events/update-section-value-on-change
                                                                    section-name key %))]

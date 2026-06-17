@@ -5,7 +5,9 @@
                     :refer  [as-map]])
   (:require [clojure.string :as str]
             [onekeepass.mobile.common-components :as cc :refer [confirm-dialog
-                                                                confirm-dialog-with-lstr]]
+                                                                confirm-dialog-with-lstr
+                                                                select-field]]
+            [onekeepass.mobile.constants :as const]
             [onekeepass.mobile.events.dialogs :as dlg-events]
             [onekeepass.mobile.events.entry-form :as form-events]
             [onekeepass.mobile.events.scan-otp-qr :as scan-qr-events]
@@ -169,17 +171,28 @@
       ^{:key label} [rnp-button {:mode "text"
                                  :on-press on-press} (lstr-bl label)])]])
 
+;; Field types offered when adding a custom field. The :key is stored as the KV's
+;; :data-type and must match the core FieldDataType variant names. Only these three
+;; have dedicated edit-mode rendering (text input, switch, date picker).
+(defn- custom-field-type-options []
+  [{:key const/TEXT_TYPE :label (lstr-l 'fieldTypeText)}
+   {:key const/BOOL_TYPE :label (lstr-l 'fieldTypeBoolean)}
+   {:key const/DATE_TYPE :label (lstr-l 'fieldTypeDate)}])
+
 (defn add-modify-section-field-dialog [{:keys [dialog-show
                                                section-name
                                                field-name
                                                protected
                                                required
-                                               _data-type
+                                               data-type
                                                mode
                                                error-fields]
                                         :as m}]
 
   (let [error (boolean (seq error-fields))
+        ;; Boolean/Date fields are never masked, so 'protected' is irrelevant for them
+        protected-disabled? (contains? #{const/BOOL_TYPE const/DATE_TYPE}
+                                       (or data-type const/TEXT_TYPE))
         ok-fn (fn [_e]
                 (if (= mode :add)
                   (form-events/section-field-add
@@ -203,15 +216,33 @@
          [rnp-helper-text {:type "error" :visible error}
           (get error-fields field-name)])
 
+       ;; Field type selection (just below the field name) is offered only when adding a
+       ;; new field. Modifying an existing field keeps its type to avoid converting a
+       ;; stored value to an incompatible format (e.g. arbitrary text into a date).
+       (when (= mode :add)
+         (let [options (custom-field-type-options)
+               selected (or data-type const/TEXT_TYPE)
+               selected-label (->> options (filter #(= (:key %) selected)) first :label)]
+           [rn-view {:flexDirection "column" :style {:marginTop 15}}
+            [select-field {:text-label (lstr-l 'fieldType)
+                           :options options
+                           :value selected-label
+                           :on-change (fn [^js/SelOption option]
+                                        (form-events/section-field-dialog-update :data-type (.-key option)))}]]))
+
        [rn-view {:flexDirection "column" :style {}}
         [rn-view {:style {:height 15}}]
         [rnp-touchable-ripple {:style {}
-                               :onPress #(form-events/section-field-dialog-update :protected (not protected))}
+                               :disabled protected-disabled?
+                               :onPress (when-not protected-disabled?
+                                          #(form-events/section-field-dialog-update :protected (not protected)))}
          [rn-view {:flexDirection "row"
-                   :style {:alignItems "center" :justifyContent "center"}}
+                   :style {:alignItems "center" :justifyContent "center"
+                           :opacity (if protected-disabled? 0.5 1)}}
           [rnp-text {:style {}} (lstr-l 'protected)]
           [rn-view {:pointerEvents "none"}
-           [rnp-checkbox {:status (if protected "checked" "unchecked")}]]]]]
+           [rnp-checkbox {:status (if (and protected (not protected-disabled?)) "checked" "unchecked")
+                          :disabled protected-disabled?}]]]]]
 
        #_[rn-view {:flexDirection "row"}
           [rnp-touchable-ripple {:style {:width "45%"}
