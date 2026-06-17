@@ -203,7 +203,6 @@
            on-change-text
            error-text
            helper-text
-           data-type
            section-name]
     :or {edit false
          protected false
@@ -211,13 +210,6 @@
          required false}
     :as kvm}]
   (let [cust-color @page-background-color
-        ;; Date fields (core FieldDataType::Date) have no native picker on mobile yet, so they
-        ;; render as a plain text field. We softly flag a value that is not a 'yyyy-MM-dd' string
-        ;; (display-only; it does not block saving).
-        date-format-error? (and edit
-                                (= data-type const/DATE_TYPE)
-                                (not (str/blank? value))
-                                (not (re-matches #"\d{4}-\d{2}-\d{2}" value)))
         is-password-edit? (and edit (= key PASSWORD))
         entry-type-name @(form-events/entry-form-data-fields :entry-type-name)
         entry-uuid @(form-events/entry-form-uuid)
@@ -290,13 +282,10 @@
                            :onPress (fn []
                                       (rs-events/open-entry-remote entry-type-name entry-uuid))}]])]
 
-     ;; Any error text below the field, then the date-format hint/error, then the field's helper text
+     ;; Any error text below the field, otherwise the field's helper text (e.g. CVC, Additional URLs)
      (cond
        (and edit (not (nil? error-text)))
        [rnp-helper-text {:type "error" :visible true} error-text]
-
-       (and date-format-error? (not (str/blank? helper-text)))
-       [rnp-helper-text {:type "error" :visible true} helper-text]
 
        (and edit (not (str/blank? helper-text)))
        [rnp-helper-text {:type "info" :visible true} helper-text])]))
@@ -319,6 +308,53 @@
                    :onValueChange (fn []
                                     (when on-change-text
                                       (on-change-text (if checked? "false" "true"))))}]]]))
+
+(defn- yyyy-mm-dd->date
+  "Parses a stored 'yyyy-MM-dd' string into a local Date (at midnight). Returns nil for a
+   blank/malformed value so the picker shows an empty field."
+  [s]
+  (when (and s (re-matches #"\d{4}-\d{2}-\d{2}" s))
+    (let [[y m d] (mapv js/parseInt (str/split s #"-"))]
+      (js/Date. y (dec m) d))))
+
+(defn- date->yyyy-mm-dd
+  "Formats a Date back to the stored 'yyyy-MM-dd' string using its local date parts. Returns
+   an empty string when the date is nil/invalid (e.g. the field was cleared)."
+  [^js/Date d]
+  (if (and d (not (js/isNaN (.getTime d))))
+    (let [mm (inc (.getMonth d))
+          dd (.getDate d)]
+      (str (.getFullYear d) "-"
+           (when (< mm 10) "0") mm "-"
+           (when (< dd 10) "0") dd))
+    ""))
+
+(defn date-field
+  "Renders a Date field (core FieldDataType::Date) in edit mode using react-native-paper-dates'
+   inline DatePickerInput - a Paper text field with a calendar icon that opens a Material date
+   modal. The value is stored as a locale-independent 'yyyy-MM-dd' string (the picker itself
+   displays/parses in the device locale format, shown in the label). Non-edit (read) mode is
+   not handled here - it falls through to the plain text-field so the value is shown as text."
+  [{:keys [value error-text on-change-text] :as kv}]
+  (let [date-val (yyyy-mm-dd->date value)]
+    [rn-view {:style {:flexDirection "column"}}
+     [rnc/date-picker-input
+      {;; 'en-CA' keeps English labels but gives the ISO YYYY-MM-DD input mask (see rn-components)
+       :locale "en-CA"
+       :inputMode "start"
+       :mode "flat"
+       :label (to-field-label kv)
+       :value date-val
+       ;; Show the expected date format in the label
+       :withDateFormatInLabel true
+       :hasError (not (nil? error-text))
+       ;; The picker uses a raw Paper TextInput whose flat-mode fill defaults to surfaceVariant
+       ;; (grey). Set the same background the app's RNPTextInput uses so it matches other fields.
+       :style {:backgroundColor @page-background-color}
+       ;; onChange fires only with a valid Date (or nil when cleared); store it as 'yyyy-MM-dd'
+       :onChange (fn [d] (on-change-text (date->yyyy-mm-dd d)))}]
+     (when (not (nil? error-text))
+       [rnp-helper-text {:type "error" :visible true} error-text])]))
 
 (defn formatted-token
   "Groups digits with spaces between them for easy reading"

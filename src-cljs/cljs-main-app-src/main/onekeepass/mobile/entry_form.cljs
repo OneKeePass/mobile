@@ -6,6 +6,7 @@
                                                                 select-tags-dialog]]
             [onekeepass.mobile.constants :as const :refer [ADDITIONAL_ONE_TIME_PASSWORDS
                                                            BOOL_TYPE
+                                                           DATE_TYPE
                                                            IFDEVICE
                                                            ONE_TIME_PASSWORD_TYPE
                                                            PASSWORD URL
@@ -25,7 +26,7 @@
                                                           rename-attachment-name-dialog-data
                                                           setup-otp-action-dialog
                                                           setup-otp-action-dialog-show]]
-            [onekeepass.mobile.entry-form-fields :refer [bool-field otp-field text-field]]
+            [onekeepass.mobile.entry-form-fields :refer [bool-field date-field otp-field text-field]]
             [onekeepass.mobile.entry-form-menus :refer [attachment-long-press-menu
                                                         attachment-long-press-menu-data
                                                         custom-field-menu
@@ -450,6 +451,14 @@
                   ;; Switch. In non-edit mode it falls through to the plain text-field.
                   (and edit (= data-type BOOL_TYPE))
                   ^{:key key} [bool-field (assoc kv
+                                                 :section-name section-name
+                                                 :on-change-text #(form-events/update-section-value-on-change
+                                                                   section-name key %))]
+
+                  ;; Date field (core FieldDataType::Date) in edit mode shows a date picker.
+                  ;; In non-edit mode it falls through to the plain text-field.
+                  (and edit (= data-type DATE_TYPE))
+                  ^{:key key} [date-field (assoc kv
                                                  :section-name section-name
                                                  :on-change-text #(form-events/update-section-value-on-change
                                                                    section-name key %))]
