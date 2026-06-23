@@ -157,6 +157,13 @@ pub enum CommandArg {
         db_key: String,
         term: String,
     },
+    // Android autofill capture-on-fill: associate a native-app token
+    // (e.g. android://com.vanguard.app) with an entry's Additional URLs.
+    AssociateAppArg {
+        db_key: String,
+        entry_uuid: String,
+        app_uri: String,
+    },
     DbSettingsArg {
         db_key: String,
         db_settings: DbSettings,
@@ -314,12 +321,6 @@ pub enum CommandArg {
         org_db_key: String,
     },
 
-    // Group entries lookup — has db_key + group_uuid; must come before DbKey.
-    PasskeyGetGroupEntriesArg {
-        db_key: String,
-        group_uuid: String,
-    },
-
     // Custom icon — add from a remote URL (favicon download).
     // Unique required field 'url' so this never collides with other variants.
     CustomIconAddUrlArg {
@@ -337,11 +338,20 @@ pub enum CommandArg {
     },
 
     // Custom icon — assign or clear on a group.
-    // Required 'custom_icon_uuid' disambiguates from PasskeyGetGroupEntriesArg.
+    // Must come before PasskeyGetGroupEntriesArg because serde untagged ignores
+    // extra fields, so {db_key, group_uuid, custom_icon_uuid} can otherwise match
+    // the broader {db_key, group_uuid} variant first.
     SetGroupCustomIconArg {
         db_key: String,
         group_uuid: Uuid,
         custom_icon_uuid: String,
+    },
+
+    // Group entries lookup — has db_key + group_uuid; must come after
+    // SetGroupCustomIconArg and before DbKey.
+    PasskeyGetGroupEntriesArg {
+        db_key: String,
+        group_uuid: String,
     },
 
     // This variant needs to come last so that other variants starting with db_key is matched before this

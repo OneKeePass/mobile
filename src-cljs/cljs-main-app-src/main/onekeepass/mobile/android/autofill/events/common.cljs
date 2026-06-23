@@ -498,7 +498,10 @@
  :android-af-all-entries-loaded
  (fn [{:keys [db]} [_event-id db-key entry-summaries]]
    {:fx [[:dispatch [:android-af/entry-list-load-complete entry-summaries]]
-         [:bg-android-af-autofill-filtered-entries [db-key]]]}
+         [:bg-android-af-autofill-filtered-entries [db-key]]
+         ;; Fetch the calling-app uri once now so capture-on-fill can decide
+         ;; synchronously at fill time (see entry-form complete-login-autofill).
+         [:bg-android-af-fetch-client-app-uri]]}
    #_(let [assertion-rp-id    (get-in db [:android-af :passkey-assertion :rp-id])
            registration-rp-id (get-in db [:android-af :passkey-registration :rp-id])
            allow-ids          (get-in db [:android-af :passkey-assertion :allow-credential-ids] [])]
@@ -514,7 +517,7 @@
          {:fx [[:dispatch [:android-af/entry-list-load-complete entry-summaries]]
                [:bg-android-af-autofill-filtered-entries [db-key]]]}))))
 
-;; Called to load any matching entries based on ios autofill credential identifiers 
+;; Called to load any matching entries based on ios autofill credential identifiers
 ;; This is called after loading all entries summary - see the above event
 (reg-fx
  :bg-android-af-autofill-filtered-entries
@@ -524,6 +527,25 @@
     (fn [api-response]
       (when-let [result (on-ok api-response)]
         (dispatch [:android-af-search-term-completed result]))))))
+
+;; Best-effort fetch of the calling-app uri (android://<pkg> for a native app
+;; with no web domain, else the web uri). Stored for capture-on-fill. A failure
+;; (e.g. older FFI without the command) is ignored - capture is simply not offered
+;; and filling proceeds normally.
+(reg-fx
+ :bg-android-af-fetch-client-app-uri
+ (fn [_]
+   (bg/android-autofill-client-app-uri
+    (fn [api-response]
+      (let [app-uri (on-ok api-response
+                           (fn [error]
+                             (js/console.warn "Could not get autofill client app uri:" error)))]
+        (dispatch [:android-af-store-client-app-uri app-uri]))))))
+
+(reg-event-db
+ :android-af-store-client-app-uri
+ (fn [db [_event-id app-uri]]
+   (assoc-in db [:android-af :client-app-uri] app-uri)))
 
 ;; This event name is stored in [:android-af :main-event-handler] and is called 
 ;; by any main app event

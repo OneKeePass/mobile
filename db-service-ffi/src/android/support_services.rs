@@ -44,6 +44,8 @@ impl AndroidSupportServiceExtra {
     pub fn invoke(&self, command_name: &str, json_args: &str) -> ResponseJson {
         let r = match command_name {
             "autofill_filtered_entries" => self.autofill_filtered_entries(json_args),
+            "autofill_client_app_uri" => self.autofill_client_app_uri(json_args),
+            "autofill_associate_app_to_entry" => self.autofill_associate_app_to_entry(json_args),
             "complete_autofill" => self.complete_autofill(json_args),
 
             "clipboard_copy" => self.clipboard_copy(json_args),
@@ -318,6 +320,38 @@ impl AndroidSupportServiceExtra {
                 term: String::default(),
                 entry_items,
             })
+        };
+
+        result_json_str(inner_fn())
+    }
+
+    // Returns the uri of the app/site that triggered the current autofill request.
+    // For a native app with no associated web domain this is "android://<packageName>"
+    // (see ParseResultData.buildUri); for a browser/web view it is the page uri. The
+    // ClojureScript side uses this to offer capture-on-fill (associate the app token
+    // with the chosen entry). Returns an empty string when no uri is available.
+    fn autofill_client_app_uri(&self, _json_args: &str) -> ResponseJson {
+        let inner_fn = || -> OkpResult<String> {
+            let identifiers =
+                AndroidApiCallbackImpl::api_service().autofill_client_app_url_info()?;
+            Ok(identifiers.get("uri").cloned().unwrap_or_default())
+        };
+
+        result_json_str(inner_fn())
+    }
+
+    // Capture-on-fill: appends the native-app token (app_uri) to the chosen entry's
+    // Additional URLs so the app is offered for autofill next time. No-op when an
+    // equivalent token is already present. Returns true when the entry was modified.
+    fn autofill_associate_app_to_entry(&self, json_args: &str) -> ResponseJson {
+        let inner_fn = || -> OkpResult<bool> {
+            let (db_key, entry_uuid, app_uri) = parse_command_args_or_err!(
+                json_args,
+                AssociateAppArg { db_key, entry_uuid, app_uri }
+            );
+            let entry_uuid = uuid::Uuid::parse_str(&entry_uuid)
+                .map_err(|e| OkpError::UnexpectedError(e.to_string()))?;
+            Ok(db_service::associate_app_to_entry(&db_key, &entry_uuid, &app_uri)?)
         };
 
         result_json_str(inner_fn())

@@ -116,6 +116,7 @@
 (def PASSWORD "Password")
 (def USERNAME "UserName")
 (def URL "URL")
+(def ADDITIONAL_URLS "Additional URLs")
 ;; Host field key on a REMOTE_CONNECTION_SFTP entry (matches core constants::HOST)
 (def HOST "Host")
 (def IFDEVICE "IfDevice")

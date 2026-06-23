@@ -660,6 +660,8 @@
             "remainLocked": "Database will remain open till locked or closed"
         },
         "autoFill": {
+            "associateAppText": "Add this app to '{{title}}' so it is offered for autofill next time?",
+            "associateAppTitle": "Remember this app?",
             "enableMsg1": "Enable Autofill for this database",
             "enableMsg2": "You need to enable this database to use in autofill",
             "enableMsg3": "This database is ready to use in autofill",
