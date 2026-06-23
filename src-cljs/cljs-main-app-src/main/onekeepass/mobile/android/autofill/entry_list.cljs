@@ -1,7 +1,6 @@
 (ns onekeepass.mobile.android.autofill.entry-list
   "Only the Android Autofill specific entry list components"
-  (:require [clojure.string :as str]
-            [onekeepass.mobile.android.autofill.events.common :as android-af-cmn-events]
+  (:require [onekeepass.mobile.android.autofill.events.common :as android-af-cmn-events]
             [onekeepass.mobile.android.autofill.events.entry-list :as el-events]
             [onekeepass.mobile.common-components :refer [menu-action-factory]]
             [onekeepass.mobile.constants :refer [TR-KEY-AUTOFILL]]
@@ -126,14 +125,14 @@
 (defn main-content []
   (let [entry-items @(el-events/selected-entry-items)
         search-entry-items @(android-af-cmn-events/search-result-entry-items)
-        term @(android-af-cmn-events/search-term)
+        not-matched @(android-af-cmn-events/search-not-matched)
         entry-items (if (empty? search-entry-items) entry-items  search-entry-items)
         sections [{:title "Entries"
                    :key "Entries"
                    :data entry-items}]]
 
     [rn-view
-     (when (and (not (str/blank? term)) (empty? search-entry-items))
+     (when (and not-matched (empty? search-entry-items))
        [rn-view {:style {:margin-top 5 :height 40 :justify-content "center"}}
         [rnp-text {:style {:text-align "center" :color @rnc/error-color}
                    :variant "titleSmall"} (lstr-mt TR-KEY-AUTOFILL 'noEntryFound)]])

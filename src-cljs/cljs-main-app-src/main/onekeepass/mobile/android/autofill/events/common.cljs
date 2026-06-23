@@ -1,6 +1,7 @@
 (ns onekeepass.mobile.android.autofill.events.common
   "Only the Android Autofill specific common events. All events should be prefixed with :android-af"
   (:require
+   [clojure.string :as str]
    [onekeepass.mobile.background :as bg]
    [onekeepass.mobile.constants :refer [CATEGORY_ALL_ENTRIES]]
    [onekeepass.mobile.constants :as const]
@@ -554,11 +555,23 @@
   []
   (subscribe [:android-af-search-term]))
 
+(defn search-not-matched
+  "True when the last auto-match / search found no entries"
+  []
+  (subscribe [:android-af-search-not-matched]))
+
 (reg-event-fx
  :android-af-search-term-update
  (fn [{:keys [db]} [_event-id term]]
-   {:db (assoc-in db [:android-af :search :term] term)
-    :fx [[:bg-android-af-start-term-search [(android-af-active-db-key db) term]]]}))
+   ;; An empty/cleared term is not a search: reset results and the not-matched
+   ;; banner instead of querying the backend (which would report 0 matches).
+   (if (str/blank? term)
+     {:db (-> db
+              (assoc-in [:android-af :search :term] term)
+              (assoc-in [:android-af :search :not-matched] false)
+              (assoc-in [:android-af :search :result] []))}
+     {:db (assoc-in db [:android-af :search :term] term)
+      :fx [[:bg-android-af-start-term-search [(android-af-active-db-key db) term]]]})))
 
 (reg-event-fx
  :android-af-search-term-completed
@@ -593,10 +606,10 @@
  :bg-android-af-start-term-search
  ;; fn in 'reg-fx' accepts only single argument
  (fn [[db-key term]]
-   (bg/search-term db-key term
-                   (fn [api-response]
-                     (when-let [result (on-ok api-response #(dispatch [:android-af-search-error-text %]))]
-                       (dispatch [:android-af-search-term-completed result]))))))
+   (bg/autofill-search-term db-key term
+                            (fn [api-response]
+                              (when-let [result (on-ok api-response #(dispatch [:android-af-search-error-text %]))]
+                                (dispatch [:android-af-search-term-completed result]))))))
 
 
 ;; Gets the matched entry items if any
@@ -618,6 +631,11 @@
  :android-af-search-term
  (fn [db _query-vec]
    (get-in db [:android-af :search :term])))
+
+(reg-sub
+ :android-af-search-not-matched
+ (fn [db _query-vec]
+   (get-in db [:android-af :search :not-matched])))
 
 
 ;;;;;;;;;;;;;;;;;;;;;  DB close related ;;;;;;;;;;;;;;

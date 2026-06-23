@@ -66,6 +66,12 @@
                            REMOTE_CONNECTION_SFTP_TYPE_NAME
                            REMOTE_CONNECTION_WEBDAV_TYPE_NAME])
 
+;; Standard entry types temporarily hidden from the new-entry type picker.
+;; The type still exists in the core - existing entries of this type render and
+;; work normally; we just don't let users CHOOSE it for new entries yet.
+;; To re-enable, remove the name from this set (or make the set empty).
+(def HIDDEN_NEW_ENTRY_TYPE_NAMES #{EMAIL_ACCOUNT_TYPE_NAME})
+
 ;; Based on the enum 'EntryCategory'
 (def CATEGORY_ALL_ENTRIES "AllEntries")
 (def CATEGORY_FAV_ENTRIES "Favorites")

@@ -293,21 +293,31 @@ impl AndroidSupportServiceExtra {
 
             debug!("Received AF client info {:?}", &identifiers);
 
-            //
-            let term = if let Some(url) = identifiers.get("uri") {
-                if let Ok(u) = Url::parse(url) {
-                    u.domain()
-                        .map_or_else(|| String::default(), |s| s.to_string())
+            // Build the login URL to match against. Browsers pass a web "uri";
+            // if it lacks a scheme (a bare domain) we assume https so the shared
+            // matcher (scheme + host) can parse it.
+            let input_url = if let Some(uri) = identifiers.get("uri") {
+                if Url::parse(uri).is_ok() {
+                    uri.to_string()
                 } else {
-                    url.to_string()
+                    format!("https://{}", uri)
                 }
             } else {
                 String::default()
             };
 
-            debug!("The filtered_entries domain term is {}", &term);
-            let search_result = db_service::search_term(&db_key, &term)?;
-            Ok(search_result)
+            debug!("The autofill input url to match is {}", &input_url);
+            // Only Login entries whose URL (or Additional URLs) matches are offered
+            // (consistent with the desktop browser extension).
+            let entry_items =
+                db_service::autofill::find_matching_login_entries(&db_key, &input_url)?;
+            // The auto-match term is left empty so the searchbar starts blank
+            // (showing the full match url there is awkward). The matched entries
+            // are returned regardless; the searchbar is only for manual override.
+            Ok(db_service::EntrySearchResult {
+                term: String::default(),
+                entry_items,
+            })
         };
 
         result_json_str(inner_fn())

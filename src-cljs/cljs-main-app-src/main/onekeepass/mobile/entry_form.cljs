@@ -131,8 +131,13 @@
 
 (defn entry-type-selection []
   (let [entry-types (clj->js
-                     (mapv (fn [{:keys [name uuid]}]
-                             {:key uuid :label name}) @(cmn-events/all-entry-type-headers)))
+                     ;; Skip any entry type temporarily hidden from the new-entry
+                     ;; picker (see const/HIDDEN_NEW_ENTRY_TYPE_NAMES).
+                     (->> @(cmn-events/all-entry-type-headers)
+                          (remove (fn [{:keys [name]}]
+                                    (contains? const/HIDDEN_NEW_ENTRY_TYPE_NAMES name)))
+                          (mapv (fn [{:keys [name uuid]}]
+                                  {:key uuid :label name}))))
         entry-type-name-selection (form-events/entry-form-field :entry-type-name-selection)]
     [select-field {:text-label (str (lstr-l 'entryType) "*")
                    :options entry-types

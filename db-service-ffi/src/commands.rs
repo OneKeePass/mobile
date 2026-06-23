@@ -642,6 +642,12 @@ impl Commands {
                 db_service_call! (args, SearchArg{db_key,term} => search_term(&db_key,&term))
             }
 
+            // Manual search inside the autofill UI: Login-type entries matched on
+            // their URL / Additional URLs fields only (not all fields).
+            "autofill_search_term" => {
+                db_service_call! (args, SearchArg{db_key,term} => autofill_search_term(&db_key,&term))
+            }
+
             // ===== Custom icons =====
             "list_custom_icons" => {
                 db_service_call! (args, DbKey{db_key} => list_custom_icons(&db_key))
