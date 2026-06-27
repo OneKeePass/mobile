@@ -86,7 +86,7 @@
 
 (defn entry-long-press-menu [{:keys [show x y entry-summary]}]
   (let [deleted-cat @(elist-events/deleted-category-showing)
-        {:keys [uuid parent-group-uuid entry-type-name]} entry-summary]
+        {:keys [uuid parent-group-uuid entry-type-uuid]} entry-summary]
     (if-not deleted-cat
       [rnp-menu {:visible show :key (str show) :onDismiss hide-entry-long-press-menu :anchor (clj->js {:x x :y y})}
        ;; TODO: Need to add a rust api to toggle an entry as Favorites or not and then enable this
@@ -100,10 +100,10 @@
                        :onPress (entry-long-press-menu-action cc/show-entry-delete-confirm-dialog uuid)}]
 
        ;; Launch the remote Storage Browser using this connection entry
-       (when (cmn-events/remote-connection-entry-type? entry-type-name)
+       (when (cmn-events/remote-connection-entry-type? entry-type-uuid)
          [rnp-menu-item {:title (lstr-ml "openRemote")
                          :onPress (entry-long-press-menu-action
-                                   rs-events/open-entry-remote entry-type-name uuid)}])
+                                   rs-events/open-entry-remote entry-type-uuid uuid)}])
 
 
 

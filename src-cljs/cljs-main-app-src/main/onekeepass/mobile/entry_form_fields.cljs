@@ -212,14 +212,14 @@
     :as kvm}]
   (let [cust-color @page-background-color
         is-password-edit? (and edit (= key PASSWORD))
-        entry-type-name @(form-events/entry-form-data-fields :entry-type-name)
+        entry-type-uuid @(form-events/entry-form-data-fields :entry-type-uuid)
         entry-uuid @(form-events/entry-form-uuid)
         ;; Read-mode launch of the remote Storage Browser from the connection
         ;; field of an SFTP/WebDAV connection entry: Host for SFTP, URL for WebDAV.
         rs-conn-launch? (and (not edit)
-                             (or (and (= entry-type-name const/REMOTE_CONNECTION_SFTP_TYPE_NAME)
+                             (or (and (= entry-type-uuid const/UUID_OF_ENTRY_TYPE_REMOTE_CONNECTION_SFTP)
                                       (= key const/HOST))
-                                 (and (= entry-type-name const/REMOTE_CONNECTION_WEBDAV_TYPE_NAME)
+                                 (and (= entry-type-uuid const/UUID_OF_ENTRY_TYPE_REMOTE_CONNECTION_WEBDAV)
                                       (= key URL))))
         ;; kdbx:// or https:// or http. For a WebDAV connection entry the URL
         ;; field shows the storage-launch icon instead of the open-url icon.
@@ -281,7 +281,7 @@
          [rnp-icon-button {:style {:margin-right 0}
                            :icon const/ICON-LAUNCH
                            :onPress (fn []
-                                      (rs-events/open-entry-remote entry-type-name entry-uuid))}]])]
+                                      (rs-events/open-entry-remote entry-type-uuid entry-uuid))}]])]
 
      ;; Any error text below the field, otherwise the field's helper text (e.g. CVC, Additional URLs)
      (cond

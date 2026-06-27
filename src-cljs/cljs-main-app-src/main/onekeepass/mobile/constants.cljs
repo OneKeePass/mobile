@@ -34,6 +34,7 @@
 (def DRIVER_LICENSE_TYPE_NAME "Driver License")
 (def EMAIL_ACCOUNT_TYPE_NAME "Email Account")
 (def SSH_LOGIN_TYPE_NAME "SSH Login")
+(def SSH_KEY_TYPE_NAME "SSH Key")
 (def API_CREDENTIAL_TYPE_NAME "API Credential")
 (def DATABASE_CREDENTIAL_TYPE_NAME "Database Credential")
 (def SOFTWARE_LICENSE_TYPE_NAME "Software License")
@@ -41,8 +42,11 @@
 (def CRYPTO_WALLET_TYPE_NAME "Crypto Wallet")
 (def INSURANCE_POLICY_TYPE_NAME "Insurance Policy")
 
-(def REMOTE_CONNECTION_TYPE_NAMES #{REMOTE_CONNECTION_SFTP_TYPE_NAME
-                                    REMOTE_CONNECTION_WEBDAV_TYPE_NAME})
+;; Remote-connection entry types identified by their stable type uuid (not the
+;; display name, which can change). entry-type-uuid comes from the entry's form
+;; data / EntrySummary.
+(def REMOTE_CONNECTION_TYPE_UUIDS #{UUID_OF_ENTRY_TYPE_REMOTE_CONNECTION_SFTP
+                                    UUID_OF_ENTRY_TYPE_REMOTE_CONNECTION_WEBDAV})
 
 ;; Standard entry type names. The new-entry type menu is built from the
 ;; backend entry-type headers; this list is used to decide whether an entry
@@ -55,6 +59,7 @@
                            DRIVER_LICENSE_TYPE_NAME
                            EMAIL_ACCOUNT_TYPE_NAME
                            SSH_LOGIN_TYPE_NAME
+                           SSH_KEY_TYPE_NAME
                            API_CREDENTIAL_TYPE_NAME
                            DATABASE_CREDENTIAL_TYPE_NAME
                            SOFTWARE_LICENSE_TYPE_NAME
@@ -313,6 +318,7 @@
 (def ICON-CAR-OUTLINE "car-outline")                                   ;; Driver License
 (def ICON-EMAIL-OUTLINE "email-outline")                               ;; Email Account
 (def ICON-SERVER "server")                                             ;; SSH Login
+(def ICON-KEY-VARIANT "key-variant")                                   ;; SSH Key
 (def ICON-API "api")                                                   ;; API Credential
 (def ICON-CERTIFICATE-OUTLINE "certificate-outline")                   ;; Software License
 (def ICON-WALLET-MEMBERSHIP "wallet-membership")                       ;; Membership
