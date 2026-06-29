@@ -1,8 +1,9 @@
 (ns onekeepass.mobile.events.entry-list
-  (:require 
+  (:require
+   [clojure.string :as str]
    [onekeepass.mobile.events.common :refer [assoc-in-key-db
                                             get-in-key-db
-                                            active-db-key 
+                                            active-db-key
                                             on-ok]]
    [re-frame.core :refer [reg-event-db
                           reg-event-fx
@@ -97,7 +98,8 @@
    (fn [{:keys [title modified-time created-time]}]
      (cond
        (= key-name const/TITLE)
-       title
+       ;; Case-insensitive title sort so e.g. "apple" is not pushed below "Zebra"
+       (some-> title str/lower-case)
 
        (= key-name const/MODIFIED_TIME)
        modified-time
@@ -106,7 +108,7 @@
        created-time
 
        :else
-       title))
+       (some-> title str/lower-case)))
 
    ;; This is comparater for the keys
    (fn [v1 v2] (if (= direction const/ASCENDING)
