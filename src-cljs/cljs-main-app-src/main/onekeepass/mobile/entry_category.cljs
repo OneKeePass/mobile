@@ -186,15 +186,7 @@
                      const/PASSPORT_TYPE_NAME const/ICON-PASSPORT
                      const/IDENTITY_TYPE_NAME const/ICON-CARD-ACCOUNT-DETAILS-OUTLINE
                      const/DRIVER_LICENSE_TYPE_NAME const/ICON-CAR-OUTLINE
-                     const/EMAIL_ACCOUNT_TYPE_NAME const/ICON-EMAIL-OUTLINE
-                     const/SSH_LOGIN_TYPE_NAME const/ICON-SERVER
                      const/SSH_KEY_TYPE_NAME const/ICON-KEY-VARIANT
-                     const/API_CREDENTIAL_TYPE_NAME const/ICON-API
-                     const/DATABASE_CREDENTIAL_TYPE_NAME const/ICON-DATABASE-OUTLINE
-                     const/SOFTWARE_LICENSE_TYPE_NAME const/ICON-CERTIFICATE-OUTLINE
-                     const/MEMBERSHIP_TYPE_NAME const/ICON-WALLET-MEMBERSHIP
-                     const/CRYPTO_WALLET_TYPE_NAME const/ICON-WALLET-OUTLINE
-                     const/INSURANCE_POLICY_TYPE_NAME const/ICON-SHIELD-CHECK-OUTLINE
                      const/REMOTE_CONNECTION_SFTP_TYPE_NAME const/ICON-FOLDER-NETWORK-OUTLINE
                      const/REMOTE_CONNECTION_WEBDAV_TYPE_NAME const/ICON-CLOUD-OUTLINE})
 
