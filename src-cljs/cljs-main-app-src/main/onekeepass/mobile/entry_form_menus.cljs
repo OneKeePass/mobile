@@ -43,21 +43,23 @@
                                                :show false
                                                :x 0 :y 0}))
 
-(defn custom-field-menu-show [^js/PEvent event section-name key protected required]
+(defn custom-field-menu-show [^js/PEvent event section-name key protected required data-type]
   (swap! custom-field-menu-data assoc
          :section-name section-name
-         ;; need to use field-name instead of 'key' as key 
+         ;; need to use field-name instead of 'key' as key
          ;; in the custom-field-menu-data for the menu popup work properly
          :field-name key
          :protected protected
          :required required
+         ;; Carried so the modify dialog can disable 'protected' for Boolean/Date fields
+         :data-type data-type
          :show true
          :x (-> event .-nativeEvent .-pageX) :y (-> event .-nativeEvent .-pageY)))
 
 (defn custom-field-menu-action-on-dismiss []
   (swap! custom-field-menu-data assoc :show false))
 
-(defn custom-field-menu [{:keys [show x y section-name field-name protected required]}]
+(defn custom-field-menu [{:keys [show x y section-name field-name protected required data-type]}]
   [rnp-menu {:visible show :key (str show)
              :onDismiss custom-field-menu-action-on-dismiss
              :anchor (clj->js {:x x :y y})}
@@ -67,6 +69,7 @@
                                {:key field-name
                                 :protected protected
                                 :required required
+                                :data-type data-type
                                 :section-name section-name})
                               (custom-field-menu-action-on-dismiss))}]
    [rnp-menu-item {:title (lstr-ml "deleteField")

@@ -199,9 +199,11 @@
            protected
            standard-field
            required
+           data-type
            edit
            on-change-text
            error-text
+           helper-text
            section-name]
     :or {edit false
          protected false
@@ -210,14 +212,14 @@
     :as kvm}]
   (let [cust-color @page-background-color
         is-password-edit? (and edit (= key PASSWORD))
-        entry-type-name @(form-events/entry-form-data-fields :entry-type-name)
+        entry-type-uuid @(form-events/entry-form-data-fields :entry-type-uuid)
         entry-uuid @(form-events/entry-form-uuid)
         ;; Read-mode launch of the remote Storage Browser from the connection
         ;; field of an SFTP/WebDAV connection entry: Host for SFTP, URL for WebDAV.
         rs-conn-launch? (and (not edit)
-                             (or (and (= entry-type-name const/REMOTE_CONNECTION_SFTP_TYPE_NAME)
+                             (or (and (= entry-type-uuid const/UUID_OF_ENTRY_TYPE_REMOTE_CONNECTION_SFTP)
                                       (= key const/HOST))
-                                 (and (= entry-type-name const/REMOTE_CONNECTION_WEBDAV_TYPE_NAME)
+                                 (and (= entry-type-uuid const/UUID_OF_ENTRY_TYPE_REMOTE_CONNECTION_WEBDAV)
                                       (= key URL))))
         ;; kdbx:// or https:// or http. For a WebDAV connection entry the URL
         ;; field shows the storage-launch icon instead of the open-url icon.
@@ -262,7 +264,7 @@
         [rn-view {:style {:margin-left -5 :backgroundColor cust-color}}
          [rnp-icon-button {:style {:margin-right 0}
                            :icon dots-icon-name
-                           :onPress #(custom-field-menu-show % section-name key protected required)}]])
+                           :onPress #(custom-field-menu-show % section-name key protected required data-type)}]])
 
       ;; We are using 'absolute' position to add this icon button instead of setting to "right" prop of textinput field 
       ;; and it works in iOS (needs checking in android)
@@ -279,30 +281,108 @@
          [rnp-icon-button {:style {:margin-right 0}
                            :icon const/ICON-LAUNCH
                            :onPress (fn []
-                                      (rs-events/open-entry-remote entry-type-name entry-uuid))}]])]
+                                      (rs-events/open-entry-remote entry-type-uuid entry-uuid))}]])]
 
-     ;; Any error text below the field
-     (when (and edit (not (nil? error-text)))
-       [rnp-helper-text {:type "error" :visible true} error-text])]))
+     ;; Any error text below the field, otherwise the field's helper text (e.g. CVC, Additional URLs)
+     (cond
+       (and edit (not (nil? error-text)))
+       [rnp-helper-text {:type "error" :visible true} error-text]
+
+       (and edit (not (str/blank? helper-text)))
+       [rnp-helper-text {:type "info" :visible true} helper-text])]))
 
 (defn bool-field
-  "Renders a boolean field (core FieldDataType::Bool, e.g. allowUntrustedCert) in
-   edit mode as a labeled Switch row. The value is stored as a string; the core
-   treats true/1/yes (case-insensitive) as true, so we write back \"true\"/\"false\".
-   Non-edit (read) mode is not handled here - it falls through to the plain
-   text-field so the value is shown as text."
-  [{:keys [value on-change-text] :as kv}]
+  "Renders a boolean field (core FieldDataType::Bool, e.g. allowUntrustedCert) as a labeled
+   Switch row in both edit and non-edit (read) mode. In read mode the Switch is shown but
+   disabled (not editable). The value is stored as a string; the core treats true/1/yes
+   (case-insensitive) as true, so we write back \"true\"/\"false\"."
+  [{:keys [key value edit on-change-text section-name standard-field protected required data-type] :as kv}]
   (let [label (to-field-label kv)
         checked? (contains? #{"true" "1" "yes"}
-                            (-> (str value) str/trim str/lower-case))]
-    [rn-view {:style {:flexDirection "row" :min-height 60 :justify-content "space-between"}}
-     [rnp-text {:style {:align-self "center" :padding-left 15} :variant "bodySmall"} label]
-     [rn-view {:style {:padding-right 10 :align-self "center"}}
-      [rnp-switch {:style {:align-self "center"}
-                   :value checked?
-                   :onValueChange (fn []
-                                    (when on-change-text
-                                      (on-change-text (if checked? "false" "true"))))}]]]))
+                            (-> (str value) str/trim str/lower-case))
+        ;; The '...' menu (and hence the label-on-top layout) is only for custom fields in
+        ;; edit mode. Standard/predefined fields and read mode keep the switch on the right.
+        show-menu? (and edit (not standard-field))
+        switch-el [rnp-switch {:value checked?
+                               :disabled (not edit)
+                               :onValueChange (fn []
+                                                (when (and edit on-change-text)
+                                                  (on-change-text (if checked? "false" "true"))))}]]
+    (if show-menu?
+      ;; Custom field, edit mode: laid out like the other custom fields (date/text) - a small
+      ;; caption label on top with the Switch below it and the '...' menu on the right.
+      [rn-view {:style {:flexDirection "row" :align-items "center"
+                        :border-bottom-width 0.5 :border-bottom-color @rnc/outline-color}}
+       [rn-view {:style {:flex 1 :padding-top 8 :padding-bottom 8}}
+        [rnp-text {:variant "bodySmall"
+                   :style {:padding-left 16 :color @rnc/outline-color}} label]
+        [rn-view {:style {:padding-left 12 :padding-top 2 :align-items "flex-start"}}
+         switch-el]]
+       [rnp-icon-button {:style {:margin-right 0}
+                         :icon dots-icon-name
+                         :onPress #(custom-field-menu-show % section-name key protected required data-type)}]]
+      ;; Standard field, or read mode: label on the left and Switch on the right (disabled in
+      ;; read mode), with a thin bottom underline like the other fields.
+      [rn-view {:style {:flexDirection "row" :min-height 60 :justify-content "space-between" :align-items "center"
+                        :border-bottom-width 0.5 :border-bottom-color @rnc/outline-color}}
+       [rnp-text {:style {:align-self "center" :padding-left 15} :variant "bodySmall"} label]
+       [rn-view {:style {:padding-right 10 :align-self "center"}}
+        switch-el]])))
+
+(defn- yyyy-mm-dd->date
+  "Parses a stored 'yyyy-MM-dd' string into a local Date (at midnight). Returns nil for a
+   blank/malformed value so the picker shows an empty field."
+  [s]
+  (when (and s (re-matches #"\d{4}-\d{2}-\d{2}" s))
+    (let [[y m d] (mapv js/parseInt (str/split s #"-"))]
+      (js/Date. y (dec m) d))))
+
+(defn- date->yyyy-mm-dd
+  "Formats a Date back to the stored 'yyyy-MM-dd' string using its local date parts. Returns
+   an empty string when the date is nil/invalid (e.g. the field was cleared)."
+  [^js/Date d]
+  (if (and d (not (js/isNaN (.getTime d))))
+    (let [mm (inc (.getMonth d))
+          dd (.getDate d)]
+      (str (.getFullYear d) "-"
+           (when (< mm 10) "0") mm "-"
+           (when (< dd 10) "0") dd))
+    ""))
+
+(defn date-field
+  "Renders a Date field (core FieldDataType::Date) in edit mode using react-native-paper-dates'
+   inline DatePickerInput - a Paper text field with a calendar icon that opens a Material date
+   modal. The value is stored as a locale-independent 'yyyy-MM-dd' string (the picker itself
+   displays/parses in the device locale format, shown in the label). Non-edit (read) mode is
+   not handled here - it falls through to the plain text-field so the value is shown as text."
+  [{:keys [key value error-text on-change-text edit section-name standard-field protected required data-type] :as kv}]
+  (let [date-val (yyyy-mm-dd->date value)
+        show-menu? (and edit (not standard-field))]
+    [rn-view {:style {:flexDirection "column"}}
+     [rn-view {:style {:flexDirection "row" :align-items "center"}}
+      [rn-view {:style {:flex 1}}
+       [rnc/date-picker-input
+        {;; 'en-CA' keeps English labels but gives the ISO YYYY-MM-DD input mask (see rn-components)
+         :locale "en-CA"
+         :inputMode "start"
+         :mode "flat"
+         :label (to-field-label kv)
+         :value date-val
+         ;; Show the expected date format in the label
+         :withDateFormatInLabel true
+         :hasError (not (nil? error-text))
+         ;; The picker uses a raw Paper TextInput whose flat-mode fill defaults to surfaceVariant
+         ;; (grey). Set the same background the app's RNPTextInput uses so it matches other fields.
+         :style {:backgroundColor @page-background-color}
+         ;; onChange fires only with a valid Date (or nil when cleared); store it as 'yyyy-MM-dd'
+         :onChange (fn [d] (on-change-text (date->yyyy-mm-dd d)))}]]
+      ;; '...' menu to modify/delete this custom field (custom, non-standard fields only)
+      (when show-menu?
+        [rnp-icon-button {:style {:margin-right 0}
+                          :icon dots-icon-name
+                          :onPress #(custom-field-menu-show % section-name key protected required data-type)}])]
+     (when (not (nil? error-text))
+       [rnp-helper-text {:type "error" :visible true} error-text])]))
 
 (defn formatted-token
   "Groups digits with spaces between them for easy reading"

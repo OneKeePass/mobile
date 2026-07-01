@@ -1,6 +1,5 @@
 (ns onekeepass.ios.autofill.entry-list
-  (:require [clojure.string :as str]
-            [onekeepass.ios.autofill.common-components :refer [menu-action-factory]]
+  (:require [onekeepass.ios.autofill.common-components :refer [menu-action-factory]]
             [onekeepass.ios.autofill.constants :refer [PASSWORD
                                                        TR-KEY-AUTOFILL
                                                        USERNAME]]
@@ -95,14 +94,14 @@
 (defn main-content []
   (let [entry-items @(el-events/selected-entry-items)
         search-entry-items @(cmn-events/search-result-entry-items)
-        term @(cmn-events/search-term)
+        not-matched @(cmn-events/search-not-matched)
         entry-items (if (empty? search-entry-items) entry-items  search-entry-items)
         sections [{:title "Entries"
                    :key "Entries"
                    :data entry-items}]]
 
     [rn-view
-     (when (and (not (str/blank? term)) (empty? search-entry-items))
+     (when (and not-matched (empty? search-entry-items))
        [rn-view {:style {:margin-top 5 :height 40 :justify-content "center" }}
         [rnp-text {:style {:text-align "center" :color @rnc/error-color} 
                    :variant "titleSmall"} (lstr-mt TR-KEY-AUTOFILL 'noEntryFound) ]])

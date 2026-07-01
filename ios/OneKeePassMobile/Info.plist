@@ -60,7 +60,7 @@
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>This app does not use any location information</string>
 	<key>RCTNewArchEnabled</key>
-	<false/>
+	<true/>
 	<key>UIAppFonts</key>
 	<array>
 		<string>MaterialDesignIcons.ttf</string>

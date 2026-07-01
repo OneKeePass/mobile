@@ -6,6 +6,7 @@
                                                                 select-tags-dialog]]
             [onekeepass.mobile.constants :as const :refer [ADDITIONAL_ONE_TIME_PASSWORDS
                                                            BOOL_TYPE
+                                                           DATE_TYPE
                                                            IFDEVICE
                                                            ONE_TIME_PASSWORD_TYPE
                                                            PASSWORD URL
@@ -25,7 +26,7 @@
                                                           rename-attachment-name-dialog-data
                                                           setup-otp-action-dialog
                                                           setup-otp-action-dialog-show]]
-            [onekeepass.mobile.entry-form-fields :refer [bool-field otp-field text-field]]
+            [onekeepass.mobile.entry-form-fields :refer [bool-field date-field otp-field text-field]]
             [onekeepass.mobile.entry-form-menus :refer [attachment-long-press-menu
                                                         attachment-long-press-menu-data
                                                         custom-field-menu
@@ -130,8 +131,9 @@
 
 (defn entry-type-selection []
   (let [entry-types (clj->js
-                     (mapv (fn [{:keys [name uuid]}]
-                             {:key uuid :label name}) @(cmn-events/all-entry-type-headers)))
+                     (->> @(cmn-events/all-entry-type-headers)
+                          (mapv (fn [{:keys [name uuid]}]
+                                  {:key uuid :label name}))))
         entry-type-name-selection (form-events/entry-form-field :entry-type-name-selection)]
     [select-field {:text-label (str (lstr-l 'entryType) "*")
                    :options entry-types
@@ -446,10 +448,20 @@
                                                 :section-name section-name
                                                 :standard-field standard-field)]
 
-                  ;; Boolean field (e.g. allowUntrustedCert) in edit mode shows a
-                  ;; Switch. In non-edit mode it falls through to the plain text-field.
-                  (and edit (= data-type BOOL_TYPE))
+                  ;; Boolean field (e.g. allowUntrustedCert) shows a Switch in both edit
+                  ;; and non-edit mode; in non-edit mode the Switch is shown but disabled.
+                  (= data-type BOOL_TYPE)
                   ^{:key key} [bool-field (assoc kv
+                                                 :edit edit
+                                                 :section-name section-name
+                                                 :on-change-text #(form-events/update-section-value-on-change
+                                                                   section-name key %))]
+
+                  ;; Date field (core FieldDataType::Date) in edit mode shows a date picker.
+                  ;; In non-edit mode it falls through to the plain text-field.
+                  (and edit (= data-type DATE_TYPE))
+                  ^{:key key} [date-field (assoc kv
+                                                 :edit edit
                                                  :section-name section-name
                                                  :on-change-text #(form-events/update-section-value-on-change
                                                                    section-name key %))]

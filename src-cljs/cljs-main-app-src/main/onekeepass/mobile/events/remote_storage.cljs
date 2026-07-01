@@ -416,15 +416,15 @@
 ;; connect-by-id flow (which navigates to the storage browser on success).
 ;; Called from the entry list long-press menu and the entry form (launch icon /
 ;; menu) for remote-connection entries.
-(defn open-entry-remote [entry-type-name entry-uuid]
-  (dispatch [:remote-storage-open-entry-remote entry-type-name entry-uuid]))
+(defn open-entry-remote [entry-type-uuid entry-uuid]
+  (dispatch [:remote-storage-open-entry-remote entry-type-uuid entry-uuid]))
 
 (reg-event-fx
  :remote-storage-open-entry-remote
- (fn [{:keys [db]} [_query-id entry-type-name entry-uuid]]
-   (let [kw-type (condp = entry-type-name
-                   const/REMOTE_CONNECTION_SFTP_TYPE_NAME :sftp
-                   const/REMOTE_CONNECTION_WEBDAV_TYPE_NAME :webdav
+ (fn [{:keys [db]} [_query-id entry-type-uuid entry-uuid]]
+   (let [kw-type (condp = entry-type-uuid
+                   const/UUID_OF_ENTRY_TYPE_REMOTE_CONNECTION_SFTP :sftp
+                   const/UUID_OF_ENTRY_TYPE_REMOTE_CONNECTION_WEBDAV :webdav
                    nil)]
      (if kw-type
        ;; Set current-rs-type so the storage browser's sub-dir / back actions

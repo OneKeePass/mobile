@@ -49,6 +49,7 @@ ios-device-release-lib-output := "target/aarch64-apple-ios/release/libdb_service
 
 ios_sim_sdk_root := `xcrun --sdk iphonesimulator  --show-sdk-path`
 ios_sdk_root := `xcrun --sdk iphoneos --show-sdk-path`
+ios_deployment_target := "15.1"
 
 # This uses only the udl file
 # generate-swift:
@@ -109,6 +110,7 @@ build-ios-device-lib release="":
     #!/usr/bin/env bash
     set -euxo pipefail
     export SDKROOT={{ios_sdk_root}}
+    export IPHONEOS_DEPLOYMENT_TARGET={{ios_deployment_target}}
     export BOTAN_CONFIGURE_OS='ios'
     export BOTAN_CONFIGURE_CC_ABI_FLAGS='-arch arm64'
     export BOTAN_CONFIGURE_CC='clang'

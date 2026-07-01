@@ -15,6 +15,7 @@
    ["react-native-gesture-handler" :as gh]
    ["react-native-modal-selector" :as rnms]
    ["react-native-paper" :as rnp]
+   ["react-native-paper-dates" :as paper-dates]
    ["react-native-safe-area-context" :as sa-context]
    ["@react-native-vector-icons/material-design-icons"]
    #_["react-native-vector-icons" :as vec-icons]
@@ -55,7 +56,11 @@
 (defn theme-to-use [prefered-theme]
   (let [theme (if (= prefered-theme DEFAULT-SYSTEM-THEME)
                 (do
-                  (.setColorScheme appearance nil)
+                  ;; RN 0.85 (New Arch): Appearance.setColorScheme's param is non-null
+                  ;; ColorSchemeName ('light' | 'dark' | 'unspecified'). "unspecified"
+                  ;; means "follow the OS scheme" — the old `nil` now crashes with
+                  ;; "Parameter specified as non-null is null ... setColorScheme".
+                  (.setColorScheme appearance "unspecified")
                   (.getColorScheme appearance))
                 prefered-theme)]
     theme))
@@ -154,6 +159,15 @@
 ;; Slider component from react native community
 ;; See https://github.com/callstack/react-native-slider for all props
 (def rnp-slider (r/adapt-react-class (.-default ^js/RncSlider rnc-slider)))
+
+;; react-native-paper-dates: 'DatePickerInput' is an inline Paper TextInput with a calendar
+;; icon that opens a Material date-picker modal. Used for entry-type Date fields.
+;; The translation must be registered once (before the component first renders). We register
+;; the English text under both 'en' and 'en-CA': the picker derives its input mask from the
+;; locale via Intl, and 'en-CA' yields the ISO 'YYYY-MM-DD' order while keeping English labels.
+(.registerTranslation ^js paper-dates "en" (.-en ^js paper-dates))
+(.registerTranslation ^js paper-dates "en-CA" (.-en ^js paper-dates))
+(def date-picker-input (r/adapt-react-class (.-DatePickerInput ^js paper-dates)))
 
 (declare-comp-classes [GestureHandlerRootView] "gh-" "gh/")
 

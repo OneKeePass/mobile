@@ -308,11 +308,23 @@
   []
   (subscribe [:search-term]))
 
+(defn search-not-matched
+  "True when the last auto-match / search found no entries"
+  []
+  (subscribe [:search-not-matched]))
+
 (reg-event-fx
  :search-term-update
  (fn [{:keys [db]} [_event-id term]]
-   {:db (assoc-in db [:search :term] term)
-    :fx [[:bg-start-term-search [(active-db-key db) term]]]}))
+   ;; An empty/cleared term is not a search: reset results and the not-matched
+   ;; banner instead of querying the backend (which would report 0 matches).
+   (if (str/blank? term)
+     {:db (-> db
+              (assoc-in [:search :term] term)
+              (assoc-in [:search :not-matched] false)
+              (assoc-in [:search :result] []))}
+     {:db (assoc-in db [:search :term] term)
+      :fx [[:bg-start-term-search [(active-db-key db) term]]]})))
 
 (reg-event-fx
  :search-term-completed
@@ -332,6 +344,7 @@
    (-> db (assoc-in [:search :term] nil)
        (assoc-in  [:search :error-text] nil)
        (assoc-in [:search :selected-entry-id] nil)
+       (assoc-in  [:search :not-matched] false)
        (assoc-in  [:search :result] []))))
 
 ;; Backend API call 
@@ -363,6 +376,11 @@
  :search-term
  (fn [db _query-vec]
    (get-in db [:search :term])))
+
+(reg-sub
+ :search-not-matched
+ (fn [db _query-vec]
+   (get-in db [:search :not-matched])))
 
 ;;;;;;;;;;;;;;; Error dialog ;;;;;;;;;;;;;
 

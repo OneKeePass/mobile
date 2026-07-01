@@ -10,7 +10,7 @@
                                                   HOME_PAGE_ID
                                                   ICONS_LIST_PAGE_ID
                                                   PRIVACY_POLICY_PAGE_ID
-                                                  REMOTE_CONNECTION_TYPE_NAMES]]
+                                                  REMOTE_CONNECTION_TYPE_UUIDS]]
    [onekeepass.mobile.utils :as u :refer [str->int tags->vec]]
    [re-frame.core :refer [dispatch dispatch-sync reg-event-db reg-event-fx
                           reg-fx reg-sub subscribe]]))
@@ -20,9 +20,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Remote connections related ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn remote-connection-entry-type?
-  "True when the given entry-type-name is an SFTP/WebDAV connection entry."
-  [entry-type-name]
-  (contains? REMOTE_CONNECTION_TYPE_NAMES entry-type-name))
+  "True when the given entry-type-uuid is an SFTP/WebDAV connection entry."
+  [entry-type-uuid]
+  (contains? REMOTE_CONNECTION_TYPE_UUIDS entry-type-uuid))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

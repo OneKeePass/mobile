@@ -1,9 +1,9 @@
 (ns onekeepass.mobile.android.autofill.entry-list
   "Only the Android Autofill specific entry list components"
-  (:require [clojure.string :as str]
-            [onekeepass.mobile.android.autofill.events.common :as android-af-cmn-events]
+  (:require [onekeepass.mobile.android.autofill.events.common :as android-af-cmn-events]
+            [onekeepass.mobile.android.autofill.events.entry-form :as af-ef-events]
             [onekeepass.mobile.android.autofill.events.entry-list :as el-events]
-            [onekeepass.mobile.common-components :refer [menu-action-factory]]
+            [onekeepass.mobile.common-components :as cc :refer [menu-action-factory]]
             [onekeepass.mobile.constants :refer [TR-KEY-AUTOFILL]]
             [onekeepass.mobile.events.custom-icons :as ci-events]
             [onekeepass.mobile.icons-list :refer [icon-id->name]]
@@ -22,7 +22,7 @@
                                                              rnp-portal
                                                              rnp-searchbar
                                                              rnp-text]]
-            [onekeepass.mobile.translation :refer [lstr-cv lstr-ml lstr-mt]]
+            [onekeepass.mobile.translation :refer [lstr-bl lstr-cv lstr-ml lstr-mt]]
             [reagent.core :as r]))
 
 ;; NOTE: We are showing menu dialog for both single press and long press action
@@ -126,14 +126,14 @@
 (defn main-content []
   (let [entry-items @(el-events/selected-entry-items)
         search-entry-items @(android-af-cmn-events/search-result-entry-items)
-        term @(android-af-cmn-events/search-term)
+        not-matched @(android-af-cmn-events/search-not-matched)
         entry-items (if (empty? search-entry-items) entry-items  search-entry-items)
         sections [{:title "Entries"
                    :key "Entries"
                    :data entry-items}]]
 
     [rn-view
-     (when (and (not (str/blank? term)) (empty? search-entry-items))
+     (when (and not-matched (empty? search-entry-items))
        [rn-view {:style {:margin-top 5 :height 40 :justify-content "center"}}
         [rnp-text {:style {:text-align "center" :color @rnc/error-color}
                    :variant "titleSmall"} (lstr-mt TR-KEY-AUTOFILL 'noEntryFound)]])
@@ -151,6 +151,20 @@
                                                     {:keys [title _data]} (-> props :section)]
                                                 (r/as-element [section-header title])))}]]))
 
+;; Capture-on-fill: when the autofill request comes from a native app not yet
+;; associated with the picked entry, offer to remember it (append the app token
+;; to the entry's Additional URLs). Declining still completes the fill.
+(defn app-capture-confirm-dialog []
+  (let [{:keys [show entry-title]} @(af-ef-events/app-capture-data)]
+    [cc/confirm-dialog
+     {:dialog-show (boolean show)
+      :title (lstr-mt TR-KEY-AUTOFILL 'associateAppTitle)
+      :confirm-text (lstr-mt TR-KEY-AUTOFILL 'associateAppText {:title (or entry-title "")})
+      :actions [{:label (lstr-bl "no")
+                 :on-press af-ef-events/autofill-capture-skip}
+                {:label (lstr-bl "yes")
+                 :on-press af-ef-events/autofill-capture-confirm}]}]))
+
 (defn content []
   [rn-safe-area-view {:style {:flex 1 :background-color @page-background-color}}
    [rn-view
@@ -159,5 +173,6 @@
      [main-content]]]
 
    [rnp-portal
-    [entry-long-press-menu]]])
+    [entry-long-press-menu]
+    [app-capture-confirm-dialog]]])
 

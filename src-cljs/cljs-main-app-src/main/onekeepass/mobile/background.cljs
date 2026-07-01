@@ -289,6 +289,21 @@
   [username password dispatch-fn]
   (android-invoke-api "complete_autofill" {:type "Login" :username username :password password} dispatch-fn))
 
+(defn android-autofill-client-app-uri
+  "Gets the uri of the app/site that triggered the current autofill request.
+   For a native app with no web domain this is 'android://<packageName>'."
+  [dispatch-fn]
+  (android-invoke-api "autofill_client_app_uri" {} dispatch-fn))
+
+(defn android-autofill-associate-app-to-entry
+  "Capture-on-fill: appends the native-app token 'app-uri' to the entry's
+   Additional URLs so the app is offered for autofill next time."
+  [db-key entry-uuid app-uri dispatch-fn]
+  (println "In android-autofill-associate-app-to-entry calling ffi....")
+  (android-invoke-api "autofill_associate_app_to_entry"
+                      {:db-key db-key :entry-uuid entry-uuid :app-uri app-uri}
+                      dispatch-fn))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn copy-key-file
@@ -612,6 +627,13 @@
 (defn search-term
   [db-key term dispatch-fn]
   (invoke-api "search_term" {:db-key db-key :term term} dispatch-fn))
+
+;; Autofill manual search: restricted to Login-type entries matched on their
+;; URL / Additional URLs fields only (see autofill_search_term in the core).
+;; Used by the Android autofill UI; not for the main app's general search.
+(defn autofill-search-term
+  [db-key term dispatch-fn]
+  (invoke-api "autofill_search_term" {:db-key db-key :term term} dispatch-fn))
 
 (defn analyzed-password [password-options dispatch-fn]
   (invoke-api "analyzed_password" {:password-options password-options} dispatch-fn))

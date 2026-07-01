@@ -13,7 +13,6 @@ use onekeepass_core::db_service::{
     service_util::{self, now_utc_milli_seconds, string_to_simple_hash},
 };
 use serde::{Deserialize, Serialize};
-use url::Url;
 
 use onekeepass_core::error;
 
@@ -608,23 +607,30 @@ impl IosAppGroupSupportService {
             let identifiers =
                 IosApiCallbackImpl::api_service().asc_credential_service_identifiers()?;
 
-            // See serviceIdentifiersReceived
-            let term = if let Some(domain) = identifiers.get("domain") {
-                domain.into()
-            } else if let Some(url) = identifiers.get("url") {
-                if let Ok(u) = Url::parse(url) {
-                    u.host_str()
-                        .map_or_else(|| String::default(), |s| s.to_string())
-                } else {
-                    url.to_string()
-                }
+            // Build the login URL to match against. iOS provides either a full
+            // "url" or a bare "domain"; for a bare domain we assume https. The
+            // shared matcher compares scheme + host only, so a synthesized
+            // https://<domain> matches stored https URLs regardless of path.
+            let input_url = if let Some(url) = identifiers.get("url") {
+                url.to_string()
+            } else if let Some(domain) = identifiers.get("domain") {
+                format!("https://{}", domain)
             } else {
                 String::default()
             };
 
-            debug!("The serviceIdentifiersReceived term is {}", &term);
-            let search_result = db_service::search_term(&db_key, &term)?;
-            Ok(search_result)
+            debug!("The autofill input url to match is {}", &input_url);
+            // Only Login entries whose URL (or Additional URLs) matches are offered
+            // (consistent with the desktop browser extension).
+            let entry_items =
+                db_service::autofill::find_matching_login_entries(&db_key, &input_url)?;
+            // The auto-match term is left empty so the searchbar starts blank
+            // (showing the full match url there is awkward). The matched entries
+            // are returned regardless; the searchbar is only for manual override.
+            Ok(db_service::EntrySearchResult {
+                term: String::default(),
+                entry_items,
+            })
         };
 
         result_json_str(inner_fn())
@@ -721,7 +727,7 @@ impl IosAppGroupSupportService {
             "passkey_commit_pending" => self.passkey_commit_pending(json_args),
             "passkey_discard_pending" => self.passkey_discard_pending(json_args),
 
-            // Passkey creation (Phase 3)
+            // Passkey creation
             "passkey_create_with_hash" => self.passkey_create_with_hash(json_args),
             "passkey_get_db_groups" => self.passkey_get_db_groups(json_args),
             "passkey_get_group_entries" => self.passkey_get_group_entries(json_args),

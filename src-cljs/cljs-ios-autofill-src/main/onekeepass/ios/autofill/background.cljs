@@ -349,7 +349,9 @@
 
 (defn search-term
   [db-key term dispatch-fn]
-  (invoke-api "search_term" {:db-key db-key :term term} dispatch-fn))
+  ;; Autofill manual search: restricted to Login-type entries matched on their
+  ;; URL / Additional URLs fields only (see autofill_search_term in the core).
+  (invoke-api "autofill_search_term" {:db-key db-key :term term} dispatch-fn))
 
 (defn- transform-response-entry-form-data
   "
