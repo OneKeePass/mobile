@@ -727,7 +727,7 @@ impl IosAppGroupSupportService {
             "passkey_commit_pending" => self.passkey_commit_pending(json_args),
             "passkey_discard_pending" => self.passkey_discard_pending(json_args),
 
-            // Passkey creation (Phase 3)
+            // Passkey creation
             "passkey_create_with_hash" => self.passkey_create_with_hash(json_args),
             "passkey_get_db_groups" => self.passkey_get_db_groups(json_args),
             "passkey_get_group_entries" => self.passkey_get_group_entries(json_args),

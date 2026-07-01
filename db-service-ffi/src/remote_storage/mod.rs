@@ -1,4 +1,4 @@
-// Phase B refactor: callback_service and storage_service now live in
+// The callback_service and storage_service now live in
 // onekeepass-core so the same SFTP/WebDAV implementation can be reused by
 // desktop. Mobile keeps only the host-side glue (callback_service_provider
 // and secure_store impls) and the orchestration layer below in this file.

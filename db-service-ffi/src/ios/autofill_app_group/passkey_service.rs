@@ -441,7 +441,7 @@ impl super::IosAppGroupSupportService {
 
             let passkey_info = passkey::PasskeyStorageInfo {
                 credential_id_b64url,
-                private_key_pem, // Phase 5: encrypt before writing
+                private_key_pem, // encrypt before writing
                 rp_id,
                 rp_name,
                 username,
@@ -574,7 +574,7 @@ impl super::IosAppGroupSupportService {
                 .map_err(|e| OkpError::UnexpectedError(format!("Invalid group_uuid: {}", e)))?;
             let passkey_info = passkey::PasskeyStorageInfo {
                 credential_id_b64url: creation.credential_id_b64url.clone(),
-                private_key_pem: creation.private_key_pem, // Phase 5: encrypt before writing
+                private_key_pem: creation.private_key_pem, // encrypt before writing
                 rp_id: creation.rp_id.clone(),
                 rp_name: creation.rp_name,
                 username: creation.username,
@@ -702,7 +702,7 @@ impl super::IosAppGroupSupportService {
                 ))
             })?;
 
-            // Phase 5: decrypt record.passkey_info.private_key_pem here
+            // decrypt record.passkey_info.private_key_pem here
 
             // store_passkey_entry modifies the in-memory KDBX only.
             // db_key is the main app's runtime db_key (the loaded DB).
