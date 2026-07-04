@@ -577,13 +577,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-OneKeePassMobile-Abstract-OneKeePassAutoFill/Pods-OneKeePassMobile-Abstract-OneKeePassAutoFill-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-OneKeePassMobile-Abstract-OneKeePassAutoFill/Pods-OneKeePassMobile-Abstract-OneKeePassAutoFill-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -598,13 +594,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-OneKeePassMobile-Abstract-OneKeePassMobile/Pods-OneKeePassMobile-Abstract-OneKeePassMobile-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-OneKeePassMobile-Abstract-OneKeePassMobile/Pods-OneKeePassMobile-Abstract-OneKeePassMobile-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -641,13 +633,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-OneKeePassMobile-Abstract-OneKeePassMobile/Pods-OneKeePassMobile-Abstract-OneKeePassMobile-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-OneKeePassMobile-Abstract-OneKeePassMobile/Pods-OneKeePassMobile-Abstract-OneKeePassMobile-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -1116,36 +1104,6 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(SDKROOT)/usr/lib/swift",
 					"$(inherited)",
-					"\"${PODS_CONFIGURATION_BUILD_DIR}/DoubleConversion\"",
-					"\"${PODS_CONFIGURATION_BUILD_DIR}/RCT-Folly\"",
-					"\"${PODS_CONFIGURATION_BUILD_DIR}/RCTTypeSafety\"",
-					"\"${PODS_CONFIGURATION_BUILD_DIR}/React-Codegen\"",
-					"\"${PODS_CONFIGURATION_BUILD_DIR}/React-Core.common\"",
-					"\"${PODS_CONFIGURATION_BUILD_DIR}/React-NativeModulesApple\"",
-					"\"${PODS_CONFIGURATION_BUILD_DIR}/React-RCTAnimation\"",
-					"\"${PODS_CONFIGURATION_BUILD_DIR}/React-RCTBlob\"",
-					"\"${PODS_CONFIGURATION_BUILD_DIR}/React-RCTImage\"",
-					"\"${PODS_CONFIGURATION_BUILD_DIR}/React-RCTLinking\"",
-					"\"${PODS_CONFIGURATION_BUILD_DIR}/React-RCTNetwork\"",
-					"\"${PODS_CONFIGURATION_BUILD_DIR}/React-RCTSettings\"",
-					"\"${PODS_CONFIGURATION_BUILD_DIR}/React-RCTText\"",
-					"\"${PODS_CONFIGURATION_BUILD_DIR}/React-RCTVibration\"",
-					"\"${PODS_CONFIGURATION_BUILD_DIR}/React-cxxreact\"",
-					"\"${PODS_CONFIGURATION_BUILD_DIR}/React-debug\"",
-					"\"${PODS_CONFIGURATION_BUILD_DIR}/React-jsc\"",
-					"\"${PODS_CONFIGURATION_BUILD_DIR}/React-jsi\"",
-					"\"${PODS_CONFIGURATION_BUILD_DIR}/React-jsiexecutor\"",
-					"\"${PODS_CONFIGURATION_BUILD_DIR}/React-jsinspector\"",
-					"\"${PODS_CONFIGURATION_BUILD_DIR}/React-logger\"",
-					"\"${PODS_CONFIGURATION_BUILD_DIR}/React-perflogger\"",
-					"\"${PODS_CONFIGURATION_BUILD_DIR}/React-rendererdebug\"",
-					"\"${PODS_CONFIGURATION_BUILD_DIR}/React-runtimescheduler\"",
-					"\"${PODS_CONFIGURATION_BUILD_DIR}/React-utils\"",
-					"\"${PODS_CONFIGURATION_BUILD_DIR}/ReactCommon\"",
-					"\"${PODS_CONFIGURATION_BUILD_DIR}/SocketRocket\"",
-					"\"${PODS_CONFIGURATION_BUILD_DIR}/Yoga\"",
-					"\"${PODS_CONFIGURATION_BUILD_DIR}/fmt\"",
-					"\"${PODS_CONFIGURATION_BUILD_DIR}/glog\"",
 					"$(PROJECT_DIR)/OneKeePassMobile/DbServiceFFILib",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
@@ -1155,102 +1113,6 @@
 					"$(inherited)",
 					"-ObjC",
 					"-lz",
-					"-l\"DoubleConversion\"",
-					"-l\"RCT-Folly\"",
-					"-l\"RCTDeprecation\"",
-					"-l\"RCTTypeSafety\"",
-					"-l\"RNBootSplash\"",
-					"-l\"RNCClipboard\"",
-					"-l\"RNFileViewer\"",
-					"-l\"RNGestureHandler\"",
-					"-l\"RNReanimated\"",
-					"-l\"RNSVG\"",
-					"-l\"React-Core\"",
-					"-l\"React-CoreModules\"",
-					"-l\"React-Fabric\"",
-					"-l\"React-FabricComponents\"",
-					"-l\"React-FabricImage\"",
-					"-l\"React-ImageManager\"",
-					"-l\"React-Mapbuffer\"",
-					"-l\"React-NativeModulesApple\"",
-					"-l\"React-RCTAnimation\"",
-					"-l\"React-RCTAppDelegate\"",
-					"-l\"React-RCTBlob\"",
-					"-l\"React-RCTFBReactNativeSpec\"",
-					"-l\"React-RCTFabric\"",
-					"-l\"React-RCTImage\"",
-					"-l\"React-RCTLinking\"",
-					"-l\"React-RCTNetwork\"",
-					"-l\"React-RCTRuntime\"",
-					"-l\"React-RCTSettings\"",
-					"-l\"React-RCTText\"",
-					"-l\"React-RCTVibration\"",
-					"-l\"React-RuntimeApple\"",
-					"-l\"React-RuntimeCore\"",
-					"-l\"React-RuntimeHermes\"",
-					"-l\"React-cxxreact\"",
-					"-l\"React-debug\"",
-					"-l\"React-defaultsnativemodule\"",
-					"-l\"React-domnativemodule\"",
-					"-l\"React-featureflags\"",
-					"-l\"React-featureflagsnativemodule\"",
-					"-l\"React-graphics\"",
-					"-l\"React-hermes\"",
-					"-l\"React-idlecallbacksnativemodule\"",
-					"-l\"React-jserrorhandler\"",
-					"-l\"React-jsi\"",
-					"-l\"React-jsiexecutor\"",
-					"-l\"React-jsinspector\"",
-					"-l\"React-jsinspectorcdp\"",
-					"-l\"React-jsinspectornetwork\"",
-					"-l\"React-jsinspectortracing\"",
-					"-l\"React-jsitooling\"",
-					"-l\"React-logger\"",
-					"-l\"React-microtasksnativemodule\"",
-					"-l\"React-oscompat\"",
-					"-l\"React-perflogger\"",
-					"-l\"React-performancetimeline\"",
-					"-l\"React-rendererconsistency\"",
-					"-l\"React-renderercss\"",
-					"-l\"React-rendererdebug\"",
-					"-l\"React-runtimeexecutor\"",
-					"-l\"React-runtimescheduler\"",
-					"-l\"React-utils\"",
-					"-l\"ReactAppDependencyProvider\"",
-					"-l\"ReactCodegen\"",
-					"-l\"ReactCommon\"",
-					"-l\"SocketRocket\"",
-					"-l\"VisionCamera\"",
-					"-l\"Yoga\"",
-					"-l\"c++\"",
-					"-l\"c++abi\"",
-					"-l\"fmt\"",
-					"-l\"glog\"",
-					"-l\"icucore\"",
-					"-l\"react-native-safe-area-context\"",
-					"-l\"react-native-slider\"",
-					"-framework",
-					"\"Accelerate\"",
-					"-framework",
-					"\"AudioToolbox\"",
-					"-framework",
-					"\"CFNetwork\"",
-					"-framework",
-					"\"CoreGraphics\"",
-					"-framework",
-					"\"ImageIO\"",
-					"-framework",
-					"\"MobileCoreServices\"",
-					"-framework",
-					"\"QuartzCore\"",
-					"-framework",
-					"\"Security\"",
-					"-framework",
-					"\"UIKit\"",
-					"-framework",
-					"\"hermes\"",
-					"-weak_framework",
-					"\"JavaScriptCore\"",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.onekeepass.ios.OneKeePassAutoFill;
 				PRODUCT_NAME = "$(TARGET_NAME)";
