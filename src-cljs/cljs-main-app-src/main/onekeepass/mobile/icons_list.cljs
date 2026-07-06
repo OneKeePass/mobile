@@ -136,10 +136,11 @@
     [icon-image uuid]]])
 
 (defn- url-add-dialog [{:keys [open url on-change on-cancel on-add]}]
+  #_(println "url-add-dialog is called....")
   [rnp-dialog {:visible open :dismissable true :onDismiss on-cancel}
-   [rnp-dialog-title (t/lstr-dlg-title 'addCustomIcon1)]
+   [rnp-dialog-title (t/lstr-dlg-title 'addCustomIcon)]
    [rnp-dialog-content
-    [rnp-text-input {:label "Url "#_(lstr-l 'url)
+    [rnp-text-input {:label "Url " #_(lstr-l 'url)
                      :autoCapitalize "none"
                      :autoCorrect false
                      :keyboardType "url"

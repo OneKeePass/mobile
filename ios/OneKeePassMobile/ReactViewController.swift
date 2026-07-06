@@ -45,13 +45,8 @@ class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {
 
 
   override func bundleURL() -> URL? {
-    
     #if DEBUG
-      // RN 0.85 can return nil here by 'RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: "index")'
-      // if its Metro status probe fails.
-      // Keep this Debug-only fallback; recheck when upgrading React Native next time.
       return RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: "index")
-        ?? URL(string: "http://localhost:8081/index.bundle?platform=ios&dev=true&minify=false")
       // return localBundle()
     #else
       return Bundle.main.url(forResource: "main", withExtension: "jsbundle")

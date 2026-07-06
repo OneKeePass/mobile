@@ -38,6 +38,17 @@ end
 abstract_target 'OneKeePassMobile-Abstract' do
   config = list_native_modules!($default_command)
 
+  # RN 0.85 enables prebuilt iOS artifacts by default when these env vars are unset:
+  # RCT_USE_RN_DEP=1 uses the prebuilt ReactNativeDependencies pod, and
+  # RCT_USE_PREBUILT_RNCORE=1 uses the prebuilt React-Core-prebuilt pod.
+  #
+  # In this app those prebuilt pods caused Debug simulator dev-server issues
+  # and missing Debug renderer symbols with some new-architecture native modules.
+  # Keep both disabled to preserve the pre-RN-0.85 behavior: build RN core and
+  # its iOS dependencies from source pods, with normal Metro/dev support behavior.
+  ENV['RCT_USE_RN_DEP'] = '0'
+  ENV['RCT_USE_PREBUILT_RNCORE'] = '0'
+
   use_react_native!(
     :path => config[:react_native_path],
     # An absolute path to your application root.
@@ -84,32 +95,13 @@ abstract_target 'OneKeePassMobile-Abstract' do
       end
     end
 
-    rn_debug_symbol_pods = [
-      'NitroImage',
-      'NitroModules',
-      'ReactCodegen',
-      'RNGestureHandler',
-      'RNSVG',
-      'VisionCamera',
-      'react-native-safe-area-context',
-      'react-native-slider',
-    ]
-
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |config|
         # Allow non app-extension-safe APIs so React Native can compile for the extension
         config.build_settings['APPLICATION_EXTENSION_API_ONLY'] = 'NO'
-
-        # RN 0.85 prebuilt React does not export some Debug-only renderer symbols
-        # referenced by these new-architecture pods in Debug simulator builds.
-        if config.name == 'Debug' && rn_debug_symbol_pods.include?(target.name)
-          definitions = config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] || ['$(inherited)']
-          definitions = definitions.split(' ') if definitions.is_a?(String)
-          definitions << 'REACT_NATIVE_PRODUCTION=1' unless definitions.include?('REACT_NATIVE_PRODUCTION=1')
-          config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] = definitions
-        end
       end
     end
+
   end
 end
 

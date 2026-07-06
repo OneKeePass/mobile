@@ -76,7 +76,7 @@
   [rnp-dialog {:visible open :dismissable true :onDismiss on-cancel}
    [rnp-dialog-title (lstr-dlg-title 'addCustomIcon)]
    [rnp-dialog-content
-    [rnp-text-input {:label (lstr-l 'url)
+    [rnp-text-input {:label "Url" #_(lstr-l 'url)
                      :autoCapitalize "none"
                      :autoCorrect false
                      :keyboardType "url"
