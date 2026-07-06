@@ -607,6 +607,8 @@ impl IosAppGroupSupportService {
             let identifiers =
                 IosApiCallbackImpl::api_service().asc_credential_service_identifiers()?;
 
+            log::debug!("IosApiCallback - Crdential Service identifiers {:?}",&identifiers);
+
             // Build the login URL to match against. iOS provides either a full
             // "url" or a bare "domain"; for a bare domain we assume https. The
             // shared matcher compares scheme + host only, so a synthesized

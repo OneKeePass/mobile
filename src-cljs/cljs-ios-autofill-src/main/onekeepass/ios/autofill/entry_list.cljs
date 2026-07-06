@@ -69,7 +69,7 @@
                       :color @icon-color
                       :style {:margin-left 5 :align-self "center"}}])))
 
-(defn row-item []
+(defn- row-item []
   (fn [{:keys [title secondary-title icon-id custom-icon-uuid uuid] :as _entry-summary}]
     (let [icon-name (icon-id->name icon-id)]
       [rnp-list-item {:onPress #(el-events/entry-pressed uuid)
@@ -81,7 +81,7 @@
                       :left (fn [_props] (r/as-element
                                           [icon-left-element icon-name custom-icon-uuid]))}])))
 
-(defn section-header [title]
+(defn- section-header [title]
   [rn-view  {:style {:flexDirection "row"
                      :backgroundColor @primary-container-color
                      :margin-top 5
@@ -91,7 +91,7 @@
                       :width "85%" :padding-left 15}
               :variant "titleLarge"} (lstr-cv title)]])
 
-(defn main-content []
+(defn- main-content []
   (let [entry-items @(el-events/selected-entry-items)
         search-entry-items @(cmn-events/search-result-entry-items)
         not-matched @(cmn-events/search-not-matched)

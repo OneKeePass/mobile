@@ -257,7 +257,7 @@
 
 ;; This issue is not seen in the main app's search box. Why?
 
-(defn searchbar []
+(defn- searchbar []
   (let [term @(cmn-events/search-term)]
     [rn-view {:margin-top 10}
      [rnp-searchbar {;; clearIcon mostly visible when value has some vlaue
@@ -268,9 +268,10 @@
                      :placeholder "Search"
                      :onChangeText (fn [v]
                                      (cmn-events/search-term-update v))
-
+                     :autoCapitalize "none"
+                     :autoCorrect false
                      ;; :value term
-
+                     
                      :defaultValue term
                      :traileringIcon "close"
                      :onTraileringIconPress (fn [_e]

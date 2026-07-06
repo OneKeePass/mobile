@@ -137,9 +137,9 @@
 
 (defn- url-add-dialog [{:keys [open url on-change on-cancel on-add]}]
   [rnp-dialog {:visible open :dismissable true :onDismiss on-cancel}
-   [rnp-dialog-title (t/lstr-dlg-title 'addCustomIcon)]
+   [rnp-dialog-title (t/lstr-dlg-title 'addCustomIcon1)]
    [rnp-dialog-content
-    [rnp-text-input {:label (lstr-l 'url)
+    [rnp-text-input {:label "Url "#_(lstr-l 'url)
                      :autoCapitalize "none"
                      :autoCorrect false
                      :keyboardType "url"

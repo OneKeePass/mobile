@@ -84,10 +84,30 @@ abstract_target 'OneKeePassMobile-Abstract' do
       end
     end
 
+    rn_debug_symbol_pods = [
+      'NitroImage',
+      'NitroModules',
+      'ReactCodegen',
+      'RNGestureHandler',
+      'RNSVG',
+      'VisionCamera',
+      'react-native-safe-area-context',
+      'react-native-slider',
+    ]
+
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |config|
         # Allow non app-extension-safe APIs so React Native can compile for the extension
         config.build_settings['APPLICATION_EXTENSION_API_ONLY'] = 'NO'
+
+        # RN 0.85 prebuilt React does not export some Debug-only renderer symbols
+        # referenced by these new-architecture pods in Debug simulator builds.
+        if config.name == 'Debug' && rn_debug_symbol_pods.include?(target.name)
+          definitions = config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] || ['$(inherited)']
+          definitions = definitions.split(' ') if definitions.is_a?(String)
+          definitions << 'REACT_NATIVE_PRODUCTION=1' unless definitions.include?('REACT_NATIVE_PRODUCTION=1')
+          config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] = definitions
+        end
       end
     end
   end
