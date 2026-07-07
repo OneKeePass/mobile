@@ -3,14 +3,14 @@
    [reagent.core :as r]
    [onekeepass.mobile.events.common :as cmn-events]
    [onekeepass.mobile.events.custom-icons :as ci-events]
-   [onekeepass.mobile.rn-components :refer [icon-color
+   [onekeepass.mobile.rn-components :refer [cust-dialog
+                                            icon-color
                                             page-background-color
                                             rn-image
                                             rn-pressable
                                             rn-text
                                             rn-view
                                             rnp-button
-                                            rnp-dialog
                                             rnp-dialog-actions
                                             rnp-dialog-content
                                             rnp-dialog-title
@@ -137,7 +137,7 @@
 
 (defn- url-add-dialog [{:keys [open url on-change on-cancel on-add]}]
   #_(println "url-add-dialog is called....")
-  [rnp-dialog {:visible open :dismissable true :onDismiss on-cancel}
+  [cust-dialog {:visible open :dismissable true :onDismiss on-cancel}
    [rnp-dialog-title (t/lstr-dlg-title 'addCustomIcon)]
    [rnp-dialog-content
     [rnp-text-input {:label "Url " #_(lstr-l 'url)

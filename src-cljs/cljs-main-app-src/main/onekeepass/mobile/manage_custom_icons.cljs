@@ -9,14 +9,14 @@
    [onekeepass.mobile.common-components :refer [confirm-dialog-with-lstr]]
    [onekeepass.mobile.events.custom-icons :as ci-events]
    [onekeepass.mobile.icons-list :refer [CUSTOM-ICONS-LIST-ICON-SIZE]]
-   [onekeepass.mobile.rn-components :refer [icon-color
+   [onekeepass.mobile.rn-components :refer [cust-dialog
+                                            icon-color
                                             page-background-color
                                             rn-image
                                             rn-safe-area-view
                                             rn-text
                                             rn-view
                                             rnp-button
-                                            rnp-dialog
                                             rnp-dialog-actions
                                             rnp-dialog-content
                                             rnp-dialog-title
@@ -73,7 +73,7 @@
                              (when uuid (ci-events/remove-icon uuid)))}]}]))
 
 (defn- url-add-dialog [{:keys [open url on-change on-cancel on-add]}]
-  [rnp-dialog {:visible open :dismissable true :onDismiss on-cancel}
+  [cust-dialog {:visible open :dismissable true :onDismiss on-cancel}
    [rnp-dialog-title (lstr-dlg-title 'addCustomIcon)]
    [rnp-dialog-content
     [rnp-text-input {:label "Url" #_(lstr-l 'url)
