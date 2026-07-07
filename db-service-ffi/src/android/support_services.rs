@@ -293,7 +293,7 @@ impl AndroidSupportServiceExtra {
             let identifiers =
                 AndroidApiCallbackImpl::api_service().autofill_client_app_url_info()?;
 
-            debug!("Received AF client info {:?}", &identifiers);
+            log::debug!("AndroidApiCallbackImpl - Autofill client identifiers {:?}",&identifiers);
 
             // Build the login URL to match against. Browsers pass a web "uri";
             // if it lacks a scheme (a bare domain) we assume https so the shared
