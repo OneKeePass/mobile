@@ -46,10 +46,10 @@ enum_dispatch = "0.3.13"
 cfg-if = "1.0"
 
 ## using from the local crate during dev time
-onekeepass-core = {path = "../../onekeepass-core", version = "0.23.1" , features = ["favicon"]}
+# onekeepass-core = {path = "../../onekeepass-core", version = "0.23.1" , features = ["favicon"]}
 
 ## Need to use the git ref for release
-# onekeepass-core = {git = "https://github.com/OneKeePass/onekeepass-core.git" , tag="v0.23.0", features = ["favicon"] }
+onekeepass-core = {git = "https://github.com/OneKeePass/onekeepass-core.git" , tag="v0.23.1", features = ["favicon"] }
 
 [target.'cfg(target_os = "android")'.dependencies]
 android_logger = "0.13.1"
