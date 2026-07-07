@@ -14,6 +14,7 @@
                                             page-background-color
                                             rn-image
                                             rn-safe-area-view
+                                            rn-scroll-view
                                             rn-text
                                             rn-view
                                             rnp-button
@@ -114,11 +115,12 @@
          (if (empty? icons)
            [rn-view {:style {:padding 16 :align-items "center"}}
             [rn-text (lstr-l 'noCustomIcons)]]
-           [rn-view {:style {:flexDirection "row" :flexWrap "wrap"
-                             :padding 8}}
-            (doall
-             (for [icon icons]
-               ^{:key (:uuid icon)} [icon-cell icon]))])
+           [rn-scroll-view {:style {:flex 1}}
+            [rn-view {:style {:flexDirection "row" :flexWrap "wrap"
+                              :padding 8}}
+             (doall
+              (for [icon icons]
+                ^{:key (:uuid icon)} [icon-cell icon]))]])
 
          [url-add-dialog
           {:open open
