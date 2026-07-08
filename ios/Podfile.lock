@@ -2985,37 +2985,12 @@ PODS:
     - SocketRocket
     - Yoga
   - SocketRocket (0.7.1)
-  - VisionCamera (5.0.11):
-    - boost
-    - DoubleConversion
-    - fast_float
-    - fmt
-    - glog
-    - hermes-engine
-    - NitroImage
-    - NitroModules
-    - RCT-Folly
-    - RCT-Folly/Fabric
-    - RCTRequired
-    - RCTTypeSafety
-    - React-callinvoker
+  - VisionCamera (4.7.3):
+    - VisionCamera/Core (= 4.7.3)
+    - VisionCamera/React (= 4.7.3)
+  - VisionCamera/Core (4.7.3)
+  - VisionCamera/React (4.7.3):
     - React-Core
-    - React-debug
-    - React-Fabric
-    - React-featureflags
-    - React-graphics
-    - React-ImageManager
-    - React-jsi
-    - React-NativeModulesApple
-    - React-RCTFabric
-    - React-renderercss
-    - React-rendererdebug
-    - React-utils
-    - ReactCodegen
-    - ReactCommon/turbomodule/bridging
-    - ReactCommon/turbomodule/core
-    - SocketRocket
-    - Yoga
   - Yoga (0.0.0)
 
 DEPENDENCIES:
@@ -3393,9 +3368,9 @@ SPEC CHECKSUMS:
   RNSVG: 9037a5826c3e0ad3f7e2aee7607b64d6710f048e
   RNWorklets: dd22aad568254990d6f3dc4655d54364c5a3eb3a
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
-  VisionCamera: 76859d9130b74fbfb2f46abec4c60c403416f858
+  VisionCamera: 7187b3dac1ff3071234ead959ce311875748e14f
   Yoga: 2fe23f676416a73cb4be2c15929e352c9395b9cf
 
-PODFILE CHECKSUM: 12790c4ecd4c5c938da913071d24ecb9aa81d38b
+PODFILE CHECKSUM: e985def2dc6bab951c6c5afe482f77e156381b53
 
 COCOAPODS: 1.15.2

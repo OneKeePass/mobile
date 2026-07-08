@@ -61,4 +61,9 @@ module.exports = {
   useCameraPermission: useCameraPermission,
   useCameraDevice: useCameraDevice,
   useCodeScanner: useCodeScanner,
+  // Marker read by is-rn-native-camera-vison-disabled (background.cljs) to detect
+  // that this stub (not the real package) was bundled, i.e. a fully-FOSS APK build.
+  // The real react-native-vision-camera never exports this, so the camera / QR-scan
+  // UI stays enabled for iOS and Android Play Store builds.
+  __okpFossCameraStub: true,
 };
