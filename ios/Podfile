@@ -14,32 +14,62 @@ if linkage != nil
   use_frameworks! :linkage => linkage.to_sym
 end
 
-## Both OneKeePassMobile and OneKeePassAutoFill targets share many pods.
-## So, using an abstract_target to avoid duplication of pod definitions.
+## Both OneKeePassMobile and OneKeePassAutoFill targets share React Native core pods.
+## Third-party native modules are linked per concrete target so the AutoFill
+## extension can exclude heavy modules it does not use.
+
+AUTOFILL_NATIVE_PACKAGES = [
+  '@react-native-community/slider',
+  '@react-native-vector-icons/material-design-icons',
+  'react-native-gesture-handler',
+  'react-native-safe-area-context',
+  'react-native-svg',
+]
+
+
+def filter_native_modules(config, allowed_names)
+  filtered = config.dup
+  filtered[:ios_packages] = config[:ios_packages].select do |package|
+    allowed_names.include?(package[:name])
+  end
+  filtered
+end
 
 abstract_target 'OneKeePassMobile-Abstract' do
-  config = use_native_modules!
+  config = list_native_modules!($default_command)
+
+  # RN 0.85 enables prebuilt iOS artifacts by default when these env vars are unset:
+  # RCT_USE_RN_DEP=1 uses the prebuilt ReactNativeDependencies pod, and
+  # RCT_USE_PREBUILT_RNCORE=1 uses the prebuilt React-Core-prebuilt pod.
+  #
+  # In this app those prebuilt pods caused Debug simulator dev-server issues
+  # and missing Debug renderer symbols with some new-architecture native modules.
+  # Keep both disabled to preserve the pre-RN-0.85 behavior: build RN core and
+  # its iOS dependencies from source pods, with normal Metro/dev support behavior.
+  ENV['RCT_USE_RN_DEP'] = '0'
+  ENV['RCT_USE_PREBUILT_RNCORE'] = '0'
 
   use_react_native!(
-    :path => config[:reactNativePath],
+    :path => config[:react_native_path],
     # An absolute path to your application root.
     :app_path => "#{Pod::Config.instance.installation_root}/..",
     # :new_arch_enabled => true
   )
 
   target 'OneKeePassMobile' do
+    link_native_modules!(config)
     # pod 'React-jsc', :path => '../node_modules/@react-native-community/javascriptcore'
   end
 
   target 'OneKeePassAutoFill' do
-    inherit! :complete
+    link_native_modules!(filter_native_modules(config, AUTOFILL_NATIVE_PACKAGES))
     #pod 'React-jsc', :path => '../node_modules/@react-native-community/javascriptcore'
   end
 
   post_install do |installer|
     react_native_post_install(
       installer,
-      config[:reactNativePath],
+      config[:react_native_path],
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
@@ -71,6 +101,7 @@ abstract_target 'OneKeePassMobile-Abstract' do
         config.build_settings['APPLICATION_EXTENSION_API_ONLY'] = 'NO'
       end
     end
+
   end
 end
 

@@ -14,7 +14,9 @@
                                    subscribe]]))
 
 (defn initiate-scan-qr [{:keys [_section-name _field-name _standard-field] :as field-info-m}]
-  ;;(println "initiate-scan-qr field-info-m... " field-info-m)
+  #_(println "initiate-scan-qr field-info-m... ")
+  (println "Camera is available" (not (empty? (bg/available-cameras))))
+  (println "Camera permission status" (bg/camera-permission-status))
   (let [permission-status (bg/camera-permission-status)]
     (cond
       (empty? (bg/available-cameras))

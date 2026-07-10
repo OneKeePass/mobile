@@ -3,14 +3,15 @@
    [reagent.core :as r]
    [onekeepass.mobile.events.common :as cmn-events]
    [onekeepass.mobile.events.custom-icons :as ci-events]
-   [onekeepass.mobile.rn-components :refer [icon-color
+   [onekeepass.mobile.rn-components :refer [cust-dialog
+                                            icon-color
                                             page-background-color
                                             rn-image
                                             rn-pressable
+                                            rn-scroll-view
                                             rn-text
                                             rn-view
                                             rnp-button
-                                            rnp-dialog
                                             rnp-dialog-actions
                                             rnp-dialog-content
                                             rnp-dialog-title
@@ -136,10 +137,11 @@
     [icon-image uuid]]])
 
 (defn- url-add-dialog [{:keys [open url on-change on-cancel on-add]}]
-  [rnp-dialog {:visible open :dismissable true :onDismiss on-cancel}
+  #_(println "url-add-dialog is called....")
+  [cust-dialog {:visible open :dismissable true :onDismiss on-cancel}
    [rnp-dialog-title (t/lstr-dlg-title 'addCustomIcon)]
    [rnp-dialog-content
-    [rnp-text-input {:label (lstr-l 'url)
+    [rnp-text-input {:label "Url " #_(lstr-l 'url)
                      :autoCapitalize "none"
                      :autoCorrect false
                      :keyboardType "url"
@@ -187,11 +189,12 @@
          (if (empty? icons)
            [rn-view {:style {:padding 16 :align-items "center"}}
             [rn-text (lstr-l 'noCustomIcons)]]
-           [rn-view {:style {:flexDirection "row" :flexWrap "wrap"
-                             :padding 8}}
-            (doall
-             (for [icon icons]
-               ^{:key (:uuid icon)} [custom-icon-cell icon]))])
+           [rn-scroll-view {:style {:flex 1}}
+            [rn-view {:style {:flexDirection "row" :flexWrap "wrap"
+                              :padding 8}}
+             (doall
+              (for [icon icons]
+                ^{:key (:uuid icon)} [custom-icon-cell icon]))]])
 
          [url-add-dialog
           {:open open
@@ -212,7 +215,8 @@
                     [{:value "standard" :label (lstr-l 'standard)}
                      {:value "custom" :label (lstr-l 'custom)}])}]]
        (if (= @tab "standard")
-         [standard-icons-grid]
+         [rn-scroll-view {:style {:flex 1}}
+          [standard-icons-grid]]
          [custom-icons-tab])])))
 
 (defn content []
