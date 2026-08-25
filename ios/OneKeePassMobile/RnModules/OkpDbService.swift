@@ -96,12 +96,22 @@ class OkpDbService: NSObject {
   func kdbxUriToOpenOnCreate(_ resolve: @escaping RCTPromiseResolveBlock,
                              reject: @escaping RCTPromiseRejectBlock)
   {
+    // Nothing in Documents/Inbox is ever opened - see FileUtils - and so everything in
+    // there goes, including the copy of this launch if the app was started that way
+    FileUtils.sweepInboxFiles()
+
     if let url = SceneDelegate.openUrl {
-      _ = FileUtils.coordinatedSyncBookMarking(url: url) { url, error in
-        if error == nil {
-          resolve(DbServiceAPI.formJsonWithFileName(url.absoluteString))
-        } else {
-          reject(E_COORDINATOR_CALL_FAILED, error?.localizedDescription, error)
+      if !SceneDelegate.openUrlInPlace {
+        // The sending app handed over a copy. The UI asks the user to open the database
+        // from its own location instead
+        resolve(DbServiceAPI.formJsonCopyHandedOver(url.absoluteString))
+      } else {
+        _ = FileUtils.coordinatedSyncBookMarking(url: url) { url, error in
+          if error == nil {
+            resolve(DbServiceAPI.formJsonWithFileName(url.absoluteString))
+          } else {
+            reject(E_COORDINATOR_CALL_FAILED, error?.localizedDescription, error)
+          }
         }
       }
     } else {
@@ -110,8 +120,9 @@ class OkpDbService: NSObject {
     }
     // Ensure that we clear the url afeter UI pull call
     SceneDelegate.openUrl = nil
+    SceneDelegate.openUrlInPlace = true
   }
-  
+
   // Called when user picked a file to save the changed kdbx during the 'Save As' call
   // This is used by user after a change detected on the previously read database
   @objc
@@ -207,6 +218,7 @@ class OkpDbService: NSObject {
         reject(E_DB_SERVICE_MODULE_ERROR, "fullFileNameUri cannot be nil", nil)
         return
       }
+
       let bookmarkData = DbServiceAPI.iosSupportService().loadBookMarkData(dbFileUrl!.absoluteString)
       // let byteArray: [UInt8] = DbServiceAPI.iosSupportService().loadBookMarkData(dbFileUrl!.absoluteString)
       

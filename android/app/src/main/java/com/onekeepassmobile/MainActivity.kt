@@ -44,7 +44,9 @@ class MainActivity : ReactActivity() {
      * recently supplied in [.onSaveInstanceState].  ***Note: Otherwise it is null.***
      */
     override fun onCreate(savedInstanceState: Bundle?) {
-        Log.d("MainActivity", "onCreate is called...with intent ${intent}")
+        // The intent itself is not logged. An 'otpauth://' intent carries the TOTP shared
+        // secret in its data and logcat is readable by more than this app on many devices
+        Log.d("MainActivity", "onCreate is called...with intent action ${intent?.action}")
         // initialize the splash screen and need to call hide with duration in UI side
         // See the use of react-use-effect in onekeepass.mobile.core.main fn
         RNBootSplash.init(this, R.style.BootTheme);
@@ -81,7 +83,7 @@ class MainActivity : ReactActivity() {
      */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        Log.d("MainActivity", "onNewIntent is called...with intent ${intent}")
+        Log.d("MainActivity", "onNewIntent is called...with intent action ${intent.action}")
         EventEmitter.onNewIntent(intent)
         //Log.d("MainActivity", "EventEmitter.onNewIntent is called...")
     }

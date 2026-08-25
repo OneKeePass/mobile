@@ -7,6 +7,8 @@
                                             on-error
                                             default-entry-category
                                             on-ok]]
+   [onekeepass.mobile.events.entry-list :refer [sort-containers-with-criteria
+                                                sort-entries-with-criteria]]
    [re-frame.core :refer [reg-event-db
                           reg-event-fx
                           reg-sub
@@ -86,10 +88,15 @@
 (defn root-group []
   (subscribe [:group-data/root-group]))
 
-(defn sort-by-tag-name [grouped-categories]
-  ;; First fn provides the comparision key
-  ;; Second fn provides the comparator that uses the keys
-  (sort-by (fn [m] (:title m)) (fn [v1 v2] (compare v1 v2)) grouped-categories))
+(defn sub-groups-summary
+  "Summaries of the groups directly under the given group"
+  [group-uuid]
+  (subscribe [:groups/subgroups-summary group-uuid]))
+
+(defn root-group-entry-items
+  "Entry summaries of the entries that sit in the root group itself"
+  []
+  (subscribe [:entry-category/root-group-entry-items]))
 
 ;; TODO: May need to use combine the use of string labels, grouping kw and enum variants. How ?
 
@@ -170,7 +177,62 @@
          group-by (get-in-key-db db [:entry-category :entries-grouping-as])]
 
      {:db db
-      :fx [[:bg-combined-category-details [(active-db-key db) group-by]]]})))
+      :fx [[:bg-combined-category-details [(active-db-key db) group-by]]
+           ;; Covers switching back to an already opened db, where the group tree data is
+           ;; in place already and no ':groups-data-update' will follow
+           [:dispatch [:entry-category/load-root-group-entry-items]]]})))
+
+;;;;;;;;;;;;;;;;;;;;;;;;; Root group's own entries ;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; When the entries are grouped as 'Groups', the root group is not shown as a row the user
+;; has to open first. Its sub groups and its own entries are listed on the category page
+;; itself. The sub groups are already part of the group tree data; its entries are not and
+;; have to be asked for separately here
+
+(reg-event-fx
+ :entry-category/load-root-group-entry-items
+ (fn [{:keys [db]} [_event-id]]
+   (let [group-by (get-in-key-db db [:entry-category :entries-grouping-as])
+         root-uuid (get-in-key-db db [:groups :data :root-uuid])]
+     (if (and (= group-by :group-tree) (not (nil? root-uuid)))
+       {:fx [[:bg-root-group-entry-summary [(active-db-key db) root-uuid]]]}
+       ;; No other grouping shows these entries. The root uuid is nil until the group tree
+       ;; data arrives, and this event is dispatched again once it does
+       {:db (assoc-in-key-db db [:entry-category :root-group-entry-items] [])}))))
+
+(reg-fx
+ :bg-root-group-entry-summary
+ (fn [[db-key root-uuid]]
+   (bg/entry-summary-data db-key
+                          {:group root-uuid}
+                          (fn [api-response]
+                            (when-let [result (on-ok api-response)]
+                              (dispatch [:root-group-entry-items-loaded result]))))))
+
+(reg-event-db
+ :root-group-entry-items-loaded
+ (fn [db [_event-id entry-summaries]]
+   (assoc-in-key-db db [:entry-category :root-group-entry-items]
+                    ;; Sorted the same way the entry list page sorts, so that the two agree
+                    (sort-entries-with-criteria db entry-summaries))))
+
+;; Dispatched whenever the shared sort criteria changes. General categories retain their
+;; intentional product order; grouping containers and root entries are sorted independently.
+(reg-event-db
+ :entry-category/sort-category-page-items
+ (fn [db [_event-id]]
+   (-> db
+       (assoc-in-key-db [:entry-category :root-group-entry-items]
+                        (sort-entries-with-criteria
+                         db (get-in-key-db db [:entry-category :root-group-entry-items])))
+       (assoc-in-key-db [:entry-category :data :grouped-categories]
+                        (sort-containers-with-criteria
+                         db (get-in-key-db db [:entry-category :data :grouped-categories]))))))
+
+(reg-sub
+ :entry-category/root-group-entry-items
+ (fn [db _query-vec]
+   (get-in-key-db db [:entry-category :root-group-entry-items])))
 
 #_(reg-event-fx
    :entry-category/load-categories-to-show
@@ -194,10 +256,8 @@
    ;; entry-categories is a map from struct EntryCategories
    (let [kind (get-in-key-db db [:entry-category :entries-grouping-as])
          kind (if (nil? kind) :type kind)
-         {:keys [grouping-kind grouped-categories]} entry-categories
-         sorted-grouped-categories (if (= grouping-kind "AsTags")
-                                     (sort-by-tag-name grouped-categories)
-                                     grouped-categories)
+         {:keys [grouped-categories]} entry-categories
+         sorted-grouped-categories (sort-containers-with-criteria db grouped-categories)
          entry-categories (assoc entry-categories :grouped-categories sorted-grouped-categories)]
      (-> db (assoc-in-key-db [:entry-category :data] entry-categories)
            ;; entries-grouping-as is one of :type, :tag,:group-tree, :group-category 
@@ -209,6 +269,9 @@
  (fn [{:keys [db]} [_event-id kind]]
    {:db (assoc-in-key-db db [:entry-category :entries-grouping-as] kind)
     :fx [[:bg-combined-category-details [(active-db-key db) kind]]
+         ;; Switching to or away from 'Groups' changes whether the root group's own
+         ;; entries are listed on the category page
+         [:dispatch [:entry-category/load-root-group-entry-items]]
          ;; Reusing this event from app-settings to update the ":default-entry-category-groupings" in the backend  
          [:dispatch [:app-settings/app-preference-update-data
                      :default-entry-category-groupings (grouping-kind->pref-entry-category-groupings kind) nil]]]}))

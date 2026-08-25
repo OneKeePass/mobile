@@ -4,8 +4,11 @@
             [onekeepass.ios.autofill.constants :as const :refer [ONE_TIME_PASSWORD_TYPE
                                                                  OTP]]
             [onekeepass.ios.autofill.events.entry-form :as form-events]
+            [onekeepass.ios.autofill.otp-badge :refer [formatted-token]]
             [onekeepass.ios.autofill.rn-components :as rnc :refer [animated-circular-progress
                                                                    dots-icon-name
+                                                                   no-assist-text-props
+                                                                   no-autocorrect-text-props
                                                                    page-background-color
                                                                    primary-container-color
                                                                    rn-view
@@ -45,17 +48,14 @@
                                    edit
                                    on-change-text]} is-password-edit? custom-field-edit-focused?]
   ;;(println "Key is " key " and value " value)
-  [rnp-text-input {:label (if standard-field (lstr-field-name key) key)
+  [rnp-text-input (merge
+                   no-assist-text-props
+                   {:label (if standard-field (lstr-field-name key) key)
                    :value value
                    :showSoftInputOnFocus edit
-                   :autoCapitalize "none"
                    :keyboardType "email-address"
-                   ;;:autoComplete "off"
-                   :autoCorrect false
                    ;;:contextMenuHidden true
                    :selectTextOnFocus false
-                   :spellCheck false ;;ios
-                   :textContentType "none"
                    ;; Sometime in iOS when a text input has its secureTextEntry with true value
                    ;; Strong Password prompt comes up and hides the actual input box preventing any entry
                    ;; Particularly it happened with Simulator. For now, we can disable the Password AutoFill feature
@@ -80,7 +80,7 @@
                                               :onPress #(form-events/entry-form-field-visibility-toggle key)}])
                               (r/as-element [rnp-text-input-icon
                                              {:icon "eye-off"
-                                              :onPress #(form-events/entry-form-field-visibility-toggle key)}])))}])
+                                              :onPress #(form-events/entry-form-field-visibility-toggle key)}])))})])
 
 (defn text-field
   "Called to show form fields"
@@ -124,25 +124,6 @@
 
      (when (and edit (not (nil? error-text)))
        [rnp-helper-text {:type "error" :visible true} error-text])]))
-
-(defn formatted-token
-  "Groups digits with spaces between them for easy reading"
-  [token]
-  (let [len (count token)
-        n (cond
-            (or (= len 6) (= len 7) (= len 9))
-            3
-
-            (or (= len 8) (= len 10))
-            4
-
-            :else
-            3)
-        ;; step = n, pad = ""
-        parts (partition n n "" token)
-        parts (map (fn [c] (str/join c)) parts)
-        spaced (str/join " " parts)]
-    spaced))
 
 (defn otp-field-with-token-update
   "Shows token value which is updated to a new value based on its 'period' value - Typically every 30sec 
@@ -241,12 +222,13 @@
   (let [value @(form-events/entry-form-data-fields :notes)]
     (when (or edit (not (str/blank? value)))
       [rn-view {:style {:padding-right 5 :padding-left 5 :borderWidth 0.20 :borderRadius 4}}
-       [rnp-text-input {:style {:width "100%"} :multiline true :label (lstr-l "notes")
-                        :defaultValue value
-                        :ref (fn [^js/Ref ref]
-                               (reset! notes-ref ref))
-                        :showSoftInputOnFocus edit
-                        :onChangeText #()  #_(when edit #(form-events/entry-form-data-update-field-value :notes %))}]])))
+       [rnp-text-input (merge no-autocorrect-text-props
+                              {:style {:width "100%"} :multiline true :label (lstr-l "notes")
+                               :defaultValue value
+                               :ref (fn [^js/Ref ref]
+                                      (reset! notes-ref ref))
+                               :showSoftInputOnFocus edit
+                               :onChangeText #()  #_(when edit #(form-events/entry-form-data-update-field-value :notes %))})]])))
 
 (defn tags [edit]
   (let [entry-tags @(form-events/entry-form-data-fields :tags)

@@ -70,6 +70,20 @@ class DbServiceAPI {
     _jsonService.formWithFileName(fullFileName)
   }
 
+  // Used when another app hands over a db file as a copy instead of opening it in place.
+  // We do not open such a copy and so there is no url to pass on. Only the file name is
+  // sent so that the UI can name the file in the message asking the user to open the
+  // database from its own location
+  static func formJsonCopyHandedOver(_ fullFileName: String) -> String {
+    // This is how the file name part is formed in 'formWithFileName' - see uriToFileName
+    let fileName = URL(string: fullFileName)?.lastPathComponent ?? ""
+
+    return _jsonService.mapAsOkJsonString([
+      "file_name": fileName,
+      "copy_handed_over": "true",
+    ])
+  }
+
   static func createTempKdbx(_ tempFileUri: String, _ args: String) -> ApiResponse {
     let fileArgs = FileArgs.fullFileName(fullFileName: tempFileUri)
     return OneKeePassMobile.createTempKdbx(fileArgs, args)

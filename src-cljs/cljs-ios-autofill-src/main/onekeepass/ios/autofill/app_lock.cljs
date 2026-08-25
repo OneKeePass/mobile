@@ -1,5 +1,6 @@
 (ns onekeepass.ios.autofill.app-lock
-  (:require [onekeepass.ios.autofill.rn-components :as rnc :refer [rn-keyboard
+  (:require [onekeepass.ios.autofill.rn-components :as rnc :refer [no-assist-text-props
+                                                                   rn-keyboard
                                                                    rn-view
                                                                    rnp-button
                                                                    rnp-helper-text
@@ -20,20 +21,18 @@
                      :justify-content "center"
                      :flexDirection "column"}}
     [rnp-text {:style {:margin-top 10 :margin-bottom 20} :variant "titleMedium"} "Enter PIN"]
-    [rnp-text-input {:style {:width "80%"}
-                     :label "PIN"
-                     :defaultValue pin-entered
-                     :autoComplete "off"
-                     :autoCapitalize "none"
-                     :autoCorrect false
-                     :keyboardType "number-pad"
-                     :secureTextEntry (not password-visible)
-                     :right (r/as-element
-                             [rnp-text-input-icon
-                              {:icon (if password-visible "eye" "eye-off")
-                               :onPress #(app-lock-events/app-lock-update-data :password-visible (not password-visible))}])
-                     :onChangeText (fn [v]
-                                     (app-lock-events/app-lock-update-data :pin-entered v))}]
+    [rnp-text-input (merge no-assist-text-props
+                           {:style {:width "80%"}
+                            :label "PIN"
+                            :defaultValue pin-entered
+                            :keyboardType "number-pad"
+                            :secureTextEntry (not password-visible)
+                            :right (r/as-element
+                                    [rnp-text-input-icon
+                                     {:icon (if password-visible "eye" "eye-off")
+                                      :onPress #(app-lock-events/app-lock-update-data :password-visible (not password-visible))}])
+                            :onChangeText (fn [v]
+                                            (app-lock-events/app-lock-update-data :pin-entered v))})]
 
     (when error-text
       [rnp-helper-text {:type "error" :visible true}

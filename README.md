@@ -32,10 +32,10 @@ OneKeePass is also available for **Windows, macOS and Linux desktops** can be do
 - Optional additional security by using a key file with or without a master password
 - Database quick open or unlock using biometrics - FaceID (iOS) or Fingerprint/Face unlock (Android)
 - Upload attachments to an entry
-- Time based One-Time Passwords (TOTP) can added and used
+- Time based One-Time Passwords (TOTP) can added and used - the current code and its remaining time are shown on each entry list row
 - Supports Light or Dark Theme
 - Multi-language support
-- AutoFill supported
+- AutoFill supported - user name, password and the one-time verification code
 - Passkey (WebAuthn/FIDO2) support for passwordless sign-in and registration (iOS 17+, Android 14+)
 - Native direct connection support to SFTP or WebDAV server
 - Remote server credentials stored as **SFTP Connection** or **WebDAV Connection** entries inside the database — no need to re-enter credentials each time
@@ -45,7 +45,9 @@ OneKeePass is also available for **Windows, macOS and Linux desktops** can be do
 - App protection with PIN locking
 - Merging of databases
 - Moving an entry or a group from one group to another
+- Cloning of an entry
 - External database change detection and merge
+- Search across all entries of a database, and sorting of entries by title, created or modified time
 
 
 

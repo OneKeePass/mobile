@@ -57,7 +57,18 @@ object ViewAutofillParser {
                 val views = autofillViews.filterIsInstance<AutofillView.Login>()
                 // Let us store the Login specific autofill fields for later filling with data
                 storeLoginFieldInfo(views)
-                ParsedRequestDataSet.Login(views = views)
+                // A 2FA code field on the same screen (a combined login form) is filled
+                // along with the credentials in the same dataset
+                ParsedRequestDataSet.Login(
+                        views = views,
+                        totpView = autofillViews.filterIsInstance<AutofillView.Totp>().firstOrNull())
+            }
+
+            is AutofillView.Totp -> {
+                // The focused field is a 2FA code field - typically the second page of a
+                // two step login, where no credential field is present
+                ParsedRequestDataSet.Totp(
+                        views = autofillViews.filterIsInstance<AutofillView.Totp>())
             }
 
             is AutofillView.NotUsed -> {

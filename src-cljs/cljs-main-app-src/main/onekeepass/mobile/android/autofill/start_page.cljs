@@ -12,6 +12,7 @@
             [onekeepass.mobile.rn-components
              :as rnc
              :refer [cust-dialog dots-icon-name
+                     no-assist-text-props
                      primary-color
                      primary-container-color rn-keyboard rn-safe-area-view
                      rn-section-list rn-view rnp-button rnp-dialog-actions
@@ -58,23 +59,32 @@
                         :value database-file-name
                         :editable false
                         :onChangeText #()}]
-       [rnp-text-input {:style {:margin-top 10}
-                        :label (lstr-l "masterPassword")
-                        ;;:value password
-                        :defaultValue password
-                        :autoComplete "off"
-                        :autoCapitalize "none"
-                        :autoCorrect false
-                        :secureTextEntry (not password-visible)
-                        :right (r/as-element
-                                [rnp-text-input-icon
-                                 {:icon (if password-visible "eye" "eye-off")
-                                  :onPress #(android-af-cmn-events/database-field-update
-                                             :password-visible (not password-visible))}])
-                        :onChangeText (fn [v]
-                                        ;; After entering some charaters and delete is used to remove those charaters
-                                        ;; password will have a string value "" resulting in a non visible password. Need to use nil instead
-                                        (android-af-cmn-events/database-field-update :password (if (empty? v) nil v)))}]
+       [rnp-text-input (merge no-assist-text-props
+                              {:style {:margin-top 10}
+                               :label (lstr-l "masterPassword")
+                               ;;:value password
+                               :defaultValue password
+                               ;; The database file field above is not editable. So the password
+                               ;; field gets the initial focus and keyboard is shown
+                               :autoFocus true
+                               ;; Android workaround: :autoFocus inside a Modal based dialog may focus the
+                               ;; field without bringing up the keyboard. If seen in testing, uncomment this
+                               ;; :ref callback (called on mount when the dialog becomes visible) which
+                               ;; refocuses after a short delay so the keyboard is shown
+                               ;; :ref (fn [input-ref]
+                               ;;        (when input-ref
+                               ;;          (js/setTimeout
+                               ;;           (fn [] (.focus ^js/TextInput input-ref)) 100)))
+                               :secureTextEntry (not password-visible)
+                               :right (r/as-element
+                                       [rnp-text-input-icon
+                                        {:icon (if password-visible "eye" "eye-off")
+                                         :onPress #(android-af-cmn-events/database-field-update
+                                                    :password-visible (not password-visible))}])
+                               :onChangeText (fn [v]
+                                               ;; After entering some charaters and delete is used to remove those charaters
+                                               ;; password will have a string value "" resulting in a non visible password. Need to use nil instead
+                                               (android-af-cmn-events/database-field-update :password (if (empty? v) nil v)))})]
        (when (contains? error-fields :password)
          [rnp-helper-text {:type "error" :visible (contains? error-fields :password)}
           (:password error-fields)])

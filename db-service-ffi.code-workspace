@@ -8,13 +8,19 @@
 		}
 	],
 	"settings": {
+		// Use the rustup component matched to the active Rust toolchain instead of
+		// the extension's standalone server, which may require a newer compiler.
+		// Used: 'rustup component add rust-analyzer' and this installed rustc version (1.91)
+		// specific analyzer
+		//rust-analyzer --version  => rust-analyzer 1.91.0 (f8297e35 2025-10-28)
+		// Next time when we call 'rustup update stable', the 'rust-analyzer' version will be
+		// updated along with rustc
+		// If we want to use the extension's standalone server, then this path should be commented out
+		"rust-analyzer.server.path": "rust-analyzer",
 		"rust-analyzer.diagnostics.disabled":["unresolved-proc-macro"],
 
 		"rust-analyzer.check.targets": [
-			"aarch64-apple-darwin",
-			"aarch64-linux-android",
-			"aarch64-apple-ios-sim",
-			"aarch64-apple-ios"
+			"aarch64-apple-ios-sim"
 		],
 
 		
@@ -29,8 +35,8 @@
 		/*
 		"rust-analyzer.server.extraEnv": {
         	"CARGO_TARGET_DIR": "target",
-        	"CC_aarch64-linux-android":"/Users/jeyasankar/Library/Android/sdk/ndk/25.1.8937393/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang",
-        	"AR_aarch64_linux_android":"/Users/jeyasankar/Library/Android/sdk/ndk/25.1.8937393/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ar"
+        	"CC_aarch64-linux-android":"~/Library/Android/sdk/ndk/25.1.8937393/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang",
+        	"AR_aarch64_linux_android":"~/Library/Android/sdk/ndk/25.1.8937393/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ar"
     	},
     	*/
 		

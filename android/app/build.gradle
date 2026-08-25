@@ -133,8 +133,8 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // Need to use next increment in 'versionCode' as it needs to be unique for each release
-        versionCode 21
-        versionName "0.22.1"
+        versionCode 22
+        versionName "0.23.0"
     }
 
     signingConfigs {
@@ -176,6 +176,23 @@ android {
     buildTypes {
 
         debug {
+            // If we want use the debug build on device without replacing any existing released version of app
+            // we can then use 'debug' specifc app id 'com.onekeepassmobile.debug' instead of the main 'com.onekeepassmobile'
+            // App name is resolved in android:label="@string/app_name" of android/app/src/main/AndroidManifest.xml
+            // src/main/res → app_name = OneKeePass 
+            // src/main/res + src/debug/res -> app_name = OKP
+            // ./gradlew assembleDebug ; ./gradlew installDebug
+
+            // On emulator if we want to see app name as 'OneKeePass' and avoid using debug suffix etc,
+            // then comment out these two and rename 'OKP' to 'OneKeePass' in src/debug/res
+
+            // We need to pass the arg like 'npx react-native run-android --appIdSuffix debug'
+            // resulting in the app id 'com.onekeepassmobile.debug'
+            applicationIdSuffix ".debug"
+
+            // The version shown in system 'App info' panel's bottom
+            // versionNameSuffix "-debug"
+
             signingConfig signingConfigs.debug
         }
 

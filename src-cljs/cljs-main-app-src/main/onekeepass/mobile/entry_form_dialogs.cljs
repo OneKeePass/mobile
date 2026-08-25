@@ -13,7 +13,8 @@
             [onekeepass.mobile.events.scan-otp-qr :as scan-qr-events]
             [onekeepass.mobile.rn-components
              :as rnc
-             :refer [cust-dialog rn-view rnp-button rnp-checkbox
+             :refer [cust-dialog no-assist-text-props
+                     no-autocorrect-text-props rn-view rnp-button rnp-checkbox
                      rnp-dialog-actions rnp-dialog-content rnp-dialog-title
                      rnp-helper-text rnp-text rnp-text-input
                      rnp-touchable-ripple]]
@@ -98,10 +99,10 @@
       [rn-view {:flexDirection "column"}
        (when-not standard-field
          [:<> ;; Needs to :<> so that a combine comp is returned the condition evaluates
-          [rnp-text-input {:label (lstr-l "fieldName")
-                           :autoCapitalize "none"
-                           :defaultValue field-name
-                           :onChangeText #(dlg-events/otp-settings-dialog-update [:field-name %])}]
+          [rnp-text-input (merge no-assist-text-props
+                                 {:label (lstr-l "fieldName")
+                                  :defaultValue field-name
+                                  :onChangeText #(dlg-events/otp-settings-dialog-update [:field-name %])})]
           (when error
             [rnp-helper-text {:type "error" :visible error}
              (get error-fields :field-name)])
@@ -110,10 +111,10 @@
 
        (when  (= code-entry-type :manual)
          [:<>
-          [rnp-text-input {:label (lstr-l "secretCodeOrUrl")
-                           :autoCapitalize "none"
-                           :defaultValue secret-or-url
-                           :onChangeText #(dlg-events/otp-settings-dialog-update [:secret-or-url %])}]
+          [rnp-text-input (merge no-assist-text-props
+                                 {:label (lstr-l "secretCodeOrUrl")
+                                  :defaultValue secret-or-url
+                                  :onChangeText #(dlg-events/otp-settings-dialog-update [:secret-or-url %])})]
           (when error
             [rnp-helper-text {:type "error" :visible error}
              (get error-fields :secret-or-url)])])]]
@@ -144,9 +145,10 @@
       (if (= mode :add) (lstr-dlg-title 'newSectionName) (lstr-dlg-title 'modifySectionName))]
      [rnp-dialog-content
       [rn-view {:flexDirection "column"}
-       [rnp-text-input {:label (lstr-l 'sectionName)
-                        :defaultValue section-name
-                        :onChangeText #(form-events/section-name-dialog-update :section-name %)}]
+       [rnp-text-input (merge no-autocorrect-text-props
+                              {:label (lstr-l 'sectionName)
+                               :defaultValue section-name
+                               :onChangeText #(form-events/section-name-dialog-update :section-name %)})]
        (when error
          [rnp-helper-text {:type "error" :visible error}
           (get error-fields :section-name)])]]
@@ -209,9 +211,10 @@
      [rnp-dialog-content
       [rn-view {:flexDirection "column"}
 
-       [rnp-text-input {:label (lstr-l 'fieldName)
-                        :defaultValue field-name
-                        :onChangeText #(form-events/section-field-dialog-update :field-name %)}]
+       [rnp-text-input (merge no-autocorrect-text-props
+                              {:label (lstr-l 'fieldName)
+                               :defaultValue field-name
+                               :onChangeText #(form-events/section-field-dialog-update :field-name %)})]
        (when error
          [rnp-helper-text {:type "error" :visible error}
           (get error-fields field-name)])
@@ -323,9 +326,10 @@
     (lstr-dlg-title 'changeAttachmentName)]
    [rnp-dialog-content
     [rn-view {:flexDirection "column"}
-     [rnp-text-input {:label (lstr-l 'name)
-                      :defaultValue name
-                      :onChangeText change-attachment-name}]
+     [rnp-text-input (merge no-assist-text-props
+                            {:label (lstr-l 'name)
+                             :defaultValue name
+                             :onChangeText change-attachment-name})]
      (when error-text
        [rnp-helper-text {:type "error" :visible true}
         error-text])]]

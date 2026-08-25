@@ -23,6 +23,11 @@ sealed class AutofillView {
         data class Username(override val data: Data,) : Login()
     }
 
+    // A 2FA / one time code field. Kept out of the Login partition because a code field
+    // is commonly the only field on the second page of a two step login, and that page
+    // is then a dataset of its own
+    data class Totp(override val data: Data,) : AutofillView()
+
     data class NotUsed(override val data: Data,) : AutofillView()
 
     // TODO Need to add credit/debit card related autofill data later
@@ -59,7 +64,13 @@ sealed class ParsedRequestDataSet {
 
     abstract val views: List<AutofillView>
 
-    data class Login(override val views: List<AutofillView.Login>,) : ParsedRequestDataSet()
+    // 'totpView' is set when the same screen also has a 2FA code field, so that picking an
+    // entry fills user name, password and the code in one go
+    data class Login(override val views: List<AutofillView.Login>,
+                     val totpView: AutofillView.Totp? = null,) : ParsedRequestDataSet()
+
+    // The focused field is a 2FA code field - typically the second page of a two step login
+    data class Totp(override val views: List<AutofillView.Totp>,) : ParsedRequestDataSet()
 
     // credit card dataset will come here
 }

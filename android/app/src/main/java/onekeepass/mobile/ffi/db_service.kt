@@ -4151,7 +4151,8 @@ sealed class AutoFillDbData {
     
     data class Login(
         val `username`: kotlin.String?, 
-        val `password`: kotlin.String?) : AutoFillDbData() {
+        val `password`: kotlin.String?, 
+        val `otp`: kotlin.String?) : AutoFillDbData() {
         companion object
     }
     
@@ -4172,6 +4173,7 @@ public object FfiConverterTypeAutoFillDbData : FfiConverterRustBuffer<AutoFillDb
             1 -> AutoFillDbData.Login(
                 FfiConverterOptionalString.read(buf),
                 FfiConverterOptionalString.read(buf),
+                FfiConverterOptionalString.read(buf),
                 )
             2 -> AutoFillDbData.CreditCard
             else -> throw RuntimeException("invalid enum value, something is very wrong!!")
@@ -4185,6 +4187,7 @@ public object FfiConverterTypeAutoFillDbData : FfiConverterRustBuffer<AutoFillDb
                 4UL
                 + FfiConverterOptionalString.allocationSize(value.`username`)
                 + FfiConverterOptionalString.allocationSize(value.`password`)
+                + FfiConverterOptionalString.allocationSize(value.`otp`)
             )
         }
         is AutoFillDbData.CreditCard -> {
@@ -4201,6 +4204,7 @@ public object FfiConverterTypeAutoFillDbData : FfiConverterRustBuffer<AutoFillDb
                 buf.putInt(1)
                 FfiConverterOptionalString.write(value.`username`, buf)
                 FfiConverterOptionalString.write(value.`password`, buf)
+                FfiConverterOptionalString.write(value.`otp`, buf)
                 Unit
             }
             is AutoFillDbData.CreditCard -> {

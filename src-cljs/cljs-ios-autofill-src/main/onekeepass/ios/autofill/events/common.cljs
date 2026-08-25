@@ -125,6 +125,8 @@
  :load-autofill-init-data
  (fn [{:keys [_db]} [_event-id]]
    {:fx [[:dispatch [:search-term-clear]]
+         ;; The previous request's tokens, if iOS reused this process for a new one
+         [:dispatch [:entry-list-otp/clear]]
          [:bg-load-autofill-init-data]]}))
 
 (reg-fx
@@ -150,8 +152,35 @@
             (assoc-in [:passkey-registration] {}))
     :fx [[:dispatch [:app-lock/app-launched]]
          [:bg-list-key-files]
+         [:dispatch [:one-time-code/check-context]]
          [:dispatch [:passkey-assertion/check-context]]
          [:dispatch [:passkey-registration/check-context]]]}))
+
+;; Whether iOS launched the extension for a verification code field (iOS 18+). The entry
+;; list, the manual search and the entry press action all follow this
+(defn one-time-code-mode? [db]
+  (boolean (get-in db [:one-time-code :mode])))
+
+(reg-event-fx
+ :one-time-code/check-context
+ (fn [_ _]
+   {:fx [[:bg-get-pending-one-time-code-context nil]]}))
+
+(reg-fx
+ :bg-get-pending-one-time-code-context
+ (fn [_]
+   (bg/get-pending-one-time-code-context
+    (fn [api-response]
+      ;; A nil context is the normal case - a credential request, or any pre iOS 18 system
+      (let [context (on-ok api-response
+                           (fn [error]
+                             (js/console.warn "Could not get the one time code context:" error)))]
+        (dispatch [:one-time-code/context-loaded context]))))))
+
+(reg-event-db
+ :one-time-code/context-loaded
+ (fn [db [_event-id context]]
+   (assoc-in db [:one-time-code :mode] (boolean (:one-time-code-mode context)))))
 
 (reg-sub
  :app-lock-preference
@@ -254,6 +283,30 @@
 (defn page-info []
   (subscribe [:page-info]))
 
+(defn autofill-request-mode
+  "Gets the kind of request for which iOS launched this extension - one of
+   :passkey-registration, :passkey-assertion, :one-time-code or :password"
+  []
+  (subscribe [:common/autofill-request-mode]))
+
+;; The rp-id is set in the db only when the corresponding pending context is found
+;; in the 'check-context' events dispatched at the start
+(reg-sub
+ :common/autofill-request-mode
+ (fn [db _query-vec]
+   (cond
+     (not (nil? (get-in db [:passkey-registration :rp-id])))
+     :passkey-registration
+
+     (not (nil? (get-in db [:passkey-assertion :rp-id])))
+     :passkey-assertion
+
+     (one-time-code-mode? db)
+     :one-time-code
+
+     :else
+     :password)))
+
 (reg-event-db
  :common/next-page
  (fn [db [_event-id page title]]
@@ -324,7 +377,7 @@
               (assoc-in [:search :not-matched] false)
               (assoc-in [:search :result] []))}
      {:db (assoc-in db [:search :term] term)
-      :fx [[:bg-start-term-search [(active-db-key db) term]]]})))
+      :fx [[:bg-start-term-search [(active-db-key db) term (one-time-code-mode? db)]]]})))
 
 (reg-event-fx
  :search-term-completed
@@ -351,11 +404,12 @@
 (reg-fx
  :bg-start-term-search
  ;; fn in 'reg-fx' accepts only single argument
- (fn [[db-key term]]
-   (bg/search-term db-key term
-                   (fn [api-response]
-                     (when-let [result (on-ok api-response #(dispatch [:search-error-text %]))]
-                       (dispatch [:search-term-completed result]))))))
+ (fn [[db-key term one-time-code-mode]]
+   (let [api-fn (if one-time-code-mode bg/autofill-search-term-otp bg/search-term)]
+     (api-fn db-key term
+             (fn [api-response]
+               (when-let [result (on-ok api-response #(dispatch [:search-error-text %]))]
+                 (dispatch [:search-term-completed result])))))))
 
 ;; Gets the matched entry items if any
 (reg-sub
@@ -427,5 +481,3 @@
 
   (def db-key (-> @re-frame.db/app-db :current-db-file-name))
   (-> @re-frame.db/app-db (get db-key) keys))
-
-

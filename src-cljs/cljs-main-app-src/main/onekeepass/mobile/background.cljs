@@ -201,7 +201,20 @@
                   dispatch-fn :error-transform true))
 
 ;; This works for both iOS and Android
-;; TODO: Need to rename '.pickKeyFileToCopy' to '.pickFileToCopy' 
+(defn pick-kdbx-file-to-save
+  "Called to save a copy of a database to a user chosen location
+     The arg 'full-file-name' is the absolute path of the db copy that is already prepared
+     locally (in the app's export data dir)
+     The arg 'kdbx-file-name' is the just the file name part and is used as the
+     name suggested to the user in the device's document picker
+     "
+  [full-file-name kdbx-file-name dispatch-fn]
+  (call-api-async (fn [] (.pickKdbxFileToSave
+                          okp-document-pick-service full-file-name kdbx-file-name))
+                  dispatch-fn :error-transform true))
+
+;; This works for both iOS and Android
+;; TODO: Need to rename '.pickKeyFileToCopy' to '.pickFileToCopy'
 (defn pick-file
   "Called to pick any file using platform specific File Manager. The 'dispatch-fn' called with a full uri
    of a file picked and that file path is used to read and/or copy in the subsequent call
@@ -271,23 +284,40 @@
 (defn android-complete-save-as-on-error [db-key new-db-key file-name dispatch-fn]
   (call-api-async (fn [] (.completeSaveAsOnError okp-db-service db-key new-db-key file-name)) dispatch-fn :error-transform true))
 
-#_(defn android-copy-to-clipboard
-    "Called to copy a selected field value to clipboard
+(defn android-copy-to-clipboard
+  "Called to copy a selected field value to clipboard
    The arg field-info is a map that statifies the enum member 
    ClipboardCopyArg {field_name,field_value,protected,cleanup_after}
    "
-    [field-info dispatch-fn]
-    (android-invoke-api "clipboard_copy" field-info dispatch-fn))
+  [field-info dispatch-fn]
+  (android-invoke-api "clipboard_copy" field-info dispatch-fn))
 
 (defn android-autofill-filtered-entries
   "Gets one or more entries based on the search term derived from autofill requesting app domain"
   [db-key dispatch-fn]
   (android-invoke-api "autofill_filtered_entries" {:db-key db-key} dispatch-fn))
 
+(defn android-autofill-filtered-otp-entries
+  "As android-autofill-filtered-entries, but returns only the entries that can produce a
+   TOTP - used when the autofill request focused a 2FA code field"
+  [db-key dispatch-fn]
+  (android-invoke-api "autofill_filtered_otp_entries" {:db-key db-key} dispatch-fn))
+
+(defn android-autofill-totp-request-info
+  "Returns {:has-totp bool :totp-only bool} for the pending autofill request.
+   has-totp is set when the requesting screen has a 2FA code field to fill and
+   totp-only when that is the only field (a code only screen)"
+  [dispatch-fn]
+  (android-invoke-api "autofill_totp_request_info" {} dispatch-fn))
+
 (defn android-complete-login-autofill
-  "This will send the login credentials to the calling app when user presses Autofill action"
-  [username password dispatch-fn]
-  (android-invoke-api "complete_autofill" {:type "Login" :username username :password password} dispatch-fn))
+  "This will send the login credentials to the calling app when user presses Autofill action.
+   Any of username, password and otp may be nil - a code only screen sends the otp alone"
+  [username password otp dispatch-fn]
+  (android-invoke-api "complete_autofill" {:type "Login"
+                                           :username username
+                                           :password password
+                                           :otp otp} dispatch-fn))
 
 (defn android-autofill-client-app-uri
   "Gets the uri of the app/site that triggered the current autofill request.
@@ -358,6 +388,12 @@
 (defn kdbx-uri-to-open-on-create [dispatch-fn]
   (call-api-async #(.kdbxUriToOpenOnCreate okp-db-service) dispatch-fn))
 
+;; Used to get any 'otpauth://' url that may be available when the user starts our app by
+;; pressing such a link - the device Camera app shows one after scanning a 2FA QR code
+;; Android only - the native method is not implemented on iOS and the caller checks the platform
+(defn otp-auth-url-on-create [dispatch-fn]
+  (call-api-async #(.otpAuthUrlOnCreate okp-db-service) dispatch-fn))
+
 (defn export-kdbx
   "Called with full file name uri that was picked by the user through the document picker 
    and new db related info in a map
@@ -366,18 +402,26 @@
   (call-api-async (fn [] (.exportKdbx okp-export full-file-name))
                   dispatch-fn :error-transform false))
 
-(defn load-kdbx [db-file-name password key-file-name biometric-auth-used dispatch-fn]
-  (if-not (is-rs-type db-file-name)
-    (call-api-async (fn []
-                      (.readKdbx okp-db-service
-                                 db-file-name
-                                 (api-args->json {:db-file-name db-file-name
-                                                  :password password
-                                                  :key-file-name key-file-name
-                                                  :biometric-auth-used biometric-auth-used}
-                                                 :convert-request true)))
-                    dispatch-fn :error-transform true)
-    (bg-rs/read-kdbx db-file-name password key-file-name biometric-auth-used dispatch-fn)))
+;; 'transient-db-ref' is true when the db uri was handed over by another app - the 'Open with'
+;; or 'Open in' action of a cloud storage app on android. The backend then does not add the db
+;; to the recently used list as that uri cannot be opened again later
+(defn load-kdbx
+  ([db-file-name password key-file-name biometric-auth-used dispatch-fn]
+   (load-kdbx db-file-name password key-file-name biometric-auth-used false dispatch-fn))
+
+  ([db-file-name password key-file-name biometric-auth-used transient-db-ref dispatch-fn]
+   (if-not (is-rs-type db-file-name)
+     (call-api-async (fn []
+                       (.readKdbx okp-db-service
+                                  db-file-name
+                                  (api-args->json {:db-file-name db-file-name
+                                                   :password password
+                                                   :key-file-name key-file-name
+                                                   :biometric-auth-used biometric-auth-used
+                                                   :transient-db-ref (boolean transient-db-ref)}
+                                                  :convert-request true)))
+                     dispatch-fn :error-transform true)
+     (bg-rs/read-kdbx db-file-name password key-file-name biometric-auth-used dispatch-fn))))
 
 
 (defn read-latest-backup-kdbx [db-file-name password key-file-name biometric-auth-used dispatch-fn]
@@ -454,9 +498,15 @@
 (defn save-conflict-resolution-cancel [db-key dispatch-fn]
   (invoke-api "save_conflict_resolution_cancel" {:db-key db-key} dispatch-fn))
 
+(defn lock-kdbx
+  "Calls the API to lock the previously opened db file. The db content is
+   encrypted in memory and the decrypted content removed. Restored on unlock."
+  [db-key dispatch-fn]
+  (invoke-api "lock_kdbx" {:db-key db-key} dispatch-fn))
+
 (defn unlock-kdbx
   "Calls the API to unlock the previously opened db file.
-   Calls the dispatch-fn with the received map of type 'KdbxLoaded' 
+   Calls the dispatch-fn with the received map of type 'KdbxLoaded'
   "
   [db-key password key-file-name dispatch-fn]
   (invoke-api "unlock_kdbx" {:db-file-name db-key
@@ -543,6 +593,14 @@
   (invoke-api "update_entry_from_form_data"
               {:db_key db-key
                :form_data (transform-resquest-entry-form-data entry-form-data)} dispatch-fn :convert-request false))
+
+(defn clone-entry
+  "Clones an entry. The arg 'entry-clone-option' is a map corresponding to the struct 'EntryCloneOption'
+   The api call returns the cloned entry's uuid"
+  [db-key entry-uuid entry-clone-option dispatch-fn]
+  (invoke-api "clone_entry" {:db-key db-key
+                             :entry-uuid entry-uuid
+                             :entry-clone-option entry-clone-option} dispatch-fn))
 
 (defn- transform-response-entry-form-data
   "
@@ -635,6 +693,29 @@
   [db-key term dispatch-fn]
   (invoke-api "autofill_search_term" {:db-key db-key :term term} dispatch-fn))
 
+;; As autofill-search-term, but only entries that can produce a TOTP are returned. Used when
+;; the autofill request is for a 2FA code so a manual search cannot surface an entry that
+;; the user is then unable to fill a code from
+(defn autofill-search-term-otp
+  [db-key term dispatch-fn]
+  (invoke-api "autofill_search_term_otp" {:db-key db-key :term term} dispatch-fn))
+
+;; Generates the current token for one otp field of an entry. Used by the autofill flows at
+;; fill time, so the code sent to the OS is never one that the polling UI held as it expired
+(defn entry-form-current-otp
+  [db-key entry-uuid otp-field-name dispatch-fn]
+  (invoke-api "entry_form_current_otp" {:db-key db-key
+                                        :entry-uuid entry-uuid
+                                        :otp-field-name otp-field-name} dispatch-fn))
+
+;; Current tokens for a list of entries, for showing a code on their rows. Entries with no
+;; usable otp field are absent from the reply, so no separate 'does this entry have 2FA'
+;; call is needed
+(defn entry-list-current-otps
+  [db-key entry-uuids dispatch-fn]
+  (invoke-api "entry_list_current_otps" {:db-key db-key
+                                         :entry-uuids entry-uuids} dispatch-fn))
+
 (defn analyzed-password [password-options dispatch-fn]
   (invoke-api "analyzed_password" {:password-options password-options} dispatch-fn))
 
@@ -653,6 +734,12 @@
 
 (defn prepare-export-kdbx-data [full-file-name-uri dispatch-fn]
   (invoke-api "prepare_export_kdbx_data" {:db-key full-file-name-uri} dispatch-fn))
+
+(defn clean-export-data-dir
+  "Removes the temporarily created db copies from the 'export_data' dir on the device.
+   The prepared copy holds the database content and is not to be kept around after use"
+  [dispatch-fn]
+  (invoke-api "clean_export_data_dir" {} dispatch-fn))
 
 (defn collect-entry-group-tags [db-key dispatch-fn]
   (invoke-api  "collect_entry_group_tags" {:db-key db-key} dispatch-fn))

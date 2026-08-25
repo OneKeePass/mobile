@@ -124,7 +124,7 @@
                        Paragraph
                        ProgressBar
                        Snackbar
-                       Searchbar
+                       ;;Searchbar
                        Switch
                        ;;TextInput
                        TextInput.Icon
@@ -159,7 +159,35 @@
 
 (def rnp-menu (r/adapt-react-class (.-RNPMenu rnp-customization)))
 (def rnp-text-input (r/adapt-react-class (.-RNPTextInput rnp-customization)))
+(def rnp-searchbar (r/adapt-react-class (.-RNPSearchbar rnp-customization)))
 (def cust-rnp-divider (r/adapt-react-class (.-RNPDivider rnp-customization)))
+
+;; Keyboard assistance props used with 'rnp-text-input'
+;; The RN TextInput defaults are :autoCapitalize "sentences" and :autoCorrect true. For a password
+;; manager those defaults are wrong for most fields - the keyboard opens in caps and the predictive
+;; text replaces what is typed. These maps are merged into the props of a text input to turn that off
+;; Merged first so that a call site can still override any individual prop
+;; Also see the same maps in onekeepass.mobile.rn-components used by the main app
+
+;; For secrets, user names, urls, host names, tags, field names - values where neither
+;; capitalization nor any correction is wanted
+(def no-assist-text-props {:autoCapitalize "none"
+                           :autoCorrect false
+                           :autoComplete "off"
+                           :spellCheck false
+                           :textContentType "none"})
+
+;; For free text - notes, descriptions, group and entry names - where the sentence capitalization
+;; of the keyboard is still useful but the autocorrect replacing the typed words is not
+(def no-autocorrect-text-props {:autoCorrect false
+                                :autoComplete "off"
+                                :spellCheck false
+                                :textContentType "none"})
+
+;; The iOS "Passwords" key that comes up above the keyboard in the entry form is triggered by a
+;; field with 'secureTextEntry' being present in the form, and :textContentType does not control
+;; it - neither "none" nor an explicit non credential type makes any difference
+;; See the longer note in onekeepass.mobile.rn-components used by the main app
 
 ;;;;;;
 (def dark-theme (.-custDarkTheme ^js/CustomDarkTheme rnp-customization))
@@ -255,6 +283,18 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; react-native-circular-progress ;;;;;;;;;;;;;;;;;;;;
 
 (def animated-circular-progress (r/adapt-react-class (.-AnimatedCircularProgress ^js/RNCircularProgress rn-circular-progress)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Animated ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; An animation of a transform or of opacity can be handed to the native thread, where it
+;; then runs without javascript doing anything per frame. Used by the entry list's token
+;; bar, which would otherwise cost work every second for every row on the page
+
+(def rn-animated ^js/RNAnimated rn/Animated)
+
+(def rn-easing ^js/RNEasing rn/Easing)
+
+(def rn-animated-view (r/adapt-react-class (.-View ^js/RNAnimated rn/Animated)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  TO_BE_REMOVED: All example Krell based build time components ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

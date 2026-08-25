@@ -6,7 +6,8 @@
             [onekeepass.mobile.icons-list :as icons-list]
             [onekeepass.mobile.rn-components
              :as rnc
-             :refer [appbar-text-color icon-color page-background-color
+             :refer [appbar-text-color icon-color no-autocorrect-text-props
+                     page-background-color
                      page-title-text-variant rn-image rn-keyboard-avoiding-view
                      rn-scroll-view rn-view rnp-button rnp-checkbox
                      rnp-helper-text rnp-text rnp-text-input
@@ -89,21 +90,23 @@
     #_(println "main-content is called with custom-data-url" custom-data-url)
     [rn-view {:style {:flexDirection "column" :justify-content "center" :padding 5}}
 
-     [rnp-text-input {:style {:width "100%"}
-                      :multiline true
-                      :label (lstr-l "name")
-                      :defaultValue @(gf-events/group-form-data-fields :name)
-                      :onChangeText #(update-group-form-data :name %)
-                      :right right-icon}]
+     [rnp-text-input (merge no-autocorrect-text-props
+                            {:style {:width "100%"}
+                             :multiline true
+                             :label (lstr-l "name")
+                             :defaultValue @(gf-events/group-form-data-fields :name)
+                             :onChangeText #(update-group-form-data :name %)
+                             :right right-icon})]
      (when (contains? error-fields :name)
        [rnp-helper-text {:type "error" :visible (contains? error-fields :name)}
         (:name error-fields)])
 
-     [rnp-text-input {:style {:width "100%"}
-                      :multiline true :label
-                      (lstr-l "notes")
-                      :defaultValue @(gf-events/group-form-data-fields :notes)
-                      :onChangeText #(update-group-form-data :notes %)}]
+     [rnp-text-input (merge no-autocorrect-text-props
+                            {:style {:width "100%"}
+                             :multiline true
+                             :label (lstr-l "notes")
+                             :defaultValue @(gf-events/group-form-data-fields :notes)
+                             :onChangeText #(update-group-form-data :notes %)})]
 
      (when (= :group @(gf-events/group-form-field :kind))
        [rnp-touchable-ripple {:style {:align-self "center" :margin-top 15  :width "45%"}

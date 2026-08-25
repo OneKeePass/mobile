@@ -44,6 +44,10 @@ You can add more than one TOTP fields for an Entry under the section **ADDITIONA
 
 If you want to update or to change an OTP field, the existing field needs to be deleted first and added with new values
 
+On Android, you can also scan a QR code with the device **Camera** app. Tapping the `otpauth://` link the camera finds offers OneKeePass in the list of apps. You can then add that code to an existing entry or to a new entry. If the entry you pick already has a one-time password code, you are asked before the earlier code is replaced.
+
+The current code of an entry, and the time it has left, are also shown on each row of the entry list - in the main app and in the AutoFill extension - so you can read a code without opening the entry.
+
 <details>
 <summary>You can see generated OTP values with progress indicators</summary>
 <h1 align="center">
@@ -59,6 +63,15 @@ OneKeePass now supports the **Autofill** feature in both iOS and Android.
 You can now seamlessly log in to websites and apps while maintaining strong and secure passwords in OneKeePass when you use the autofill service provided by OneKeePass
 
 To use Autofill with OneKeePass, you need to enable OneKeePass in the device system settings first
+
+## Can AutoFill also fill the one-time verification code?
+
+Yes, when the entry has a one-time password code set up.
+
+**Android:** a sign-in form that asks for the user name, the password and a verification code is filled in one selection, and a page that asks only for the code is filled on its own.
+
+**iOS:** the code is offered in the keyboard suggestion (QuickType) bar, and tapping it fills the code field. On a form that asks for the password and the code together, iOS asks a third party provider only for the password, so OneKeePass copies the code to the clipboard for you to paste. The clipboard is cleared again a short while later.
+
 
 ## What are passkeys and how do they work in OneKeePass?
 
@@ -102,8 +115,34 @@ It is just the flattened list of keepass groups instead of a tree/folder like st
 
 ## What is an entry type?
 Each entry type is a template that has certain set of fields. For example *Login* entry type include fields like username, password, url etc.
-OneKeePass supports some built-in standard entry types: Login, Credit/Debit Card, Bank Account and Wireless Router.
+OneKeePass supports these built-in standard entry types: Login, Credit/Debit Card, Bank Account, Wireless Router, Identity, Passport, Driver License, SSH Key, SFTP Connection and WebDAV Connection.
 More standard entry types will be added. 
+
+## Can I add my own sections to an entry?
+
+Yes. Every entry type comes with its own sections - *Login Details* for a Login entry, for example - and you can add any number of sections of your own on top of those.
+
+Open the entry and put the form in **edit** mode. At the bottom of the form, tap **Additional section and custom fields** and give the new section a name. The section is then shown in the form like any other.
+
+The three-dot menu on a section header offers **Change Name** and **Add Custom Field**. A section that you added can be renamed; the sections that come with the entry type cannot.
+
+## How do I add a custom field, and what does "Protected" mean?
+
+In edit mode, tap the three-dot menu on the header of the section the field should go into and choose **Add Custom Field**. Give the field a name and choose its type:
+
+- **Text** - an ordinary text value
+- **Boolean** - an on/off switch
+- **Date** - a date chosen with the native date picker
+
+You can also tick **Protected** for a Text field. A protected field is treated the same way as the Password field:
+
+- Its value is masked in the entry form and is shown only while you tap the eye icon
+- It is stored in the database file marked as protected, and is additionally encrypted within the already encrypted database, in the standard KDBX way - so other KeePass applications read such fields correctly
+- It is never matched by the AutoFill search, so a secret value cannot be found by typing part of it into the search bar
+
+Boolean and Date values are never masked, so **Protected** cannot be ticked for those two types.
+
+The three-dot menu shown next to a custom field lets you rename it, change its type or protection, or delete the field with **Delete Field**.
 
 ## How to do merging of two databases?
 
@@ -146,6 +185,42 @@ Once these entries exist in your database, OneKeePass uses them automatically wh
 ## What happens if my database file is changed remotely?
 
 OneKeePass detects when the remote database file has been changed by another device or instance. When this happens, you are notified and can choose to merge the remote changes into your current session. The merge follows the same conflict-resolution rules as the local external-change detection.
+
+## How do I find and sort my entries?
+
+The search bar shown on the pages of an open database matches entries anywhere in that database, not only in the list you are looking at. The results are sorted the same way the list is.
+
+Entries can be sorted by **Title**, **Modified Time** or **Created Time**, in ascending or descending order. The sort action is available both on the page listing the categories and on the entry list itself, and your choice is remembered.
+
+## Can I make a copy of an entry?
+
+Yes. **Clone Entry** is available from the entry list and from the entry form menu. A long press on an entry row highlights it and opens that menu.
+
+## How do I save a copy of my database to another place?
+
+Use the **Save As** action in the database menu. You can pick the destination with the device file picker or choose an SFTP or a WebDAV connection.
+
+Save As writes a copy and nothing more. The database you are working on stays open and unchanged, the copy is not opened and is not added to the recently used list. If a file of that name is already there, you are asked before it is overwritten.
+
+This is different from **Export To**, which hands the database file over to the system share sheet.
+
+## What happens when a database is locked?
+
+When you lock a database - from the menu or after the session timeout - its content is encrypted in memory and the decrypted content is removed. Nothing readable is left in the app's memory while the database is locked. Unlocking with your credentials or biometrics decrypts it again and you continue from where you were.
+
+## Why can a database opened from another app sometimes not be saved?
+
+It depends on how the other app hands the file over.
+
+Some apps - a cloud storage app, a mail or a messaging app - pass only a **copy** of the file rather than the file itself. Anything you changed in a copy would never reach the original, so OneKeePass does not open it that way. Instead, use the **Open Database** action and pick the database from where it is actually kept. If the file came from a mail or a messaging app, save it to the Files app first and then open it from there.
+
+Some apps hand the file over with **read only** access. The database opens and can be used, but changes cannot be written back to it. Use **Save As** to keep your changes in another file.
+
+## In which languages is the app available?
+
+English, Arabic, German, Spanish, French, Indonesian, Brazilian Portuguese, Russian, Vietnamese and Chinese.
+
+If you want to help with a translation, please see [OneKeePass Translations](https://github.com/OneKeePass/onekeepass-translations)
 
 
 

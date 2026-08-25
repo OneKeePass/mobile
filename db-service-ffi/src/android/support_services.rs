@@ -20,6 +20,18 @@ use crate::{
 
 use super::{AndroidApiCallbackImpl, AutoFillDbData};
 
+use serde::Serialize;
+
+// Tells the UI what kind of autofill request is pending: whether the requesting screen has
+// a 2FA code field at all, and whether that is all it has (a code only screen, where the
+// entry list is filtered to entries that can produce a code)
+#[derive(Serialize)]
+struct TotpRequestInfo {
+    has_totp: bool,
+    totp_only: bool,
+    native_app: bool,
+}
+
 use crate::return_api_response_failure;
 
 // NOTE: The fns declared in service 'AndroidSupportService' in udl file are moved here
@@ -29,7 +41,8 @@ use crate::return_api_response_failure;
 #[derive(uniffi::Object)]
 struct AndroidSupportServiceExtra {}
 
-// All fns implemented of struct here are exported to use in Swift because of '#[uniffi::export]'
+// Android specific APIs. Called from Kotlin side to Rust
+// All fns implemented of struct here are exported to use in Kotlin because of '#[uniffi::export]'
 // See the next 'impl' of this struct for non exported functions
 
 #[uniffi::export]
@@ -41,9 +54,12 @@ impl AndroidSupportServiceExtra {
         Self {}
     }
 
+    // Called from cljs using 'invoke-api' 
     pub fn invoke(&self, command_name: &str, json_args: &str) -> ResponseJson {
         let r = match command_name {
             "autofill_filtered_entries" => self.autofill_filtered_entries(json_args),
+            "autofill_filtered_otp_entries" => self.autofill_filtered_otp_entries(json_args),
+            "autofill_totp_request_info" => self.autofill_totp_request_info(json_args),
             "autofill_client_app_uri" => self.autofill_client_app_uri(json_args),
             "autofill_associate_app_to_entry" => self.autofill_associate_app_to_entry(json_args),
             "complete_autofill" => self.complete_autofill(json_args),
@@ -287,6 +303,17 @@ impl AndroidSupportServiceExtra {
     // Based on the uri of an app that called Okp to autofill, we search entry items
     // of the currently opened database and return the matched entries if any
     fn autofill_filtered_entries(&self, json_args: &str) -> ResponseJson {
+        self.filtered_entries(json_args, false)
+    }
+
+    // The TOTP counterpart of autofill_filtered_entries, used when the autofill request
+    // focused a 2FA code field. Only entries that can produce a code are returned;
+    // offering any other entry would dead-end the user
+    fn autofill_filtered_otp_entries(&self, json_args: &str) -> ResponseJson {
+        self.filtered_entries(json_args, true)
+    }
+
+    fn filtered_entries(&self, json_args: &str, require_otp: bool) -> ResponseJson {
         let inner_fn = || -> OkpResult<db_service::EntrySearchResult> {
             let (db_key,) = parse_command_args_or_err!(json_args, DbKey { db_key });
 
@@ -312,13 +339,38 @@ impl AndroidSupportServiceExtra {
             // Only Login entries whose URL (or Additional URLs) matches are offered
             // (consistent with the desktop browser extension).
             let entry_items =
-                db_service::autofill::find_matching_login_entries(&db_key, &input_url)?;
+                db_service::autofill::find_matching_entries(&db_key, &input_url, require_otp)?;
             // The auto-match term is left empty so the searchbar starts blank
             // (showing the full match url there is awkward). The matched entries
             // are returned regardless; the searchbar is only for manual override.
             Ok(db_service::EntrySearchResult {
                 term: String::default(),
                 entry_items,
+            })
+        };
+
+        result_json_str(inner_fn())
+    }
+
+    // See TotpRequestInfo. The flags are carried on the same identifiers map as the uri, so
+    // this costs no extra round trip to the Kotlin side
+    fn autofill_totp_request_info(&self, _json_args: &str) -> ResponseJson {
+        let inner_fn = || -> OkpResult<TotpRequestInfo> {
+            let identifiers =
+                AndroidApiCallbackImpl::api_service().autofill_client_app_url_info()?;
+
+            let flag = |key: &str| identifiers.get(key).map_or(false, |v| v == "true");
+
+            let uri = identifiers.get("uri").map_or("", |v| v.as_str());
+
+            Ok(TotpRequestInfo {
+                has_totp: flag("has_totp"),
+                totp_only: flag("totp_only"),
+                // A web page's code field is found from its html name / autocomplete attributes
+                // and is detected reliably. A native app exposes neither, so a code field there
+                // can go unrecognised - the case where the clipboard is the only way to get the
+                // code to the user
+                native_app: uri.starts_with("android://") || uri.starts_with("androidapp://"),
             })
         };
 

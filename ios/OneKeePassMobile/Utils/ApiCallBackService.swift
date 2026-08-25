@@ -46,6 +46,85 @@ class ApiCallBackService:@unchecked Sendable, IosApiService,CommonDeviceServiceE
     try clipboardCopyString(clipData.fieldValue, clipData.cleanupAfter )
   }
 
+  // Registers the entries that can produce a TOTP as one time code identities, so iOS offers
+  // OneKeePass on a verification code field. Without these the OS never calls
+  // prepareOneTimeCodeCredentialList. One identity per service url of an entry.
+  func registerOneTimeCodeIdentities(
+    _ dbKey: String,
+    _ oldIdentities: [OtpIdentityData],
+    _ newIdentities: [OtpIdentityData]
+  ) throws {
+    guard #available(iOS 18.0, *) else { return }
+
+    func toCredentialIdentities(_ items: [OtpIdentityData]) -> [ASOneTimeCodeCredentialIdentity] {
+      return items.flatMap { item in
+        item.serviceUrls.map { url in
+          ASOneTimeCodeCredentialIdentity(
+            serviceIdentifier: ASCredentialServiceIdentifier(identifier: url, type: .URL),
+            label: item.label,
+            recordIdentifier: item.entryUuid)
+        }
+      }
+    }
+
+    let oldOnes = toCredentialIdentities(oldIdentities)
+    let newOnes = toCredentialIdentities(newIdentities)
+
+    cmnLogger.debug("registerOneTimeCodeIdentities: removing \(oldOnes.count), saving \(newOnes.count)")
+    for i in newOnes {
+      cmnLogger.debug(
+        "registerOneTimeCodeIdentities: identity service '\(i.serviceIdentifier.identifier)' label '\(i.label)'")
+    }
+
+    let store = ASCredentialIdentityStore.shared
+
+    // The store silently drops everything when autofill is off for the app, and it ignores the
+    // incremental save/remove calls when it does not support incremental updates. Both look
+    // exactly like a successful registration from here, so the state is checked first
+    store.getState { state in
+      cmnLogger.debug(
+        "registerOneTimeCodeIdentities: store enabled \(state.isEnabled), supportsIncrementalUpdates \(state.supportsIncrementalUpdates)")
+
+      guard state.isEnabled else {
+        cmnLogger.error("registerOneTimeCodeIdentities: identity store is not enabled; nothing registered")
+        return
+      }
+
+      let onSaved: (Bool, Error?) -> Void = { success, error in
+        if let error {
+          cmnLogger.error("registerOneTimeCodeIdentities save error: \(error)")
+        } else {
+          cmnLogger.debug("registerOneTimeCodeIdentities: saved \(newOnes.count) identities, success \(success)")
+        }
+      }
+
+      guard state.supportsIncrementalUpdates else {
+        // No incremental updates - the only thing that takes effect is replacing the whole set.
+        // Passkey identities live in the same store, so replacing here would drop them; that is
+        // why this path only logs rather than calling replaceCredentialIdentities
+        cmnLogger.error(
+          "registerOneTimeCodeIdentities: store does not support incremental updates; identities not registered")
+        return
+      }
+
+      if oldOnes.isEmpty {
+        guard !newOnes.isEmpty else { return }
+        store.saveCredentialIdentities(newOnes, completion: onSaved)
+      } else {
+        // Remove the previously registered identities for this db before saving the current set
+        store.removeCredentialIdentities(oldOnes) { removed, error in
+          if let error {
+            cmnLogger.error("registerOneTimeCodeIdentities remove error: \(error)")
+          } else {
+            cmnLogger.debug("registerOneTimeCodeIdentities: removed \(oldOnes.count) identities, success \(removed)")
+          }
+          guard !newOnes.isEmpty else { return }
+          store.saveCredentialIdentities(newOnes, completion: onSaved)
+        }
+      }
+    }
+  }
+
   func registerPasskeyIdentities(_ dbKey: String, _ oldPasskeys: [PasskeySummaryData], _ newPasskeys: [PasskeySummaryData]) throws {
     guard #available(iOS 17.0, *) else { return }
 

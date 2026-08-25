@@ -1,10 +1,11 @@
 (ns
  onekeepass.mobile.start-page
-  (:require [onekeepass.mobile.background :refer [is-iOS]]
+  (:require [onekeepass.mobile.background :refer [is-Android is-iOS]]
             [onekeepass.mobile.bottom-navigator :as bn]
             [onekeepass.mobile.common-components :as cc  :refer [menu-action-factory
                                                                  message-dialog]]
-            [onekeepass.mobile.constants :as const :refer [BROWSE-TYPE-DB-NEW BROWSE-TYPE-DB-OPEN]]
+            [onekeepass.mobile.constants :as const :refer [BROWSE-TYPE-DB-NEW BROWSE-TYPE-DB-OPEN
+                                                          BROWSE-TYPE-DB-SAVE-AS]]
             [onekeepass.mobile.date-utils :refer [utc-to-local-datetime-str]]
             [onekeepass.mobile.utils :as u]
             [onekeepass.mobile.events.common :as cmn-events]
@@ -14,10 +15,12 @@
             [onekeepass.mobile.events.settings :as stgs-events]
             [onekeepass.mobile.events.dialogs :as dlg-events]
             [onekeepass.mobile.events.remote-storage :as rs-events]
+            [onekeepass.mobile.grouped-list :as gl]
             [onekeepass.mobile.rn-components
              :as rnc
              :refer [cust-dialog cust-rnp-divider divider-color-1
-                     dots-icon-name primary-color primary-container-color
+                     dots-icon-name no-assist-text-props
+                     no-autocorrect-text-props primary-color
                      rn-keyboard rn-safe-area-view rn-scroll-view rn-section-list rn-view
                      rnp-button rnp-dialog-actions rnp-dialog-content
                      rnp-dialog-title rnp-divider rnp-helper-text
@@ -53,8 +56,13 @@
      [rnp-text (lstr-dlg-text "dbStorage")]
      [rn-view {:style {:flexDirection "column" :margin-top 10 :margin-bottom 10 :align-content "center"}}
       [store-sel-button "filePicker" (fn []
-                                       (if (= BROWSE-TYPE-DB-OPEN kw-browse-type)
+                                       (condp = kw-browse-type
+                                         BROWSE-TYPE-DB-OPEN
                                          (opndb-events/open-database-on-press)
+
+                                         BROWSE-TYPE-DB-SAVE-AS
+                                         (exp-events/save-as-to-device-start (:save-as-data rs-opt-arg))
+
                                          (ndb-events/done-on-click))
                                        (dlg-events/start-page-storage-selection-dialog-close))]
 
@@ -75,6 +83,14 @@
   ;; Calls the generic dialog with key :start-page-storage-selection-dialog to show
   ;; The arg passed to this event will be available in 'start-page-storage-selection-dialog' fn
   (dlg-events/start-page-storage-selection-dialog-show-with-state {:kw-browse-type kw-browse-type :rs-opt-arg opts-m}))
+
+(defn save-as-storage-selection-dialog-show
+  "Called when the 'Save As' db action menu item is pressed so that the user can
+   select where a copy of this database is to be written"
+  [db-file-path file-name]
+  (start-page-storage-selection-dialog-show BROWSE-TYPE-DB-SAVE-AS
+                                            :save-as-data {:db-key db-file-path
+                                                           :file-name file-name}))
 
 (defn- bg1 []
   @rnc/secondary-container-color)
@@ -195,41 +211,40 @@
      [rnp-dialog-title (lstr-dlg-title "newDatabase")]
      [rnp-dialog-content
       [rn-view {:style {:flexDirection "column"  :justify-content "center"}}
-       [rnp-text-input {:label (lstr-l "name")
-                        ;;:value database-name
-                        :defaultValue database-name
-                        :autoCapitalize "none" ;; this starts with the lowercase keyboard 
-                        :autoComplete "off"
-                        :onChangeText #(ndb-events/database-field-update :database-name %)}]
+       ;; no-assist-text-props also starts the keyboard with the lowercase letters
+       [rnp-text-input (merge no-assist-text-props
+                              {:label (lstr-l "name")
+                               ;;:value database-name
+                               :defaultValue database-name
+                               :onChangeText #(ndb-events/database-field-update :database-name %)})]
        (when (contains? error-fields :database-name)
          [rnp-helper-text {:type "error" :visible true}
           (:database-name error-fields)])
 
-       [rnp-text-input {:style {:margin-top 10}
-                        :label (lstr-l "description")
-                        ;;:value database-description
-                        :defaultValue database-description
-                        :autoComplete "off"
-                        :onChangeText #(ndb-events/database-field-update :database-description %)}]
+       [rnp-text-input (merge no-autocorrect-text-props
+                              {:style {:margin-top 10}
+                               :label (lstr-l "description")
+                               ;;:value database-description
+                               :defaultValue database-description
+                               :onChangeText #(ndb-events/database-field-update :database-description %)})]
 
        [rnp-divider {:style {:margin-top 10 :margin-bottom 10 :backgroundColor "grey"}}]
 
-       [rnp-text-input {:style {}
-                        :label (lstr-l "masterPassword")
-                        ;;:value password
-                        :defaultValue password
-                        :autoCapitalize "none"
-                        :autoComplete "off"
-                        :secureTextEntry (not password-visible)
-                        :right (r/as-element
-                                [rnp-text-input-icon
-                                 {:icon (if password-visible "eye" "eye-off")
-                                  :onPress #(ndb-events/database-field-update
-                                             :password-visible (not password-visible))}])
-                        :onChangeText (fn [v]
-                                        ;; After entering some charaters and delete is used to remove those charaters
-                                        ;; password will have a string value "" resulting in a non visible password. Need to use nil instead
-                                        (ndb-events/database-field-update :password (if (empty? v) nil v)))}]
+       [rnp-text-input (merge no-assist-text-props
+                              {:style {}
+                               :label (lstr-l "masterPassword")
+                               ;;:value password
+                               :defaultValue password
+                               :secureTextEntry (not password-visible)
+                               :right (r/as-element
+                                       [rnp-text-input-icon
+                                        {:icon (if password-visible "eye" "eye-off")
+                                         :onPress #(ndb-events/database-field-update
+                                                    :password-visible (not password-visible))}])
+                               :onChangeText (fn [v]
+                                               ;; After entering some charaters and delete is used to remove those charaters
+                                               ;; password will have a string value "" resulting in a non visible password. Need to use nil instead
+                                               (ndb-events/database-field-update :password (if (empty? v) nil v)))})]
        (when (contains? error-fields :password)
          [rnp-helper-text {:type "error" :visible true}
           (:password error-fields)])
@@ -293,23 +308,32 @@
                         :value database-file-name
                         :editable false
                         :onChangeText #()}]
-       [rnp-text-input {:style {:margin-top 10}
-                        :label (lstr-l "masterPassword")
-                        ;;:value password
-                        :defaultValue password
-                        :autoComplete "off"
-                        :autoCapitalize "none"
-                        :autoCorrect false
-                        :secureTextEntry (not password-visible)
-                        :right (r/as-element
-                                [rnp-text-input-icon
-                                 {:icon (if password-visible "eye" "eye-off")
-                                  :onPress #(opndb-events/database-field-update
-                                             :password-visible (not password-visible))}])
-                        :onChangeText (fn [v]
-                                        ;; After entering some charaters and delete is used to remove those charaters
-                                        ;; password will have a string value "" resulting in a non visible password. Need to use nil instead
-                                        (opndb-events/database-field-update :password (if (empty? v) nil v)))}]
+       [rnp-text-input (merge no-assist-text-props
+                              {:style {:margin-top 10}
+                               :label (lstr-l "masterPassword")
+                               ;;:value password
+                               :defaultValue password
+                               ;; The database file field above is not editable. So the password
+                               ;; field gets the initial focus and keyboard is shown
+                               :autoFocus true
+                               ;; Android workaround: :autoFocus inside a Modal based dialog may focus the
+                               ;; field without bringing up the keyboard. If seen in testing, uncomment this
+                               ;; :ref callback (called on mount when the dialog becomes visible) which
+                               ;; refocuses after a short delay so the keyboard is shown
+                               ;; :ref (fn [input-ref]
+                               ;;        (when input-ref
+                               ;;          (js/setTimeout
+                               ;;           (fn [] (.focus ^js/TextInput input-ref)) 100)))
+                               :secureTextEntry (not password-visible)
+                               :right (r/as-element
+                                       [rnp-text-input-icon
+                                        {:icon (if password-visible "eye" "eye-off")
+                                         :onPress #(opndb-events/database-field-update
+                                                    :password-visible (not password-visible))}])
+                               :onChangeText (fn [v]
+                                               ;; After entering some charaters and delete is used to remove those charaters
+                                               ;; password will have a string value "" resulting in a non visible password. Need to use nil instead
+                                               (opndb-events/database-field-update :password (if (empty? v) nil v)))})]
        (when (contains? error-fields :password)
          [rnp-helper-text {:type "error" :visible (contains? error-fields :password)}
           (:password error-fields)])
@@ -388,18 +412,6 @@
    [rnp-dialog-actions
     [rnp-button {:mode "text" :onPress  #(cmn-events/close-file-info-dialog)} (lstr-bl 'close)]]])
 
-(defn databases-list-header [title]
-  [rn-view  {:style {:flexDirection "row"
-                     :width "100%"
-                     :backgroundColor @primary-container-color
-                     :justify-content "space-around"
-                     :margin-top 5
-                     :min-height 38}}
-   [rnp-text {:style {:alignSelf "center"
-                      :width "85%"
-                      :text-align "center"
-                      :padding-left 0} :variant "titleLarge"} title]])
-
 ;;;;;;;;;;;; Menus ;;;;;;;;;;;;;;;;;;;;;
 (def ^:private db-action-menu-data (r/atom {:show false :x 0 :y 0
                                             :db-file-path nil
@@ -449,6 +461,12 @@
                    :onPress (db-action-menu-action
                              exp-events/prepare-export-kdbx-data
                              db-file-path)}]
+
+   [rnp-menu-item {:title (lstr-ml "saveAs")
+                   :onPress (db-action-menu-action
+                             save-as-storage-selection-dialog-show
+                             db-file-path
+                             file-name)}]
    ;; Dividers used in menu has a preset background-color
    [cust-rnp-divider]
    (when opened
@@ -501,6 +519,18 @@
                                    {:label (lstr-bl "continue")
                                     :on-press (fn []
                                                 (opndb-events/repick-confirm-close))}]}]))
+
+;; Shown when the user pressed a .kdbx file in another app and that app sent a copy of the
+;; file instead of the file itself. See event ':open-database-copy-handed-over-show'
+(defn copy-handed-over-dialog [{:keys [dialog-show file-name]}]
+  [cc/confirm-dialog {:dialog-show dialog-show
+                      :title (lstr-dlg-title 'openFromLocation)
+                      :confirm-text [(lstr-dlg-text 'copyHandedOverInfo {:file-name file-name})
+                                     (lstr-dlg-text 'copyHandedOverAction)]
+                      :actions [{:label (lstr-bl "cancel")
+                                 :on-press #(opndb-events/copy-handed-over-close)}
+                                {:label (lstr-bl "opendb")
+                                 :on-press #(opndb-events/copy-handed-over-open-database)}]}])
 
 (defn authenticate-biometric-confirm-dialog [{:keys [dialog-show]}]
   [cc/confirm-dialog  {:dialog-show dialog-show
@@ -581,17 +611,23 @@
                       ;; Recently used db info forms the data for this list
                       :data recently-used}]]
       [rn-section-list
-       {:style {}
+       {:style {:flex 1}
         :sections (clj->js sections)
+        :stickySectionHeadersEnabled false
         :renderItem  (fn [props] ;; keys are (:item :index :section :separators)
-                       (let [props (js->clj props :keywordize-keys true)]
-                         (r/as-element [row-item (-> props :item) opened-databases-files])))
+                       (let [{:keys [item index section]} (js->clj props :keywordize-keys true)]
+                         (r/as-element
+                          [gl/card-row (gl/row-position index (count (:data section)))
+                           [row-item item opened-databases-files]])))
         :ItemSeparatorComponent (fn [_p]
-                                  (r/as-element [rnp-divider]))
+                                  (r/as-element [gl/card-row-separator]))
+        ;; The listed databases are all there is on this page, so there is nothing to be
+        ;; gained by collapsing them - the header carries no chevron
         :renderSectionHeader (fn [props] ;; key is :section
                                (let [props (js->clj props :keywordize-keys true)
-                                     {:keys [title]} (-> props :section)]
-                                 (r/as-element [databases-list-header title])))}])))
+                                     {:keys [title data]} (-> props :section)]
+                                 (r/as-element [gl/section-header {:label title
+                                                                   :items-count (count data)}])))}])))
 
 
 ;; A functional reagent component
@@ -613,34 +649,32 @@
     ;; TODO: Avoid calling this more than once
     #_(rnc/set-insets (rnc/use-safe-area-insets))
 
-    [rn-view {:style {:flex 1
-                      :justify-content "center"
-                      ;; :background-color "green"
-                      :margin-top "10%"
-                      :align-items "center"}}
-     [rn-view {:style {:flex 0.1 :justify-content "center" :width "90%"}}
+    [rn-view {:style {:flex 1}}
+     ;; The two buttons sit on the page ground above the card the databases are listed in,
+     ;; lined up with its sides
+     [rn-view {:style {:margin-top 24
+                       :margin-left gl/CARD-SIDE-MARGIN
+                       :margin-right gl/CARD-SIDE-MARGIN}}
       [rnp-button {:mode "contained" :onPress (fn [] (ndb-events/new-database-dialog-show))}
-       (lstr-bl "newdb")]] ;;
-     [rn-view {:style {:flex 0.1 :justify-content "center" :width "90%"}}
+       (lstr-bl "newdb")]
       [rnp-button {:mode "contained"
+                   :style {:margin-top 12}
                    :onPress (fn []
                               (start-page-storage-selection-dialog-show BROWSE-TYPE-DB-OPEN)
                               ;; This reset call is to ensure we handle the usual db opening and not for merging
                               #_(opndb-events/reset-new-merging-source-db-wanted))}
        (lstr-bl "opendb")]]
 
-     [rn-view {:style {:margin-top 20}}
-      [rnp-divider]]
-
-     [rn-view {:style {:flex 0.9 :width "100%"}}
+     [rn-view {:style {:flex 1 :margin-top 16}}
       [databases-list-content recent-uses]]]))
 
 (defn open-page-content []
-  [rn-safe-area-view {:style {:flex 1
-                              ;;:background-color "red" #_
-                              :background-color @rnc/page-background-color}
-
-                      :edges ["right" "bottom" "left"]}
+  ;; The same ground the entry category and entry list pages stand on, so that the cards and
+  ;; the bottom bar read as sitting on the page rather than merging into it
+  [rn-safe-area-view (cond-> {:style (gl/page-style)}
+                       ;; The home page's bottom bar reaches the Android screen edge itself.
+                       ;; Reserving the bottom edge here leaves a blank inset below the bar.
+                       (is-Android) (assoc :edges #js ["right" "left"]))
 
    [:f> main-content]
 
@@ -661,4 +695,5 @@
     [start-page-storage-selection-dialog]
     [file-info-dialog @(cmn-events/file-info-dialog-data)]
     [message-repick-database-file-dialog @(opndb-events/repick-confirm-data)]
+    [copy-handed-over-dialog @(opndb-events/copy-handed-over-data)]
     [message-dialog @(cmn-events/message-dialog-data)]]])

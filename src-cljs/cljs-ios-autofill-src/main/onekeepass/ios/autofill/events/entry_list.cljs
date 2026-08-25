@@ -1,5 +1,5 @@
 (ns onekeepass.ios.autofill.events.entry-list
-  (:require [onekeepass.ios.autofill.events.common ]
+  (:require [onekeepass.ios.autofill.events.common :refer [one-time-code-mode?]]
             [onekeepass.ios.autofill.constants :refer [ENTRY_LIST_PAGE_ID]]
             [re-frame.core :refer [dispatch reg-event-fx reg-sub subscribe]]))
 
@@ -31,7 +31,16 @@
 (defn entry-pressed
   "Called when user just presses on an entry"
   [entry-uuid]
-  (dispatch [:entry-form/send-credentials-selected entry-uuid]))
+  (dispatch [:entry-list/entry-selected-to-fill entry-uuid]))
+
+;; A verification code request fills the entry's TOTP; any other request fills the
+;; credentials. See the one time code mode context set at startup
+(reg-event-fx
+ :entry-list/entry-selected-to-fill
+ (fn [{:keys [db]} [_event-id entry-uuid]]
+   (if (one-time-code-mode? db)
+     {:fx [[:dispatch [:entry-form/send-one-time-code-selected entry-uuid]]]}
+     {:fx [[:dispatch [:entry-form/send-credentials-selected entry-uuid]]]})))
 
 (defn long-press-menu-hide []
   (dispatch [:long-press-menu-hide]))

@@ -10,7 +10,8 @@
                                                     rnp-list-item
                                                     rnp-divider
                                                     rnp-list-icon
-                                                    rnp-text]]
+                                                    rnp-text
+                                                    row-highlight-style]]
    [onekeepass.mobile.translation :refer [lstr-ml lstr-bl lstr-dlg-text lstr-dlg-title]]
    [onekeepass.mobile.date-utils :refer [utc-str-to-local-datetime-str]]
    [onekeepass.mobile.icons-list :refer [icon-id->name]]
@@ -67,8 +68,10 @@
 
 (defn row-item []
   (fn [{:keys [title secondary-title icon-id uuid history-index] :as _entry-summary}]
-    (let [icon-name (icon-id->name icon-id)]
-      [rnp-list-item {:onPress #(form-events/load-selected-history-entry uuid history-index)
+    (let [icon-name (icon-id->name icon-id)
+          {menu-show :show menu-history-index :history-index} @entry-long-press-menu-data]
+      [rnp-list-item {:style (row-highlight-style (and menu-show (= history-index menu-history-index)))
+                      :onPress #(form-events/load-selected-history-entry uuid history-index)
                       :onLongPress  (fn [e] (show-entry-long-press-menu e uuid history-index))
                       :title (r/as-element
                               [rnp-text {:variant "titleMedium"} title])

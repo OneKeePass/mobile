@@ -5,6 +5,7 @@
                                             assoc-in-key-db
                                             get-in-key-db
                                             on-ok on-error]]
+   [onekeepass.mobile.events.entry-list :refer [sort-containers]]
    [re-frame.core :refer [reg-event-db
                           reg-event-fx
                           reg-sub
@@ -227,10 +228,14 @@
                                     (when-let [result (on-ok api-reponse)]
                                       (dispatch [:groups-data-update result]))))))
 
-(reg-event-db
+(reg-event-fx
  :groups-data-update
- (fn [db [_event-id v]]
-   (assoc-in-key-db db [:groups :data] v)))
+ (fn [{:keys [db]} [_event-id v]]
+   {:db (assoc-in-key-db db [:groups :data] v)
+    ;; The category page lists the root group's own entries when the entries are grouped as
+    ;; 'Groups'. The root group uuid comes from this data, so those entries can only be
+    ;; asked for once it has arrived
+    :fx [(when-not (nil? v) [:dispatch [:entry-category/load-root-group-entry-items]])]}))
 
 (reg-sub
  :groups-data
@@ -315,7 +320,8 @@
 (reg-sub
  :groups/subgroups-summary
  :<- [:groups-data]
- (fn [{:keys [recycle-bin-uuid groups]}  [_query-id group-uuid]]
+ :<- [:entry-list-sort-criteria]
+ (fn [[{:keys [recycle-bin-uuid groups]} sort-criteria] [_query-id group-uuid]]
    ;; groups is a map where key is group uuid and value is group summary map {:name ".." :uuid ".." :icon-id 0 ..} 
    (let [{:keys [group-uuids]} (get groups group-uuid)
          ;; When the root's sub groups summary is called, the 'group-uuids' list will include the 'recycle-bin-uuid' 
@@ -331,7 +337,7 @@
                                           :custom-icon-uuid custom-icon-uuid
                                           :groups-count (count group-uuids)
                                           :entries-count (count entry-uuids)}))) [] children-group-uuids)]
-     summaries)))
+     (sort-containers sort-criteria summaries))))
 
 (comment
   (in-ns 'onekeepass.mobile.events.groups)

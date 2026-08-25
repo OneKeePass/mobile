@@ -1,6 +1,7 @@
 (ns onekeepass.mobile.events.new-database
   (:require [clojure.string :as str]
             [onekeepass.mobile.background :as bg :refer [is-Android]]
+            [onekeepass.mobile.constants :as const]
             [onekeepass.mobile.events.common :refer [on-ok]]
             [onekeepass.mobile.translation :refer [lstr-mt]]
             [onekeepass.mobile.utils :as u :refer [str->int]]
@@ -204,8 +205,19 @@
  (fn [{:keys [db]} [_event-id error]]
    {:db (-> db (assoc-in [:new-database :status] :completed)
             (assoc-in  [:new-database :api-error-text] error))
-    :fx (if (= "DOCUMENT_PICKER_CANCELED" (:code error))
+    :fx (cond
+          (= "DOCUMENT_PICKER_CANCELED" (:code error))
           [[:dispatch [:new-database-dialog-hide]]]
+
+          ;; The database file is created in the location the user picked but reading it back
+          ;; right away failed. Seen with GDrive and OneDrive as their file provider is still
+          ;; busy with the newly created file. Nothing is lost and the user can open the
+          ;; database from that location, so this is not shown as an error
+          (= const/COORDINATOR_CALL_FAILED (:code error))
+          [[:dispatch [:new-database-dialog-hide]]
+           [:dispatch [:common/message-box-show 'newDatabaseCreated 'newDatabaseCreatedNotOpened]]]
+
+          :else
           [[:dispatch [:new-database-dialog-hide]]
            [:dispatch [:common/error-box-show 'filePickError error]]])}))
 

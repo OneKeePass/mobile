@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [onekeepass.mobile.background :refer [is-iOS]]
    [onekeepass.mobile.rn-components :as rnc :refer [cust-dialog
+                                                    no-assist-text-props
                                                     rnp-dialog-title
                                                     rnp-dialog-content
                                                     rnp-dialog-actions
@@ -33,13 +34,14 @@
    [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1} (lstr-dlg-title 'enterPin)]
    [rnp-dialog-content
     [rn-view {:flexDirection "column"}
-     [rnp-text-input {:label (lstr-l 'pin)
-                      :keyboardType "number-pad"
-                      :defaultValue pin-value
-                      :secureTextEntry (not visible)
-                      :onChangeText #(dlg-events/app-pin-lock-settings-dialog-update-with-map
-                                      {:pin-value %
-                                       :error-text nil})}]
+     [rnp-text-input (merge no-assist-text-props
+                            {:label (lstr-l 'pin)
+                             :keyboardType "number-pad"
+                             :defaultValue pin-value
+                             :secureTextEntry (not visible)
+                             :onChangeText #(dlg-events/app-pin-lock-settings-dialog-update-with-map
+                                             {:pin-value %
+                                              :error-text nil})})]
      (when error-text
        [rnp-helper-text {:type "error" :visible true}
         error-text])]]
@@ -67,13 +69,14 @@
    [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1} (lstr-dlg-title 'enterPin)]
    [rnp-dialog-content
     [rn-view {:flexDirection "column"}
-     [rnp-text-input {:label (lstr-l 'pin)
-                      :keyboardType "number-pad"
-                      :defaultValue pin-value
-                      :secureTextEntry (not visible)
-                      :onChangeText #(dlg-events/locked-app-log-in-dialog-update-with-map
-                                      {:pin-value %
-                                       :error-text nil})}]
+     [rnp-text-input (merge no-assist-text-props
+                            {:label (lstr-l 'pin)
+                             :keyboardType "number-pad"
+                             :defaultValue pin-value
+                             :secureTextEntry (not visible)
+                             :onChangeText #(dlg-events/locked-app-log-in-dialog-update-with-map
+                                             {:pin-value %
+                                              :error-text nil})})]
      (when error-text
        [rnp-helper-text {:type "error" :visible true}
         error-text])]]

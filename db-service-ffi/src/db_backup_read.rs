@@ -55,16 +55,17 @@ impl From<KdbxLoaded> for KdbxLoadedEx {
 }
 
 pub(crate) fn read_latest_backup(json_args: &str) -> OkpResult<KdbxLoadedEx> {
-    let (db_file_name, password, key_file_name, _) = parse_command_args_or_err!(
+    let (db_file_name, password, key_file_name, _, _) = parse_command_args_or_err!(
         json_args,
         OpenDbArg {
             db_file_name,
             password,
             key_file_name,
-            biometric_auth_used
+            biometric_auth_used,
+            transient_db_ref
         }
     );
-    let file_name = AppState::file_name_in_recently_used(&db_file_name);
+    let file_name = AppState::db_file_name(&db_file_name);
     read_latest_backup_db_arg(&db_file_name, &password, &key_file_name, &file_name)
 }
 

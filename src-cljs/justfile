@@ -1,7 +1,10 @@
 ###############################   Shadow-cljs     ######################################
 
 alias shcr := shadow-cljs-clean-watch
+alias shw := shadow-cljs-watch
+
 alias shexcr := shadow-cljs-ios-ext-clean-watch 
+alias shexw := shadow-cljs-ios-ext-watch
 
 alias shre := shadow-cljs-clean-release
 alias shexre := shadow-cljs-ios-ext-clean-release
@@ -11,9 +14,15 @@ shadow_cljs_version := "3.3.5"
 shadow-cljs-compile:
     npx shadow-cljs@{{shadow_cljs_version}} compile app
 
+shadow-cljs-watch:
+    npx shadow-cljs@{{shadow_cljs_version}} watch app
+
 shadow-cljs-clean-watch:
     rm -rf cljs-main-app-out
     npx shadow-cljs@{{shadow_cljs_version}} watch app  
+
+shadow-cljs-ios-ext-watch:
+    npx shadow-cljs@{{shadow_cljs_version}} watch ios-autofill
 
 shadow-cljs-ios-ext-clean-watch:
     rm -rf cljs-ios-autofill-out

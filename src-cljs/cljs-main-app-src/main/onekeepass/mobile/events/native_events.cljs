@@ -24,11 +24,14 @@
 
 (def EVENT_APP_BECOMES_INACTIVE  "onAppBecomingInActive")
 
+;; Emitted on Android only - see EventEmitter.onNewIntent
+(def EVENT_ON_OTP_AUTH_URL "onOtpAuthUrl")
+
 (defn open-url
   "Makes a corresponding UI side event for the received 'onApplicationOpenURL' event from backend"
   [event]
   ;;(println "open-url is called using the native events")
-  (dispatch [:open-database/database-file-picked (:ok (bg/transform-api-response event {}))]))
+  (dispatch [:open-database/app-opened-with-db-file (:ok (bg/transform-api-response event {}))]))
 
 (defn register-open-url-handler
   ;; The event 'onApplicationOpenURL' will will be called when user 
@@ -39,6 +42,16 @@
 ;; Mostly useful during development
 #_(defn remove-open-url-handler []
     (bg/unregister-event-listener "onApplicationOpenURL" open-url))
+
+(defn register-otp-auth-url-handler
+  ;; The event 'onOtpAuthUrl' is called when the user presses an 'otpauth://' link in
+  ;; another app - the device Camera app shows one after scanning a 2FA QR code - and
+  ;; our app is already running
+  []
+  (bg/register-event-listener EVENT_ON_OTP_AUTH_URL
+                              (fn [event-message]
+                                (when-let [{:keys [otp-url]} (on-ok (bg/transform-api-response event-message {}))]
+                                  (dispatch [:otp-url-received/url-received otp-url])))))
 
 (def ^private token-response-converter (partial bg/transform-response-excluding-keys #(-> % (get "reply_field_tokens") keys vec)))
 
@@ -57,7 +70,11 @@
 (defn register-app-becomes-active []
   (bg/register-event-listener EVENT_APP_BECOMES_ACTIVE
                               (fn [_event-message]
-                                (dispatch [:external-db-change/poll-open-remote-dbs]))))
+                                (dispatch [:external-db-change/poll-open-remote-dbs])
+                                ;; Neither the entry list's refresh timer nor the native
+                                ;; animation of its token bars can be trusted across a
+                                ;; spell in the background
+                                (dispatch [:entry-list-otp/refresh-all]))))
 
 (defn register-app-becomes-inactive []
   (bg/register-event-listener EVENT_APP_BECOMES_INACTIVE
@@ -70,6 +87,11 @@
   (register-app-becomes-active)
   (register-app-becomes-inactive)
   (register-open-url-handler)
+  ;; Only Android emits 'onOtpAuthUrl'. The iOS event emitter does not declare it, and
+  ;; RCTEventEmitter raises 'not a supported event type' when a listener is added for an
+  ;; event a platform does not declare
+  (when (bg/is-Android)
+    (register-otp-auth-url-handler))
   (register-entry-otp-update-handler)
   (register-timer-tick-handler))
 

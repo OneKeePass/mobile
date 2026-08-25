@@ -13,7 +13,6 @@
                                                          message-snackbar]]
             [onekeepass.mobile.constants :refer [DARK-THEME]]
             [onekeepass.mobile.events.common :as cmn-events]
-            [re-frame.core :refer [dispatch]]
             [onekeepass.mobile.rn-components :as rnc :refer [react-use-effect
                                                              reset-colors
                                                              rn-view

@@ -1,13 +1,15 @@
 (ns onekeepass.mobile.events.entry-form-otp
   "Entry form otp events"
-  (:require [onekeepass.mobile.background :as bg]
-            [onekeepass.mobile.constants :refer [ONE_TIME_PASSWORD_TYPE]]
+  (:require [clojure.string :as str]
+            [onekeepass.mobile.background :as bg]
+            [onekeepass.mobile.constants :refer [ONE_TIME_PASSWORD_TYPE USERNAME]]
             [onekeepass.mobile.events.common
     :as cmn-events
     :refer [active-db-key assoc-in-key-db get-in-key-db on-error]]
             [onekeepass.mobile.events.entry-form-common
     :refer [add-section-field entry-form-key extract-form-otp-fields
-            merge-section-key-value validate-entry-form-data]] 
+            merge-section-key-value otp-field-target set-section-field-value
+            validate-entry-form-data]]
             [re-frame.core :refer [dispatch reg-event-fx reg-fx reg-sub]]))
 
 ;; Returns a map with otp fileds as key and its token info as value
@@ -161,6 +163,43 @@
 
            (when dispatch-kw
              [:dispatch [dispatch-kw {}]])]})))
+
+;; Sets an 'otpauth://' url that another app - typically the device Camera app after a 2FA
+;; QR code scan - sent to us on the currently loaded entry form
+;; See onekeepass.mobile.events.otp-url-received where this is called from
+;;
+;; 'save?' is false when the form is a new entry that the user has yet to review. The url is
+;; only set on the form and the user saves it as any other new entry. It is true when the url
+;; goes to an existing entry that is already in the database
+(reg-event-fx
+ :entry-form/otp-url-received-set
+ (fn [{:keys [db]} [_event-id {:keys [otp-url title user-name save?]}]]
+   (let [{:keys [section-name field-name standard-field]} (otp-field-target db)
+
+         ;; The entry type has no standard otp field and one is added to the additional
+         ;; otp section as the manual and the scan qr code flows do
+         db (if standard-field
+              db
+              (add-section-field db {:section-name section-name
+                                     :field-name field-name
+                                     :protected true
+                                     :required false
+                                     :data-type ONE_TIME_PASSWORD_TYPE}))
+
+         db (assoc-in-key-db db
+                             [entry-form-key :data :section-fields section-name]
+                             (merge-section-key-value db section-name field-name otp-url))
+
+         db (cond-> db
+              (not (str/blank? title))
+              (assoc-in-key-db [entry-form-key :data :title] title)
+
+              (not (str/blank? user-name))
+              (set-section-field-value USERNAME user-name))]
+
+     {:db db
+      :fx [(when save?
+             [:bg-update-entry [(active-db-key db) (get-in-key-db db [entry-form-key :data])]])]})))
 
 ;;api-response-handler is a fn that accepts a single argument
 (reg-fx

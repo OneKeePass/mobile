@@ -31,6 +31,7 @@
                                 Pressable
                                 TouchableWithoutFeedback
                                 TouchableHighlight
+                                TouchableOpacity
                                 ScrollView
                                 SectionList
                                 View
@@ -54,6 +55,7 @@
                                 Dialog.Actions
                                 FAB
                                 HelperText
+                                Icon
                                 IconButton
                                 List.Section
                                 List.Item
@@ -73,6 +75,8 @@
                                 TextInput
                                 Text
                                 TouchableRipple
+                                TouchableOpacity
+                                Icon
 
                                 GestureHandlerRootView
                                 rnp-dialog]}

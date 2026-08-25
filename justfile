@@ -4,6 +4,10 @@
 alias rns := npx-rn-start
 alias rni := npx-rn-ios
 
+## Uses the debug build's appId 'com.onekeepassmobile.debug'
+alias rna-ds := npx-rn-adnroid-debug-select
+
+## Following uses the release version's appId  'com.onekeepassmobile'
 alias rna-s := npx-rn-android-select
 alias rna := npx-rn-android
 
@@ -21,6 +25,11 @@ npx-rn-android:
 npx-rn-android-select:
     npx react-native run-android --list-devices 
 
+
+## Uses app id 'com.onekeepassmobile.debug'
+## Equivalent: npx react-native run-android --appId com.onekeepassmobile.debug --list-devices
+npx-rn-adnroid-debug-select:
+    npx react-native run-android --appIdSuffix debug --list-devices
 
 ## npx react-native run-android --device=  (did not work)
 

@@ -12,6 +12,7 @@
                      PASSKEY_REGISTRATION_PAGE_ID
                      to-previous-page]]
             [onekeepass.mobile.android.autofill.start-page :as android-af-start-page]
+            [onekeepass.mobile.translation :refer [lstr-pt]]
             [onekeepass.mobile.rn-components :as rnc :refer [background-color
                                                              primary-color
                                                              rnp-appbar-header
@@ -39,6 +40,19 @@
 
 (defn hardware-back-pressed [] 
   (back-action @current-page-info))
+
+;; The autofill activity may be launched for a password autofill, a passkey use or a passkey
+;; registration request. The home page is shown before the request specific pages and its title
+;; is based on the request so that the user knows why the extension came up
+(defn- autofill-request-title [request-mode]
+  (condp = request-mode
+    :passkey-registration-context
+    (lstr-pt 'registerPasskey)
+
+    :passkey-assertion-context
+    (lstr-pt 'autoFillPasskey)
+
+    (lstr-pt 'autoFillPassword)))
 
 ;; TODO: Need to use lstr-pt as done in main app
 (defn- positioned-title [& {:keys [title _page style titleStyle]}]
@@ -74,17 +88,20 @@
 (defn- appbar-header-content
   "The page body content based on the page info set"
   [{:keys [page title] :as page-info}]
-  
+
   (reset! current-page-info page-info)
 
-  [rnp-appbar-header {:style {:backgroundColor @primary-color}}
+  (let [title (if (= page HOME_PAGE_ID)
+                (autofill-request-title @(android-af-cmn-events/autofill-request-mode))
+                title)]
+    [rnp-appbar-header {:style {:backgroundColor @primary-color}}
 
-   (when-not (= page HOME_PAGE_ID)
-     [rnp-appbar-back-action {:style {}
-                              :color @background-color
-                              :onPress (fn [] (to-previous-page page))}])
+     (when-not (= page HOME_PAGE_ID)
+       [rnp-appbar-back-action {:style {}
+                                :color @background-color
+                                :onPress (fn [] (to-previous-page page))}])
 
-   [positioned-title :title title]])
+     [positioned-title :title title]]))
 
 
 (defn appbar-main-content []

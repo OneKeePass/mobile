@@ -146,6 +146,39 @@
 ;; a subscribe event wrapper
 (defn-generic-dialog-subs-events :move-group-or-entry-dialog [[data nil]])
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   clone-entry-dialog   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn-generic-dialog-disp-events :clone-entry-dialog [[close nil]
+                                                      [show-with-state state-m]
+                                                      ;; e.g fields-value = [kws-v value]
+                                                      [update fields-value]])
+
+;; a subscribe event wrapper
+(defn-generic-dialog-subs-events :clone-entry-dialog [[data nil]])
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   save-as-file-name-dialog   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Used only for the remote storage 'Save As' where the device document picker
+;; is not there for the user to name the file being written
+
+(defn-generic-dialog-disp-events :save-as-file-name-dialog [[close nil]
+                                                            [show-with-state state-m]
+                                                            ;; e.g fields-value = [kws-v value]
+                                                            [update fields-value]])
+
+;; a subscribe event wrapper
+(defn-generic-dialog-subs-events :save-as-file-name-dialog [[data nil]])
+
+;; Shown when the name entered in 'save-as-file-name-dialog' is that of a file which is
+;; already there in the selected remote folder. In case of the device document picker,
+;; the same confirmation comes from the device itself
+
+(defn-generic-dialog-disp-events :save-as-file-exists-dialog [[close nil]
+                                                              [show-with-state state-m]])
+
+;; a subscribe event wrapper
+(defn-generic-dialog-subs-events :save-as-file-exists-dialog [[data nil]])
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; ios-pending-passkey-notification-dialog ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (defn-generic-dialog-disp-events :ios-pending-passkey-notification-dialog [[close nil]

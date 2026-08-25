@@ -75,6 +75,34 @@ class OkpDbService: NSObject {
     CredentialProviderViewController.credentialSelected(user, password)
   }
 
+  // Returns {"ok":{"one_time_code_mode":true}} when iOS launched the extension for a
+  // verification code field, {"ok":null} otherwise. Called by ClojureScript at startup to
+  // decide whether to run the entry list in one time code mode
+  @objc
+  func getPendingOneTimeCodeContext(_ resolve: @escaping RCTPromiseResolveBlock,
+                                    reject _: @escaping RCTPromiseRejectBlock) {
+    guard #available(iOS 18.0, *),
+          CredentialProviderViewController.isOneTimeCodeMode else {
+      resolve("{\"ok\":null}")
+      return
+    }
+    resolve("{\"ok\":{\"one_time_code_mode\":true}}")
+  }
+
+  // Sends the generated TOTP to the app that requested the verification code. The
+  // extension closes right after, exactly as the credentialSelected password path does
+  @objc
+  func oneTimeCodeSelected(_ code: String,
+                           resolve _: @escaping RCTPromiseResolveBlock,
+                           reject _: @escaping RCTPromiseRejectBlock) {
+    logger.debug("oneTimeCodeSelected is called")
+    guard #available(iOS 18.0, *) else {
+      logger.error("oneTimeCodeSelected called on a pre iOS 18 system")
+      return
+    }
+    CredentialProviderViewController.completeOneTimeCode(code)
+  }
+
   // Returns JSON with the pending passkey assertion context (rpId + allowCredentialIds),
   // or {"ok":null} if this session was not triggered by a passkey assertion request.
   // Called by ClojureScript at startup to decide whether to show the passkey flow.

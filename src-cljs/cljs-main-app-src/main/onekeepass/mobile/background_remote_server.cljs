@@ -102,6 +102,15 @@
   [new-db dispatch-fn]
   (invoke-api "rs_create_kdbx" {:new-db new-db} dispatch-fn))
 
+(defn save-as-kdbx
+  "Writes a copy of an already prepared local db file to the remote storage location.
+   The connection-id, file path etc are parsed from the arg 'db-key' which is the
+   newly formed key for the copy that is going to be created
+   "
+  [db-key local-file-path dispatch-fn]
+  (invoke-api "rs_save_as_kdbx" {:db-key db-key
+                                 :local-file-path local-file-path} dispatch-fn))
+
 (defn check-remote-modified
   "Asks the backend whether the remote file's mtime has diverged from the
    backup-cached value. Returns a map {:modified bool :remote-mtime <int|nil>}.

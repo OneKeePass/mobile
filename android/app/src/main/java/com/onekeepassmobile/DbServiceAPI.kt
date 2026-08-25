@@ -251,14 +251,19 @@ class CommonDeviceServiceImpl(val reactContext: ReactApplicationContext) : Commo
     }
 
     override fun uriToFileName(fullFileNameUri: String): String? {
+        val uri = Uri.parse(fullFileNameUri);
         try {
-            val uri = Uri.parse(fullFileNameUri);
             val fs = FileUtils.getMetaInfo(reactContext.contentResolver, uri);
-            return fs?.filename
+            val fileName = fs?.filename
+            if (!fileName.isNullOrBlank()) {
+                return fileName
+            }
         } catch (e: Exception) {
             e.printStackTrace()
-            return null
         }
+        // The provider gave no usable name - see FileUtils.getMetaInfo. The name derived from
+        // the uri keeps the caller going as an empty name fails the backup file naming
+        return FileUtils.fileNameFromUri(uri)
     }
 
     override fun uriToFileInfo(fullFileNameUri: String): FileInfo? {
@@ -273,7 +278,7 @@ class CommonDeviceServiceImpl(val reactContext: ReactApplicationContext) : Commo
             // rust side, any exception may result in rust panic in FFI layer
             val fs = FileUtils.getMetaInfo(reactContext.contentResolver, uri);
 
-            info.fileName = fs?.filename
+            info.fileName = fs?.filename?.takeIf { it.isNotBlank() } ?: FileUtils.fileNameFromUri(uri)
             info.fileSize = fs?.size
             // Timestamp when a document was last modified, in milliseconds since January 1, 1970 00:00:00.0 UTC
             info.lastModified = fs?.lastModifiedTime

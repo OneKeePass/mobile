@@ -1,6 +1,7 @@
 use filetime::FileTime;
 use onekeepass_core::db_service::{self, service_util};
 use onekeepass_core::util::string_to_simple_hash;
+use std::collections::HashSet;
 use std::fs::{self, DirEntry, Metadata};
 use std::io::{Read, Seek};
 use std::path::{Path, PathBuf};
@@ -96,6 +97,57 @@ pub(crate) fn delete_backup_history_dir(db_key: &str) {
     let _r = fs::remove_dir_all(&file_hist_root);
     
     // debug!("Deleted all files under root {:?} with status {:?}",&file_hist_root, &r);
+}
+
+// Deletes the backup history dirs that belong to no db in the recently used list
+//
+// The backup dir of a db is named after the hash of its db_key and it is deleted along with
+// the db when the user removes it from the recently used list. A db opened from an uri handed
+// over by another app is never in that list, so nothing ever deletes its dir. The user can not
+// open such a db again either as the uri grant is a one time one, which makes its backup files
+// unreachable and safe to delete
+//
+// This is called at the app start up where no db is open yet. The args are passed in as the
+// global AppState is not yet available at that point
+pub(crate) fn remove_orphaned_backup_dirs<P: AsRef<Path>>(
+    backup_history_root: P,
+    db_keys: &[String],
+) {
+    let dirs_in_use: HashSet<String> = db_keys
+        .iter()
+        .map(|db_key| string_to_simple_hash(db_key).to_string())
+        .collect();
+
+    let entries = match fs::read_dir(backup_history_root) {
+        Ok(e) => e,
+        Err(e) => {
+            debug!("Reading the backup history root failed with error {}", e);
+            return;
+        }
+    };
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+
+        if !path.is_dir() {
+            continue;
+        }
+
+        let in_use = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .map_or(false, |dir_name| dirs_in_use.contains(dir_name));
+
+        if in_use {
+            continue;
+        }
+
+        let r = fs::remove_dir_all(&path);
+        debug!(
+            "Removed the orphaned backup dir {:?} with the status {:?}",
+            &path, r
+        );
+    }
 }
 
 pub(crate) fn prune_backup_history_files(db_key: &str) {

@@ -13,6 +13,17 @@
 ;; Time in seconds
 (def CLIPBOARD_CLEAR_AFTER 20)
 
+;; How long a copied code is left on the clipboard.
+;; A copied token is a snapshot and dies with its own time step whatever the clipboard does,
+;; so keeping it beyond that only leaves behind a code no verifier will take - which reads as
+;; a wrong code rather than as an empty clipboard. 'ttl' is what is left of the step the token
+;; belongs to, and a verifier that allows a step of drift takes it until the end of the step
+;; after that, so one more period is the longest it can still be of any use
+(defn- otp-clipboard-timeout [ttl period]
+  (if (and (number? ttl) (number? period))
+    (+ ttl period)
+    CLIPBOARD_CLEAR_AFTER))
+
 (def ^:private standard-kv-fields ["Title" "Notes"])
 
 (def entry-form-key :entry-form)
@@ -217,10 +228,66 @@
       (when-let [entry (on-ok api-response #(dispatch [:entry-form-data-load-error %]))]
         ;; Entry data is loaded 
         (let [kv1 (find-field entry USERNAME)
-              kv2 (find-field entry PASSWORD)]
-          ;; Calling this backend api will send the user name and password to the app page 
-          ;; from where OneKeePass autofill was launched and the extension will close after this 
-          (bg/credentials-selected (:value kv1) (:value kv2) #())))))
+              kv2 (find-field entry PASSWORD)
+              ;; Only whether there is any otp field to ask about. Which of them the entry
+              ;; is represented by is not decided here - the backend applies that rule, so
+              ;; that what reaches the clipboard is always what the row was showing
+              has-otp-field? (seq (extract-form-otp-fields entry))]
+          ;; iOS fills credentials and a verification code through two separate requests, so
+          ;; a combined login form cannot get its code from this fill. Putting the code on
+          ;; the clipboard first leaves it ready to paste. The copy has to complete before
+          ;; credentials-selected, which closes the extension.
+          (if-not has-otp-field?
+            (bg/credentials-selected (:value kv1) (:value kv2) #())
+            (dispatch [:entry-form/copy-otp-then-send-credentials
+                       entry-uuid (:value kv1) (:value kv2)]))))))
+   {}))
+
+;; Generates the entry's current token, copies it to the clipboard and only then completes
+;; the credential fill. Any failure along the way still fills the credentials.
+;;
+;; The token comes from the same call the entry list rows use rather than from the standard
+;; otp field by name. An entry whose only code sits in a custom field is shown with a code on
+;; its row, and taking the standard field here would have copied nothing for it - leaving the
+;; user reading a code off the screen while the clipboard still held whatever was there before
+(reg-event-fx
+ :entry-form/copy-otp-then-send-credentials
+ (fn [{:keys [db]} [_event-id entry-uuid username password]]
+   (bg/entry-list-current-otps
+    (active-db-key db)
+    [entry-uuid]
+    (fn [api-response]
+      (let [{:keys [otp-field-name token ttl period]}
+            (first (on-ok api-response
+                          (fn [error]
+                            (js/console.warn "Could not generate the otp token:" error))))]
+        (if (str/blank? token)
+          (bg/credentials-selected username password #())
+          (bg/copy-to-clipboard
+           {:field-name otp-field-name
+            :field-value token
+            :protected true
+            :cleanup-after (otp-clipboard-timeout ttl period)}
+           (fn [_response]
+             (bg/credentials-selected username password #())))))))
+   {}))
+
+;; Verification code request (iOS 18+): generates the entry's current TOTP and hands it to
+;; iOS, which types it into the code field. The token is generated here and not taken from
+;; the form's polling state, which may be holding one that is about to expire. The field it
+;; is generated from is chosen the same way the entry list rows choose theirs
+(reg-event-fx
+ :entry-form/send-one-time-code-selected
+ (fn [{:keys [db]} [_event-id entry-uuid]]
+   (bg/entry-list-current-otps
+    (active-db-key db)
+    [entry-uuid]
+    (fn [api-response]
+      (when-let [otp-data (first (on-ok api-response
+                                        (fn [error]
+                                          (js/console.warn "Could not generate the otp token:" error))))]
+        (when-let [token (:token otp-data)]
+          (bg/one-time-code-selected token #())))))
    {}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;; Clipboard events  ;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -264,6 +331,40 @@
  :entry-form/bg-copy-to-clipboard
  (fn [[field-info call-on-dispatch]]
    (bg/copy-to-clipboard field-info call-on-dispatch)))
+
+(defn copy-entry-otp-to-clipboard
+  "Copies the code an entry's row is showing, without filling anything"
+  [entry-uuid]
+  (dispatch [:entry-form/copy-entry-otp-to-clipboard entry-uuid]))
+
+;; Unlike the copy that goes with a fill, this one leaves the extension open, so the user
+;; sees the usual 'copied' confirmation.
+;;
+;; The token is asked for again rather than read out of what the entry list holds. The held
+;; one is right to show, but the clipboard window is worked out from the ttl, and the list
+;; keeps no ttl - only the instant the token expires, for the row's animation
+(reg-event-fx
+ :entry-form/copy-entry-otp-to-clipboard
+ (fn [{:keys [db]} [_event-id entry-uuid]]
+   {:fx [[:entry-form/bg-copy-entry-otp [(active-db-key db) entry-uuid]]]}))
+
+(reg-fx
+ :entry-form/bg-copy-entry-otp
+ (fn [[db-key entry-uuid]]
+   (bg/entry-list-current-otps
+    db-key
+    [entry-uuid]
+    (fn [api-response]
+      (let [{:keys [otp-field-name token ttl period]} (first (on-ok api-response))]
+        (if (str/blank? token)
+          (dispatch [:common/message-snackbar-open 'noCopy])
+          (bg/copy-to-clipboard
+           {:field-name otp-field-name
+            :field-value token
+            :protected true
+            :cleanup-after (otp-clipboard-timeout ttl period)}
+           (fn [_response]
+             (dispatch [:common/message-snackbar-open 'copied])))))))))
 
 
 #_(reg-sub

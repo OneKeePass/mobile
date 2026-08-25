@@ -6,8 +6,9 @@
              :refer [primary-container-color
                      inverse-onsurface-color
                      cust-dialog message-modal-background-color
-                     modal-selector-colors on-background-color rn-scroll-view
-                     rn-view rnms-modal-selector rnp-button rnp-chip
+                     modal-selector-colors no-assist-text-props
+                     on-background-color rn-scroll-view
+                     rn-text rn-view rnms-modal-selector rnp-button rnp-chip
                      rnp-dialog rnp-dialog-actions rnp-dialog-content
                      rnp-dialog-icon rnp-dialog-title rnp-divider rnp-modal rn-pressable
                      rnp-snackbar rnp-text rnp-text-input rnp-text-input-icon
@@ -84,12 +85,13 @@
                                     :onPress #(cmn-events/tags-dialog-tag-selected tag)} tag]))]]]
        [rnp-divider {:style {:margin-top 10}}]
        [rn-view {:flexDirection "column"}
-        [rnp-text-input  {:style {:width "100%"}
-                          :label (lstr-l 'tags)
-                          :placeholder (lstr-dlg-text 'allTagsPh)
-                          :value new-tags-str
-                          :onChangeText #(cmn-events/tags-dialog-update-new-tags-str %)
-                          :right (r/as-element [rnp-text-input-icon {:icon const/ICON-PLUS :onPress cmn-events/tags-dialog-add-tags}])}]
+        [rnp-text-input (merge no-assist-text-props
+                               {:style {:width "100%"}
+                                :label (lstr-l 'tags)
+                                :placeholder (lstr-dlg-text 'allTagsPh)
+                                :value new-tags-str
+                                :onChangeText #(cmn-events/tags-dialog-update-new-tags-str %)
+                                :right (r/as-element [rnp-text-input-icon {:icon const/ICON-PLUS :onPress cmn-events/tags-dialog-add-tags}])})]
         [rnp-text {:style {:color @tertiary-color}}
          (lstr-dlg-text 'allTagsAddHint)]]]]
      [rnp-dialog-actions
@@ -131,6 +133,38 @@
    :margin-left 5 :margin-right 5 :margin-bottom 5
    :borderWidth 0.20 :borderRadius 4
    :border-color @rnc/on-background-color #_(if (= @rnc/current-theme const/LIGHT-THEME) @rnc/on-background-color @rnc/on-background-color)})
+
+(defn colored-password
+  "Shows the value string using a fixed width font and optionally with a color for each
+   character so that a random looking password is easier to read
+
+   A native TextInput shows its whole value in a single color. So the value is shown here
+   as a 'Text' with one nested 'Text' child for each character - digits use the primary
+   color, symbols use the error color and letters use the inherited text color
+
+   Args:
+     value      the string to show
+     colorize?  when false, only the fixed width font is applied - used for pass phrases
+                which are read as words
+     opts       optional map with :style (merged with the fixed width font style) and
+                :variant (the react native paper text variant)
+  "
+  ([value colorize?]
+   (colored-password value colorize? nil))
+  ([value colorize? {:keys [style variant]}]
+   (let [s (str value)]
+     (into [rnp-text (cond-> {:style (merge {:fontFamily rnc/monospace-font-family} style)}
+                       variant (assoc :variant variant))]
+           (map-indexed
+            (fn [idx ch]
+              (let [c (str ch)
+                    color (when colorize?
+                            (cond
+                              (re-matches #"[0-9]" c) @rnc/primary-color
+                              (re-matches #"[a-zA-Z]" c) nil ;; letters inherit
+                              :else @rnc/error-color))]
+                ^{:key idx} [rn-text (when color {:style {:color color}}) c]))
+            s)))))
 
 (defn select-field-label-extractor
   "Default label extractor for the modal based selector"
@@ -218,12 +252,18 @@
     [rnp-text-input {:style {:width "100%"} :editable false :label text-label :value value}]]])
 
 (defn confirm-dialog
-  "A Generic confirm dialog. It is expected all texts should have been translated by caller"
+  "A Generic confirm dialog. It is expected all texts should have been translated by caller
+   The 'confirm-text' is a string or a vec of strings. Each string of a vec is shown as a
+   separate paragraph and that is useful when a message is too long to read as one block
+   "
   [{:keys [dialog-show title confirm-text actions]}]
   [cust-dialog {:style {} :dismissable true :visible dialog-show}
    [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1} title]
    [rnp-dialog-content
-    [rnp-text confirm-text]]
+    (if (sequential? confirm-text)
+      (for [[idx text] (map-indexed vector confirm-text)]
+        ^{:key idx} [rnp-text {:style (when-not (zero? idx) {:margin-top 10})} text])
+      [rnp-text confirm-text])]
    [rnp-dialog-actions
     (for [{:keys [label on-press]}  actions]
       ^{:key label} [rnp-button {:mode "text"

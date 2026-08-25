@@ -86,10 +86,16 @@
  :custom-icons-fetch-data-url
  (fn [{:keys [db]} [_ uuid]]
    ;; If we already have it cached, do nothing.
-   (let [cached (get-in-key-db db [:custom-icons :data-urls uuid])]
-     (if cached
+   ;; The icon data lives inside the database, so with none open there is nothing to fetch.
+   ;; The autofill activity keeps the javascript context between sessions, and the previous
+   ;; session's entry list gets one render before the new session resets the page - by then
+   ;; its database is closed, and calling the api with a nil db-key fails to parse as a
+   ;; CommandArg and raises an api error dialog over the new session
+   (let [cached (get-in-key-db db [:custom-icons :data-urls uuid])
+         db-key (active-db-key db)]
+     (if (or cached (nil? db-key))
        {}
-       {:fx [[:bg-get-custom-icon-data [(active-db-key db) uuid]]]}))))
+       {:fx [[:bg-get-custom-icon-data [db-key uuid]]]}))))
 
 (reg-event-fx
  :custom-icons-data-loaded

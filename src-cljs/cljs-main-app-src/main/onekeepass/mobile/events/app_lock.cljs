@@ -27,6 +27,12 @@
 (defn app-lock-state []
   (subscribe [:app-lock-state]))
 
+(defn app-locked?
+  "True when the app lock screen is showing. Used in other events that should not act on
+   the app db while the user has yet to get past the app lock"
+  [app-db]
+  (= :locked (get-in app-db [:app-lock :state])))
+
 ;;;;;;;;;; Some generic dialog direct events ;;;;;;;;
 
 (defn locked-app-log-in-dialog-close-disp-fx-vec []
@@ -141,7 +147,10 @@
                 (assoc-in [:app-lock :attempts-count-remaining] attempts-allowed)
                 ;; The user action time is updated
                 (assoc-in [:app-lock :last-user-action-time] (js/Date.now)))
-        :fx [[:dispatch (locked-app-log-in-dialog-close-disp-fx-vec)]]})
+        :fx [[:dispatch (locked-app-log-in-dialog-close-disp-fx-vec)]
+             ;; Any 'otpauth://' url that arrived while the app lock screen was showing
+             ;; waits for this
+             [:dispatch [:otp-url-received/check-pending]]]})
 
      ;; PIN verification failed (else part)
      (let [{:keys [attempts-count-remaining]} (get-in db [:app-lock])

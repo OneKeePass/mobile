@@ -258,6 +258,45 @@
   [db-key dispatch-fn]
   (autofill-invoke-api "credential_service_identifier_filtering" {:db-key db-key} dispatch-fn))
 
+(defn one-time-code-service-identifier-filtering
+  "As credential-service-identifier-filtering, but returns only the entries that can
+   produce a TOTP - used when iOS launched the extension for a verification code field"
+  [db-key dispatch-fn]
+  (autofill-invoke-api "one_time_code_service_identifier_filtering" {:db-key db-key} dispatch-fn))
+
+(defn autofill-search-term-otp
+  "As the autofill manual search, but restricted to entries that can produce a TOTP"
+  [db-key term dispatch-fn]
+  (invoke-api "autofill_search_term_otp" {:db-key db-key :term term} dispatch-fn))
+
+(defn entry-form-current-otp
+  "Generates the current token for one otp field of an entry. Used at fill time so the code
+   sent to iOS is never one that the polling UI held as it expired"
+  [db-key entry-uuid otp-field-name dispatch-fn]
+  (invoke-api "entry_form_current_otp" {:db-key db-key
+                                        :entry-uuid entry-uuid
+                                        :otp-field-name otp-field-name} dispatch-fn))
+
+(defn entry-list-current-otps
+  "Current tokens for a list of entries, for showing a code on their rows.
+   Entries with no usable otp field are absent from the reply, so no separate
+   'does this entry have 2FA' call is needed"
+  [db-key entry-uuids dispatch-fn]
+  (invoke-api "entry_list_current_otps" {:db-key db-key
+                                         :entry-uuids entry-uuids} dispatch-fn))
+
+(defn get-pending-one-time-code-context
+  "Returns {:ok {:one-time-code-mode true}} when iOS launched the extension for a
+   verification code field, or {:ok nil} otherwise"
+  [dispatch-fn]
+  (call-api-async (fn [] (.getPendingOneTimeCodeContext okp-db-service)) dispatch-fn))
+
+(defn one-time-code-selected
+  "Sends the generated TOTP to the app that requested the verification code and the
+   extension closes after this"
+  [code dispatch-fn]
+  (call-api-async (fn [] (.oneTimeCodeSelected okp-db-service code)) dispatch-fn))
+
 (defn copy-to-clipboard
   "Called to copy a selected field value to clipboard
    The arg field-info is a map that statifies the enum member 

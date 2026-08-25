@@ -28,6 +28,7 @@
    [onekeepass.mobile.external-db-change :as external-db-change]
    [onekeepass.mobile.remote-connection-unavailable :as remote-connection-unavailable]
    [onekeepass.mobile.merging :refer [merge-result-dialog-mounted]]
+   [onekeepass.mobile.otp-url-received :refer [otp-url-dialogs-mounted]]
    [onekeepass.mobile.rn-components :as rnc :refer [react-use-effect
                                                     reset-colors
                                                     rnp-portal
@@ -57,6 +58,7 @@
       [merge-result-dialog-mounted]
       [external-db-change/external-db-change-dialog-mounted]
       [remote-connection-unavailable/remote-connection-unavailable-dialog-mounted]
+      [otp-url-dialogs-mounted]
       (when (bg/is-iOS)
         [ios-all-pending-passkeys-notification-dialog])]]))
 

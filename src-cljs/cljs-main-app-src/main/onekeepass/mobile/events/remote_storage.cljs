@@ -28,7 +28,7 @@
                         (on-error api-response
                                   #(dispatch [:common/default-error
                                               "Error in loading remote storage all connection configs " %])))))
-;; kw-browse-type valid values :db-open, :db-new
+;; kw-browse-type valid values :db-open, :db-new, :db-save-as
 (defn remote-storage-type-selected
   "Should be called when user picks Sftp or Webdav option to create a 
    new database or open existing databases.
@@ -529,15 +529,117 @@
            [:dispatch [:common/previous-page]]
            [:dispatch [:new-database/document-to-create-picked new-db-file-data]]]})))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   Save as   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn- form-save-as-file-name
+  "Forms the name for the 'Save As' copy from the source db file name.
+   The source name includes the .kdbx extension whereas 'form-new-db-file-name'
+   expects the name part alone"
+  [source-file-name files]
+  (let [extn ".kdbx"
+        name-part (if (str/ends-with? (str/lower-case source-file-name) extn)
+                    (subs source-file-name 0 (- (count source-file-name) (count extn)))
+                    source-file-name)]
+    (form-new-db-file-name name-part files)))
+
+(defn remote-storage-folder-picked-for-save-as [connection-id dir-entries]
+  (dispatch [:remote-storage-folder-picked-for-save-as connection-id dir-entries]))
+
+;; Called when user selects a folder while browsing the remote storage to store
+;; a copy of an existing database. Unlike the device document picker, the remote
+;; browsing has no place for the user to name the file and so a name dialog is shown
+(reg-event-fx
+ :remote-storage-folder-picked-for-save-as
+ (fn [{:keys [db]} [_query-id connection-id {:keys [parent-dir files]}]]
+   (let [kw-type (get-current-rs-type db)
+         {:keys [file-name]} (get-in db [:remote-storage :save-as-data])
+         suggested-file-name (form-save-as-file-name file-name files)]
+     {:db (-> db (update-in [:remote-storage :save-as-data]
+                            merge {:kw-type kw-type
+                                   :connection-id connection-id
+                                   :parent-dir parent-dir
+                                   ;; Used to find out whether the name the user finally
+                                   ;; enters is that of an already existing file
+                                   :existing-files files}))
+      :fx [[:dispatch [:generic-dialog-show-with-state :save-as-file-name-dialog
+                       {:file-name suggested-file-name}]]]})))
+
+(defn remote-storage-save-as-name-confirmed [file-name]
+  (dispatch [:remote-storage-save-as-name-confirmed file-name]))
+
+(defn- file-name-exists?
+  "The comparison is done ignoring the case the same way as it is done in
+   'form-new-db-file-name' while forming a name that does not clash"
+  [file-name files]
+  (u/contains-val? (mapv #(str/lower-case %) files) (str/lower-case file-name)))
+
+;; Called when the user confirms the file name to use for the 'Save As' copy
+(reg-event-fx
+ :remote-storage-save-as-name-confirmed
+ (fn [{:keys [db]} [_query-id file-name]]
+   (let [{:keys [existing-files]} (get-in db [:remote-storage :save-as-data])
+         file-name (str/trim (or file-name ""))]
+     (cond
+       (str/blank? file-name)
+       {:fx [[:dispatch [:generic-dialog-update-with-map :save-as-file-name-dialog
+                         {:error-fields {:file-name "A valid file name is required"}}]]]}
+
+       ;; Writing to the remote storage replaces any file that is already there and so
+       ;; the user is asked first. The device's document picker does this on its own
+       (file-name-exists? file-name existing-files)
+       {:fx [[:dispatch [:generic-dialog-close :save-as-file-name-dialog]]
+             [:dispatch [:generic-dialog-show-with-state :save-as-file-exists-dialog
+                         {:file-name file-name}]]]}
+
+       :else
+       {:fx [[:dispatch [:remote-storage-save-as-start file-name]]]}))))
+
+(defn remote-storage-save-as-existing-file-name-reentered
+  "Called when the user decides not to overwrite the already existing file so that
+   another name can be entered"
+  [file-name]
+  (dispatch [:remote-storage-save-as-existing-file-name-reentered file-name]))
+
+(reg-event-fx
+ :remote-storage-save-as-existing-file-name-reentered
+ (fn [{:keys [_db]} [_query-id file-name]]
+   {:fx [[:dispatch [:generic-dialog-close :save-as-file-exists-dialog]]
+         [:dispatch [:generic-dialog-show-with-state :save-as-file-name-dialog
+                     {:file-name file-name}]]]}))
+
+(defn remote-storage-save-as-overwrite-confirmed [file-name]
+  (dispatch [:remote-storage-save-as-overwrite-confirmed file-name]))
+
+(reg-event-fx
+ :remote-storage-save-as-overwrite-confirmed
+ (fn [{:keys [_db]} [_query-id file-name]]
+   {:fx [[:dispatch [:generic-dialog-close :save-as-file-exists-dialog]]
+         [:dispatch [:remote-storage-save-as-start file-name]]]}))
+
+;; Forms the key for the copy and hands over to the 'Save As' data preparation
+(reg-event-fx
+ :remote-storage-save-as-start
+ (fn [{:keys [db]} [_query-id file-name]]
+   (let [{:keys [kw-type connection-id parent-dir db-key]} (get-in db [:remote-storage :save-as-data])
+         new-db-key (form-db-key kw-type connection-id parent-dir file-name)]
+     {:db (-> db (assoc-in [:remote-storage kw-type :listings] nil))
+      :fx [[:dispatch [:generic-dialog-close :save-as-file-name-dialog]]
+           ;; first call goes to the configs page
+           [:dispatch [:common/previous-page]]
+           ;; one more call to go the start page
+           [:dispatch [:common/previous-page]]
+           [:dispatch [:exporting/save-as-to-remote-start db-key new-db-key]]]})))
+
 ;; Sets the type selected during the Open Database or New Database call
 ;; and loads the list of configs for the type
 (reg-event-fx
  :remote-storage-type-selected
- (fn [{:keys [db]} [_query-id kw-type kw-browse-type {:keys [new-db-data] :as _opts}]]
+ (fn [{:keys [db]} [_query-id kw-type kw-browse-type {:keys [new-db-data save-as-data] :as _opts}]]
    {;; should we dispatch :remote-storage-current-rs-type-set instead of db update?
     :db (-> db (assoc-in [:remote-storage :current-rs-type] kw-type)
             (assoc-in [:remote-storage :browse-rs-type] kw-browse-type)
-            (assoc-in [:remote-storage :new-db-data] new-db-data))
+            (assoc-in [:remote-storage :new-db-data] new-db-data)
+            (assoc-in [:remote-storage :save-as-data] save-as-data))
     :fx [[:bg-rs-remote-storage-configs-for-type [kw-type]]
          ;; Also load REMOTE_CONNECTION_* entries from any open dbs so the
          ;; picker can show kdbx-source connections alongside blob ones.

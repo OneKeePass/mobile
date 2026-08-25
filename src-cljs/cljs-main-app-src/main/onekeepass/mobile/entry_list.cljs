@@ -6,19 +6,24 @@
                                                                 select-field]]
             [onekeepass.mobile.constants :as const :refer [ICON-CHECKBOX-BLANK-OUTLINE
                                                            ICON-CHECKBOX-OUTLINE]]
+            [onekeepass.mobile.events.clone-entry :as ce-events]
             [onekeepass.mobile.events.common :as cmn-events]
             [onekeepass.mobile.events.custom-icons :as ci-events]
             [onekeepass.mobile.events.dialogs :as dlg-events]
             [onekeepass.mobile.events.entry-category :as ecat-events]
             [onekeepass.mobile.events.entry-list :as elist-events :refer [find-entry-by-id]]
+            [onekeepass.mobile.events.entry-list-otp :as otp-events]
             [onekeepass.mobile.events.move-delete :as md-events]
             [onekeepass.mobile.events.remote-storage :as rs-events]
+            [onekeepass.mobile.events.search :as search-events]
+            [onekeepass.mobile.grouped-list :as gl]
             [onekeepass.mobile.icons-list :refer [ENTRY-GROUP-LIST-ICON-SIZE
                                                   icon-id->name]]
+            [onekeepass.mobile.otp-badge :as otp-badge]
             [onekeepass.mobile.rn-components :as rnc :refer [cust-dialog
                                                              icon-color
-                                                             page-background-color
-                                                             primary-container-color
+                                                             no-autocorrect-text-props
+                                                             on-surface-variant
                                                              rn-image
                                                              rn-safe-area-view
                                                              rn-section-list
@@ -33,7 +38,9 @@
                                                              rnp-list-item
                                                              rnp-menu
                                                              rnp-menu-item
-                                                             rnp-text]]
+                                                             rnp-text
+                                                             rnp-text-input
+                                                             row-highlight-style]]
             [onekeepass.mobile.translation :refer [lstr-bl lstr-cv
                                                    lstr-dlg-text
                                                    lstr-dlg-title lstr-l
@@ -84,13 +91,20 @@
 
 (declare move-entry-dialog-show-with-state)
 
+(declare clone-entry-dialog-show-with-state)
+
 (defn entry-long-press-menu [{:keys [show x y entry-summary]}]
   (let [deleted-cat @(elist-events/deleted-category-showing)
-        {:keys [uuid parent-group-uuid entry-type-uuid]} entry-summary]
+        {:keys [uuid title parent-group-uuid entry-type-uuid]} entry-summary]
     (if-not deleted-cat
       [rnp-menu {:visible show :key (str show) :onDismiss hide-entry-long-press-menu :anchor (clj->js {:x x :y y})}
        ;; TODO: Need to add a rust api to toggle an entry as Favorites or not and then enable this
        #_[rnp-menu-item {:title "Favorites" :onPress #()  :trailingIcon "check"}]
+       [rnp-menu-item {:title (lstr-ml "clone")
+                       :disabled @(cmn-events/current-db-disable-edit)
+                       :onPress (entry-long-press-menu-action
+                                 clone-entry-dialog-show-with-state uuid title parent-group-uuid)}]
+
        [rnp-menu-item {:title (lstr-ml "move")
                        :disabled @(cmn-events/current-db-disable-edit)
                        :onPress (entry-long-press-menu-action move-entry-dialog-show-with-state uuid parent-group-uuid)}]
@@ -174,13 +188,17 @@
 
 (def sort-menu-action (menu-action-factory hide-sort-menu))
 
-(defn- show-sort-menu [^js/PEvent event sort-criteria]
+(defn show-sort-menu
+  ([event sort-criteria]
+   (show-sort-menu event sort-criteria false))
+  ([^js/PEvent event sort-criteria disable-time-sort?]
   (swap! sort-menu-data assoc
          :show true
          :sort-criteria sort-criteria
-         :x (-> event .-nativeEvent .-pageX) :y (-> event .-nativeEvent .-pageY)))
+         :disable-time-sort? disable-time-sort?
+         :x (-> event .-nativeEvent .-pageX) :y (-> event .-nativeEvent .-pageY))))
 
-(defn- sort-menus [{:keys [show x y]
+(defn- sort-menus [{:keys [show x y disable-time-sort?]
                     {:keys [key-name direction]} :sort-criteria}]
   [rnp-menu {:visible show :key (str show) :onDismiss hide-sort-menu :anchor (clj->js {:x x :y y})}
    [rnp-menu-item {:title (lstr-ml 'title)
@@ -188,10 +206,12 @@
                    :onPress (sort-menu-action elist-events/entry-list-sort-key-changed const/TITLE)}]
 
    [rnp-menu-item {:title (lstr-ml 'modifiedTime)
+                   :disabled disable-time-sort?
                    :leadingIcon (if (= key-name const/MODIFIED_TIME) ICON-CHECKBOX-OUTLINE ICON-CHECKBOX-BLANK-OUTLINE)
                    :onPress (sort-menu-action elist-events/entry-list-sort-key-changed const/MODIFIED_TIME)}]
 
    [rnp-menu-item {:title (lstr-ml 'createdTime)
+                   :disabled disable-time-sort?
                    :leadingIcon (if (= key-name const/CREATED_TIME) ICON-CHECKBOX-OUTLINE ICON-CHECKBOX-BLANK-OUTLINE)
                    :onPress (sort-menu-action elist-events/entry-list-sort-key-changed const/CREATED_TIME)}]
 
@@ -203,6 +223,9 @@
    [rnp-menu-item {:title (lstr-ml 'descending)
                    :leadingIcon (if (= direction const/DESCENDING) ICON-CHECKBOX-OUTLINE ICON-CHECKBOX-BLANK-OUTLINE)
                    :onPress (sort-menu-action elist-events/entry-list-sort-direction-changed const/DESCENDING)}]])
+
+(defn sort-menu []
+  [sort-menus @sort-menu-data])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -275,6 +298,43 @@
                                                           :uuid-selected-to-move uuid-selected-to-move
                                                           :current-parent-group-uuid current-parent-group-uuid}))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Clone entry ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn clone-entry-dialog-show-with-state
+  "Called when the 'Clone' menu item of an entry is pressed. The cloned entry is added to
+   the same group as the source entry and only a new title is asked from the user"
+  [entry-uuid title parent-group-uuid]
+  (dlg-events/clone-entry-dialog-show-with-state {:entry-uuid entry-uuid
+                                                  :parent-group-uuid parent-group-uuid
+                                                  :new-title (str title " Copy")}))
+
+(defn clone-entry-dialog
+  ([{:keys [dialog-show new-title entry-uuid parent-group-uuid error-fields]}]
+   (when dialog-show
+     (let [error-text (:new-title error-fields)]
+       [cust-dialog {:style {} :dismissable true :visible dialog-show :onDismiss #()}
+        [rnp-dialog-title (lstr-dlg-title 'cloneEntry)]
+        [rnp-dialog-content
+         [rn-view {:flexDirection "column"}
+          [rnp-text-input (merge no-autocorrect-text-props
+                                 {:label (lstr-l 'newTitle)
+                                  :defaultValue new-title
+                                  :onChangeText #(dlg-events/clone-entry-dialog-update [:new-title %])})]
+          (when error-text
+            [rnp-helper-text {:type "error" :visible true} error-text])]]
+
+        [rnp-dialog-actions
+         [rnp-button {:mode "text"
+                      :onPress dlg-events/clone-entry-dialog-close} (lstr-bl 'cancel)]
+         [rnp-button {:mode "text"
+                      :onPress (fn []
+                                 (ce-events/clone-entry-start
+                                  entry-uuid new-title parent-group-uuid))} (lstr-bl 'ok)]]])))
+  ([]
+   (clone-entry-dialog @(dlg-events/clone-entry-dialog-data))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defn- move-group-dialog-show-with-state [uuid-selected-to-move current-parent-group-uuid]
   (dlg-events/move-group-or-entry-dialog-show-with-state {:kind-kw :group
                                                           :uuid-selected-to-move uuid-selected-to-move
@@ -328,22 +388,43 @@
                               :width ENTRY-GROUP-LIST-ICON-SIZE
                               :height ENTRY-GROUP-LIST-ICON-SIZE}}])))
 
+;; Keys of the sections the user has collapsed - presentation only state of this page
+(def ^:private collapsed-sections (r/atom #{}))
+
+(defn otp-right-element
+  "The entry's current 2FA code, followed by the chevron the row already showed.
+
+   An entry with no code renders no badge at all, so those rows are unchanged apart from
+   the chevron keeping its place."
+  [uuid]
+  (let [token-data @(otp-events/otp-token-data uuid)]
+    (otp-events/ensure-otp-token uuid token-data)
+    [rn-view {:style {:flexDirection "row" :align-items "center"}}
+     [otp-badge/otp-badge token-data {:code-color @on-surface-variant
+                                      :bar-color @rnc/circular-progress-color
+                                      :bar-track-color @rnc/outline-variant}]
+     [gl/row-chevron]]))
+
 (defn row-item []
   (fn [{:keys [title secondary-title icon-id custom-icon-uuid uuid] :as entry-summary}]
-    (let [icon-name (icon-id->name icon-id)]
-      [rnp-list-item {:onPress #(find-entry-by-id uuid)
+    (let [icon-name (icon-id->name icon-id)
+          {menu-show :show menu-entry-summary :entry-summary} @entry-long-press-menu-data]
+      [rnp-list-item {:style (row-highlight-style (and menu-show (= uuid (:uuid menu-entry-summary))))
+                      :onPress (fn [] (find-entry-by-id uuid))
                       :onLongPress (fn [e]
                                      (show-entry-long-press-menu e entry-summary))
                       :title (r/as-element
                               [rnp-text {:variant "titleMedium"} title])
                       :description secondary-title
+                      :descriptionStyle {:color @on-surface-variant}
                       :left (fn [_props]
                               (r/as-element
-                               [icon-left-element icon-name custom-icon-uuid]))}])))
+                               [icon-left-element icon-name custom-icon-uuid]))
+                      :right (fn [_props] (r/as-element [otp-right-element uuid]))}])))
 
 (defn- subgroup-row-item
   "category-detail-m is a map representing struct 'CategoryDetail'
-  TODO: Need to rename section-title something category-key as we receive the section key 
+  TODO: Need to rename section-title something category-key as we receive the section key
   instead of section title as section title will be language dependent (in future)
   "
   [_category-detail-m category-key]
@@ -352,57 +433,98 @@
         :as category-detail-m}]
     (let [display-name (if (nil? display-title) title display-title)
           icon-name (icon-id->name icon-id)
-          items-count (+ entries-count groups-count)]
-      [rnp-list-item {:onPress #(ecat-events/load-selected-category-entry-items category-detail-m category-key)
+          {menu-show :show menu-category-detail :category-detail} @group-long-press-menu-data]
+      [rnp-list-item {:style (row-highlight-style (and menu-show (= category-detail-m menu-category-detail)))
+                      :onPress (fn []
+                                 (ecat-events/load-selected-category-entry-items category-detail-m category-key))
                       :onLongPress (fn [e]
                                      (show-group-long-press-menu e category-detail-m))
                       :title (r/as-element
                               [rnp-text {:variant "titleMedium"} display-name])
+                      :description (gl/items-count-description entries-count groups-count)
+                      :descriptionStyle {:color @on-surface-variant}
                       :left (fn [_props]
                               (r/as-element
                                [icon-left-element icon-name custom-icon-uuid]))
-                      :right (fn [_props] (r/as-element
-                                           [rnp-text {:variant "titleMedium"} items-count]))}])))
+                      :right (fn [_props] (r/as-element [gl/row-chevron]))}])))
 
-(defn- section-header [title]
-  [rn-view  {:style {:flexDirection "row"
-                     :backgroundColor @primary-container-color
-                     :margin-top 5
-                     :min-height 38}}
-   [rnp-text {:style {:alignSelf "center" :width "85%" :padding-left 15} :variant "titleLarge"} (lstr-cv title)]])
+(defn- list-section-header [title items-count]
+  [gl/section-header {:label (lstr-cv title)
+                      :items-count items-count
+                      :collapsed? (gl/collapsed? collapsed-sections title)
+                      :on-toggle #(gl/toggle-collapsed collapsed-sections title)}])
+
+(defn search-results-content
+  "The entries the search term has matched anywhere in the database. Shown in place of its
+   own content by every page that carries the search bar, so that a search reads the same
+   whichever page it was started from.
+
+   'scroll-enabled?' is false when the caller has already put this inside a scroll view"
+  [scroll-enabled?]
+  (let [items @(search-events/search-result-entry-items)
+        not-matched @(search-events/search-not-matched)]
+    (if (empty? items)
+      ;; Saying 'no result' before the search of what has just been typed has even been made
+      ;; would flash on the way to the matches, so nothing is shown until it is known
+      (if not-matched [gl/no-match-view] [rn-view {:style {:flex 1}}])
+
+      [rn-section-list {:style {:flex 1}
+                        :contentContainerStyle (when scroll-enabled?
+                                                 {:padding-bottom gl/FAB-LIST-BOTTOM-CLEARANCE})
+                        :scrollEnabled scroll-enabled?
+                        :sections (clj->js [{:key const/ENTRIES_SECTION_TITLE :data items}])
+                        :stickySectionHeadersEnabled false
+                        :renderItem (fn [props]
+                                      (let [{:keys [item index section]} (js->clj props :keywordize-keys true)]
+                                        (r/as-element
+                                         [gl/card-row (gl/row-position index (count (:data section)))
+                                          [row-item item]])))
+                        :ItemSeparatorComponent (fn [_p] (r/as-element [gl/card-row-separator]))
+                        ;; No header over the results, only the gap one would have left
+                        :renderSectionHeader (fn [_props] (r/as-element [gl/section-spacer]))}])))
 
 (defn main-content []
   (let [entry-items @(elist-events/selected-entry-items)
         group-uuid (:uuid @(elist-events/selected-category-detail))
         group-items @(elist-events/subgroups-summary group-uuid)
         show-subgroups @(elist-events/show-subgroups)
-        sections  (if-not  show-subgroups
-                    [{:title "Entries"
-                      :key "Entries"
-                      :data entry-items}]
-                    ;; Sections when "Groups" is selected to show the group tree
-                    [{:title const/GROUP_SECTION_TITLE
-                      :key const/GROUP_SECTION_TITLE
-                      :data group-items}
-                     {:title "Entries"
-                      :key "Entries"
-                      :data entry-items}])]
 
-    [rn-section-list {:scrollEnabled false
-                      :sections (clj->js sections)
-                      :renderItem (fn [props]
-                                    ;; keys in props are (:item :index :section :separators)
-                                    (let [props (js->clj props :keywordize-keys true)]
-                                      (r/as-element (if (= "Groups" (-> props :section :key))
-                                                      [subgroup-row-item (-> props :item) const/GROUP_SECTION_TITLE]
-                                                      [row-item (-> props :item)]))))
-                      :ItemSeparatorComponent (fn [_p] (r/as-element [rnp-divider]))
-                      :stickySectionHeadersEnabled false
-                      :renderSectionHeader (fn [props] ;; key is :section
-                                             (let [props (js->clj props :keywordize-keys true)
-                                                   {:keys [title data]} (-> props :section)]
-                                               (when (and show-subgroups (> (count data) 0))
-                                                 (r/as-element [section-header title]))))}]))
+        ;; Subgroups are listed only when the group tree is what is being browsed
+        group-items (if show-subgroups group-items [])
+
+        ;; An empty section is left out altogether. A collapsed section still contributes
+        ;; its header, only its rows are held back
+        sections (cond-> []
+                   (seq group-items)
+                   (conj {:title const/GROUP_SECTION_TITLE
+                          :key const/GROUP_SECTION_TITLE
+                          :items-count (count group-items)
+                          :data (gl/section-data collapsed-sections const/GROUP_SECTION_TITLE group-items)})
+
+                   (seq entry-items)
+                   (conj {:title const/ENTRIES_SECTION_TITLE
+                          :key const/ENTRIES_SECTION_TITLE
+                          :items-count (count entry-items)
+                          :data (gl/section-data collapsed-sections const/ENTRIES_SECTION_TITLE entry-items)}))]
+
+    (if (empty? sections)
+      [gl/no-match-view]
+      [rn-section-list {:scrollEnabled false
+                        :sections (clj->js sections)
+                        :renderItem (fn [props]
+                                      ;; keys in props are (:item :index :section :separators)
+                                      (let [{:keys [item index section]} (js->clj props :keywordize-keys true)]
+                                        (r/as-element
+                                         [gl/card-row (gl/row-position index (count (:data section)))
+                                          (if (= const/GROUP_SECTION_TITLE (:key section))
+                                            [subgroup-row-item item const/GROUP_SECTION_TITLE]
+                                            [row-item item])])))
+                        :ItemSeparatorComponent (fn [_p] (r/as-element [gl/card-row-separator]))
+                        :stickySectionHeadersEnabled false
+                        :renderSectionHeader (fn [props] ;; key is :section
+                                               (let [props (js->clj props :keywordize-keys true)
+                                                     {:keys [title items-count]} (-> props :section)]
+                                                 (r/as-element [list-section-header title items-count])))}])))
 
 (defn- permanent-delete-dialog []
   [confirm-dialog (merge @(md-events/delete-permanent-dialog-data)
@@ -428,13 +550,18 @@
                                           (elist-events/delete-all-entries-permanently))}
                              {:label (lstr-bl "no")
                               :on-press #(reset! delete-all-entries-permanent-confirm false)}]}])
-;; Relevant for Android only
-(defn adjust-inset-view []
-  (fn []
-    (when (is-Android)
-      (let [bottom (rnc/get-inset-bottom)]
-        ;; (println "bottom is..." bottom)
-        [rn-view {:style {:height bottom}}]))))
+(defn entry-row-menus-and-dialogs
+  "The long press menu of an entry row together with the dialogs its actions open.
+
+   Every page that lists entry rows has to mount this. Besides this page that is the entry
+   category page, which lists the root group's own entries when the grouping is 'Groups'"
+  []
+  [:<>
+   [entry-long-press-menu @entry-long-press-menu-data]
+   [move-group-or-entry-dialog]
+   [clone-entry-dialog]
+   [permanent-delete-dialog]
+   [cc/entry-delete-confirm-dialog elist-events/delete-entry]])
 
 (defn- bottom-nav-bar []
   (fn []
@@ -456,32 +583,37 @@
                   :icon const/ICON-PLUS :onPress (fn [e] (show-fab-action-menu e selected-category-key selected-category-detail))}]))
 
 (defn entry-list-content []
-  [rn-safe-area-view {:style {:flex 1 :background-color @page-background-color}}
+  (let [term @(search-events/search-term)]
+    [rn-safe-area-view (cond-> {:style (gl/page-style)}
+                         (is-Android) (assoc :edges #js ["right" "left"]))
 
-   ;; When we use 'rn-scroll-view' and if main-content uses 'rn-section-list' we need to use ':scrollEnabled false' in rn-section-list
-   ;; Otherwise we may see error like 
-   ;; 'VirtualizedLists should never be nested inside plain ScrollViews with the same 
-   ;;  orientation because it can break windowing and other functionality - use another VirtualizedList-backed container instead'
-   
-   [rnc/rn-scroll-view {:style {} :contentContainerStyle {:flexGrow 1 :background-color @page-background-color}}
-    [main-content]]
-   [:f> bottom-nav-bar]
-   ;; Provides a dummy height component mainly to push the rn-scroll-view + bottom-nav-bar 
-   ;; above the android built-in bottom bar when Android API level is below 32. It is nil comp for iOS 
-   ;; and view with height of 0 in other Android API level 
-   [adjust-inset-view]
+     [gl/inline-search-bar {:term term
+                            :on-change search-events/search-term-update}]
 
-   [show-fab]
+     ;; When we use 'rn-scroll-view' and if main-content uses 'rn-section-list' we need to use ':scrollEnabled false' in rn-section-list
+     ;; Otherwise we may see error like
+     ;; 'VirtualizedLists should never be nested inside plain ScrollViews with the same
+     ;;  orientation because it can break windowing and other functionality - use another VirtualizedList-backed container instead'
 
-   #_[bottom-nav-bar1]
+     ;; The scroll view has to take the space the search bar above and the bottom bar below
+     ;; leave over, so that both of them stay put whatever the list holds
+     [rnc/rn-scroll-view {:style {:flex 1}
+                          :contentContainerStyle {:flexGrow 1
+                                                  :padding-bottom gl/FAB-LIST-BOTTOM-CLEARANCE
+                                                  :background-color @rnc/grouped-list-ground-color}}
+      (if (gl/searching? term)
+        [search-results-content false]
+        [main-content])]
+     [:f> bottom-nav-bar]
 
-   [sort-menus @sort-menu-data]
-   [fab-action-menu @fab-action-menu-data]
-   [entry-long-press-menu @entry-long-press-menu-data]
-   [group-long-press-menu @group-long-press-menu-data]
-   [put-back-dialog @(md-events/putback-dialog-data)]
-   [move-group-or-entry-dialog]
-   [permanent-delete-dialog]
-   [delete-all-entries-permanent-confirm-dialog]
-   [cc/entry-delete-confirm-dialog elist-events/delete-entry]
-   [cc/group-delete-confirm-dialog elist-events/delete-group]])
+     [show-fab]
+
+     #_[bottom-nav-bar1]
+
+     [sort-menus @sort-menu-data]
+     [fab-action-menu @fab-action-menu-data]
+     [entry-row-menus-and-dialogs]
+     [group-long-press-menu @group-long-press-menu-data]
+     [put-back-dialog @(md-events/putback-dialog-data)]
+     [delete-all-entries-permanent-confirm-dialog]
+     [cc/group-delete-confirm-dialog elist-events/delete-group]]))

@@ -122,7 +122,17 @@
 (defn history-entry-form? []
   (subscribe [:entry-form-history]))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
+;; A masked text input cannot be a multi line one and a single line input drops the line breaks
+;; of a pasted text. A key pasted into a still masked field would then be stored flattened and
+;; would no longer parse, so the fields that hold a key are revealed for the whole of an editing
+;; session and are masked again when it ends. The user can still mask one while editing - this
+;; only decides how they start out
+;;
+;; A name that the form being edited has no field for is simply never looked up
+(defn- set-key-fields-visible [app-db]
+  (assoc-in-key-db app-db [entry-form-key :visibility-list] (vec const/KEY_FIELD_NAMES)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; IMPORTANT: Valid values for :showing are [:selected :new :history-form]
 (defn- set-on-entry-load [app-db entry-form-data]
   (let [otp-fields (extract-form-otp-fields entry-form-data)]
@@ -132,6 +142,7 @@
         (assoc-in-key-db [entry-form-key :otp-fields] otp-fields)
         (assoc-in-key-db [entry-form-key :showing] :selected)
         (assoc-in-key-db [entry-form-key :visibility-list] nil)
+        (assoc-in-key-db [entry-form-key :revealed-sections] nil)
         (assoc-in-key-db [entry-form-key :edit] false))))
 
 ;; Deprecate ?
@@ -140,14 +151,16 @@
  (fn [{:keys [db]} [_event-id]]
    {:fx [[:dispatch [:move-delete/entry-delete-start (get-in-key-db db [entry-form-key :data :uuid]) true]]]}))
 
-(defn- on-entry-find [api-response]
+(defn- on-entry-find [after-load-event api-response]
   (when-let [entry (on-ok api-response #(dispatch [:entry-form-data-load-error %]))]
-    (dispatch [:entry-form-data-load-completed entry true])))
+    (dispatch [:entry-form-data-load-completed entry true after-load-event])))
 
+;; 'after-load-event' is an optional event vec that is dispatched once the entry form data
+;; is loaded so that a caller can act on the loaded entry
 (reg-event-fx
  :entry-form/find-entry-by-id
- (fn [{:keys [db]} [_event-id entry-uuid]]
-   {:fx [[:bg-find-entry-by-id [(active-db-key db) entry-uuid on-entry-find]]]}))
+ (fn [{:keys [db]} [_event-id entry-uuid after-load-event]]
+   {:fx [[:bg-find-entry-by-id [(active-db-key db) entry-uuid (partial on-entry-find after-load-event)]]]}))
 
 (reg-event-fx
  :reload-entry-by-id
@@ -170,10 +183,13 @@
 
 (reg-event-fx
  :entry-form-data-load-completed
- (fn [{:keys [db]} [_event-id entry-form-data navigate?]]
-   ;; When navigate? is false, we just set the loaded entry data and not change the page 
+ (fn [{:keys [db]} [_event-id entry-form-data navigate? after-load-event]]
+   ;; When navigate? is false, we just set the loaded entry data and not change the page
    {:db  (set-on-entry-load db entry-form-data)
-    :fx [(when navigate? [:dispatch [:common/next-page const/ENTRY_FORM_PAGE_ID  "entry"]])]}))
+    :fx [(when navigate? [:dispatch [:common/next-page const/ENTRY_FORM_PAGE_ID  "entry"]])
+
+         (when after-load-event
+           [:dispatch after-load-event])]}))
 
 ;; Update a field found in :data
 (reg-event-db
@@ -198,7 +214,16 @@
 (reg-event-fx
  :entry-form/edit
  (fn [{:keys [db]} [_event-id edit?]]
-   {:db (assoc-in-key-db db [entry-form-key :edit] edit?)}))
+   ;; Any 'on demand' section revealed in a previous editing is hidden again when the
+   ;; editing starts or ends
+   {:db (-> db
+            (assoc-in-key-db [entry-form-key :revealed-sections] nil)
+            ;; The key holding fields start an editing revealed - see 'set-key-fields-visible'.
+            ;; Ending the editing masks every field again, including any the user revealed
+            (#(if edit?
+                (set-key-fields-visible %)
+                (assoc-in-key-db % [entry-form-key :visibility-list] nil)))
+            (assoc-in-key-db [entry-form-key :edit] edit?))}))
 
 #_(reg-event-db
    :entry-form/edit
@@ -322,6 +347,30 @@
  :entry-form-field-in-visibile-list
  (fn [db [_query-id key]]
    (contains-val? (get-in-key-db db [entry-form-key :visibility-list]) key)))
+
+;; Some standard sections of an entry type are not shown in the edit mode when they do not have
+;; any data - see 'on-demand-section?' in ns onekeepass.mobile.entry-form. This event adds such
+;; a section to the revealed list so that the user can enter values in it. The list is transient
+;; and is cleared whenever the form data is (re)loaded or the editing is done
+(reg-event-db
+ :entry-form-section-reveal
+ (fn [db [_event-id section-name]]
+   (let [sections (get-in-key-db db [entry-form-key :revealed-sections])]
+     (if (contains-val? sections section-name)
+       db
+       (assoc-in-key-db db [entry-form-key :revealed-sections] (conj (vec sections) section-name))))))
+
+(defn section-reveal [section-name]
+  (dispatch [:entry-form-section-reveal section-name]))
+
+(defn revealed-sections []
+  (subscribe [:entry-form-revealed-sections]))
+
+;; The 'on demand' sections that the user has asked to show in the current editing of this form
+(reg-sub
+ :entry-form-revealed-sections
+ (fn [db _query-vec]
+   (get-in-key-db db [entry-form-key :revealed-sections])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -721,28 +770,30 @@
 (defn entry-save []
   (dispatch [:entry-save]))
 
-;; Creates a blank New Entry Form with the given entry type and group are preselected 
+;; Creates a blank New Entry Form with the given entry type and group are preselected
 ;; group-info is a map with keys :name, :uuid
+;; 'after-created-event' is an optional event vec that is dispatched once the blank form is
+;; ready so that a caller can prefill the form
 (reg-event-fx
  :entry-form/add-new-entry
- (fn [{:keys [db]} [_event-id group-info entry-type-name]]
-   {:fx [[:bg-new-entry-form-data [(active-db-key db) group-info entry-type-name]]]}))
+ (fn [{:keys [db]} [_event-id group-info entry-type-name after-created-event]]
+   {:fx [[:bg-new-entry-form-data [(active-db-key db) group-info entry-type-name after-created-event]]]}))
 
-;; Backend API call 
+;; Backend API call
 (reg-fx
  :bg-new-entry-form-data
- ;; fn in 'reg-fx' accepts single argument - vector arg typically 
+ ;; fn in 'reg-fx' accepts single argument - vector arg typically
  ;; used so that we can pass more than one input
- (fn [[db-key group-info entry-type-name]]
+ (fn [[db-key group-info entry-type-name after-created-event]]
    (bg/new-entry-form-data db-key entry-type-name (fn [api-response]
                                                     (when-let [form-data (on-ok api-response)]
-                                                      (dispatch [:new-blank-entry-created form-data group-info]))))))
+                                                      (dispatch [:new-blank-entry-created form-data group-info after-created-event]))))))
 
 ;; Called with the result from the background API call which returns
 ;; a blank entry map that can be used to create a new Entry 
 (reg-event-fx
  :new-blank-entry-created
- (fn [{:keys [db]} [_ form-data group-info]]
+ (fn [{:keys [db]} [_ form-data group-info after-created-event]]
    (let [form-data (assoc form-data :group-uuid (:uuid group-info)) ;; set the group uuid 
          curr-page (current-page db)]
      {:db (-> db (assoc-in-key-db [entry-form-key :data] form-data)
@@ -752,9 +803,15 @@
               (assoc-in-key-db [entry-form-key :entry-type-name-selection] (:entry-type-name form-data))
               (assoc-in-key-db [entry-form-key :group-selection-info] group-info)
               (assoc-in-key-db [entry-form-key :edit] true)
+              (assoc-in-key-db [entry-form-key :revealed-sections] nil)
+              ;; A new entry starts in the edit mode without going through ':entry-form/edit'
+              (set-key-fields-visible)
               (assoc-in-key-db [entry-form-key :error-fields] {}))
       :fx [(when-not (= const/ENTRY_FORM_PAGE_ID curr-page)
-             [:dispatch [:common/next-page const/ENTRY_FORM_PAGE_ID  "entry"]])]})))
+             [:dispatch [:common/next-page const/ENTRY_FORM_PAGE_ID  "entry"]])
+
+           (when after-created-event
+             [:dispatch after-created-event])]})))
 
 (reg-event-db
  :entry-form-group-selected
@@ -774,7 +831,9 @@
 (reg-event-fx
  :cancel-entry-form
  (fn [{:keys [db]} [_event-id]]
-   {:db (assoc-in-key-db db [entry-form-key :error-fields] {})
+   {:db (-> db
+            (assoc-in-key-db [entry-form-key :error-fields] {})
+            (assoc-in-key-db [entry-form-key :revealed-sections] nil))
     :fx [[:dispatch [:common/previous-page]]]}))
 
 (reg-event-fx

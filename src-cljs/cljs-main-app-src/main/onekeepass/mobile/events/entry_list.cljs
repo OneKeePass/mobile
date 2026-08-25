@@ -85,11 +85,11 @@
 
 (defn list-sort-criteria
   ([db]
-   (let [{:keys [key-name direction] :as el-sort} (get-in-key-db db [:entry-list :sort])]
-     (if (nil? key-name)
-       {:key-name sort-default-key-name
-        :direction (if (nil? direction) sort-default-direction direction)}
-       el-sort))))
+   (let [{:keys [key-name direction]} (get-in-key-db db [:entry-list :sort])]
+     ;; Either half of the criteria may be stored before the other. Default them
+     ;; independently so changing the primary key never makes the direction disappear.
+     {:key-name (or key-name sort-default-key-name)
+      :direction (or direction sort-default-direction)})))
 
 (defn sort-entries [{:keys [key-name direction]} entries]
   (sort-by
@@ -122,6 +122,21 @@
   (let [sort-criteria (list-sort-criteria db)]
     (sort-entries sort-criteria entries)))
 
+(defn sort-containers
+  "Sorts group/category-like rows by their displayed title. Containers do not have
+   meaningful entry created/modified times, so every sort key falls back to title."
+  [{:keys [direction]} items]
+  (sort-by
+   (fn [{:keys [title display-title uuid]}]
+     [(some-> (or display-title title "") str/lower-case) (or uuid "")])
+   (fn [v1 v2] (if (= direction const/ASCENDING)
+                 (compare v1 v2)
+                 (compare v2 v1)))
+   items))
+
+(defn sort-containers-with-criteria [db items]
+  (sort-containers (list-sort-criteria db) items))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn- to-category-source
@@ -151,7 +166,10 @@
               (assoc-in-key-db [:entry-list :category-source] entry-category))
       :fx [(if-not (empty? rest-stack)
              [:dispatch [:entry-list/reload-selected-entry-items]]
-             [:dispatch [:common/previous-page]])]
+             [:dispatch [:common/previous-page]])
+           ;; Going back lands on another list, which has to show its own content rather
+           ;; than the search matches the user was looking at
+           [:dispatch [:search/term-clear]]]
       ;; :fx [(when-not (empty? rest-stack)
       ;;        [:dispatch [:entry-list/reload-selected-entry-items]])
       ;;      ;; Any relavant entry-items will be loaded in the above dispatch 
@@ -231,7 +249,9 @@
  :sort-entry-items
  (fn [{:keys [db]} [_event-id]]
    (let [entries (get-in-key-db db [:entry-list :selected-entry-items])]
-     {:db (assoc-in-key-db db [:entry-list :selected-entry-items] (sort-entries-with-criteria db entries))})))
+     {:db (assoc-in-key-db db [:entry-list :selected-entry-items] (sort-entries-with-criteria db entries))
+      ;; The category page lists the root group's own entries and sorts them the same way
+      :fx [[:dispatch [:entry-category/sort-category-page-items]]]})))
 
 ;; list of entry items returned by backend api when a category selected
 ;; or entry items returned in a search result - Work is yet to be done

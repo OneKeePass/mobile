@@ -2,7 +2,8 @@
   "UI for the passkey registration page shown in the Android Credential Manager flow.
    Two-step flow: group picker -> entry picker (select existing or create new)."
   (:require [onekeepass.mobile.android.autofill.events.passkey-registration :as reg-events]
-            [onekeepass.mobile.rn-components :as rnc :refer [primary-container-color
+            [onekeepass.mobile.rn-components :as rnc :refer [no-autocorrect-text-props
+                                                              primary-container-color
                                                               rn-flat-list
                                                               rn-view
                                                               rnp-button
@@ -38,9 +39,10 @@
             [rnp-text {:variant "bodySmall" :style {:margin-top 4}} (str "User: " user-name)])]
 
          [rn-view {:style {:padding 10}}
-          [rnp-text-input {:label "New group name"
-                           :defaultValue @new-group-name
-                           :onChangeText reg-events/update-new-group-name}]
+          [rnp-text-input (merge no-autocorrect-text-props
+                                 {:label "New group name"
+                                  :defaultValue @new-group-name
+                                  :onChangeText reg-events/update-new-group-name})]
           [rn-view {:style {:margin-top 10 :align-items "center"}}
            [rnp-button {:mode "contained"
                         :disabled (empty? @new-group-name)
@@ -82,9 +84,10 @@
           [rnp-text {:variant "titleSmall"} group-label]]
 
          [rn-view {:style {:padding 10}}
-          [rnp-text-input {:label "New entry name"
-                           :defaultValue @new-entry-name
-                           :onChangeText reg-events/update-new-entry-name}]
+          [rnp-text-input (merge no-autocorrect-text-props
+                                 {:label "New entry name"
+                                  :defaultValue @new-entry-name
+                                  :onChangeText reg-events/update-new-entry-name})]
           [rn-view {:style {:margin-top 10 :align-items "center"}}
            [rnp-button {:mode "contained"
                         :onPress reg-events/create-new-entry}

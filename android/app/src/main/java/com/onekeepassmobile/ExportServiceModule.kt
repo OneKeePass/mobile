@@ -19,7 +19,10 @@ class ExportServiceModule(reactContext: ReactApplicationContext) : ReactContextB
 
     // Domain authority for our app FileProvider
     // This should be the same that is used in @res/xml/file_paths.xml
-    private val fileProviderAuthority = "com.onekeepassmobile.fileprovider"
+    // com.onekeepassmobile.fileprovider is the main release one.
+    // If we use separate 'applicationIdSuffix' to deploy to device the debug build without replacing the existing
+    // release one, then we need com.onekeepassmobile.debug.fileprovider for debug 
+    private val fileProviderAuthority = "${reactApplicationContext.packageName}.fileprovider"
 
     private var modulePromise: Promise? = null
 

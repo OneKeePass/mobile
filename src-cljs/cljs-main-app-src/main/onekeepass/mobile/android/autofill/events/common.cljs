@@ -43,6 +43,10 @@
                 (assoc-in [:android-af-context-mode] android-af-context-mode)
                 (assoc-in [:android-af :pages-stack] '()))
         ;; Close each opened db in the backend silently, then list key files
+        ;; The entry list's codes need no separate clearing: they live under the key-db
+        ;; of the database they came from, and every open one is dissoc'ed above. That
+        ;; matters because this activity is started again on a javascript context it
+        ;; left running, and the new session's rows must not show the last one's codes
         :fx (into [[:bg-android-af-list-key-files]]
                   (mapv (fn [k] [:common/bg-close-kdbx [k silent-close-handler]]) open-db-keys))})))
 
@@ -138,6 +142,18 @@
 
 (defn page-info []
   (subscribe [:android-af-page-info]))
+
+(defn autofill-request-mode
+  "Gets the kind of request for which this autofill activity was launched - one of
+   :password-af-context, :passkey-assertion-context or :passkey-registration-context"
+  []
+  (subscribe [:android-af-common/autofill-request-mode]))
+
+;; The context mode is set in 'sync-initialize' just before the first rendering
+(reg-sub
+ :android-af-common/autofill-request-mode
+ (fn [db _query-vec]
+   (get-in db [:android-af-context-mode])))
 
 (reg-event-db
  :android-af-common/next-page
@@ -498,7 +514,9 @@
  :android-af-all-entries-loaded
  (fn [{:keys [db]} [_event-id db-key entry-summaries]]
    {:fx [[:dispatch [:android-af/entry-list-load-complete entry-summaries]]
-         [:bg-android-af-autofill-filtered-entries [db-key]]
+         ;; Whether the request is for a 2FA code decides which filtered entry list to
+         ;; load, so the list load is chained after this call
+         [:bg-android-af-fetch-totp-request-info [db-key]]
          ;; Fetch the calling-app uri once now so capture-on-fill can decide
          ;; synchronously at fill time (see entry-form complete-login-autofill).
          [:bg-android-af-fetch-client-app-uri]]}
@@ -518,15 +536,54 @@
                [:bg-android-af-autofill-filtered-entries [db-key]]]}))))
 
 ;; Called to load any matching entries based on ios autofill credential identifiers
+;; Asks the native side what kind of autofill request is pending. A failure is treated as a
+;; plain credential request so that the fill still works
+(reg-fx
+ :bg-android-af-fetch-totp-request-info
+ (fn [[db-key]]
+   (bg/android-autofill-totp-request-info
+    (fn [api-response]
+      (let [info (on-ok api-response
+                        (fn [error]
+                          (js/console.warn "Could not get autofill totp request info:" error)))]
+        (dispatch [:android-af-store-totp-request-info db-key info]))))))
+
+(reg-event-fx
+ :android-af-store-totp-request-info
+ (fn [{:keys [db]} [_event-id db-key {:keys [has-totp totp-only native-app]}]]
+   {:db (-> db
+            (assoc-in [:android-af :totp-request :has-totp] (boolean has-totp))
+            (assoc-in [:android-af :totp-request :totp-only] (boolean totp-only))
+            (assoc-in [:android-af :totp-request :native-app] (boolean native-app)))
+    :fx [[:bg-android-af-autofill-filtered-entries [db-key (boolean totp-only)]]]}))
+
+;; True when the pending request is for a 2FA code and nothing else. The entry list and the
+;; manual search are then restricted to entries that can produce a code
+(defn totp-only-request? [db]
+  (boolean (get-in db [:android-af :totp-request :totp-only])))
+
+;; True when the requesting screen has a 2FA code field at all - a code only screen or a
+;; combined login form
+(defn totp-field-present? [db]
+  (boolean (get-in db [:android-af :totp-request :has-totp])))
+
+;; True when the request came from a native app rather than a browser or web view. A native
+;; app gives no html attributes to identify a code field by, so one can go undetected there
+(defn native-app-request? [db]
+  (boolean (get-in db [:android-af :totp-request :native-app])))
+
 ;; This is called after loading all entries summary - see the above event
 (reg-fx
  :bg-android-af-autofill-filtered-entries
- (fn [[db-key]]
-   (bg/android-autofill-filtered-entries
-    db-key
-    (fn [api-response]
-      (when-let [result (on-ok api-response)]
-        (dispatch [:android-af-search-term-completed result]))))))
+ (fn [[db-key totp-only]]
+   (let [api-fn (if totp-only
+                  bg/android-autofill-filtered-otp-entries
+                  bg/android-autofill-filtered-entries)]
+     (api-fn
+      db-key
+      (fn [api-response]
+        (when-let [result (on-ok api-response)]
+          (dispatch [:android-af-search-term-completed result])))))))
 
 ;; Best-effort fetch of the calling-app uri (android://<pkg> for a native app
 ;; with no web domain, else the web uri). Stored for capture-on-fill. A failure
@@ -593,7 +650,7 @@
               (assoc-in [:android-af :search :not-matched] false)
               (assoc-in [:android-af :search :result] []))}
      {:db (assoc-in db [:android-af :search :term] term)
-      :fx [[:bg-android-af-start-term-search [(android-af-active-db-key db) term]]]})))
+      :fx [[:bg-android-af-start-term-search [(android-af-active-db-key db) term (totp-only-request? db)]]]})))
 
 (reg-event-fx
  :android-af-search-term-completed
@@ -627,11 +684,12 @@
 (reg-fx
  :bg-android-af-start-term-search
  ;; fn in 'reg-fx' accepts only single argument
- (fn [[db-key term]]
-   (bg/autofill-search-term db-key term
-                            (fn [api-response]
-                              (when-let [result (on-ok api-response #(dispatch [:android-af-search-error-text %]))]
-                                (dispatch [:android-af-search-term-completed result]))))))
+ (fn [[db-key term totp-only]]
+   (let [api-fn (if totp-only bg/autofill-search-term-otp bg/autofill-search-term)]
+     (api-fn db-key term
+             (fn [api-response]
+               (when-let [result (on-ok api-response #(dispatch [:android-af-search-error-text %]))]
+                 (dispatch [:android-af-search-term-completed result])))))))
 
 
 ;; Gets the matched entry items if any

@@ -60,7 +60,9 @@
 (def CATEGORY_FAV_ENTRIES "Favorites")
 (def CATEGORY_DELETED_ENTRIES "Deleted")
 
+;; Standard section names (match onekeepass-core constants in 'standard_in_section_names')
 (def ADDITIONAL_ONE_TIME_PASSWORDS "Additional One-Time Passwords")
+(def PASSKEY_DETAILS "Passkey Details")
 
 ;; Labels used for entry grouping section title 
 (def GEN_SECTION_TITLE "General")
@@ -68,9 +70,13 @@
 (def TAG_SECTION_TITLE "Tags")
 (def CAT_SECTION_TITLE "Categories")
 (def GROUP_SECTION_TITLE "Groups")
+(def ENTRIES_SECTION_TITLE "Entries")
 
 ;; Rejection error codes (string)
 (def PERMISSION_REQUIRED_TO_READ "PERMISSION_REQUIRED_TO_READ")
+;; Android: the content uri was granted read only access - happens when the db file is
+;; opened through the 'Open with' action of another app such as OneDrive
+(def PERMISSION_REQUIRED_TO_WRITE "PERMISSION_REQUIRED_TO_WRITE")
 (def FILE_NOT_FOUND "FILE_NOT_FOUND")
 (def COORDINATOR_CALL_FAILED "COORDINATOR_CALL_FAILED")
 ;; Remote db open: server reachable check / connection config resolution.
@@ -103,6 +109,34 @@
 ;; Host field key on a REMOTE_CONNECTION_SFTP entry (matches core constants::HOST)
 (def HOST "Host")
 (def IFDEVICE "IfDevice")
+
+;; Passkey entry protected field keys (match onekeepass-core constants of the same name)
+(def KPEX_PASSKEY_USER_HANDLE "KPEX_PASSKEY_USER_HANDLE")
+(def KPEX_PASSKEY_CREDENTIAL_ID "KPEX_PASSKEY_CREDENTIAL_ID")
+(def KPEX_PASSKEY_PRIVATE_KEY_PEM "KPEX_PASSKEY_PRIVATE_KEY_PEM")
+
+;; SSH Key entry field keys (match onekeepass-core constants::standard_field_names)
+(def PRIVATE_KEY "Private Key")
+(def PUBLIC_KEY "Public Key")
+
+;; Fields that hold a key and so are made up of several lines by their nature. A masked text
+;; input cannot be a multi line one and drops the line breaks of a pasted text, so these are
+;; revealed when the editing of a form starts - otherwise a key pasted into the still masked
+;; field would be stored flattened and would no longer parse. See the entry form field ns for
+;; how the reveal state lays such a field out
+;;
+;; A key is also the only value shown in a monospace font in read mode, as a pem or an openssh
+;; text reads better that way
+(def KEY_FIELD_NAMES
+  #{KPEX_PASSKEY_PRIVATE_KEY_PEM
+    PRIVATE_KEY
+    PUBLIC_KEY})
+
+;; Fields laid out as an input that grows to fit its value instead of a single line one. A key
+;; carries line breaks of its own. 'Additional URLs' holds urls separated by a space, and one
+;; long url or several of them need more than a single line just the same
+(def MULTI_LINE_FIELD_NAMES
+  (conj KEY_FIELD_NAMES ADDITIONAL_URLS))
 
 (def ASCENDING "Ascending")
 (def DESCENDING "Descending")
@@ -194,6 +228,14 @@
 
 (def BROWSE-TYPE-DB-OPEN :db-open)
 (def BROWSE-TYPE-DB-NEW :db-new)
+(def BROWSE-TYPE-DB-SAVE-AS :db-save-as)
+
+;; Browse types where the user selects a folder (and not an existing file) as
+;; the target for a db file that is going to be written
+(def FOLDER-SELECTION-BROWSE-TYPES #{BROWSE-TYPE-DB-NEW BROWSE-TYPE-DB-SAVE-AS})
+
+(defn folder-selection-browse-type? [kw-browse-type]
+  (contains? FOLDER-SELECTION-BROWSE-TYPES kw-browse-type))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -224,9 +266,10 @@
 ;; react-native-vector-icons is used to display the icons
 ;; We need to get the name of icons from https://materialdesignicons.com/ ( new url https://pictogrammers.com/library/mdi/)
 ;; Need to use the lower case name with "-" 
-;; Names can also be found in mobile/node_modules/@react-native-vector-icons/material-design-icons/glyphmaps/MaterialDesignIcons.json
 
 ;; Also see onekeepass.mobile.icons-list where the Entry and Group Icons listed
+
+;; Names can also be found in mobile/node_modules/@react-native-vector-icons/material-design-icons/glyphmaps/MaterialDesignIcons.json
 
 (def ICON-DATABASE "database")
 (def ICON-DATABASE-OUTLINE "database-outline")
@@ -240,6 +283,7 @@
 (def ICON-DATABASE-ARROW-LEFT  "database-arrow-left")
 
 (def ICON-HOME "home")
+(def ICON-HOME-OUTLINE "home-outline")
 (def ICON-DOTS-SQUARE "dots-square")
 (def ICON-DB-EYE-OFF-OUTLINE "database-eye-off-outline")
 ;; May be used for App Lock
@@ -252,6 +296,8 @@
 
 
 (def ICON-CHEVRON-RIGHT  "chevron-right")
+(def ICON-CHEVRON-UP  "chevron-up")
+(def ICON-CHEVRON-DOWN  "chevron-down")
 (def ICON-CACHED  "cached")
 (def ICON-CLOSE "close")
 

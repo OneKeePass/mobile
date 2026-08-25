@@ -111,6 +111,11 @@ pub(crate) fn rs_create_kdbx(json_args: &str) -> ResponseJson {
     result_json_str(rs_create_file(json_args))
 }
 
+#[inline]
+pub(crate) fn rs_save_as_kdbx(json_args: &str) -> ResponseJson {
+    result_json_str(rs_save_as_file(json_args))
+}
+
 // Lists every REMOTE_CONNECTION_* entry in the currently open databases.
 // Powers the merged connection picker (kdbx-entry source alongside the
 // legacy blob source) and the migration command.
@@ -183,7 +188,7 @@ pub(crate) fn rs_get_remote_storage_config(json_args: &str) -> ResponseJson {
 // a 36-character string, formatted in five groups of hexadecimal digits
 // separated by hyphens, following the pattern 8-4-4-4-12
 
-fn parse_db_key(db_key: &str) -> IResult<&str, ParsedDbKey> {
+fn parse_db_key(db_key: &'_ str) -> IResult<&'_ str, ParsedDbKey<'_>> {
     let (remaining, (rs_type_name, _, connection_id, _, file_path_part)) = tuple((
         alpha1,
         bytes::complete::tag("-"),
@@ -285,14 +290,40 @@ fn is_remote_config_available(db_key: &str) -> bool {
         .is_some()
 }
 
+// Drops the session cached connection config for a remote db_key. Called when a
+// db is closed so the config cached while the remote db was open (see
+// ConnectionConfigs::cache_config_in_memory) does not linger past the db that
+// needed it. A no-op for local db_keys. The removal is from the session cache
+// only and never touches the persisted app secure store configs.
+pub(crate) fn clear_cached_connection_config(db_key: &str) {
+    use uuid::Uuid;
+
+    let Ok((_remaining, parsed)) = parse_db_key(db_key) else {
+        return;
+    };
+
+    let storage_type = match parsed.rs_type_name {
+        "Sftp" => RemoteStorageType::Sftp,
+        "Webdav" => RemoteStorageType::Webdav,
+        _ => return,
+    };
+
+    let Ok(connection_id) = Uuid::parse_str(parsed.connection_id) else {
+        return;
+    };
+
+    storage_service::ConnectionConfigs::remove_config_in_memory(storage_type, &connection_id);
+}
+
 fn rs_read_file(json_args: &str) -> OkpResult<KdbxLoadedEx> {
-    let (db_file_name, password, key_file_name, biometric_auth_used) = parse_command_args_or_err!(
+    let (db_file_name, password, key_file_name, biometric_auth_used, _) = parse_command_args_or_err!(
         json_args,
         OpenDbArg {
             db_file_name,
             password,
             key_file_name,
-            biometric_auth_used
+            biometric_auth_used,
+            transient_db_ref
         }
     );
 
@@ -881,4 +912,42 @@ fn rs_create_file(json_args: &str) -> OkpResult<KdbxLoaded> {
     AppState::add_recently_used_with_file_info(&db_key, &None);
 
     Ok(kdbx_loaded)
+}
+
+// Writes a copy of a database to a remote storage location - the 'Save As' action
+//
+// The content comes from 'local_file_path' which is a copy of the database that is
+// already prepared on the device. The database that is open is not affected by this
+// call and the copy written here is not tracked - no backup file, no checksum and
+// no recent use info is created for it
+fn rs_save_as_file(json_args: &str) -> OkpResult<()> {
+    let (db_key, local_file_path) = parse_command_args_or_err!(
+        json_args,
+        SaveAsToRemoteArg {
+            db_key,
+            local_file_path
+        }
+    );
+
+    // db_key is the key formed for the copy and is not of any database that is open
+    let rs_operation_type = parse_db_key_to_rs_type_opertaion(&db_key)?;
+
+    // In case of iOS the prepared copy's path comes with the file:// prefix and
+    // may also be url encoded whereas in case of Android it is a plain path
+    let local_file_path = crate::util::url_to_unix_file_name(&local_file_path);
+
+    let path = Path::new(&local_file_path);
+    if !path.exists() {
+        return Err(OkpError::DataError(
+            "The prepared database copy is not found to write to the remote storage",
+        ));
+    }
+
+    let mut reader = fs::File::open(path)?;
+    let mut buffer = Vec::<u8>::new();
+    reader.read_to_end(&mut buffer)?;
+
+    let _meta_data = rs_operation_type.create_file(Arc::new(buffer))?;
+
+    Ok(())
 }

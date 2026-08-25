@@ -74,6 +74,8 @@
                                 TextInput
                                 Text
                                 TouchableRipple
+                                TouchableOpacity
+                                Icon
 
                                 GestureHandlerRootView
                                 rnp-dialog]}

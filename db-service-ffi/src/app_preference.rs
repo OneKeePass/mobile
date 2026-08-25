@@ -28,6 +28,10 @@ pub struct PreferenceData {
     app_lock_attempts_allowed: Option<usize>,
     app_lock_lock_app_settings: Option<bool>,
     //app_lock_preference: Option<AppLockPreference>,
+
+    // Generator options sent from the password generator page
+    pass_phrase_options: Option<kp_service::PassphraseGenerationOptions>,
+    password_options: Option<kp_service::PasswordGenerationOptions>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Default, Debug)]
@@ -104,6 +108,59 @@ impl AppLockPreference {
     }
 }
 
+// Default character password options used when the preference file has no stored password
+// options yet - that is an older preference file that predates this field (via serde default)
+// Kept in sync with the UI defaults in the password generator page - length 16, all character
+// sets on, similar characters excluded, strict on
+fn default_password_generation_options() -> kp_service::PasswordGenerationOptions {
+    kp_service::PasswordGenerationOptions {
+        length: 16,
+        numbers: true,
+        lowercase_letters: true,
+        uppercase_letters: true,
+        symbols: true,
+        spaces: false,
+        exclude_similar_characters: true,
+        strict: true,
+    }
+}
+
+// The generator options last used by the user in the password generator page.
+// Both fields are defaulted so that any previously stored 'preference.json' continues to load
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub(crate) struct PasswordGeneratorPreference {
+    #[serde(default)]
+    phrase_generator_options: kp_service::PassphraseGenerationOptions,
+
+    #[serde(default = "default_password_generation_options")]
+    password_generation_options: kp_service::PasswordGenerationOptions,
+}
+
+impl Default for PasswordGeneratorPreference {
+    fn default() -> Self {
+        Self {
+            phrase_generator_options: Default::default(),
+            password_generation_options: default_password_generation_options(),
+        }
+    }
+}
+
+impl PasswordGeneratorPreference {
+    fn update_pass_phrase_options(
+        &mut self,
+        phrase_generator_options: kp_service::PassphraseGenerationOptions,
+    ) {
+        self.phrase_generator_options = phrase_generator_options;
+    }
+
+    fn update_password_options(
+        &mut self,
+        password_generation_options: kp_service::PasswordGenerationOptions,
+    ) {
+        self.password_generation_options = password_generation_options;
+    }
+}
+
 pub(crate) const PREFERENCE_JSON_FILE_NAME: &str = "preference.json";
 
 const PREFERENCE_JSON_FILE_VERSION: &str = "5.0.0"; // started using 4.0.0 instead of 0.0.4
@@ -141,6 +198,11 @@ pub(crate) struct Preference {
     database_preferences: Vec<DatabasePreference>,
 
     app_lock_preference: AppLockPreference,
+
+    // The password and pass phrase generator options last used
+    // serde default keeps the preference files written before this field was introduced loadable
+    #[serde(default)]
+    password_gen_preference: PasswordGeneratorPreference,
 }
 
 impl Default for Preference {
@@ -159,6 +221,7 @@ impl Default for Preference {
             // biometric_enabled_dbs: vec![],
             database_preferences: vec![],
             app_lock_preference: AppLockPreference::default(),
+            password_gen_preference: PasswordGeneratorPreference::default(),
         }
     }
 }
@@ -227,6 +290,16 @@ impl Preference {
             app_lock_preference.lock_app_settings,
             updated
         );
+
+        if let Some(v) = preference_data.pass_phrase_options {
+            self.password_gen_preference.update_pass_phrase_options(v);
+            updated = true;
+        }
+
+        if let Some(v) = preference_data.password_options {
+            self.password_gen_preference.update_password_options(v);
+            updated = true;
+        }
 
         if let Some(db_pref) = preference_data.database_preference {
             self.upate_or_insert_database_preference(db_pref);
@@ -575,6 +648,7 @@ impl From<PreferenceV400> for Preference {
             backup_history_count,
             database_preferences,
             app_lock_preference: AppLockPreference::default(),
+            password_gen_preference: PasswordGeneratorPreference::default(),
         };
 
         // RecentlyUsed is changed in the new Preference struct

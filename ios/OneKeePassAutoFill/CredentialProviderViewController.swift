@@ -44,6 +44,10 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
   static var pendingPasskeyRegistrationAlgorithm: Int = -7
   static var isPasskeyRegistrationMode: Bool = false
   
+  // One time code (2FA) state (iOS 18+). Set when iOS launches the extension for a
+  // verification code field rather than for credentials
+  static var isOneTimeCodeMode: Bool = false
+
   static var prepareViewCalled: Bool = false
 
   private let logger = logger1
@@ -91,6 +95,7 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
     Self.extContext = nil
     Self.cancelled = false
     Self.isPasskeyRegistrationMode = false
+    Self.isOneTimeCodeMode = false
     
     Self.pendingPasskeyClientDataHash = nil
     Self.pendingPasskeyCredentialIds = []
@@ -129,6 +134,7 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
   }
   
   static func credentialSelected(_ user: String, _ password: String) {
+    logger1.error("CredentialProviderViewController - The func credentialSelected called to select user and password")
     guard extContext != nil else {
       logger1.error("CredentialProviderViewController - The func credentialSelected but extContext is not set")
       return
@@ -233,6 +239,28 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
       logger1.debug("CredentialProviderViewController - completeRegistrationRequest Task started")
       await ctx.completeRegistrationRequest(using: credential)
       logger1.debug("CredentialProviderViewController - completeRegistrationRequest Task completed")
+    }
+  }
+
+  // Hands the generated TOTP back to iOS, which types it into the verification code
+  // field. iOS 18+ only - on earlier versions there is no API to return a code, so the
+  // extension never enters this mode
+  @available(iOS 18.0, *)
+  static func completeOneTimeCode(_ code: String) {
+    logger1.debug("CredentialProviderViewController - completeOneTimeCode is called with code: \(code)")
+    guard let ctx = extContext else {
+      logger1.error("CredentialProviderViewController - completeOneTimeCode but extContext is not set")
+      return
+    }
+
+    let credential = ASOneTimeCodeCredential(code: code)
+
+    logger1.debug("CredentialProviderViewController - ASOneTimeCodeCredential formed and sent to the app")
+
+    cancelled = true  // Prevent viewDidDisappear's cancelExtension from racing with this call
+    Task { @MainActor in
+      await ctx.completeOneTimeCodeRequest(using: credential)
+      logger1.debug("CredentialProviderViewController - completeOneTimeCodeRequest Task completed")
     }
   }
 
@@ -349,34 +377,55 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
     
     Self.cancelled = false
 
+    storeServiceIdentifiers(serviceIdentifiers)
+    // Calling these from here also worked. See viewWillAppear where the view is called
+    // directUI()
+    // prepareUI()
+  }
+
+  // Records what the user is logging in to. Shared by the password and the one time code
+  // credential list entry points
+  func storeServiceIdentifiers(_ serviceIdentifiers: [ASCredentialServiceIdentifier]) {
     CredentialProviderViewController.serviceIdentifierDomain = nil
     CredentialProviderViewController.serviceIdentifierUrl = nil
     CredentialProviderViewController.serviceIdentifierDisplayName = nil
-    
+
     for si in serviceIdentifiers {
       switch si.type {
       case .domain:
         logger.debug("CredentialProviderViewController - Domain identified \(si.identifier)")
         CredentialProviderViewController.serviceIdentifierDomain = si.identifier
-      
+
       case .URL:
-        logger.debug("CredentialProviderViewController -Url identified \(si.identifier)")
+        logger.debug("CredentialProviderViewController - Url identified \(si.identifier)")
         CredentialProviderViewController.serviceIdentifierUrl = si.identifier
-      
+
       case .app:
         // Not yet used
         if #available(iOS 26.2, *) {
           logger.debug("CredentialProviderViewController - App displayname \(String(describing: si.displayName))")
           CredentialProviderViewController.serviceIdentifierDisplayName = si.displayName
         }
-      
+
       @unknown default:
         logger.debug("CredentialProviderViewController - Unknown identifier \(si.type)")
       }
     }
-    // Calling these from here also worked. See viewWillAppear where the view is called
-    // directUI()
-    // prepareUI()
+  }
+
+  // iOS 18+ one time code entry point via the credential list. Called when the user picks
+  // OneKeePass for a verification code field (autocomplete="one-time-code" and the native
+  // equivalent). Records the service identifiers the same way the password path does, so
+  // the entry list can be matched against the requesting site
+  @available(iOS 18.0, *)
+  override func prepareOneTimeCodeCredentialList(for serviceIdentifiers: [ASCredentialServiceIdentifier]) {
+    logger.debug("CredentialProviderViewController - prepareOneTimeCodeCredentialList is called")
+
+    Self.cancelled = false
+    Self.isOneTimeCodeMode = true
+
+    storeServiceIdentifiers(serviceIdentifiers)
+    prepareUI()
   }
 
   // iOS 17+ passkey assertion entry point via the credential list (no pre-registered identities needed).
@@ -402,6 +451,24 @@ class CredentialProviderViewController: ASCredentialProviderViewController {
   override func prepareInterfaceToProvideCredential(for credentialRequest: any ASCredentialRequest) {
     logger.debug("CredentialProviderViewController - prepareInterfaceToProvideCredential for passkey auth called")
     Self.cancelled = false
+
+    // A one time code request arrives here too (iOS 18+), when the user picks a code
+    // suggestion straight from the QuickType bar. That suggestion comes from the one time
+    // code identities the main app registers on opening a database
+    if #available(iOS 18.0, *),
+       let codeRequest = credentialRequest as? ASOneTimeCodeCredentialRequest {
+      logger.debug("CredentialProviderViewController - prepareInterfaceToProvideCredential: one time code request")
+      Self.isOneTimeCodeMode = true
+      if let identity = codeRequest.credentialIdentity as? ASOneTimeCodeCredentialIdentity {
+        // Goes through the same helper as the credential list entry points so the identifier
+        // lands in the slot its type calls for. These identities are registered with type
+        // .URL, and a full url placed in the domain slot gets a second scheme prefixed to it
+        // on the Rust side and then matches nothing
+        storeServiceIdentifiers([identity.serviceIdentifier])
+      }
+      prepareUI()
+      return
+    }
 
     guard let request = credentialRequest as? ASPasskeyCredentialRequest,
           let identity = request.credentialIdentity as? ASPasskeyCredentialIdentity

@@ -57,6 +57,14 @@
                                        :error-title error-title
                                        :merge-save-called merge-save-called}])
 
+    ;; Android only. The db file is opened through the 'Open with' action of another app
+    ;; (OneDrive and the like) which grants read only access to the uri and saving back
+    ;; to that app is not possible. 'Save as' is the way out for the user
+    (= const/PERMISSION_REQUIRED_TO_WRITE (:code error))
+    (dispatch [:save-error-modal-show {:error-type :permission-required-to-write
+                                       :error-title error-title
+                                       :merge-save-called merge-save-called}])
+
     ;; Any error or exception that might have happend while saving
     (= const/SAVE_CALL_FAILED (:code error))
     (dispatch [:save-error-modal-show {:error-type :save-call-failled
@@ -84,7 +92,10 @@
                                          :message "Internal error"
                                          :error-title error-title}])
 
-    (str/starts-with? error "UnRecoverableError")
+    ;; The 'error' is a map with keys code,message for all the native module rejections and
+    ;; a string only for the errors coming from the core lib. The 'string?' check keeps a
+    ;; map error from reaching 'starts-with?' which then fails with 'undefined is not a function'
+    (and (string? error) (str/starts-with? error "UnRecoverableError"))
     (dispatch [:common/error-box-show "Error" error])
 
     :else

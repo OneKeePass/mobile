@@ -6,6 +6,7 @@
                                                  ICON-FOLDER]]
             [onekeepass.mobile.events.remote-storage :as rs-events]
             [onekeepass.mobile.rn-components :as rnc :refer [modal-selector-colors
+                                                             no-assist-text-props
                                                              page-background-color
                                                              rn-keyboard-avoiding-view
                                                              rn-scroll-view
@@ -44,28 +45,29 @@
 
 (defn password-field [password password-visible tr-label errors edit]
   [:<>
-   [rnp-text-input {:style {}
-                    :label tr-label
-                    :editable edit
-                    ;; Need to use defaultValue (iOS only) in addition to :value 
-                    ;; to show the password value when only in view mode
-                    ;; Not sure only for this happens for this. May be the way reagent component 
-                    ;; 'password-field' is used ?
-                    :defaultValue password
+   [rnp-text-input (merge no-assist-text-props
+                          {:style {}
+                           :label tr-label
+                           :editable edit
+                           ;; Need to use defaultValue (iOS only) in addition to :value
+                           ;; to show the password value when only in view mode
+                           ;; Not sure only for this happens for this. May be the way reagent component
+                           ;; 'password-field' is used ?
+                           :defaultValue password
 
-                    ;; In case of Android, when we use ':vaue' and when we try 
-                    ;; insert a charater in a text, the cursor moves back and confusing
-                    ;; Using only ':defaultValue' solves the issue
-                    ;; Also using only ':defaultValue' for both Android and iOS
-                    ;;:vaue password 
-                    :secureTextEntry (not password-visible)
-                    :right (r/as-element
-                            [rnp-text-input-icon
-                             {:icon  (if password-visible ICON-EYE ICON-EYE-OFF)
-                              :onPress #(rs-events/remote-storage-connection-form-data-update
-                                         :sftp
-                                         :password-visible (not password-visible))}])
-                    :onChangeText #(rs-events/remote-storage-connection-form-data-update :sftp :password %)}]
+                           ;; In case of Android, when we use ':vaue' and when we try
+                           ;; insert a charater in a text, the cursor moves back and confusing
+                           ;; Using only ':defaultValue' solves the issue
+                           ;; Also using only ':defaultValue' for both Android and iOS
+                           ;;:vaue password
+                           :secureTextEntry (not password-visible)
+                           :right (r/as-element
+                                   [rnp-text-input-icon
+                                    {:icon  (if password-visible ICON-EYE ICON-EYE-OFF)
+                                     :onPress #(rs-events/remote-storage-connection-form-data-update
+                                                :sftp
+                                                :password-visible (not password-visible))}])
+                           :onChangeText #(rs-events/remote-storage-connection-form-data-update :sftp :password %)})]
    [error-text errors :password]])
 
 (defn sftp-connection-config-form []
@@ -83,32 +85,34 @@
     [rn-view {:flex 1 :backgroundColor @page-background-color}  ;;
      [form-header (if edit (lstr-l 'newConnection) (lstr-l 'viewConnection))]
      [rn-view {:style form-style}
-      [rnp-text-input {:style {}
-                       :label (lstr-l 'name)
-                       :editable edit
-                       ;; onChangeText should be a fn that accepts the changed text, when we use the prop :value 
-                       ;; otherwise the label keeps on showing even if the value has non nil value. Then 
-                       ;; we may use defaultValue prop which hides the label once data is entered
-                       ;; Also see comment in mobile/src/onekeepass/mobile/settings.cljs 
-                       ;; Except few places, generally prop defaultValue is used 
-                       ;; See the use of defaultValue and comment there
-                       
-                       ;; In case of Android, when we use ':vaue' and when we try 
-                       ;; insert a charater in a text, the cursor moves back and confusing
-                       ;; Using only ':defaultValue' solves the issue
-                       ;; Also using only ':defaultValue' for both Android and iOS 
-                       ;; :value name
-                       
-                       :defaultValue name
-                       :onChangeText #(rs-events/remote-storage-connection-form-data-update kw-type :name %)}]
+      [rnp-text-input (merge no-assist-text-props
+                             {:style {}
+                              :label (lstr-l 'name)
+                              :editable edit
+                              ;; onChangeText should be a fn that accepts the changed text, when we use the prop :value
+                              ;; otherwise the label keeps on showing even if the value has non nil value. Then
+                              ;; we may use defaultValue prop which hides the label once data is entered
+                              ;; Also see comment in mobile/src/onekeepass/mobile/settings.cljs
+                              ;; Except few places, generally prop defaultValue is used
+                              ;; See the use of defaultValue and comment there
+
+                              ;; In case of Android, when we use ':vaue' and when we try
+                              ;; insert a charater in a text, the cursor moves back and confusing
+                              ;; Using only ':defaultValue' solves the issue
+                              ;; Also using only ':defaultValue' for both Android and iOS
+                              ;; :value name
+
+                              :defaultValue name
+                              :onChangeText #(rs-events/remote-storage-connection-form-data-update kw-type :name %)})]
       [error-text errors :name]
-      [rnp-text-input {:style {}
-                       :label (lstr-l 'host)
-                       :editable edit
-                       ;; See fn passed in onChangeText which uses 'host' field directly instead of using % in fn
-                       ;;:value host
-                       :defaultValue host
-                       :onChangeText #(rs-events/remote-storage-connection-form-data-update kw-type :host %)}]
+      [rnp-text-input (merge no-assist-text-props
+                             {:style {}
+                              :label (lstr-l 'host)
+                              :editable edit
+                              ;; See fn passed in onChangeText which uses 'host' field directly instead of using % in fn
+                              ;;:value host
+                              :defaultValue host
+                              :onChangeText #(rs-events/remote-storage-connection-form-data-update kw-type :host %)})]
       [error-text errors :host]
 
       [rnp-text-input {:style {}
@@ -119,12 +123,13 @@
                        :onChangeText #(rs-events/remote-storage-connection-form-data-update kw-type :port (str->int %))}]
       [error-text errors :port]
 
-      [rnp-text-input {:style {}
-                       :label (lstr-l 'userName)
-                       :editable edit
-                       ;;:value user-name
-                       :defaultValue user-name
-                       :onChangeText #(rs-events/remote-storage-connection-form-data-update kw-type :user-name %)}]
+      [rnp-text-input (merge no-assist-text-props
+                             {:style {}
+                              :label (lstr-l 'userName)
+                              :editable edit
+                              ;;:value user-name
+                              :defaultValue user-name
+                              :onChangeText #(rs-events/remote-storage-connection-form-data-update kw-type :user-name %)})]
 
       [error-text errors :user-name]]
 
@@ -177,54 +182,50 @@
     [rn-view {:flex 1 :backgroundColor @page-background-color}  ;;
      [form-header (if edit (lstr-l 'newConnection) (lstr-l 'viewConnection))]
      [rn-view {:style form-style}
-      [rnp-text-input {:style {}
-                       :editable edit
-                       :autoCapitalize "none"
-                       :autoCorrect false
-                       :label (lstr-l 'name)
-                       ;;:value name
-                       :defaultValue name
-                       :onChangeText #(rs-events/remote-storage-connection-form-data-update kw-type :name %)}]
+      [rnp-text-input (merge no-assist-text-props
+                             {:style {}
+                              :editable edit
+                              :label (lstr-l 'name)
+                              ;;:value name
+                              :defaultValue name
+                              :onChangeText #(rs-events/remote-storage-connection-form-data-update kw-type :name %)})]
       [error-text errors :name]
 
-      [rnp-text-input {:style {}
-                       :label (lstr-l 'rootUrl)
-                       :editable edit
-                       :placeholder "e.g https://www.mywebdav.com:8080"
-                       :autoCapitalize "none"
-                       :autoCorrect false
-                       ;;:value root-url
-                       :defaultValue root-url
-                       :onChangeText #(rs-events/remote-storage-connection-form-data-update kw-type :root-url %)}]
+      [rnp-text-input (merge no-assist-text-props
+                             {:style {}
+                              :label (lstr-l 'rootUrl)
+                              :editable edit
+                              :placeholder "e.g https://www.mywebdav.com:8080"
+                              ;;:value root-url
+                              :defaultValue root-url
+                              :onChangeText #(rs-events/remote-storage-connection-form-data-update kw-type :root-url %)})]
 
       [error-text errors :root-url]
 
-      [rnp-text-input {:style {}
-                       :label (lstr-l 'userName)
-                       :editable edit
-                       :autoCapitalize "none"
-                       :autoCorrect false
-                       ;;:value user-name
-                       :defaultValue user-name
-                       :onChangeText #(rs-events/remote-storage-connection-form-data-update kw-type :user-name %)}]
+      [rnp-text-input (merge no-assist-text-props
+                             {:style {}
+                              :label (lstr-l 'userName)
+                              :editable edit
+                              ;;:value user-name
+                              :defaultValue user-name
+                              :onChangeText #(rs-events/remote-storage-connection-form-data-update kw-type :user-name %)})]
 
       [error-text errors :user-name]
 
-      [rnp-text-input {:style {}
-                       :label (lstr-l 'password)
-                       :editable edit
-                       :autoCapitalize "none"
-                       :autoCorrect false
-                       ;;:value password
-                       :defaultValue password
-                       :secureTextEntry (not password-visible)
-                       :right (r/as-element
-                               [rnp-text-input-icon
-                                {:icon  (if password-visible ICON-EYE ICON-EYE-OFF)
-                                 :onPress #(rs-events/remote-storage-connection-form-data-update
-                                            kw-type
-                                            :password-visible (not password-visible))}])
-                       :onChangeText #(rs-events/remote-storage-connection-form-data-update kw-type :password %)}]
+      [rnp-text-input (merge no-assist-text-props
+                             {:style {}
+                              :label (lstr-l 'password)
+                              :editable edit
+                              ;;:value password
+                              :defaultValue password
+                              :secureTextEntry (not password-visible)
+                              :right (r/as-element
+                                      [rnp-text-input-icon
+                                       {:icon  (if password-visible ICON-EYE ICON-EYE-OFF)
+                                        :onPress #(rs-events/remote-storage-connection-form-data-update
+                                                   kw-type
+                                                   :password-visible (not password-visible))}])
+                              :onChangeText #(rs-events/remote-storage-connection-form-data-update kw-type :password %)})]
       [error-text errors :password]]
 
 

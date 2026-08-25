@@ -2,7 +2,7 @@
   (:require
    [clojure.string :as str]
    [re-frame.core :refer [reg-event-db reg-event-fx reg-fx reg-sub dispatch subscribe]]
-   [onekeepass.mobile.events.common :as cmn-events :refer [on-ok]]
+   [onekeepass.mobile.events.common :as cmn-events :refer [on-error on-ok]]
    [onekeepass.mobile.background :as bg]
    [onekeepass.mobile.constants :as const]))
 
@@ -78,7 +78,10 @@
                           :on-selection nil
                           ;; All fields from struct PasswordGenerationOptions
                           PASSWORD-OPTIONS {;; length is updated when slider movement completes
-                                            :length 8
+                                            ;; This is the fallback default only. Once the user
+                                            ;; changes any option, the stored preference is used
+                                            ;; - see 'init-dialog-data'
+                                            :length 16
                                             :numbers true
                                             :lowercase-letters true
                                             :uppercase-letters true
@@ -101,10 +104,22 @@
                                                     :raw-value nil
                                                     :score-text nil}}})
 
-;; We have just one member :data under :generator 
-;; Note in 'desktop' app, we use [:generator :dialog-data] instead of [:generator :data] 
+;; We have just one member :data under :generator
+;; Note in 'desktop' app, we use [:generator :dialog-data] instead of [:generator :data]
 (defn- init-dialog-data [app-db]
-  (assoc-in app-db [:generator :data] generator-init-data))
+  (let [;; The options used when the generator was last used. These are nil when the stored
+        ;; preference.json predates the 'password_gen_preference' field and in that case the
+        ;; defaults from 'generator-init-data' are used
+        password-options (cmn-events/app-preference-password-generation-options app-db)
+        phrase-options (cmn-events/app-preference-phrase-generator-options app-db)
+        db (assoc-in app-db [:generator :data] generator-init-data)
+        db (if (seq password-options)
+             (assoc-in db [:generator :data PASSWORD-OPTIONS] password-options)
+             db)
+        db (if (seq phrase-options)
+             (assoc-in db [:generator :data PASS-PHRASE-OPTIONS] phrase-options)
+             db)]
+    db))
 
 ;; Updates all top level fields of data in :data
 (defn- to-generator-data [db & {:as kws}]
@@ -143,8 +158,6 @@
        (on-selection-callback-fn analyzed-password)) ;; side effect
      {:fx [[:dispatch [:common/previous-page]]]})))
 
-;; TODO: We may retrive previously stored password options from preference and load insead of initializing with 'init-dialog-data'
-;; In that case, we need to store any changes in the generator options in the backend preference as done in desktop
 (reg-event-fx
  :password-generator/start
  (fn [{:keys [db]} [_event-id on-selection]]
@@ -173,12 +186,22 @@
 (reg-event-fx
  :password-generation-complete
  (fn [{:keys [db]} [_event-id password-result]]
-   {:db (-> db
-            (assoc-in  [:generator :data :password-result] password-result)
-            (assoc-in  [:generator :data :slider-value] (:length password-result)))
-    ;; Need to navigate to the generator page if not yet already
-    ;; This is an idempotent action
-    :fx [[:dispatch [:common/next-page const/PASSWORD_GENERATOR_PAGE_ID  "generator"]]]}))
+   (let [;; The password options are stored in the preference so that the generator opens
+         ;; with the options the user used last. Saved only when the password panel is the
+         ;; active one and the options differ from the stored ones - this handler is also
+         ;; called when the generator page is opened with the options loaded from preference
+         panel-shown (get-in db [:generator :data :panel-shown])
+         pref-po (cmn-events/app-preference-password-generation-options db)
+         po (get-in db [:generator :data PASSWORD-OPTIONS])
+         modified (and (= panel-shown "password") (not= pref-po po))]
+     {:db (-> db
+              (assoc-in  [:generator :data :password-result] password-result)
+              (assoc-in  [:generator :data :slider-value] (:length password-result)))
+      ;; Need to navigate to the generator page if not yet already
+      ;; This is an idempotent action
+      :fx [[:dispatch [:common/next-page const/PASSWORD_GENERATOR_PAGE_ID  "generator"]]
+           (when modified
+             [:bg-update-pass-gen-preference {:password-options po}])]})))
 
 ;; Called when panel selection is changed
 (reg-event-fx
@@ -301,12 +324,32 @@
  :pass-phrase-generation-complete
  (fn [{:keys [db]} [_event-id {:keys [password] :as gen-pass-phrase}]]
    (let [gen-pass-phrase (assoc gen-pass-phrase :analyzed-password password)
-         words (get-in db [:generator :data PASS-PHRASE-OPTIONS :words])]
+         words (get-in db [:generator :data PASS-PHRASE-OPTIONS :words])
+         ;; As done for the password options, the pass phrase options are stored in the
+         ;; preference when the user changes any of them
+         pref-ppo (cmn-events/app-preference-phrase-generator-options db)
+         ppo (get-in db [:generator :data PASS-PHRASE-OPTIONS])
+         modified (not= pref-ppo ppo)]
      {:db (-> db
               (assoc-in  [:generator :data :password-result] gen-pass-phrase)
               (assoc-in  [:generator :data :slider-value] words))
          ;; This is an idempotent action and nothing happens if the page is already on PASSWORD_GENERATOR_PAGE_ID
-      :fx [[:dispatch [:common/next-page const/PASSWORD_GENERATOR_PAGE_ID  "generator"]]]})))
+      :fx [[:dispatch [:common/next-page const/PASSWORD_GENERATOR_PAGE_ID  "generator"]]
+           (when modified
+             [:bg-update-pass-gen-preference {:pass-phrase-options ppo}])]})))
+
+;; Stores the generator options in the app preference (struct PasswordGeneratorPreference)
+;; The arg 'preference-data' is a map with the key :password-options or :pass-phrase-options
+(reg-fx
+ :bg-update-pass-gen-preference
+ (fn [preference-data]
+   (bg/update-preference preference-data
+                         (fn [api-response]
+                           (when-not (on-error api-response)
+                             ;; Reloads the whole app preference so that the stored options and
+                             ;; the in memory ones are the same. Otherwise the comparison done in
+                             ;; the generation complete events will keep saving the preference
+                             (dispatch [:load-app-preference]))))))
 
 ;; Returns all pass phrase option fields to generate pass phrase
 (reg-sub

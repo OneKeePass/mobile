@@ -34,19 +34,25 @@ class ApiCallbackServiceImpl():AndroidApiService,CommonDeviceServiceEx {
     override fun autofillClientAppUrlInfo(): Map<String, String> {
         val uri = OkpFillResponseBuilder.callingAppUri()
 
+        // The 2FA flags travel with the uri so the ClojureScript side can tell a code
+        // request from a credential one without another round trip
+        val totpInfo = mapOf(
+                "has_totp" to OkpFillResponseBuilder.hasTotpField().toString(),
+                "totp_only" to OkpFillResponseBuilder.isTotpOnlyRequest().toString())
+
         return if (uri != null) {
             Log.d(TAG,"Returning the AF uri $uri to rust side")
-            mapOf("uri" to uri!!)
+            mapOf("uri" to uri!!) + totpInfo
         } else {
             Log.d(TAG,"Returning the empty AF uri map to rust side")
-            mapOf()
+            totpInfo
         }
     }
 
     // Called (from rust side) when user selects an entry's Login credentials
     override fun completeAutofill(autoFillData: AutoFillDbData) {
         when (autoFillData) {
-            is AutoFillDbData.Login -> { OkpFillResponseBuilder.completeLoginAutofill(autoFillData.username,autoFillData.password ) }
+            is AutoFillDbData.Login -> { OkpFillResponseBuilder.completeLoginAutofill(autoFillData.username,autoFillData.password,autoFillData.otp ) }
             else -> {Log.d(TAG,"Invalid autoFillData $autoFillData")}
         }
     }

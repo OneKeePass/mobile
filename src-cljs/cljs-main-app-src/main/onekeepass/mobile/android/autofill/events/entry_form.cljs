@@ -1,7 +1,10 @@
 (ns onekeepass.mobile.android.autofill.events.entry-form
   "Only the Android Autofill specific entry form events. All events should be prefixed with :android-af"
   (:require [clojure.string :as str]
-            [onekeepass.mobile.android.autofill.events.common :refer [android-af-active-db-key]]
+            [onekeepass.mobile.android.autofill.events.common :refer [android-af-active-db-key
+                                                                      native-app-request?
+                                                                      totp-field-present?
+                                                                      totp-only-request?]]
             [onekeepass.mobile.background :as bg]
             [onekeepass.mobile.constants :refer [ADDITIONAL_URLS PASSWORD USERNAME]]
             [onekeepass.mobile.events.common :refer [on-error on-ok]]
@@ -11,6 +14,21 @@
             [onekeepass.mobile.utils :as u :refer [contains-val?]]
             [re-frame.core :refer [dispatch reg-event-db reg-event-fx reg-fx
                                    reg-sub subscribe]]))
+
+;; Seconds after which a code put on the clipboard is cleared again. Matches the iOS autofill
+;; extension's fallback copy
+(def CLIPBOARD_CLEAR_AFTER 20)
+
+;; How long a copied code is left on the clipboard.
+;; A copied token is a snapshot and dies with its own time step whatever the clipboard does,
+;; so keeping it beyond that only leaves behind a code no verifier will take - which reads as
+;; a wrong code rather than as an empty clipboard. 'ttl' is what is left of the step the token
+;; belongs to, and a verifier that allows a step of drift takes it until the end of the step
+;; after that, so one more period is the longest it can still be of any use
+(defn- otp-clipboard-timeout [ttl period]
+  (if (and (number? ttl) (number? period))
+    (+ ttl period)
+    CLIPBOARD_CLEAR_AFTER))
 
 #_(defn entry-form-field-visibility-toggle
     "Called with the field name as key that is toggled between show/hide"
@@ -177,7 +195,10 @@
  (fn [{:keys [db]} [_event-id]]
    (let [app-uri (get-in db [:android-af :client-app-uri])
          form-data (get-in db [:android-af entry-form-key :data])]
-     (if (and (native-app-uri? app-uri)
+     ;; A code only screen is the second page of a login whose first page already offered
+     ;; the association, so asking again there would be a second prompt for one login
+     (if (and (not (totp-only-request? db))
+              (native-app-uri? app-uri)
               (not (app-already-associated? form-data app-uri)))
        {:db (assoc-in db [:android-af :app-capture]
                       {:show true
@@ -236,18 +257,86 @@
 
 ;; The actual fill: copies the selected credentials to the app that initiated the
 ;; AF service and then closes the opened database (consistent with passkey flows).
+;; When the requesting screen has a 2FA code field, the token is generated now instead of
+;; reusing the one the form's polling happens to hold - that one may be a second from
+;; expiring by the time the target app validates it.
 (reg-event-fx
  :android-af-entry-form/do-complete-login-autofill
  (fn [{:keys [db]} [_event-id]]
    (let [form-data (get-in db [:android-af entry-form-key :data])
-         username (-> (find-field form-data USERNAME) :value)
+         ;; Only whether there is any otp field to ask about. Which of them the entry is
+         ;; represented by is left to the backend, so that what reaches the clipboard is
+         ;; always the code the entry list row was showing
+         entry-has-otp? (seq (extract-form-otp-fields form-data))]
+     (cond
+       (totp-field-present? db)
+       {:fx [[:bg-android-af-current-otp [(android-af-active-db-key db) (:uuid form-data)]]]}
+
+       ;; No code field was recognised on a native app screen. That may mean the screen has
+       ;; no 2FA at all, or that the field was there and the id/hint heuristic did not see it
+       ;; - the two are indistinguishable here. The code goes to the clipboard so the user can
+       ;; paste it in the second case. A browser request is left alone: a web code field is
+       ;; found from its html attributes, so a miss there is not the likely explanation and
+       ;; copying on every ordinary web login would not be worth the exposure
+       (and (native-app-request? db) entry-has-otp?)
+       {:fx [[:bg-android-af-copy-otp-then-fill [(android-af-active-db-key db) (:uuid form-data)]]]}
+
+       :else
+       {:fx [[:bg-android-af-complete-fill [form-data nil]]]}))))
+
+;; Generates the current token and puts it on the clipboard (auto cleared) before completing
+;; the fill. The fill must come after the copy, since it closes the autofill activity. A
+;; failure to generate is not fatal - the credentials are still filled
+(reg-fx
+ :bg-android-af-copy-otp-then-fill
+ (fn [[db-key entry-uuid]]
+   (bg/entry-list-current-otps
+    db-key [entry-uuid]
+    (fn [api-response]
+      (let [{:keys [otp-field-name token ttl period]}
+            (first (on-ok api-response
+                          (fn [error]
+                            (js/console.warn "Could not generate the otp token:" error))))]
+        (if (str/blank? token)
+          (dispatch [:android-af-entry-form/complete-fill-with-otp nil])
+          (bg/android-copy-to-clipboard
+           {:field-name otp-field-name
+            :field-value token
+            :protected true
+            :cleanup-after (otp-clipboard-timeout ttl period)}
+           (fn [copy-response]
+             (on-error copy-response)
+             (dispatch [:android-af-entry-form/complete-fill-with-otp nil])))))))))
+
+;; Generates the current token for the entry's standard otp field. A failure is not fatal:
+;; the credentials are still filled and only the code field is left empty
+(reg-fx
+ :bg-android-af-current-otp
+ (fn [[db-key entry-uuid]]
+   (bg/entry-list-current-otps
+    db-key [entry-uuid]
+    (fn [api-response]
+      (let [token (:token (first (on-ok api-response
+                                        (fn [error]
+                                          (js/console.warn "Could not generate the otp token:" error)))))]
+        (dispatch [:android-af-entry-form/complete-fill-with-otp token]))))))
+
+(reg-event-fx
+ :android-af-entry-form/complete-fill-with-otp
+ (fn [{:keys [db]} [_event-id token]]
+   {:fx [[:bg-android-af-complete-fill [(get-in db [:android-af entry-form-key :data]) token]]]}))
+
+(reg-fx
+ :bg-android-af-complete-fill
+ (fn [[form-data otp]]
+   (let [username (-> (find-field form-data USERNAME) :value)
          password (-> (find-field form-data PASSWORD) :value)]
      (bg/android-complete-login-autofill username
                                          password
+                                         otp
                                          (fn [api-response]
                                            (when-not (on-error api-response)
-                                             (dispatch [:android-af/close-current-db]))))
-     {})))
+                                             (dispatch [:android-af/close-current-db])))))))
 
 ;; UI accessors for the capture-on-fill confirm dialog
 (defn app-capture-data []

@@ -5,6 +5,7 @@
    [onekeepass.ios.autofill.constants :as const :refer [LOGIN_PAGE_ID]]
    [onekeepass.ios.autofill.events.common :refer [database-preference-by-db-key
                                                    on-ok
+                                                  one-time-code-mode?
                                                   org-db-file-path]]
    [onekeepass.ios.autofill.translation :refer [lstr-dlg-title lstr-error-dlg-title]]
    [re-frame.core :refer [dispatch reg-event-db reg-event-fx reg-fx reg-sub
@@ -111,7 +112,8 @@
 ;; Routes to the appropriate flow based on context:
 ;; 1. Passkey registration (if rp-id is set in registration context)
 ;; 2. Passkey assertion (if rp-id is set in assertion context)
-;; 3. Normal credential-service-identifier filtering (default)
+;; 3. One time code filtering (iOS 18+ verification code request)
+;; 4. Normal credential-service-identifier filtering (default)
 (reg-event-fx
  :all-entries-loaded
  (fn [{:keys [db]} [_event-id db-key entry-summaries]]
@@ -126,8 +128,21 @@
              assert-rp-id
              [:dispatch [:passkey-assertion/fetch assert-rp-id allow-ids]]
 
+             (one-time-code-mode? db)
+             [:bg-one-time-code-service-identifier-filtering [db-key]]
+
              :else
              [:bg-credential-service-identifier-filtering [db-key]])]})))
+
+;; As the credential filtering below, but only entries that can produce a TOTP are offered
+(reg-fx
+ :bg-one-time-code-service-identifier-filtering
+ (fn [[db-key]]
+   (bg/one-time-code-service-identifier-filtering
+    db-key
+    (fn [api-response]
+      (when-let [result (on-ok api-response)]
+        (dispatch [:search-term-completed result]))))))
 
 ;; Called to load any matching entries based on ios autofill credential identifiers 
 ;; This is called after loading all entries summary - see the above event

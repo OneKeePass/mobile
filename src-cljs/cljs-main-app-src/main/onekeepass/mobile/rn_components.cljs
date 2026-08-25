@@ -101,6 +101,7 @@
                        Pressable
                        TouchableWithoutFeedback
                        TouchableHighlight
+                       TouchableOpacity
                        ScrollView
                        SectionList
                        View
@@ -126,6 +127,7 @@
                        Dialog.Actions
                        FAB
                        HelperText
+                       Icon
                        IconButton
                        List.Section
                        List.Item
@@ -139,7 +141,7 @@
                        Paragraph
                        ProgressBar
                        Snackbar
-                       Searchbar
+                       ;;Searchbar
                        SegmentedButtons
                        Surface
                        Switch
@@ -202,7 +204,46 @@
 ;; worked. Added :key (str show) to the rnp-menu component in all places where it is used
 (def rnp-menu (r/adapt-react-class (.-RNPMenu rnp-customization)))
 (def rnp-text-input (r/adapt-react-class (.-RNPTextInput rnp-customization)))
+(def rnp-searchbar (r/adapt-react-class (.-RNPSearchbar rnp-customization)))
 (def cust-rnp-divider (r/adapt-react-class (.-RNPDivider rnp-customization)))
+
+;; Keyboard assistance props used with 'rnp-text-input'
+;; The RN TextInput defaults are :autoCapitalize "sentences" and :autoCorrect true. For a password
+;; manager those defaults are wrong for most fields - the keyboard opens in caps and the predictive
+;; text replaces what is typed. These maps are merged into the props of a text input to turn that off
+;; Merged first so that a call site can still override any individual prop
+
+;; For secrets, user names, urls, host names, tags, field names - values where neither
+;; capitalization nor any correction is wanted
+(def no-assist-text-props {:autoCapitalize "none"
+                           :autoCorrect false
+                           :autoComplete "off"
+                           ;; spellCheck and textContentType are iOS only
+                           :spellCheck false
+                           :textContentType "none"})
+
+;; For free text - notes, descriptions, group and entry names - where the sentence capitalization
+;; of the keyboard is still useful but the autocorrect replacing the typed words is not
+(def no-autocorrect-text-props {:autoCorrect false
+                                :autoComplete "off"
+                                :spellCheck false
+                                :textContentType "none"})
+
+;; About the iOS "Passwords" key that comes up above the keyboard in the entry form
+;;
+;; iOS offers its own credential autofill for any field it decides belongs to a login form. What
+;; was found by testing on an iOS 18.2 simulator:
+;;
+;; - the trigger is a field with 'secureTextEntry' being present in the form. Making the password
+;;   field visible with the eye icon makes the key go away for the user name field as well. It is
+;;   re-evaluated only when a field gets the focus again, so the change shows up after moving to
+;;   another field and coming back
+;; - :textContentType does NOT control it. Neither "none" (which RN maps to an empty string) nor an
+;;   explicit non credential type like "nickname" makes any difference. iOS seems to force the
+;;   credential handling when secureTextEntry is set, whatever the content type says
+;;
+;; So there is no text input prop that turns this off. It can only be avoided by not using
+;; secureTextEntry, which would mean masking the value ourselves
 
 ;;;;;;
 (def dark-theme (.-custDarkTheme ^js/CustomDarkTheme rnp-customization))
@@ -245,6 +286,16 @@
 (def surface-variant (r/atom nil))
 (def outline-variant (r/atom nil))
 
+;; Muted color meant for secondary text - a row's description line, a section label
+(def on-surface-variant (r/atom nil))
+
+;; Colors for the grouped lists used in the entry category and the entry list pages
+;; There the rows of a section are drawn on a rounded card that has to sit a shade apart from
+;; the page behind it. In the light theme the card is the lighter of the two; in the dark
+;; theme it is the other way round - the page ground is the darker one
+(def grouped-list-ground-color (r/atom nil))
+(def grouped-list-card-color (r/atom nil))
+
 (def custom-color0 (r/atom nil))
 (def custom-color0-ontainer (r/atom nil))
 
@@ -263,6 +314,18 @@
 (def page-background-color background-color)
 
 (def divider-color-1 outline-color)
+
+;; A list row keeps this background while its long press menu is open so that it is clear
+;; which row the menu is going to act on. The row goes back to its normal ground when the
+;; menu is dismissed or one of its actions is selected
+(defn row-highlight-style [highlighted?]
+  (when highlighted? {:backgroundColor @secondary-container-color}))
+
+;; There is no generic "monospace" font family in iOS and we need to use one of the
+;; fixed width fonts that ship with the platform. Android has the generic "monospace"
+;; This is used to show random looking values (generated password, password field in
+;; read mode) so that similar looking characters are easier to distinguish
+(def monospace-font-family (if (is-iOS) "Menlo" "monospace"))
 
 (defn reset-colors
   "Called to set all colors that are used in many components.
@@ -292,6 +355,11 @@
     (reset! inverse-onsurface-color (.-inverseOnSurface colors))
     (reset! surface-variant (.-surfaceVariant colors))
     (reset! outline-variant (.-outlineVariant colors))
+    (reset! on-surface-variant (.-onSurfaceVariant colors))
+
+    (let [light-theme? (not= const/DARK-THEME theme-name)]
+      (reset! grouped-list-ground-color (if light-theme? (.-inverseOnSurface colors) (.-background colors)))
+      (reset! grouped-list-card-color (if light-theme? (.-background colors) (.-inverseOnSurface colors))))
 
 
     (reset! custom-color0 (.-custom0 colors))
@@ -407,6 +475,18 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; react-native-circular-progress ;;;;;;;;;;;;;;;;;;;;
 
 (def animated-circular-progress (r/adapt-react-class (.-AnimatedCircularProgress ^js/RNCircularProgress rn-circular-progress)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Animated ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; An animation of a transform or of opacity can be handed to the native thread, where it
+;; then runs without javascript doing anything per frame. Used by the entry list's token
+;; bar, which would otherwise cost work every second for every row on the page
+
+(def rn-animated ^js/RNAnimated rn/Animated)
+
+(def rn-easing ^js/RNEasing rn/Easing)
+
+(def rn-animated-view (r/adapt-react-class (.-View ^js/RNAnimated rn/Animated)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  All example components ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

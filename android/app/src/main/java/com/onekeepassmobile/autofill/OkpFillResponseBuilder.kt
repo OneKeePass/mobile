@@ -48,12 +48,13 @@ object OkpFillResponseBuilder {
         }
     }
 
-    // Called to complete the autofill with Login partition values when user picks an entry
-    fun completeLoginAutofill(username: String?, password: String?) {
+    // Called to complete the autofill with the values of the entry the user picked. Any of
+    // username, password and otp may be null - a code only screen sends the otp alone
+    fun completeLoginAutofill(username: String?, password: String?, otp: String?) {
         // There should be a valid 'AutofillAuthenticationActivity' instance 
         AutofillAuthenticationActivity.getActivityToComplteFill()?.let { activity ->
             // Builds the response with the filled dataset and completes autofill call 
-            val dataset = buildLoginDatasetToFinalAutofill(activity.applicationContext, username, password)
+            val dataset = buildLoginDatasetToFinalAutofill(activity.applicationContext, username, password, otp)
             if (dataset == null) {
                 Log.d(TAG, "Filled dataset is null and activity is cancelled")
                 activity.setResult(Activity.RESULT_CANCELED)
@@ -72,10 +73,10 @@ object OkpFillResponseBuilder {
         return parsedAutofillRequestToUse?.uri
     }
 
-    // Called to fill Login partition values on user picks an entry
-    private fun buildLoginDatasetToFinalAutofill(context: Context, username: String?, password: String?): Dataset? {
+    // Called to fill the picked entry's values on user picks an entry
+    private fun buildLoginDatasetToFinalAutofill(context: Context, username: String?, password: String?, otp: String?): Dataset? {
 
-        if (username == null && password == null) {
+        if (username == null && password == null && otp == null) {
             return null
         }
 
@@ -105,8 +106,31 @@ object OkpFillResponseBuilder {
             }
         }
 
+        // The 2FA code field, either the only field of a code only screen or the extra
+        // field of a combined login form
+        for (e in totpViewsToFill()) {
+            builder = builder.setValue(e.data.autofillId, buildAutofillValue(e, otp))
+        }
+
         return builder.build()
     }
+
+    // The 2FA code fields of the pending request, from either dataset kind
+    private fun totpViewsToFill(): List<AutofillView.Totp> =
+            when (val dataSet = parsedAutofillRequestToUse?.parsedRequestDataSet) {
+                is ParsedRequestDataSet.Totp -> dataSet.views
+                is ParsedRequestDataSet.Login -> listOfNotNull(dataSet.totpView)
+                null -> emptyList()
+            }
+
+    // Whether the pending request has a 2FA code field to fill. The ClojureScript side uses
+    // this to decide whether to generate a token for the entry the user picks
+    fun hasTotpField(): Boolean = totpViewsToFill().isNotEmpty()
+
+    // Whether the pending request is for a 2FA code alone (no credential field). The entry
+    // list is then filtered to entries that can produce a code
+    fun isTotpOnlyRequest(): Boolean =
+            parsedAutofillRequestToUse?.parsedRequestDataSet is ParsedRequestDataSet.Totp
 
     // An intent to use with autofill activity complete call
     private fun createAutofillSelectionResultIntent(dataset: Dataset): Intent =
@@ -140,14 +164,18 @@ object OkpFillResponseBuilder {
         //https://developer.android.com/identity/autofill/ime-autofill#configure-provider
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             val inlinePresentationSpec = parsedAutofillRequest.inlinePresentationSpecs?.last()
-            //TODO: Need to use a translated text for Login
             inlinePresentationSpec?.let {
+                val subtitleRes = if (parsedAutofillRequest.parsedRequestDataSet is ParsedRequestDataSet.Totp) {
+                    R.string.autofill_inline_subtitle_verification_code
+                } else {
+                    R.string.autofill_inline_subtitle_login
+                }
                 val inlinePresentation = createInlinePresentationOrNull(
                         it,
                         context = packageContext,
                         pendingIntent = pendingIntent,
-                        title = "OneKeePass",
-                        subtitle = "Login",
+                        title = packageContext.getString(R.string.app_name),
+                        subtitle = packageContext.getString(subtitleRes),
                         iconRes = R.drawable.ic_lock_black_24dp
                 )
 
@@ -195,7 +223,9 @@ object OkpFillResponseBuilder {
 
         val slice = InlineSuggestionUi
                 .newContentBuilder(pendingIntent)
-                .setContentDescription("Some desc")
+                // What a screen reader announces for the chip. The title and subtitle are what
+                // a sighted user reads off it, and both are already localised
+                .setContentDescription("$title, $subtitle")
                 .setTitle(title)
                 .setSubtitle(subtitle)
                 .setStartIcon(icon)

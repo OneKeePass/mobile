@@ -1,6 +1,6 @@
 import * as React from 'react';
-import {StyleSheet} from 'react-native';
-import {MD3LightTheme,MD3DarkTheme, useTheme,Menu,Divider, TextInput} from 'react-native-paper';
+import {Platform, StyleSheet} from 'react-native';
+import {MD3LightTheme,MD3DarkTheme, useTheme,Menu,Divider, TextInput, Searchbar} from 'react-native-paper';
 
 
 // See Creating dynamic theme colors
@@ -151,7 +151,7 @@ export const RNPMenu = props => {
   const bc = theme.dark? theme.colors.surfaceVariant: theme.colors.onPrimary;
   // Should use 'bc' not '{bc}' to use the already evaluated bc value
   return (
-    <Menu {...props} contentStyle={[styles.contentStyle,{backgroundColor: bc},props.style]}>
+    <Menu {...props} contentStyle={[styles.contentStyle,{backgroundColor: bc},styles.menuShape,props.style]}>
       {props.children}
     </Menu>
   );
@@ -185,23 +185,152 @@ export const RNPDivider = props => {
 //   );
 // });
 
+// A text input given a 'value' prop is a controlled one - every keystroke goes to the app state
+// and the state comes back down into the native field. On iOS that round trip breaks any input
+// method that composes a character out of several keystrokes. Typing the pinyin 'ce' to get 测
+// leaves marked text in the field, and pushing the value back replaces the field text and
+// destroys the composition, so the candidate list closes after every letter and only the latin
+// letters are left. The same typing works in the fields that pass 'defaultValue' instead
+//
+// Chinese, Japanese and Korean input are all affected. It is an open React Native bug in the
+// iOS Fabric text input - facebook/react-native#56463 - so there is nothing to wait for in an
+// upgrade
+//
+// The fix is to stop feeding the value back while the user types. A 'value' prop is handed to
+// paper as 'defaultValue', which leaves the native field owning its own text, and the field is
+// remounted only when the value arrives changed from somewhere other than the typing - a
+// generated password, an entry type change, switching between read and edit. Call sites keep
+// using 'value' and see no difference
+//
+// Android is left on the plain controlled path as its text input does not have this problem, and
+// so is a field with no 'onChangeText' - a read mode field is not typed into and keeping it
+// controlled is what snaps back anything the field text is changed to
+const IMESafeTextInput = React.forwardRef((props, ref) => {
+  const {value, onChangeText, children, ...rest} = props;
+
+  // What the field is known to hold - the text last handed to 'onChangeText'
+  const typedText = React.useRef(value);
+  // Changing this remounts the field so that it picks up the new 'defaultValue'
+  const [syncCount, setSyncCount] = React.useState(0);
+
+  React.useEffect(() => {
+    if (value !== typedText.current) {
+      typedText.current = value;
+      setSyncCount(count => count + 1);
+    }
+  }, [value]);
+
+  const handleChangeText = React.useCallback(
+    text => {
+      typedText.current = text;
+      onChangeText(text);
+    },
+    [onChangeText],
+  );
+
+  return (
+    <TextInput
+      {...rest}
+      key={syncCount}
+      defaultValue={value}
+      onChangeText={handleChangeText}
+      ref={ref}>
+      {children}
+    </TextInput>
+  );
+});
+
 // Now our custom textinput can accept 'ref' prop if used in addition to other props
 export const RNPTextInput = React.forwardRef((props, ref) => {
   const theme = useTheme();
   //const bc = theme.dark? theme.colors.surfaceVariant: theme.colors.onPrimary;
   const bc = theme.colors.background;
   // For now only the 'backgroundColor' is set from theme
+  const style = [{backgroundColor: bc}, props.style];
+
+  if (Platform.OS === 'ios' && props.value !== undefined && props.onChangeText) {
+    return <IMESafeTextInput {...props} ref={ref} style={style} />;
+  }
+
   return (
-    <TextInput {...props} ref={ref} style={[{backgroundColor: bc}, props.style]}>
+    <TextInput {...props} ref={ref} style={style}>
       {props.children}
     </TextInput>
   );
+});
+
+// The search bar has the same iOS input method problem as the text input above - see the
+// comments there. It cannot be fixed the same way as paper's Searchbar requires a 'value' and
+// uses it to decide whether its clear button is active, so there is no uncontrolled mode to
+// switch to
+//
+// What is done instead is to make the search bar hold its own text in a local state. Typing
+// then updates that state in the same event as the key stroke, and the search term still goes
+// up to the app state as before. The composition survives because the text the field is given
+// back is the text it already holds. It is the app state coming back a tick later, after the
+// search term has gone through re-frame, that used to overwrite the field mid composition
+//
+// The term is taken from the caller again only when it changes from somewhere other than the
+// typing - the search bar being opened with a previous term, or the term being cleared
+const ControlledSearchbar = React.forwardRef((props, ref) => {
+  const {value, onChangeText, ...rest} = props;
+
+  // What the field is known to hold - the text last handed to 'onChangeText'
+  const typedText = React.useRef(value);
+  const [localValue, setLocalValue] = React.useState(value);
+
+  React.useEffect(() => {
+    if (value !== typedText.current) {
+      typedText.current = value;
+      setLocalValue(value);
+    }
+  }, [value]);
+
+  const handleChangeText = React.useCallback(
+    text => {
+      typedText.current = text;
+      setLocalValue(text);
+      if (onChangeText) {
+        onChangeText(text);
+      }
+    },
+    [onChangeText],
+  );
+
+  return (
+    <Searchbar
+      {...rest}
+      value={localValue}
+      onChangeText={handleChangeText}
+      ref={ref}
+    />
+  );
+});
+
+// A search bar given a 'defaultValue' instead of a 'value' is already uncontrolled and holds its
+// own text, so it is left alone. Mirroring a value it was never given would hand the input an
+// undefined value first and a real one from the first key stroke on, which is the switch from an
+// uncontrolled input to a controlled one that React warns about
+export const RNPSearchbar = React.forwardRef((props, ref) => {
+  if (props.value === undefined) {
+    return <Searchbar {...props} ref={ref} />;
+  }
+
+  return <ControlledSearchbar {...props} ref={ref} />;
 });
 
 const styles = StyleSheet.create({
   contentStyle: {
     backgroundColor: custLightTheme.colors.onPrimary,
   },
+  // A menu popup on iOS is a rounded rectangle. Matching that radius is what makes our
+  // menus read as native there. Android keeps the smaller Material radius that the paper
+  // theme already gives the menu.
+  // 'overflow hidden' keeps a menu item's touch feedback inside the rounded corners
+  menuShape: Platform.select({
+    ios: {borderRadius: 13, overflow: 'hidden'},
+    default: {},
+  }),
   textInput: {
     backgroundColor: custLightTheme.colors.onPrimary,
   },

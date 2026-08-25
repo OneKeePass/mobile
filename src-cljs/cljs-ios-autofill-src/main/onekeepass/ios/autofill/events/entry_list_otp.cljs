@@ -1,0 +1,224 @@
+(ns onekeepass.ios.autofill.events.entry-list-otp
+  "Current tokens for the rows of an entry list.
+
+   Deliberately not the entry form's polling. That starts a backend task for one entry and
+   sends a message every second; a list would start one per row and cross the bridge once
+   per row per second. Here nothing is polled: the tokens of a whole list are fetched in
+   one call, and the next fetch is scheduled for the moment the earliest of them expires.
+   Since token boundaries are aligned to the clock, entries of the same period expire
+   together and the usual case is a single call per period however long the list is.
+
+   The tokens live in app-db under [:entry-list-otp :tokens], at the top level as the
+   custom icon data-urls do - the extension has one database open at a time, so there is
+   nothing to scope them to. iOS may hand this javascript context to a second request, so
+   ':load-autofill-init-data' clears them as it clears everything else of the last one."
+  (:require [onekeepass.ios.autofill.background :as bg]
+            [onekeepass.ios.autofill.events.common :refer [active-db-key on-ok]]
+            [re-frame.core :refer [dispatch reg-event-fx reg-fx reg-sub subscribe]]))
+
+;; Rows ask for their token as they render, so the asks are collected and sent as one
+;; call once the page has settled instead of one call per row
+(def ^:private BATCH-DELAY-MS 50)
+
+;; Tokens expiring within this of each other are refreshed together. Entries sharing a
+;; period expire on the same instant, and this absorbs the small spread in when their
+;; timers actually fire
+(def ^:private EXPIRY-GRACE-MS 300)
+
+;; What is held for an entry under [:entry-list-otp :tokens entry-uuid] is either
+;;   {:token :period :otp-field-name :expires-at}  - a code to show
+;;   {:no-code true}                               - asked, and it has none
+;; The second is what stops a row without 2FA asking again on every render. The reply's
+;; 'ttl' is turned into a wall clock 'expires-at' and is not itself kept: it is only true
+;; at the instant of the fetch, and anything reading it later reads a stale number.
+
+;; Timers, and the record of what is already on its way. These stay out of app-db
+;; deliberately - they are machinery for a moment rather than state, they mean nothing
+;; after a reload, and holding them there would cost a dispatch per row per render
+(defonce ^:private pending (atom #{}))
+
+(defonce ^:private in-flight (atom #{}))
+
+(defonce ^:private batch-timer (atom nil))
+
+(defonce ^:private refresh-timer (atom nil))
+
+(defn otp-token-data
+  "What is held for an entry - a token to show, or a marker saying it has none.
+
+   The badge renders nothing without a token, so the marker needs no handling there, and
+   passing the same value back to 'ensure-otp-token' lets that tell 'never asked' from
+   'asked, and it has none' without reaching into app-db from a render."
+  [entry-uuid]
+  (subscribe [:entry-list-otp-token entry-uuid]))
+
+(reg-sub
+ :entry-list-otp-token
+ (fn [db [_query-id entry-uuid]]
+   (get-in db [:entry-list-otp :tokens entry-uuid])))
+
+(defn any-otp-token?
+  "Whether any row of the list is showing a code.
+
+   Used to say, once and only where it is true, that picking an entry also copies its code -
+   a database with no 2FA in it is told nothing."
+  []
+  (subscribe [:entry-list-otp-any-token]))
+
+(reg-sub
+ :entry-list-otp-any-token
+ (fn [db _query-vec]
+   (boolean (some :token (vals (get-in db [:entry-list-otp :tokens]))))))
+
+(defn- cancel-timer [timer-atom]
+  (when-let [id @timer-atom]
+    (js/clearTimeout id))
+  (reset! timer-atom nil))
+
+(defn- schedule-refresh
+  "Sets one timer for the earliest expiry held, replacing any timer already set"
+  [held]
+  (cancel-timer refresh-timer)
+  (let [expiry-times (keep :expires-at (vals held))]
+    (when (seq expiry-times)
+      (let [wait (- (apply min expiry-times) (js/Date.now))]
+        (reset! refresh-timer
+                (js/setTimeout #(do (reset! refresh-timer nil)
+                                    (dispatch [:entry-list-otp-refresh-expired]))
+                               (max 0 wait)))))))
+
+(reg-fx
+ :entry-list-otp/schedule-refresh
+ (fn [held]
+   (schedule-refresh held)))
+
+(defn- fetch-tokens [db-key entry-uuids]
+  (when (and db-key (seq entry-uuids))
+    (swap! in-flight into entry-uuids)
+    (bg/entry-list-current-otps
+     db-key
+     entry-uuids
+     (fn [api-response]
+       (swap! in-flight #(apply disj % entry-uuids))
+       ;; A row quietly showing no code is the right outcome of a failure here. The default
+       ;; handler would raise an error dialog over whatever the user is doing, for something
+       ;; they never asked for
+       (when-let [items (on-ok api-response
+                               (fn [error]
+                                 (js/console.warn "Could not get the entry list otp tokens:" error)))]
+         (dispatch [:entry-list-otp-tokens-loaded db-key entry-uuids items]))))))
+
+(reg-fx
+ :entry-list-otp/bg-current-otps
+ (fn [[db-key entry-uuids]]
+   (fetch-tokens db-key entry-uuids)))
+
+;; 'requested' is needed as well as the reply because an entry with no otp field, or one
+;; whose field has since gone, is simply absent from the reply. Recording those as
+;; ':no-code' both drops any stale token and stops the row asking again
+(reg-event-fx
+ :entry-list-otp-tokens-loaded
+ (fn [{:keys [db]} [_event-id db-key requested items]]
+   (if (not= db-key (active-db-key db))
+     ;; The database was closed, locked or switched while the fetch was on its way. Its
+     ;; codes are no longer wanted, and storing them now would put them under whichever
+     ;; database happens to be active instead
+     {}
+     (let [now (js/Date.now)
+           received (reduce (fn [m {:keys [entry-uuid otp-field-name token ttl period]}]
+                              (assoc m entry-uuid {:token token
+                                                   :period period
+                                                   :otp-field-name otp-field-name
+                                                   :expires-at (+ now (* 1000 ttl))}))
+                            {} items)
+           held (reduce (fn [m entry-uuid]
+                          (assoc m entry-uuid (get received entry-uuid {:no-code true})))
+                        (or (get-in db [:entry-list-otp :tokens]) {})
+                        requested)]
+       {:db (assoc-in db [:entry-list-otp :tokens] held)
+        :fx [[:entry-list-otp/schedule-refresh held]]}))))
+
+(reg-event-fx
+ :entry-list-otp-refresh-expired
+ (fn [{:keys [db]} [_event-id]]
+   (let [held (get-in db [:entry-list-otp :tokens])
+         cutoff (+ (js/Date.now) EXPIRY-GRACE-MS)
+         expired (->> held
+                      (filter (fn [[_uuid {:keys [expires-at]}]]
+                                (and expires-at (<= expires-at cutoff))))
+                      (mapv key))]
+     (if (seq expired)
+       {:fx [[:entry-list-otp/bg-current-otps [(active-db-key db) expired]]]}
+       ;; Nothing is due yet - the timer fired early, so simply set it again
+       {:fx [[:entry-list-otp/schedule-refresh held]]}))))
+
+;; Fetches every entry held for the active database again.
+;; The bar is animated by the native thread and the refresh by a javascript timer, and
+;; neither survives the app being backgrounded in a state that can be trusted on the way
+;; back. Rather than work out what drifted, everything on the page is asked for again
+(reg-event-fx
+ :entry-list-otp/refresh-all
+ (fn [{:keys [db]} [_event-id]]
+   (let [uuids (vec (keys (get-in db [:entry-list-otp :tokens])))]
+     (if (seq uuids)
+       {:fx [[:entry-list-otp/bg-current-otps [(active-db-key db) uuids]]]}
+       {}))))
+
+;; Drops every code held and stops the timers, so that none outlives the request that
+;; produced it. iOS may reuse the extension process for the next request, which would
+;; otherwise leave the previous database's codes in place
+(reg-event-fx
+ :entry-list-otp/clear
+ (fn [{:keys [db]} [_event-id]]
+   (cancel-timer batch-timer)
+   (cancel-timer refresh-timer)
+   (reset! pending #{})
+   (reset! in-flight #{})
+   {:db (dissoc db :entry-list-otp)}))
+
+(defn- schedule-batch []
+  (when (nil? @batch-timer)
+    (reset! batch-timer
+            (js/setTimeout #(do (reset! batch-timer nil)
+                                (dispatch [:entry-list-otp-fetch-pending]))
+                           BATCH-DELAY-MS))))
+
+;; The fetch goes through an event only so that it can read the active db key from app-db
+(reg-event-fx
+ :entry-list-otp-fetch-pending
+ (fn [{:keys [db]} [_event-id]]
+   (let [uuids (vec @pending)]
+     (reset! pending #{})
+     {:fx [[:entry-list-otp/bg-current-otps [(active-db-key db) uuids]]]})))
+
+(defn- needs-fetch? [entry-uuid held]
+  (cond
+    ;; A fetch for it is already on its way
+    (or (contains? @pending entry-uuid) (contains? @in-flight entry-uuid))
+    false
+
+    ;; Never asked about this entry
+    (nil? held)
+    true
+
+    ;; Asked, and it turned out to have no code. Nothing further to do
+    (:no-code held)
+    false
+
+    ;; Holding a code whose life has run out without the refresh timer having fired. That
+    ;; happens whenever the timers were suspended while this javascript context was left
+    ;; running - an android autofill activity opening a second time, or the app returning
+    ;; from a long spell in the background
+    :else
+    (<= (:expires-at held) (js/Date.now))))
+
+(defn ensure-otp-token
+  "Asks for an entry's token when what is held for it is missing or has expired.
+
+   'held' is what 'otp-token-data' gave the caller, so the decision is made from the value
+   the row already has. Safe to call from a render fn, as the custom icon fetch is - a row
+   asking again for a token that is present and still live does nothing."
+  [entry-uuid held]
+  (when (and entry-uuid (needs-fetch? entry-uuid held))
+    (swap! pending conj entry-uuid)
+    (schedule-batch)))

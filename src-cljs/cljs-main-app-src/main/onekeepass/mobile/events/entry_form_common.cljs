@@ -1,7 +1,9 @@
 (ns onekeepass.mobile.events.entry-form-common
   "Common fns used acrosss entry form related events"
   (:require [clojure.string :as str]
-            [onekeepass.mobile.constants :refer [ONE_TIME_PASSWORD_TYPE]]
+            [onekeepass.mobile.constants :refer [ADDITIONAL_ONE_TIME_PASSWORDS
+                                                 ONE_TIME_PASSWORD_TYPE
+                                                 OTP]]
             [onekeepass.mobile.events.common :as cmn-events :refer [assoc-in-key-db
                                                                     get-in-key-db]]
             [onekeepass.mobile.translation :refer [lstr-mt]]
@@ -44,6 +46,29 @@
         (-> (filter (fn [m] (= field-name (:key m))) all-section-fields) seq boolean))))
 
 
+(defn otp-field-target
+  "Finds where the otp url of the currently loaded entry form is to be set.
+   It is the standard 'otp' field when the entry type of the loaded entry has one and
+   an yet to be added field in the additional otp section otherwise.
+   Returns a map with keys section-name, field-name, standard-field and the current value
+  "
+  [app-db]
+  (let [section-fields (get-in-key-db app-db [entry-form-key :data :section-fields])
+        found (some (fn [[section-name kvs]]
+                      (some (fn [{:keys [key] :as kv}]
+                              (when (= key OTP) (assoc kv :section-name section-name)))
+                            kvs))
+                    section-fields)]
+    (if (nil? found)
+      {:section-name ADDITIONAL_ONE_TIME_PASSWORDS
+       :field-name OTP
+       :standard-field false
+       :value nil}
+      {:section-name (:section-name found)
+       :field-name OTP
+       :standard-field (boolean (:standard-field found))
+       :value (:value found)})))
+
 (defn add-section-field
   "Creates a new KV for the added section field and updates the 'section-name' section
   Returns the updated app-db
@@ -72,6 +97,21 @@
   (let [section-kvs (get-in-key-db db [entry-form-key :data :section-fields section])
         section-kvs (mapv (fn [m] (if (= (:key m) key) (assoc m :value value) m)) section-kvs)]
     section-kvs))
+
+(defn set-section-field-value
+  "Sets the value of a field of the loaded entry form wherever the field is found.
+   Returns the updated app-db and leaves it as it is when the entry type has no such field
+  "
+  [app-db field-name value]
+  (let [section-fields (get-in-key-db app-db [entry-form-key :data :section-fields])
+        section-name (some (fn [[s-name kvs]]
+                             (when (some (fn [{:keys [key]}] (= key field-name)) kvs) s-name))
+                           section-fields)]
+    (if (nil? section-name)
+      app-db
+      (assoc-in-key-db app-db
+                       [entry-form-key :data :section-fields section-name]
+                       (merge-section-key-value app-db section-name field-name value)))))
 
 (defn extract-form-otp-fields
   "Returns a map with a otp field name as key and current-opt-token value as value"

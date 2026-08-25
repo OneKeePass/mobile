@@ -50,7 +50,6 @@
             [onekeepass.mobile.events.merging :as merging-events]
             [onekeepass.mobile.events.password-generator :as pg-events]
             [onekeepass.mobile.events.remote-storage :as rs-events]
-            [onekeepass.mobile.events.search :as search-events]
             [onekeepass.mobile.events.settings :as stgs-events]
             [onekeepass.mobile.group-form :as group-form]
             [onekeepass.mobile.icons-list :as icons-list]
@@ -63,6 +62,7 @@
                                                              cust-rnp-divider
                                                              dots-icon-name
                                                              on-primary-color
+                                                             page-title-text-variant
                                                              primary-color
                                                              rn-view
                                                              rnp-appbar-action
@@ -70,7 +70,8 @@
                                                              rnp-appbar-content
                                                              rnp-appbar-header
                                                              rnp-menu
-                                                             rnp-menu-item]]
+                                                             rnp-menu-item
+                                                             rnp-text]]
             [onekeepass.mobile.rs-config-form :as rs-form]
             [onekeepass.mobile.rs-configs :as rs-configs]
             [onekeepass.mobile.rs-files-folders :as rs-files-folders]
@@ -229,6 +230,7 @@
      (= page ENTRY_FORM_PAGE_ID)
      (let [fav @(ef-events/favorites?)
            entry-uuid @(ef-events/entry-form-uuid)
+           entry-title @(ef-events/entry-form-data-fields :title)
            parent-group-uuid @(ef-events/entry-form-parent-group-uuid)]
        [:<>
         [rnp-menu-item {:title (lstr-ml "favorite") :trailingIcon (if fav "check" nil)
@@ -240,6 +242,11 @@
         ;; [cust-rnp-divider]
         ;; [rnp-menu-item {:title "Password Generator" :onPress #()}]
         [cust-rnp-divider]
+        [rnp-menu-item {:title (lstr-ml "clone")
+                        :disabled  @(cmn-events/current-db-disable-edit)
+                        :onPress (header-menu-action
+                                  entry-list/clone-entry-dialog-show-with-state entry-uuid entry-title parent-group-uuid)}]
+
         [rnp-menu-item {:title (lstr-ml "move")
                         :disabled  @(cmn-events/current-db-disable-edit)
                         :onPress (header-menu-action entry-list/move-entry-dialog-show-with-state entry-uuid parent-group-uuid)}]
@@ -262,17 +269,47 @@
 ;; One solution is to use appbar content with absolute position based on the discussion here
 ;;https://stackoverflow.com/questions/54120003/how-can-i-center-the-title-in-appbar-header-in-react-native-paper 
 
-(defn positioned-title [& {:keys [title page style titleStyle]}]
+;; An 'rnp-appbar-action' is a 40 wide icon button with a 6 margin on either side. The title
+;; content is laid over the whole appbar row so that the text is centered on the screen and not
+;; in the space the icons leave over. Insetting the overlay by one icon width on both sides keeps
+;; the text clear of the icons. The inset has to be symmetric even on a page that has no back
+;; icon on the left, otherwise the text is no longer centered
+(def ^:private appbar-icon-slot-width 52)
+
+(def ^:private title-inset-style {:paddingLeft appbar-icon-slot-width
+                                  :paddingRight appbar-icon-slot-width})
+
+(defn- title-text
+  "Shows the title text of a page
+
+   The 'ellipsize-mode' is 'middle' for a name that comes from the user's database - a
+   database name, a group name. Such names often share a long common prefix and truncating
+   at the end makes two of them look alike. The translated page titles are truncated at
+   the end as usual
+
+   Auto sizing the font to fit ('adjustsFontSizeToFit') is deliberately not used. In iOS a
+   long name is then shrunk to an unreadable size instead of being truncated, and in android
+   the native text view drops the ellipsis altogether when the font is auto sized
+   "
+  [title ellipsize-mode]
+  [rnp-text {:style {:color @background-color
+                     :width "100%"
+                     :text-align "center"}
+             :variant page-title-text-variant
+             :numberOfLines 1
+             :ellipsizeMode ellipsize-mode}
+   title])
+
+(defn positioned-title [& {:keys [title page style]}]
 
   [:<>
-   ;; Need a dummy content so that icons(from rnp-appbar-action) are placed on the right side 
+   ;; Need a dummy content so that icons(from rnp-appbar-action) are placed on the right side
    ;; We need to use the dummy one's zIndex = -1 so that any click action on the buttons used inside the custom title
-   ;; are active. Otherwise this dummy content will be above the title buttons and clicking will not work 
+   ;; are active. Otherwise this dummy content will be above the title buttons and clicking will not work
    [rnp-appbar-content {:style {:zIndex -1}}]
-   ;; Need to use max-width in titleStyle for the text to put ...
+
    [rnp-appbar-content {:style (merge {:marginLeft 0  :position "absolute", :left 0, :right 0, :zIndex -1} style)
                         :color @background-color
-                        :titleStyle (merge {:align-self "center"} titleStyle)
 
                         ;; For some forms provides its own appbar title
                         :title (cond
@@ -298,21 +335,21 @@
                                  ;;  (= page APP_LOCK_SETTINGS_PAGE_ID)
                                  ;;  (r/as-element [app-lock-settings/appbar-title])
 
-                                 ;;TODO 
+                                 ;;TODO
                                  ;; Need to add translation of titles for Entry types and General cat types
                                  ;; Something similar one used in entry category page
                                  (= page ENTRY_LIST_PAGE_ID)
-                                 title
+                                 (r/as-element [title-text title "middle"])
 
-                                 ;; No translation of text
+                                 ;; No translation of text. The title is the database name
                                  (= page ENTRY_CATEGORY_PAGE_ID)
-                                 title
+                                 (r/as-element [title-text title "middle"])
 
-                                 ;; Title for all other pages 
-                                 ;; Here title is the key to which pageTitles prefix will be 
+                                 ;; Title for all other pages
+                                 ;; Here title is the key to which pageTitles prefix will be
                                  ;; added and value is got from i18n map
                                  (string? title)
-                                 (lstr-pt title)
+                                 (r/as-element [title-text (lstr-pt title) "tail"])
 
                                  :else
                                  "No Title")}]])
@@ -344,14 +381,14 @@
   ;; title is required
   (cond
     (u/contains-val? title-provider-pages page)
-    [positioned-title :title title]
+    [positioned-title :title title :style title-inset-style]
 
     ;; Both page and title are required
     (= page ENTRY_LIST_PAGE_ID)
-    [positioned-title :page page :title @(elist-events/current-page-title)  :titleStyle {:max-width "50%"}] ;;
+    [positioned-title :page page :title @(elist-events/current-page-title) :style title-inset-style]
 
     (= page ENTRY_CATEGORY_PAGE_ID)
-    [positioned-title :page page :title @(cmn-events/current-database-name) :titleStyle {:max-width "50%"}]
+    [positioned-title :page page :title @(cmn-events/current-database-name) :style title-inset-style]
 
     (= page GROUP_FORM_PAGE_ID)
     [positioned-title :page page :title title]
@@ -420,13 +457,10 @@
             (= page ENTRY_HISTORY_LIST_PAGE_ID))
        [:<>
         [header-menu @header-menu-data page-info]
-        (when-not (or (= page HOME_PAGE_ID) (= page ENTRY_FORM_PAGE_ID) (= page ENTRY_HISTORY_LIST_PAGE_ID))
-          [rnp-appbar-action {:style {:backgroundColor @primary-color
-                                      ;;:position "absolute" :right 50
-                                      :margin-right -9}
-                              :color @on-primary-color
-                              :icon "magnify"
-                              :onPress search-events/to-search-page}])
+        ;; The search icon that used to sit here opened the separate search page. Both the
+        ;; entry category page and the entry list page now carry a search bar of their own
+        ;; that searches the whole database, so a second way in only confused matters.
+        ;; The search page itself is left in place, just with nothing leading to it
         [rnp-appbar-action {:style {:backgroundColor @primary-color
                                     ;;:position "absolute" :right 0 
                                     }

@@ -187,12 +187,18 @@
 
 (declare recently-used-dbs)
 
+(declare current-kdbx-loaded-info)
+
 (defn current-database-file-name
   "Gets the database kdbx file name"
   [app-db]
   (let [curr-dbkey  (:current-db-file-name app-db)
         recent-dbs-info (recently-used-dbs app-db) #_(-> app-db :app-preference :data :recent-dbs-info)]
-    (-> (filter (fn [{:keys [db-file-path]}] (= curr-dbkey db-file-path)) recent-dbs-info) first :file-name)))
+    (or
+     (-> (filter (fn [{:keys [db-file-path]}] (= curr-dbkey db-file-path)) recent-dbs-info) first :file-name)
+     ;; A db handed over by another app is not kept in the recently used list and the name
+     ;; is then taken from the loaded db info. Used in the save error dialog and in 'Save as'
+     (:file-name (current-kdbx-loaded-info app-db)))))
 
 (defn current-kdbx-loaded-info
   [app-db]
@@ -281,6 +287,8 @@
          [:bg-app-preference]
          [:dispatch [:common/message-modal-hide]]
          [:dispatch [:common/message-snackbar-open 'databaseOpened]]
+         ;; Any 'otpauth://' url that arrived before a db was open waits for this
+         [:dispatch [:otp-url-received/check-pending]]
          ;; iOS only: check for pending passkeys created by the Autofill extension
          (when (bg/is-iOS)
            [:dispatch [:passkey-pending/check db-key]])]}))
@@ -587,6 +595,14 @@
   [app-db field-kw value]
   (assoc-in app-db [:app-preference :data field-kw] value))
 
+;; The generator options (struct PasswordGeneratorPreference) that were last used in the
+;; password generator page. These are nil when the stored preference.json predates this field
+(defn app-preference-phrase-generator-options [app-db]
+  (-> app-db :app-preference :data :password-gen-preference :phrase-generator-options))
+
+(defn app-preference-password-generation-options [app-db]
+  (-> app-db :app-preference :data :password-gen-preference :password-generation-options))
+
 (defn app-lock-preference
   "Gets the app lock preference map (struct AppLockPreference)"
   ([app-db]
@@ -619,7 +635,9 @@
     :fx [[:bg-app-preference]
          ;; Check for any open uri availability if the app is launched when the user presses a kdbx file
          ;; TODO: Need to call only first time load-app-preference is called
-         [:bg-kdbx-uri-to-open-on-create]]}))
+         [:bg-kdbx-uri-to-open-on-create]
+         ;; Same check for any 'otpauth://' url the app may have been launched with
+         [:bg-otp-auth-url-on-create]]}))
 
 (reg-fx
  :bg-app-preference
@@ -637,7 +655,20 @@
                                     (when-let [m (on-ok api-response)]
                                       ;; The app was started by the user pressing a .kdbx file
                                       ;; m is a map with keys - file-name full-file-name-uri
-                                      (dispatch [:open-database/database-file-picked m]))))))
+                                      ;; or with keys - file-name copy-handed-over when the other
+                                      ;; app sent a copy of the file instead of the file itself
+                                      (dispatch [:open-database/app-opened-with-db-file m]))))))
+
+;; The native method is Android only
+(reg-fx
+ :bg-otp-auth-url-on-create
+ (fn []
+   (when (is-Android)
+     (bg/otp-auth-url-on-create (fn [api-response]
+                                  ;; api-response is {} when the app was not launched with
+                                  ;; such a url and then (:ok {}) is nil and nothing is done
+                                  (when-let [{:keys [otp-url]} (on-ok api-response)]
+                                    (dispatch [:otp-url-received/url-received otp-url])))))))
 
 (reg-event-fx
  :app-preference-loaded
@@ -724,49 +755,60 @@
     (dispatch [:lock-selected-kdbx db-key])))
 
 
-;; Similiar to :common/close-current-kdbx-db 
-;; Locks db instead of closing 
-;; Called to lock the current active db - typically used from entry cat page menu 
+;; Similiar to :common/close-current-kdbx-db
+;; Locks db instead of closing
+;; Called to lock the current active db - typically used from entry cat page menu
+;; The :locked flag, navigation and snackbar are all applied only after the
+;; backend lock succeeds (see :bg-lock-kdbx / :lock-kdbx-completed), so a failed
+;; lock does not leave the UI showing "locked" while the content is still resident.
 (reg-event-fx
  :lock-current-kdbx
  (fn [{:keys [db]} [_event-id]]
-   {:db (assoc-in-key-db db [:locked] true)
-    :fx [[:dispatch [:common/to-home-page]]
-         [:dispatch [:common/message-snackbar-open 'databaseLocked]]]}))
+   {:fx [[:bg-lock-kdbx [(active-db-key db)
+                         [[:common/to-home-page]
+                          [:common/message-snackbar-open 'databaseLocked]]]]]}))
 
 ;; Called to lock any opened database using the passed db-key - used from home page
 (reg-event-fx
  :lock-selected-kdbx
- (fn [{:keys [db]} [_event-id db-key]]
-   {:db (assoc-in-selected-db db db-key [:locked] true)
-    :fx [#_[:bg-lock-kdbx [(active-db-key db)]]
-         [:dispatch [:common/to-home-page]]
-         [:dispatch [:common/message-snackbar-open 'databaseLocked]]]}))
+ (fn [{:keys [_db]} [_event-id db-key]]
+   {:fx [[:bg-lock-kdbx [db-key
+                         [[:common/to-home-page]
+                          [:common/message-snackbar-open 'databaseLocked]]]]]}))
 
 
 (reg-event-fx
  :lock-on-session-timeout
  (fn [{:keys [db]} [_event-id db-key]]
-   (let [curr-dbkey  (:current-db-file-name db)]
-     {:db (assoc-in-selected-db db db-key [:locked] true)
-      :fx (if  (= curr-dbkey db-key)
-            [[:dispatch [:common/to-home-page]]
-             [:dispatch [:app-lock/current-db-locked-on-timeout]]]
-            [])
-      ;; :fx [(when (= curr-dbkey db-key)
-      ;;        [:dispatch [:common/to-home-page]])]
-      })))
+   (let [curr-dbkey (:current-db-file-name db)
+         ;; The navigation/app-lock dispatches only apply when the timed-out db is
+         ;; the one currently on screen; they run only after the lock succeeds.
+         follow-ups (if (= curr-dbkey db-key)
+                      [[:common/to-home-page]
+                       [:app-lock/current-db-locked-on-timeout]]
+                      [])]
+     {:fx [[:bg-lock-kdbx [db-key follow-ups]]]})))
 
-;; Need to make use of API call in case we want to do something for lock call
-;; Currently nothing is done on the backend
-#_(reg-fx
-   :bg-lock-kdbx
-   (fn [[db-key]]
-     #_(bg/lock-kdbx db-key (fn [api-response]
-                              (when-not (on-error api-response)
-                                ;; Add any relevant dispatch calls here
-                                ;;(println "Database is locked")
-                                #())))))
+;; Encrypts the db content in memory ( ) and removes the decrypted content. Only
+;; on success do we mark the db locked and run the caller's follow-up dispatches
+;; (navigation, snackbar, app-lock). On error the default error snackbar is shown
+;; and nothing else changes, so the db stays usable rather than half-locked.
+(reg-fx
+ :bg-lock-kdbx
+ (fn [[db-key follow-ups]]
+   (bg/lock-kdbx db-key
+                 (fn [api-response]
+                   (when-not (on-error api-response)
+                     (dispatch [:lock-kdbx-completed db-key follow-ups]))))))
+
+(reg-event-fx
+ :lock-kdbx-completed
+ (fn [{:keys [db]} [_event-id db-key follow-ups]]
+   {:db (assoc-in-selected-db db db-key [:locked] true)
+    ;; A locked database shows no entries, and its codes should not outlive the lock.
+    ;; Unlike closing, locking keeps the key-db, so they have to be dropped by hand
+    :fx (conj (mapv (fn [event] [:dispatch event]) follow-ups)
+              [:dispatch [:entry-list-otp/clear-db db-key]])}))
 
 ;;:open-database/unlock-dialog-show
 (reg-event-fx

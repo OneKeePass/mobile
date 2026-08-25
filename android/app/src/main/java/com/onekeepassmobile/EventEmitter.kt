@@ -1,6 +1,7 @@
 package com.onekeepassmobile
 
 import android.content.Intent
+import android.net.Uri
 import android.util.Log
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.modules.core.DeviceEventManagerModule.RCTDeviceEventEmitter
@@ -17,6 +18,9 @@ object EventEmitter {
     private const val EVENT_ENTRY_OTP_UPDATE = "onEntryOtpUpdate"
     private const val EVENT_APP_BECOMES_ACTIVE = "onAppBecomingActive"
     private const val EVENT_APP_BECOMES_INACTIVE = "onAppBecomingInActive"
+    private const val EVENT_ON_OTP_AUTH_URL = "onOtpAuthUrl"
+
+    private const val OTP_AUTH_SCHEME = "otpauth"
 
 
     fun initialize(reactContext: ReactApplicationContext) {
@@ -24,9 +28,31 @@ object EventEmitter {
     }
 
     /**
+     * Returns the uri of a VIEW intent only when it is an 'otpauth://' one - the url the user
+     * gets by pressing a scanned 2FA QR code in the device Camera app or an otpauth link
+     * anywhere else. Returns null for all other intents including the .kdbx file ones.
+     *
+     * IMPORTANT: The url holds the TOTP shared secret in plain text and is never logged
+     */
+    private fun otpAuthUri(intent: Intent?): Uri? {
+        val uri = intent?.data ?: return null
+        return if (intent.action == Intent.ACTION_VIEW && uri.scheme == OTP_AUTH_SCHEME) uri else null
+    }
+
+    private fun otpAuthUrlJson(uri: Uri): String {
+        return DbServiceAPI.jsonService().mapAsOkJsonString(hashMapOf("otp_url" to uri.toString()))
+    }
+
+    /**
      * Gets the uri of a valid .kdbx file pressed by user
      */
     fun kdbxUriToOpenOnCreate(): String {
+        // 'intentOfOnCreate' is a single slot shared with 'otpAuthUrlOnCreate' and the UI layer
+        // calls both. An otpauth intent belongs to that call and is left here as it is
+        if (otpAuthUri(intentOfOnCreate) != null) {
+            return "{}"
+        }
+
         var uri = intentOfOnCreate?.action?.let {
             if (it == "android.intent.action.VIEW") {
                 var uri = intentOfOnCreate?.data
@@ -45,6 +71,22 @@ object EventEmitter {
         } else {
             return "{}"
         }
+    }
+
+    /**
+     * Gets any 'otpauth://' url that started the app. Same pull concept as
+     * 'kdbxUriToOpenOnCreate' - the ReactApplicationContext is not yet ready in onCreate and
+     * an emitted event would reach no listener
+     */
+    fun otpAuthUrlOnCreate(): String {
+        val uri = otpAuthUri(intentOfOnCreate) ?: return "{}"
+
+        Log.d(TAG, "An otpauth url is received in the onCreate intent")
+
+        // Set to null so that the url is used only once in the UI layer
+        intentOfOnCreate = null
+
+        return otpAuthUrlJson(uri)
     }
 
     fun emitOtpUpdate(jsonString: String) {
@@ -99,7 +141,11 @@ object EventEmitter {
     // with the extension .kdbx and then this intent will have
     // the uri the user pressed and is used to show the open database dialog.
     fun onCreateIntent(intent: Intent) {
-        Log.d(TAG, "In EventEmitter onCreateIntent Received intent $intent with ${intent.action}")
+        if (otpAuthUri(intent) != null) {
+            Log.d(TAG, "In EventEmitter onCreateIntent Received an otpauth intent")
+        } else {
+            Log.d(TAG, "In EventEmitter onCreateIntent Received intent $intent with ${intent.action}")
+        }
 
         // Initially tried to use 'emitKdbxUriToOpenEvent'
         // But we can't call emit here as ReactApplicationContext may not be ready yet
@@ -113,6 +159,20 @@ object EventEmitter {
     // Called when user presses kdbx file with the extension .kdbx and the app
     // is not on the top. The app is brought to the front and this func is called from MainActivity.onNewIntent
     fun onNewIntent(intent: Intent) {
+        val otpUri = otpAuthUri(intent)
+        if (otpUri != null) {
+            Log.d(TAG, "In EventEmitter onNewIntent Received an otpauth intent")
+            if (::reactApplicationContext.isInitialized) {
+                reactApplicationContext.getJSModule(RCTDeviceEventEmitter::class.java)
+                        .emit(EVENT_ON_OTP_AUTH_URL, otpAuthUrlJson(otpUri))
+            } else {
+                // The UI layer is not yet listening. Stashing the intent lets the pull call
+                // 'otpAuthUrlOnCreate' pick it up instead of the url getting lost
+                intentOfOnCreate = intent
+            }
+            return
+        }
+
         Log.d(TAG, "In EventEmitter onNewIntent Received intent $intent with ${intent.action}")
         intent.action?.let {
             if (it == "android.intent.action.VIEW") {

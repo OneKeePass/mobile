@@ -120,9 +120,29 @@ class OkpDocumentPickerService: NSObject {
                          resolve: @escaping (RCTPromiseResolveBlock),
                          reject: @escaping (RCTPromiseRejectBlock))
   {
+    // Delegates to the existing picker used for saving key file from inside our app to device
     pickKeyFileToSave(fullTempAttachmentFileName,keyFileName: attachmentName,resolve: resolve,reject: reject)
   }
-  
+
+  // Called to save a copy of a database to a location picked by the user - the 'Save As' action
+  // The arg fullPreparedDbFileName is the app local path of the db copy that is already prepared
+  // This works the same way as 'pickKeyFileToSave'
+  @objc
+  func pickKdbxFileToSave(_ fullPreparedDbFileName: String,
+                          kdbxFileName: String,
+                          resolve: @escaping (RCTPromiseResolveBlock),
+                          reject: @escaping (RCTPromiseRejectBlock))
+  {
+    // The prepared db copy path comes with the file:// prefix whereas 'pickKeyFileToSave'
+    // forms the url using 'URL(fileURLWithPath:)' and expects a plain path
+    let filePath = fullPreparedDbFileName.hasPrefix("file://")
+      ? String(fullPreparedDbFileName.dropFirst("file://".count))
+      : fullPreparedDbFileName
+
+    // Delegates to the existing picker used for saving key file from inside our app to device
+    pickKeyFileToSave(filePath,keyFileName: kdbxFileName,resolve: resolve,reject: reject)
+  }
+
   /*
   // Called to save the selected attachment file from an entry's attachment data to a location picked by the user
   @objc
@@ -293,13 +313,16 @@ class ReadFilePickDelegate: NSObject, UIDocumentPickerDelegate {
     let intent = NSFileAccessIntent.readingIntent(with: saved_file_url, options: [.withoutChanges, .resolvesSymbolicLink])
       
     fc.coordinate(with: [intent], queue: .main) { [unowned self] err in
-      guard err == nil else {
-        logger.error("Coordinate error  is \(String(describing: err))")
-        // reject(CallError.coordinateError.rawValue, CallError.errorDescription(err! as NSError), err)
-        reject(OkpDocumentPickerService.E_COORDINATOR_CALL_FAILED, "\(String(describing: err?.localizedDescription))", err)
-        return
+      if err != nil {
+        // We do not read the file here. Only the bookmark is created and that needs the
+        // security scoped access from the picker and not a coordinated read. This read intent
+        // fails when the provider of the picked location is still busy with the file - seen
+        // with GDrive and OneDrive right after a new database is created there. So we go on
+        // and bookmark the url. The file itself is read in the subsequent readKdbx call and
+        // that call does its own coordinated read
+        logger.error("Coordinate error is \(String(describing: err)). Continuing to bookmark the url")
       }
-    
+
       // self.logger.debug("In ReadFilePickDelegate coordinate saved_file_url is \(saved_file_url)")
       // Need to access the url with security scope
       guard saved_file_url.startAccessingSecurityScopedResource() else {

@@ -1,5 +1,6 @@
 (ns onekeepass.ios.autofill.entry-list
-  (:require [onekeepass.ios.autofill.common-components :refer [menu-action-factory]]
+  (:require [clojure.string :as str]
+            [onekeepass.ios.autofill.common-components :refer [menu-action-factory]]
             [onekeepass.ios.autofill.constants :refer [PASSWORD
                                                        TR-KEY-AUTOFILL
                                                        USERNAME]]
@@ -7,8 +8,13 @@
             [onekeepass.ios.autofill.events.custom-icons :as ci-events]
             [onekeepass.ios.autofill.events.entry-form :as form-events]
             [onekeepass.ios.autofill.events.entry-list :as el-events]
+            [onekeepass.ios.autofill.events.entry-list-otp :as otp-events]
             [onekeepass.ios.autofill.icons-list :refer [icon-id->name]]
-            [onekeepass.ios.autofill.rn-components :as rnc :refer [icon-color
+            [onekeepass.ios.autofill.otp-badge :as otp-badge]
+            [onekeepass.ios.autofill.rn-components :as rnc :refer [circular-progress-color
+                                                                   icon-color
+                                                                   on-background-color
+                                                                   outline-variant
                                                                    page-background-color
                                                                    primary-container-color
                                                                    rn-image
@@ -39,7 +45,13 @@
   (el-events/long-press-start (-> event .-nativeEvent .-pageX) (-> event .-nativeEvent .-pageY) uuid))
 
 (defn entry-long-press-menu []
-  (let [{:keys [show x y]} @(el-events/entry-list-long-press-data)]
+  (let [{:keys [show x y]} @(el-events/entry-list-long-press-data)
+        ;; The menu opens only once the pressed entry's form data has loaded, so this is the
+        ;; entry the menu belongs to
+        entry-uuid @(form-events/entry-form-uuid)
+        ;; Offered only when the row is actually showing a code, so the item never appears
+        ;; for an entry there is nothing to copy from
+        otp-token (:token @(otp-events/otp-token-data entry-uuid))]
     [rnp-menu {:visible show :onDismiss el-events/long-press-menu-hide :anchor (clj->js {:x x :y y})}
      [rnp-menu-item {:title (lstr-ml 'copyUserName)
                      :onPress (entry-long-press-menu-action
@@ -47,6 +59,10 @@
      [rnp-menu-item {:title  (lstr-ml 'copyPassword)
                      :onPress (entry-long-press-menu-action
                                form-events/copy-field-to-clipboard PASSWORD)}]
+     (when otp-token
+       [rnp-menu-item {:title (lstr-ml 'copyTotp)
+                       :onPress (entry-long-press-menu-action
+                                 form-events/copy-entry-otp-to-clipboard entry-uuid)}])
      [rnp-divider]
 
      [rnp-menu-item {:title (lstr-ml 'entryDetails)
@@ -69,6 +85,21 @@
                       :color @icon-color
                       :style {:margin-left 5 :align-self "center"}}])))
 
+(defn- otp-right-element
+  "The entry's current 2FA code on the right of the row.
+
+   An entry with no code renders nothing at all, so those rows look as they did before.
+   This matters most in the extension: iOS sends a provider a password request and a
+   verification code request separately, so a combined login form is filled without its
+   code, and reading it here is the surest way for the user to get it."
+  [uuid]
+  (let [token-data @(otp-events/otp-token-data uuid)]
+    (otp-events/ensure-otp-token uuid token-data)
+    [rn-view {:style {:justify-content "center" :margin-right 5}}
+     [otp-badge/otp-badge token-data {:code-color @on-background-color
+                                      :bar-color @circular-progress-color
+                                      :bar-track-color @outline-variant}]]))
+
 (defn- row-item []
   (fn [{:keys [title secondary-title icon-id custom-icon-uuid uuid] :as _entry-summary}]
     (let [icon-name (icon-id->name icon-id)]
@@ -79,7 +110,9 @@
                               [rnp-text {:variant "titleMedium"} title])
                       :description secondary-title
                       :left (fn [_props] (r/as-element
-                                          [icon-left-element icon-name custom-icon-uuid]))}])))
+                                          [icon-left-element icon-name custom-icon-uuid]))
+                      :right (fn [_props] (r/as-element
+                                           [otp-right-element uuid]))}])))
 
 (defn- section-header [title]
   [rn-view  {:style {:flexDirection "row"
@@ -96,6 +129,17 @@
         search-entry-items @(cmn-events/search-result-entry-items)
         not-matched @(cmn-events/search-not-matched)
         entry-items (if (empty? search-entry-items) entry-items  search-entry-items)
+        ;; Apply the order to the final displayed collection: this covers both the initial
+        ;; autofill candidates and search results. Compare normalized titles directly so
+        ;; uppercase letters never form a separate block ahead of lowercase letters.
+        ;; Search relevance ranking can replace this alphabetical order later.
+        entry-items (sort (fn [a b]
+                            (let [title-order (compare (str/lower-case (or (:title a) ""))
+                                                       (str/lower-case (or (:title b) "")))]
+                              (if (zero? title-order)
+                                (compare (or (:uuid a) "") (or (:uuid b) ""))
+                                title-order)))
+                          entry-items)
         sections [{:title "Entries"
                    :key "Entries"
                    :data entry-items}]]
@@ -106,6 +150,15 @@
         [rnp-text {:style {:text-align "center" :color @rnc/error-color} 
                    :variant "titleSmall"} (lstr-mt TR-KEY-AUTOFILL 'noEntryFound) ]])
      
+     ;; Says once, at the top, what the codes on the rows are for. Selecting an entry closes
+     ;; the extension, so nothing can be shown at the moment of the copy itself - the user has
+     ;; to be told before the tap or not at all. Shown only when some row does have a code
+     (when @(otp-events/any-otp-token?)
+       [rn-view {:style {:margin-top 6 :margin-bottom 4 :padding-horizontal 22}}
+        [rnp-text {:variant "bodySmall"
+                   :style {:text-align "center" :color @rnc/outline-color}}
+         (lstr-mt TR-KEY-AUTOFILL 'codeCopiedOnSelect)]])
+
      [rn-section-list {:scrollEnabled false
                        :sections (clj->js sections)
                        :renderItem (fn [props]

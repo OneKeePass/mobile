@@ -59,6 +59,7 @@
                        {:key "ru" :label "ru - Русский"}
                        {:key "id" :label "id - Bahasa Indonesia"}
                        {:key "pt-BR" :label "pt-BR - Português do Brasil"}
+                       {:key "vi" :label "vi - Tiếng Việt"}
                        ;; See at the bottom of this file for more languages to be added in future
                        ])
 

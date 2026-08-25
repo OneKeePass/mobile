@@ -9,6 +9,7 @@
                                                            DATE_TYPE
                                                            IFDEVICE
                                                            ONE_TIME_PASSWORD_TYPE
+                                                           PASSKEY_DETAILS
                                                            PASSWORD URL
                                                            USERNAME]]
             [onekeepass.mobile.date-utils :refer [utc-str-to-local-datetime-str]]
@@ -26,7 +27,8 @@
                                                           rename-attachment-name-dialog-data
                                                           setup-otp-action-dialog
                                                           setup-otp-action-dialog-show]]
-            [onekeepass.mobile.entry-form-fields :refer [bool-field date-field otp-field text-field]]
+            [onekeepass.mobile.entry-form-fields :as ef-fields :refer [bool-field date-field
+                                                                       otp-field text-field]]
             [onekeepass.mobile.entry-form-menus :refer [attachment-long-press-menu
                                                         attachment-long-press-menu-data
                                                         custom-field-menu
@@ -40,10 +42,12 @@
             [onekeepass.mobile.events.custom-icons :as ci-events]
             [onekeepass.mobile.events.dialogs :as dlg-events]
             [onekeepass.mobile.events.entry-form :as form-events :refer [place-holder-resolved-value]]
+            [onekeepass.mobile.grouped-list :as gl]
             [onekeepass.mobile.icons-list :as icons-list]
             [onekeepass.mobile.rn-components
              :as rnc
              :refer [appbar-text-color dots-icon-name icon-color
+                     no-assist-text-props no-autocorrect-text-props
                      on-primary-color page-background-color
                      page-title-text-variant primary-container-color rn-image
                      rn-keyboard rn-keyboard-avoiding-view rn-scroll-view
@@ -60,13 +64,35 @@
 ;;(set! *warn-on-infer* true)
 
 (def box-style-1 {:flexDirection "column"
-                  :padding-right 5
-                  :padding-left 5
+                  :padding-right 8
+                  :padding-left 8
                   :margin-bottom 5
                   :borderWidth 0.20
                   :borderRadius 4})
 
 (def box-style-2 (merge box-style-1 {:padding-bottom 10 :padding-top 5}))
+
+;; Left below the last field of a read mode card. A field draws its own underline at its very
+;; bottom and without this the line of the last one sits flush against the card's rounded edge
+(def ^:private CARD-FIELDS-BOTTOM-PADDING 8)
+
+(defn- fields-card-style
+  "Style of the read mode card that a block of form fields is drawn on"
+  []
+  (merge (gl/card-block-style) {:padding-bottom CARD-FIELDS-BOTTOM-PADDING}))
+
+;; The notes card is the one field card that is left unclipped. Ending an editing or saving
+;; left the field showing neither its text nor its label, while the value was still there in
+;; the form data - the notes came back only on opening the entry again, which mounts the field
+;; afresh. The multiline input draws outside the box the card gives it after that switch and
+;; the card's 'overflow hidden' was cutting all of it away
+;;
+;; Dropping the clipping is what makes the notes visible again. It is safe to drop here as the
+;; bottom padding already keeps the field's underline off the card's rounded edge, which is
+;; what the clipping is there for
+(defn- notes-card-style
+  []
+  (merge (fields-card-style) {:overflow "visible"}))
 
 (defn appbar-title
   "Entry form specific title to display"
@@ -236,30 +262,30 @@
                           :onPress #(launch-icon-picker prefill-url)}]))
 
 (defn android-title-text-input [title icon-name custom-data-url prefill-url]
-  [rnp-text-input {:style {:width "100%"}
-                   :label (str (lstr-l 'title) "*")
-                   :autoCapitalize "none"
-                   :defaultValue title
-                   :ref (fn [^js/Ref ref]
-                          ;; Keys found in ref for textinput
-                          ;; are #js ["focus" "clear" "setNativeProps" "isFocused" "blur" "forceFocus"]
-                          ;; Need to call clear directly as the previous value is not getting cleared
-                          ;; when there is a change in entry type selection name
-                          (when (and (not (nil? ref)) (str/blank? title)) (.clear ref)))
-                   :onChangeText #(form-events/entry-form-data-update-field-value :title %)
-                   :right (r/as-element
-                           ;;The title-input-right-icon is called directly before r/as-element. Otherwise the icon is not shown
-                           (title-input-right-icon icon-name custom-data-url prefill-url))}])
+  [rnp-text-input (merge no-assist-text-props
+                         {:style {:width "100%"}
+                          :label (str (lstr-l 'title) "*")
+                          :defaultValue title
+                          :ref (fn [^js/Ref ref]
+                                 ;; Keys found in ref for textinput
+                                 ;; are #js ["focus" "clear" "setNativeProps" "isFocused" "blur" "forceFocus"]
+                                 ;; Need to call clear directly as the previous value is not getting cleared
+                                 ;; when there is a change in entry type selection name
+                                 (when (and (not (nil? ref)) (str/blank? title)) (.clear ref)))
+                          :onChangeText #(form-events/entry-form-data-update-field-value :title %)
+                          :right (r/as-element
+                                  ;;The title-input-right-icon is called directly before r/as-element. Otherwise the icon is not shown
+                                  (title-input-right-icon icon-name custom-data-url prefill-url))})])
 
 (defn ios-title-text-input [title icon-name custom-data-url prefill-url]
-  [rnp-text-input {:style {:width "100%"}
-                   :label (str (lstr-l 'title) "*")
-                   :autoCapitalize "none"
-                   :value title
-                   :onChangeText #(form-events/entry-form-data-update-field-value :title %)
-                   :right (r/as-element
-                           ;;The title-input-right-icon is called directly before r/as-element. Otherwise the icon is not shown
-                           (title-input-right-icon icon-name custom-data-url prefill-url))}])
+  [rnp-text-input (merge no-assist-text-props
+                         {:style {:width "100%"}
+                          :label (str (lstr-l 'title) "*")
+                          :value title
+                          :onChangeText #(form-events/entry-form-data-update-field-value :title %)
+                          :right (r/as-element
+                                  ;;The title-input-right-icon is called directly before r/as-element. Otherwise the icon is not shown
+                                  (title-input-right-icon icon-name custom-data-url prefill-url))})])
 
 (defn title-with-icon []
   (let [{:keys [title icon-id custom-icon-uuid]}
@@ -281,7 +307,7 @@
        (when (contains? error-fields :title)
          [rnp-helper-text {:type "error" :visible (contains? error-fields :title)}
           (:title error-fields)])]
-      [rn-view {:style {:flexDirection "row" :justify-content "center" :alignItems "center"}}
+      [rn-view {:style {:flexDirection "row" :justify-content "center" :alignItems "center" :margin-top 8 :margin-bottom 8 }}
        (if custom-data-url
          [rn-image {:source (clj->js {:uri custom-data-url})
                     :style {:width icons-list/ENTRY-GROUP-LIST-ICON-SIZE
@@ -316,19 +342,24 @@
 (defn notes [edit]
   (let [value @(form-events/entry-form-data-fields :notes)]
     (when (or edit (not (str/blank? value)))
-      [rn-view {:style {:padding-right 5 :padding-left 5 :borderWidth 0.20 :borderRadius 4}}
-       [rnp-text-input {:style {:width "100%"}
-                        :multiline true
-                        :label  (lstr-l "notes")
-                        ;; :label (r/as-element [rnp-text {:style {:color "red"}} "My Notes"])
-                        :defaultValue value
-                        :placeholder ""
-                        ;; :mode "outlined"
-                        :ref (fn [^js/Ref ref]
-                               (reset! notes-ref ref)
-                               (when (and (is-Android) (not (nil? ref)) (str/blank? value)) (.clear ref)))
-                        :showSoftInputOnFocus edit
-                        :onChangeText (when edit #(form-events/entry-form-data-update-field-value :notes %))}]])))
+      [rn-view {:style (if edit
+                         {:padding-right 5 :padding-left 5 :borderWidth 0.20 :borderRadius 4}
+                         (notes-card-style))}
+       [rnp-text-input (merge no-autocorrect-text-props
+                              {:style (merge {:width "100%"}
+                                             (when-not edit
+                                               {:backgroundColor (ef-fields/read-field-background)}))
+                               :multiline true
+                               :label  (lstr-l "notes")
+                               ;; :label (r/as-element [rnp-text {:style {:color "red"}} "My Notes"])
+                               :defaultValue value
+                               :placeholder ""
+                               ;; :mode "outlined"
+                               :ref (fn [^js/Ref ref]
+                                      (reset! notes-ref ref)
+                                      (when (and (is-Android) (not (nil? ref)) (str/blank? value)) (.clear ref)))
+                               :showSoftInputOnFocus edit
+                               :onChangeText (when edit #(form-events/entry-form-data-update-field-value :notes %))})]])))
 
 (defn section-header [section-name]
   (let [edit @(form-events/entry-form-field :edit)
@@ -336,14 +367,17 @@
         ;;_ (println "In section-header standard-section-names are " standard-sections)
         standard-section? (u/contains-val? standard-sections section-name)
         tr-section-name (if standard-section? (lstr-section-name section-name) section-name)]
-    [rn-view {:style {:flexDirection "row"
-                      :backgroundColor  @primary-container-color
-                      :margin-top 5
-                      :min-height 35}}
-     [rnp-text {:style {:alignSelf "center" :width "85%" :padding-left 15} :variant "titleMedium"}
-      tr-section-name]
-     (when edit
-       ;;
+    (if-not edit
+      ;; In read mode each section is a card standing on the page ground, introduced by the same
+      ;; quiet header the list pages use. Nothing here can be collapsed, so no chevron
+      [gl/section-header {:label tr-section-name}]
+
+      [rn-view {:style {:flexDirection "row"
+                        :backgroundColor  @primary-container-color
+                        :margin-top 5
+                        :min-height 35}}
+       [rnp-text {:style {:alignSelf "center" :width "85%" :padding-left 15} :variant "titleMedium"}
+        tr-section-name]
        (if (not= section-name ADDITIONAL_ONE_TIME_PASSWORDS)
          [rnp-icon-button {:icon dots-icon-name :style {:height 35
                                                         :margin-right 0
@@ -356,7 +390,7 @@
          [rnp-icon-button {:icon const/ICON-PLUS
                            :style {:height 35 :margin-right 0 :backgroundColor @on-primary-color}
                            :onPress (fn [] (form-events/show-form-fields-validation-error-or-call
-                                            #(setup-otp-action-dialog-show section-name nil false)))}]))]))
+                                            #(setup-otp-action-dialog-show section-name nil false)))}])])))
 
 (defn get-section-data
   "Called to set up any entry type specific data in kv
@@ -413,17 +447,59 @@
           adjusted-section-data)]
     adjusted-section-data))
 
+;; These standard sections are not shown in the edit mode when they do not have any value.
+;; Instead the user shows such a section on demand - see 'on-demand-section-links'.
+;; The values of these sections are set through a dialog (one time passwords) or by the
+;; browser extension of the desktop app (passkey) and are not entered field by field
+(def ^:private ON_DEMAND_SECTIONS #{ADDITIONAL_ONE_TIME_PASSWORDS PASSKEY_DETAILS})
+
+(defn- section-has-values?
+  "Returns true if any field of this section has a non blank value"
+  [section-data]
+  (boolean (seq (filter (fn [kv] (not (str/blank? (:value kv)))) section-data))))
+
+(defn- section-hidden-on-demand?
+  "Returns true if this section is to be hidden in the edit mode till the user asks for it.
+   A section that has any value or has any field in error is always shown"
+  [section-name section-data revealed-sections errors]
+  (and (contains? ON_DEMAND_SECTIONS section-name)
+       (not (u/contains-val? revealed-sections section-name))
+       (not (section-has-values? section-data))
+       (not (some (fn [{:keys [key]}] (contains? errors key)) section-data))))
+
+(defn- otp-field-not-set-up? [{:keys [data-type value]}]
+  (and (= data-type ONE_TIME_PASSWORD_TYPE) (str/blank? value)))
+
+(defn- move-not-set-up-otp-fields-to-end
+  "In the edit mode an otp field that is not yet set up is shown as a 'Set up One-Time Password'
+   button and such a field is moved after all the other fields of this section. Once the otp is
+   set up, the field is shown in its usual place. Only the display order is changed here and
+   the order of the fields in the form data itself remains the same"
+  [edit section-data]
+  (if-not edit
+    section-data
+    (into (filterv (complement otp-field-not-set-up?) section-data)
+          (filterv otp-field-not-set-up? section-data))))
+
 (defn section-content [{:keys [edit section-name section-data]}]
-  (let [errors @(form-events/entry-form-field :error-fields)]
-    ;; Show a section in edit mode irrespective of its contents; 
-    ;; In non edit mode a section is shown only 
-    ;; if it has some fields with non blank value. It is assumed the 'required' 
+  (let [errors @(form-events/entry-form-field :error-fields)
+        revealed-sections @(form-events/revealed-sections)
+        section-data (move-not-set-up-otp-fields-to-end edit section-data)]
+    ;; Show a section in edit mode irrespective of its contents except for the 'on demand'
+    ;; sections that are shown only when the user asks for them;
+    ;; In non edit mode a section is shown only
+    ;; if it has some fields with non blank value. It is assumed the 'required'
     ;; fileds will have some valid values
-    (when (or edit (boolean (seq (filter (fn [kv] (not (str/blank? (:value kv)))) section-data))))
+    (when (if edit
+            (not (section-hidden-on-demand? section-name section-data revealed-sections errors))
+            (section-has-values? section-data))
       [rn-view {:style {:flexDirection "column"}}
        [section-header section-name]
-       (doall
-        (for [{:keys [key
+       ;; In read mode the fields of the section are held in a card of their own. In edit mode
+       ;; they stay in the single bordered box the whole form is drawn in
+       [rn-view {:style (if edit {:flexDirection "column"} (fields-card-style))}
+        (doall
+         (for [{:keys [key
                       value
                       data-type
                       standard-field
@@ -475,7 +551,7 @@
                                                  :on-change-text #(form-events/update-section-value-on-change
                                                                    section-name key %)
                                                  :password-score password-score
-                                                 :visible @(form-events/visible? key))]))))])))
+                                                 :visible @(form-events/visible? key))]))))]])))
 
 (defn all-sections-content []
   (let [{:keys [edit showing]
@@ -500,7 +576,8 @@
 
     ;; section-names is a list of section names
     ;; section-fields is a list of map - one map for each field in that section
-    [rn-view {:style box-style-2}
+    ;; In read mode there is no box around all the sections - each one is a card of its own
+    [rn-view {:style (if edit box-style-2 {:flexDirection "column"})}
      ;; Banner explaining the dual-use Password field and the
      ;; attach-private-key flow for REMOTE_CONNECTION_SFTP entries.
      (when (and edit (= entry-type-uuid const/UUID_OF_ENTRY_TYPE_REMOTE_CONNECTION_SFTP))
@@ -516,54 +593,124 @@
                                                :section-name section-name
                                                :section-data (get-section-data  entry-type-uuid section-name section-fields parsed-fields)}]))]))
 
-(defn add-section-btn []
-  [rn-view {:style {:padding-top 5 :padding-bottom 5}  :justify-content "center"}
-   [rnp-button {:mode "contained" :onPress #(form-events/open-section-name-dialog)} (lstr-bl 'additionalSection)]])
+;; All the footer links are text buttons that are stacked one below the other. The icon and the
+;; label of each link are left aligned within the button so that the icons of all these links
+;; line up in a single column - see 'footer-links-stack'
+(defn- footer-link-button [{:keys [label on-press]}]
+  [rnp-button {:style {:margin-top 2 :margin-bottom 2}
+               :contentStyle {:justifyContent "flex-start"}
+               :mode "text"
+               :icon const/ICON-PLUS
+               :onPress on-press}
+   label])
+
+(defn- footer-links-stack
+  "Lays out the footer links as a block that is centered in the form. The links themselves are
+   left aligned within that block so that all their icons line up one below the other"
+  [& links]
+  [rn-view {:style {:flexDirection "column" :alignItems "center"}}
+   (into [rn-view {:style {:flexDirection "column" :alignItems "flex-start"}}] links)])
+
+
+(defn- standard-otp-field-set?
+  "Returns true if the standard otp field of this entry has a value. Adding an
+   'Additional One-Time Passwords' section makes sense only after that"
+  [section-fields]
+  (boolean (some (fn [{:keys [key value]}]
+                   (and (= key const/OTP) (not (str/blank? value))))
+                 (-> section-fields vals flatten))))
+
+(defn- on-demand-section-link-shown?
+  "Returns true if a link is to be shown for this hidden 'on demand' section"
+  [section-name section-fields revealed-sections errors]
+  (and (section-hidden-on-demand? section-name (get section-fields section-name) revealed-sections errors)
+       (or (not= section-name ADDITIONAL_ONE_TIME_PASSWORDS)
+           (standard-otp-field-set? section-fields))))
+
+(defn- on-demand-section-links
+  "A link for each 'on demand' section of this entry that is hidden in the edit mode.
+   Pressing a link shows that section so that the user can add values to it"
+  []
+  (let [{:keys [edit] {:keys [section-names section-fields]} :data} @(form-events/entry-form)
+        errors @(form-events/entry-form-field :error-fields)
+        revealed-sections @(form-events/revealed-sections)
+        hidden-sections (when edit
+                          (filterv
+                           #(on-demand-section-link-shown? % section-fields revealed-sections errors)
+                           section-names))]
+    (when (seq hidden-sections)
+      (into [:<>]
+            (for [section-name hidden-sections]
+              ^{:key section-name}
+              [footer-link-button {:label (lstr-section-name section-name)
+                                   :on-press #(form-events/section-reveal section-name)}])))))
+
+(defn- add-section-link []
+  [footer-link-button {:label (lstr-bl 'additionalSection)
+                       :on-press #(form-events/open-section-name-dialog)}])
+
+(defn form-footer-content
+  "The footer of the entry form in the edit mode. The links to show an 'on demand' section and
+   to add a new section are kept in a box similar to the other content boxes of the form.
+   All these links are in a single stack so that they line up one below the other"
+  []
+  (let [edit @(form-events/form-edit-mode)]
+    (when edit
+      [rn-view {:style (merge box-style-1 {:margin-top 5 :padding 5})}
+       [footer-links-stack
+        [on-demand-section-links]
+        [add-section-link]]])))
 
 (defn tags [edit]
   (let [entry-tags @(form-events/entry-form-data-fields :tags)
         tags-availble (boolean (seq entry-tags))]
 
     (when (or edit tags-availble)
-      [rn-view {:style {:flexDirection "column" :justify-content "center"
-                        :min-height 50  :margin-top 5 :padding 5 :borderWidth 0.20 :borderRadius 4}}
-       [rn-view {:style {:flexDirection "row" :backgroundColor  @primary-container-color :min-height 25}}
-        [rnp-text {:style {:alignSelf "center" :width "85%" :padding-left 15} :variant "titleMedium"}
-         (lstr-section-name 'tags)]
+      (let [chips [rn-view {:style {:flexDirection "column" :padding-top 10}}
+                   [rn-view {:style {:flexDirection "row" :flexWrap "wrap"}}
+                    (doall
+                     (for [tag  entry-tags]
+                       ^{:key tag} [rnp-chip {:style {:margin 5}
+                                              :onClose (when edit
+                                                         (fn []
+                                                           (form-events/entry-form-data-update-field-value
+                                                            :tags (filterv #(not= tag %) entry-tags))))} tag]))]]]
+        (if-not edit
+          ;; The tags read as one more section of the form - a quiet header with the chips on a
+          ;; card below it
+          [:<>
+           [gl/section-header {:label (lstr-section-name 'tags)}]
+           [rn-view {:style (merge (gl/card-block-style) {:padding 5 :min-height 50})}
+            chips]]
 
-        (when edit
-          [rnp-icon-button {:icon const/ICON-PLUS :style {:height 35 :margin-right 0 :backgroundColor @on-primary-color}
-                            :onPress (fn [] (cmn-events/tags-dialog-init-selected-tags entry-tags))}])]
-       [rn-view {:style {:flexDirection "column" :padding-top 10}}
-        [rn-view {:style {:flexDirection "row" :flexWrap "wrap"}}
-         (doall
-          (for [tag  entry-tags]
-            ^{:key tag} [rnp-chip {:style {:margin 5}
-                                   :onClose (when edit
-                                              (fn []
-                                                (form-events/entry-form-data-update-field-value
-                                                 :tags (filterv #(not= tag %) entry-tags))))} tag]))]]])))
+          [rn-view {:style {:flexDirection "column" :justify-content "center"
+                            :min-height 50  :margin-top 5 :padding 5 :borderWidth 0.20 :borderRadius 4}}
+           [rn-view {:style {:flexDirection "row" :backgroundColor  @primary-container-color :min-height 25}}
+            [rnp-text {:style {:alignSelf "center" :width "85%" :padding-left 15} :variant "titleMedium"}
+             (lstr-section-name 'tags)]
+
+            [rnp-icon-button {:icon const/ICON-PLUS :style {:height 35 :margin-right 0 :backgroundColor @on-primary-color}
+                              :onPress (fn [] (cmn-events/tags-dialog-init-selected-tags entry-tags))}]]
+           chips])))))
 
 (defn uuid-times-content []
   (let [{:keys [uuid last-modification-time creation-time]} @(form-events/entry-form-data-fields
                                                               [:uuid :last-modification-time :creation-time])]
-    [rn-view {:style {:margin-top 25
-                      ;;:background-color @rnc/custom-color0
-                      :padding-right 5
-                      :padding-left 5
-                      :borderWidth 0.20
-                      :borderRadius 4}}
-     [rn-view {:style {:justify-content "space-between"} :flexDirection "row"}
-      [rnp-text "Uuid"]
-      [rnp-text uuid]]
+    [rn-view {:style (merge (gl/card-block-style)
+                            {:margin-top 9 :padding 12})}
+     [rn-view {:style {:flexDirection "row" :justify-content "space-between"}}
+      [rnp-text {:variant "bodySmall" :style {:color @rnc/on-surface-variant}} "Uuid"]
+      ;; The card is narrower than the box this used to be drawn in, so the uuid is allowed to
+      ;; wrap rather than run past the card's edge
+      [rnp-text {:variant "bodySmall" :style {:flexShrink 1 :textAlign "right" :margin-left 10}} uuid]]
      [rn-view {:style {:height 15}}]
-     [rn-view {:style {:justify-content "space-between"} :flexDirection "row"}
-      [rnp-text "Creation Time"]
-      [rnp-text (utc-str-to-local-datetime-str creation-time)]]
+     [rn-view {:style {:flexDirection "row" :justify-content "space-between"}}
+      [rnp-text {:variant "bodySmall" :style {:color @rnc/on-surface-variant}} "Creation Time"]
+      [rnp-text {:variant "bodySmall"} (utc-str-to-local-datetime-str creation-time)]]
      [rn-view {:style {:height 10}}]
-     [rn-view {:style {:justify-content "space-between"} :flexDirection "row"}
-      [rnp-text "Last Modification Time"]
-      [rnp-text (utc-str-to-local-datetime-str last-modification-time)]]]))
+     [rn-view {:style {:flexDirection "row" :justify-content "space-between"}}
+      [rnp-text {:variant "bodySmall" :style {:color @rnc/on-surface-variant}} "Last Modification Time"]
+      [rnp-text {:variant "bodySmall"} (utc-str-to-local-datetime-str last-modification-time)]]]))
 
 ;;;;;;;;;;;;;;;;;;;;  Attachment ;;;;;;;;;;;;;;;;;;;;
 
@@ -578,19 +725,21 @@
     (get attachment-icons name const/ICON-FILE-QUESTION-OUTLINE)))
 
 (defn attachment-content-header [edit]
-  [rn-view {:style {:flexDirection "row"
-                    :backgroundColor  @primary-container-color
-                    :margin-top 5
-                    :min-height 35}}
-   [rnp-text {:style {:alignSelf "center" :width "85%" :padding-left 15} :variant "titleMedium"} (lstr-section-name 'attachments)]
-   (when edit
+  (if-not edit
+    [gl/section-header {:label (lstr-section-name 'attachments)}]
+
+    [rn-view {:style {:flexDirection "row"
+                      :backgroundColor  @primary-container-color
+                      :margin-top 5
+                      :min-height 35}}
+     [rnp-text {:style {:alignSelf "center" :width "85%" :padding-left 15} :variant "titleMedium"} (lstr-section-name 'attachments)]
      [rnp-icon-button {:icon const/ICON-PLUS :style {:height 35
                                                      :margin-right 0
                                                      :backgroundColor @on-primary-color}
                        :onPress (fn [^js/PEvent _event]
                                   (form-events/upload-attachment)
                                   ;; Instead of the above action, use menu pop ups if we require more that upload action
-                                  #_(show-attachment-menu event))}])])
+                                  #_(show-attachment-menu event))}]]))
 
 (defn attachment-row-item [{:keys [key data-size data-hash]} edit]
   (let [att-icon (attachment-icon key)
@@ -616,7 +765,9 @@
                    :data binary-key-values}]]
 
     (when (or edit (boolean (seq binary-key-values)))
-      [rn-view {:style (merge box-style-1 {:margin-top 5 :min-height 60})}
+      [rn-view {:style (if edit
+                         (merge box-style-1 {:margin-top 5 :min-height 60})
+                         {:flexDirection "column"})}
        [attachment-content-header edit]
 
        ;; We may see the warning/error in the console: 
@@ -626,30 +777,35 @@
        ;; See https://stackoverflow.com/questions/58243680/react-native-another-virtualizedlist-backed-container
        ;; https://stackoverflow.com/questions/67623952/error-virtualizedlists-should-never-be-nested-inside-plain-scrollviews-with-th
 
-       [rn-section-list {:scrollEnabled false
-                         :sections (clj->js sections)
-                         :renderItem (fn [props]
-                                       (let [props (js->clj props :keywordize-keys true)]
-                                         (r/as-element [attachment-row-item (-> props :item) edit])))
-                         :ItemSeparatorComponent (fn [_p] (r/as-element [rnp-divider]))
-                         :stickySectionHeadersEnabled false
-                         :renderSectionHeader nil}]])))
+       [rn-view {:style (when-not edit (gl/card-block-style))}
+        [rn-section-list {:scrollEnabled false
+                          :sections (clj->js sections)
+                          :renderItem (fn [props]
+                                        (let [props (js->clj props :keywordize-keys true)]
+                                          (r/as-element [attachment-row-item (-> props :item) edit])))
+                          :ItemSeparatorComponent (fn [_p] (r/as-element [rnp-divider]))
+                          :stickySectionHeadersEnabled false
+                          :renderSectionHeader nil}]]])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn main-content []
   (let [edit @(form-events/form-edit-mode)]
-    [rn-view {:style {:flexDirection "column" :justify-content "center" :padding 5}}
+    ;; In read mode the cards carry their own side margins, so the page adds none of its own
+    [rn-view {:style {:flexDirection "column" :justify-content "center" :padding (if edit 5 0)}}
      [entry-type-selection-box]
      [title-group-selection-box]
      [:f> all-sections-content]
-     (when edit [add-section-btn])
      [notes edit]
      ;; Tags
      [tags edit]
 
-     ;; Attachments panel will come here 
+     ;; Attachments panel will come here
      [attachment-content]
+
+     ;; The footer links to add a section or to show an 'on demand' section are kept at the end.
+     ;; A section shown from these links continues to appear in its own place in 'all-sections-content'
+     [form-footer-content]
 
      (when-not edit [uuid-times-content])
 
@@ -684,17 +840,24 @@
       ;; Note: 
       ;; We are refering this dialog from ns entry-list. 
       ;; We may need to move some common ns if there is any circular reference issue comes up
-      [entry-list/move-group-or-entry-dialog]]]))
+      [entry-list/move-group-or-entry-dialog]
+      [entry-list/clone-entry-dialog]]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;  
 
 (defn content []
-  [rn-keyboard-avoiding-view {:style {:flex 1 } 
-                              ;; After Android 'compileSdkVersion = 35 introduction
-                              ;; Also see comments in js/components/KeyboardAvoidingDialog.js
-                              :behavior (if (is-iOS) "padding" "height")}
-   [rn-scroll-view {:contentContainerStyle {:flexGrow 1 :background-color  @page-background-color}}
-    [main-content]]])
+  (let [edit @(form-events/form-edit-mode)]
+    [rn-keyboard-avoiding-view {:style {:flex 1}
+                                ;; After Android 'compileSdkVersion = 35 introduction
+                                ;; Also see comments in js/components/KeyboardAvoidingDialog.js
+                                :behavior (if (is-iOS) "padding" "height")}
+     ;; In read mode the form stands on the same ground the list pages use so that its cards
+     ;; read as cards. In edit mode the fields are still drawn in one box on a plain page
+     [rn-scroll-view {:contentContainerStyle {:flexGrow 1
+                                              :background-color (if edit
+                                                                  @page-background-color
+                                                                  @rnc/grouped-list-ground-color)}}
+      [main-content]]]))
 
 (comment
   (in-ns 'onekeepass.mobile.entry-form))

@@ -1,13 +1,17 @@
 (ns onekeepass.mobile.android.autofill.entry-list
   "Only the Android Autofill specific entry list components"
-  (:require [onekeepass.mobile.android.autofill.events.common :as android-af-cmn-events]
+  (:require [clojure.string :as str]
+            [onekeepass.mobile.android.autofill.events.common :as android-af-cmn-events]
             [onekeepass.mobile.android.autofill.events.entry-form :as af-ef-events]
             [onekeepass.mobile.android.autofill.events.entry-list :as el-events]
             [onekeepass.mobile.common-components :as cc :refer [menu-action-factory]]
             [onekeepass.mobile.constants :refer [TR-KEY-AUTOFILL]]
             [onekeepass.mobile.events.custom-icons :as ci-events]
+            [onekeepass.mobile.events.entry-list-otp :as otp-events]
             [onekeepass.mobile.icons-list :refer [icon-id->name]]
+            [onekeepass.mobile.otp-badge :as otp-badge]
             [onekeepass.mobile.rn-components :as rnc :refer [icon-color
+                                                             no-assist-text-props
                                                              page-background-color
                                                              primary-container-color
                                                              rn-image
@@ -58,6 +62,19 @@
                       :color @icon-color
                       :style {:margin-left 5 :align-self "center"}}])))
 
+(defn- otp-right-element
+  "The entry's current 2FA code on the right of the row.
+
+   Worth the space here: a native app's code field often goes undetected, and the fill
+   then puts the code on the clipboard where nothing tells the user it has arrived."
+  [uuid]
+  (let [token-data @(otp-events/otp-token-data uuid)]
+    (otp-events/ensure-otp-token uuid token-data)
+    [rn-view {:style {:justify-content "center" :margin-right 5}}
+     [otp-badge/otp-badge token-data {:code-color @rnc/on-surface-variant
+                                      :bar-color @rnc/circular-progress-color
+                                      :bar-track-color @rnc/outline-variant}]]))
+
 (defn row-item []
   (fn [{:keys [title secondary-title icon-id custom-icon-uuid uuid] :as _entry-summary}]
     (let [icon-name (icon-id->name icon-id)]
@@ -69,7 +86,9 @@
                               [rnp-text {:variant "titleMedium"} title])
                       :description secondary-title
                       :left (fn [_props] (r/as-element
-                                          [icon-left-element icon-name custom-icon-uuid]))}])))
+                                          [icon-left-element icon-name custom-icon-uuid]))
+                      :right (fn [_props] (r/as-element
+                                           [otp-right-element uuid]))}])))
 
 (defn section-header [title]
   [rn-view  {:style {:flexDirection "row"
@@ -98,7 +117,9 @@
 (defn searchbar []
   (let [term @(android-af-cmn-events/search-term)]
     [rn-view {:margin-top 10}
-     [rnp-searchbar {;; clearIcon mostly visible when value has some vlaue
+     [rnp-searchbar (merge
+                     no-assist-text-props
+                     {;; clearIcon mostly visible when value has some vlaue
                      ;; :clearIcon "close"
                      :style {:margin-left 1
                              :margin-right 1
@@ -106,9 +127,9 @@
                      :placeholder "Search"
                      :onChangeText (fn [v]
                                      (android-af-cmn-events/search-term-update v))
-                     
+
                      ;; :value term
-                     
+
                      :defaultValue term
                      :traileringIcon "close"
                      :onTraileringIconPress (fn [_e]
@@ -121,13 +142,24 @@
                      ;;                           :style {:right 0}
                      ;;                           :onPress #(println "Clear is clicked")}])
                      ;;           )
-                     }]]))
+                      })]]))
 
 (defn main-content []
   (let [entry-items @(el-events/selected-entry-items)
         search-entry-items @(android-af-cmn-events/search-result-entry-items)
         not-matched @(android-af-cmn-events/search-not-matched)
         entry-items (if (empty? search-entry-items) entry-items  search-entry-items)
+        ;; Apply the order to the final displayed collection: this covers both the initial
+        ;; autofill candidates and search results. Compare normalized titles directly so
+        ;; uppercase letters never form a separate block ahead of lowercase letters.
+        ;; Search relevance ranking can replace this alphabetical order later.
+        entry-items (sort (fn [a b]
+                            (let [title-order (compare (str/lower-case (or (:title a) ""))
+                                                       (str/lower-case (or (:title b) "")))]
+                              (if (zero? title-order)
+                                (compare (or (:uuid a) "") (or (:uuid b) ""))
+                                title-order)))
+                          entry-items)
         sections [{:title "Entries"
                    :key "Entries"
                    :data entry-items}]]
@@ -175,4 +207,3 @@
    [rnp-portal
     [entry-long-press-menu]
     [app-capture-confirm-dialog]]])
-

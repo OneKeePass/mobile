@@ -3,6 +3,7 @@
             [onekeepass.mobile.events.key-file-form :as kf-events]
             [onekeepass.mobile.rn-components :as rnc :refer [cust-dialog
                                                              dots-icon-name
+                                                             no-assist-text-props
                                                              primary-color
                                                              primary-container-color
                                                              rn-safe-area-view
@@ -32,12 +33,11 @@
    [rnp-dialog-title (lstr-l "keyFileName")]
    [rnp-dialog-content
     [rn-view {:style {:flexDirection "column"  :justify-content "center"}}
-     [rnp-text-input {:label (lstr-l "name")
-                      :defaultValue file-name
-                      :autoComplete "off"
-                      :autoCapitalize "none"
-                      :placeholder "e.g mykey.keyx"
-                      :onChangeText #(kf-events/generate-file-name-dialog-update %)}]]]
+     [rnp-text-input (merge no-assist-text-props
+                            {:label (lstr-l "name")
+                             :defaultValue file-name
+                             :placeholder "e.g mykey.keyx"
+                             :onChangeText #(kf-events/generate-file-name-dialog-update %)})]]]
 
    [rnp-dialog-actions
     [rnp-button {:mode "text"

@@ -38,12 +38,16 @@ class FileUtils: NSObject {
     var success = false
 
     NSFileCoordinator().coordinate(readingItemAt: url, options: [.withoutChanges, .resolvesSymbolicLink], error: &error) { url in
-      guard url.startAccessingSecurityScopedResource() else {
-        logger.error("startAccessingSecurityScopedResource call failed for \(url)")
-        return
+      // When another app (OneDrive, GDrive etc) hands over the file as a copy instead of
+      // opening it in place, the url points to a file inside our own sandbox (Documents/Inbox).
+      // Such a url is not a security scoped one and this call returns false for it.
+      // No scoped access is needed to read it and we should continue instead of failing
+      let isAccessed = url.startAccessingSecurityScopedResource()
+      if !isAccessed {
+        logger.debug("startAccessingSecurityScopedResource returned false for \(url). Continuing as this url may not be a security scoped one")
       }
-      
-      defer { url.stopAccessingSecurityScopedResource() }
+
+      defer { if isAccessed { url.stopAccessingSecurityScopedResource() } }
       do {
         // Secured access to url should be available before bookmarking
         logger.debug("Creating bookmark for the saved_file_url \(url)")
@@ -115,5 +119,51 @@ class FileUtils: NSObject {
   @objc
   static func testLog() {
     logger.debug("Called from obj-c")
+  }
+
+  /// Documents/Inbox handling
+  ///
+  /// When another app hands over a file as a copy (openInPlace false), iOS puts that
+  /// copy in our own sandbox under Documents/Inbox. The dir is read only for us (we may
+  /// read and delete but not write), it is not visible to the user in the Files app and
+  /// nothing in iOS ever cleans it up.
+  ///
+  /// We never open a db from such a copy. Editing it would write to a file the user
+  /// cannot find and the original in the sending app would never see those changes.
+  /// Instead the user is asked to use our own 'Open Database' action to pick the file
+  /// from its own location, which opens it in place and writable.
+  /// So every file that lands in this dir is removed as soon as we notice it
+
+  private static var inboxDirUrl: URL? {
+    guard let documentsDir = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).first else {
+      return nil
+    }
+    return URL(fileURLWithPath: documentsDir, isDirectory: true).appendingPathComponent("Inbox", isDirectory: true)
+  }
+
+  // Deletes everything in Documents/Inbox
+  //
+  // Called with the file another app has just handed over and also at every app start so
+  // that anything left behind by a version of the app that did not delete it, or by a
+  // force quit before the delete, does not stay around
+  static func sweepInboxFiles() {
+    guard let inboxDir = inboxDirUrl,
+          FileManager.default.fileExists(atPath: inboxDir.path) else {
+      return
+    }
+
+    do {
+      let urls = try FileManager.default.contentsOfDirectory(at: inboxDir, includingPropertiesForKeys: nil)
+      for url in urls {
+        do {
+          try FileManager.default.removeItem(at: url)
+          logger.debug("Inbox sweep removed the file \(url.lastPathComponent)")
+        } catch {
+          logger.error("Inbox sweep could not remove \(url.lastPathComponent) \(error)")
+        }
+      }
+    } catch {
+      logger.error("Reading the inbox dir contents failed \(error)")
+    }
   }
 }

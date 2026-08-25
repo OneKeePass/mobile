@@ -2,6 +2,7 @@ package com.onekeepassmobile.autofill.util
 
 import android.app.assist.AssistStructure
 import android.os.Build
+import android.util.Log
 import android.view.View
 import android.view.ViewStructure
 import android.view.autofill.AutofillId
@@ -9,7 +10,32 @@ import android.widget.EditText
 import com.onekeepassmobile.autofill.AutofillView
 import com.onekeepassmobile.autofill.ParseResultData
 
+private const val FIELD_TAG = "OkpAF"
+
 private val ignoredOtherHints: List<String> = listOf("search", "find", "recipient", "edit", )
+
+// Terms that mean a card security code and never a 2FA code. Checked before the otp terms
+// below, otherwise a payment form's CVV field would be offered a TOTP and silently filled
+// with one
+private val cardSecurityCodeHints: List<String> = listOf("cvv", "cvc", "csc", "security code", "securitycode",)
+
+// Both the run-together forms a resource id uses and the spaced forms a human readable hint
+// uses, since either can be the only signal a native app gives. The card security code terms
+// above are checked first, so "security code" never reaches these
+private val supportedOtherTotpHints: List<String> = listOf(
+        "otp", "totp", "2fa", "mfa", "authcode", "auth_code", "auth code",
+        "onetime", "one_time", "one-time", "one time",
+        "verificationcode", "verification_code", "verification code",
+        "verifycode", "verify code", "passcode",
+)
+
+// View.AUTOFILL_HINT_SMS_OTP is API 30. The literal is used so the same detection works on
+// the API 26-29 devices we still support
+private const val AUTOFILL_HINT_SMS_OTP_VALUE: String = "smsOTPCode"
+
+// The w3c autocomplete token itself. Chrome forwards the raw token as an autofill hint rather
+// than mapping it onto the platform sms otp constant
+private const val ONE_TIME_CODE_HINT_VALUE: String = "one-time-code"
 
 private val supportedOtherPasswordHints: List<String> = listOf("password", "pswd")
 
@@ -19,6 +45,8 @@ private val supportedViewHints: List<String> = listOf(
         View.AUTOFILL_HINT_EMAIL_ADDRESS,
         View.AUTOFILL_HINT_PASSWORD,
         View.AUTOFILL_HINT_USERNAME,
+        AUTOFILL_HINT_SMS_OTP_VALUE,
+        ONE_TIME_CODE_HINT_VALUE,
 )
 
 /**
@@ -42,11 +70,21 @@ fun AssistStructure.ViewNode.toAutofillView(): AutofillView? =
                                 isFocused = this.isFocused,
                                 textValue = this.autofillValue?.extractTextValue(),
                         )
-                        buildAutofillView(
+                        val autofillView = buildAutofillView(
                                 autofillOptions = autofillOptions,
                                 autofillViewData = autofillViewData,
                                 supportedHint = supportedHint,
                         )
+
+                        // The signals each field was classified from. Field detection depends
+                        // entirely on what the browser or app chooses to expose, and that varies,
+                        // so a misclassified field is otherwise very hard to account for
+                        Log.d(FIELD_TAG, "Field classified as ${autofillView.javaClass.simpleName}" +
+                                " hints=${this.autofillHints?.joinToString()}" +
+                                " idEntry=${this.idEntry} hint=${this.hint}" +
+                                " htmlAttrs=${this.htmlInfo?.attributes?.joinToString { "${it.first}=${it.second}" }}")
+
+                        autofillView
                     } else {
                         null
                     }
@@ -135,6 +173,14 @@ private fun AssistStructure.ViewNode.buildAutofillView(
         supportedHint: String?,
 ): AutofillView = when {
 
+    // Checked before password/username: a 2FA code field often carries a numeric password
+    // input type as well, and would otherwise be taken for a password field
+    this.isTotpField(supportedHint) -> {
+        AutofillView.Totp(
+                data = autofillViewData,
+        )
+    }
+
     this.isPasswordField(supportedHint) -> {
         AutofillView.Login.Password(
                 data = autofillViewData,
@@ -152,6 +198,37 @@ private fun AssistStructure.ViewNode.buildAutofillView(
                 data = autofillViewData,
         )
     }
+}
+
+// Whether this node is a 2FA / one time code field.
+//
+// The explicit signals (the platform sms otp hint and the w3c autocomplete="one-time-code")
+// are authoritative. The id/hint terms are a heuristic for native apps, which mostly set no
+// hint at all - guarded by the card security code terms so a CVV field is never taken for a
+// 2FA field
+fun AssistStructure.ViewNode.isTotpField(supportedHint: String?,): Boolean {
+    if (supportedHint == AUTOFILL_HINT_SMS_OTP_VALUE) return true
+
+    if (supportedHint == ONE_TIME_CODE_HINT_VALUE) return true
+
+    if (this.htmlInfo.isOneTimeCodeField()) return true
+
+    // A web field carries its identity in the html name/id rather than in idEntry, which Chrome
+    // leaves unset, so those are read as well before falling back to the native heuristic
+    val htmlNames = this.htmlInfo.attributeValues("name", "id")
+
+    val isCardSecurityCode = this.idEntry?.containsAnyTerms(cardSecurityCodeHints) == true ||
+            this.hint?.containsAnyTerms(cardSecurityCodeHints) == true ||
+            htmlNames.any { it.containsAnyTerms(cardSecurityCodeHints) }
+    if (isCardSecurityCode) return false
+
+    val isInvalidField = this.idEntry?.containsAnyTerms(ignoredOtherHints) == true ||
+            this.hint?.containsAnyTerms(ignoredOtherHints) == true
+    if (isInvalidField) return false
+
+    return this.idEntry?.containsAnyTerms(supportedOtherTotpHints) == true ||
+            this.hint?.containsAnyTerms(supportedOtherTotpHints) == true ||
+            htmlNames.any { it.containsAnyTerms(supportedOtherTotpHints) }
 }
 
 fun AssistStructure.ViewNode.isPasswordField(supportedHint: String?,): Boolean {
@@ -208,6 +285,18 @@ private fun ViewStructure.HtmlInfo?.isUsernameField(): Boolean =
                     }
                 } ?: false
 
+// The w3c autocomplete token browsers use for a one time code field
+private fun ViewStructure.HtmlInfo?.isOneTimeCodeField(): Boolean =
+        this?.let { htmlInfo ->
+                    if (htmlInfo.isInputField) {
+                        htmlInfo.attributes?.any {
+                            it.first == "autocomplete" && it.second == "one-time-code"
+                        }
+                    } else {
+                        false
+                    }
+                } ?: false
+
 private fun ViewStructure.HtmlInfo?.isPasswordField(): Boolean =
         this?.let { htmlInfo ->  if (htmlInfo.isInputField) { htmlInfo.attributes?.any {
                                     it.first == "type" && it.second == "password"
@@ -217,6 +306,14 @@ private fun ViewStructure.HtmlInfo?.isPasswordField(): Boolean =
                     }
                 }
                 ?: false
+
+// The values of the named html attributes of an input node, in the order asked for.
+private fun ViewStructure.HtmlInfo?.attributeValues(vararg names: String): List<String> =
+        this?.takeIf { it.isInputField }
+                ?.attributes
+                ?.filter { names.contains(it.first) }
+                ?.mapNotNull { it.second }
+                ?: emptyList()
 
 // Whether this HtmlInfo represents an input field.
 private val ViewStructure.HtmlInfo?.isInputField: Boolean get() = this?.tag == "input"

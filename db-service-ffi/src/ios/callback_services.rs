@@ -4,6 +4,25 @@ use std::{collections::HashMap, sync::Arc};
 
 use crate::{udl_types::ApiCallbackResult, OkpResult};
 
+// An entry that can produce a TOTP, with the services it applies to. Becomes one
+// ASOneTimeCodeCredentialIdentity per service url on the Swift side
+#[derive(uniffi::Record, Clone, Debug)]
+pub struct OtpIdentityData {
+    pub entry_uuid: String,
+    pub label: String,
+    pub service_urls: Vec<String>,
+}
+
+impl From<onekeepass_core::db_service::autofill::OtpEntryIdentity> for OtpIdentityData {
+    fn from(s: onekeepass_core::db_service::autofill::OtpEntryIdentity) -> Self {
+        Self {
+            entry_uuid: s.entry_uuid,
+            label: s.label,
+            service_urls: s.service_urls,
+        }
+    }
+}
+
 #[derive(uniffi::Record)]
 pub struct PasskeySummaryData {
     pub entry_uuid: String,
@@ -100,6 +119,17 @@ pub fn ios_callback_service_initialize(ios_api_service: Arc<dyn IosApiService>) 
 #[uniffi::export(with_foreign)]
 pub trait IosApiService: Send + Sync {
     fn clipboard_copy_string(&self, text: String, timeout: u32) -> ApiCallbackResult<()>;
+
+    // One time code identities (iOS 18+). Registering these is what makes iOS offer
+    // OneKeePass on a verification code field - without them the OS never calls
+    // prepareOneTimeCodeCredentialList. Same save/remove diff shape as the passkey
+    // identities above
+    fn register_one_time_code_identities(
+        &self,
+        db_key: String,
+        old_identities: Vec<OtpIdentityData>,
+        new_identities: Vec<OtpIdentityData>,
+    ) -> ApiCallbackResult<()>;
 
     fn register_passkey_identities(
         &self,

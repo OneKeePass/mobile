@@ -135,6 +135,7 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
         password,
         key_file_name,
         biometric_auth_used,
+        transient_db_ref,
     } = serde_json::from_str(json_args)?
     else {
         return Err(OkpError::UnexpectedError(format!(
@@ -220,7 +221,16 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
     backup::prune_backup_history_files(&db_file_name);
 
     // AppState::add_recent_db_use_info(&db_file_name);
-    AppState::add_recently_used_with_file_info(&db_file_name, &info);
+
+    // A recently used entry is an offer to open the db again by pressing it later. The uri of
+    // a db handed over by another app is a one time grant and that offer cannot be kept - see
+    // 'transient_db_ref'. The db is opened and used as any other one in this session and only
+    // the recently used list is left alone
+    if transient_db_ref {
+        debug!("The db uri is a transient one and it is not added to the recently used list");
+    } else {
+        AppState::add_recently_used_with_file_info(&db_file_name, &info);
+    }
 
     #[cfg(target_os = "ios")]
     {
@@ -376,11 +386,12 @@ pub(crate) fn write_to_backup_on_error(full_file_name_uri: String) -> ApiRespons
     // and that is converted to ApiResponse. Helps to use ?. May be used in fuctions also
     // to avoid using too many match calls
     let f = || {
-        // We will get the file name from the recently used list
-        // instead of using AppState uri_to_file_name method as that call may fail in case of Android
-        let file_name = AppState::file_name_in_recently_used(&full_file_name_uri).ok_or(
+        // The file name comes from the recently used list first as the uri based one used to
+        // fail for some android content providers. A db handed over by another app is not in
+        // that list at all and the uri based name is the only one available for it
+        let file_name = AppState::db_file_name(&full_file_name_uri).ok_or(
             OkpError::UnexpectedError(format!(
-                "There is no file name found for the uri {} in the recently used list",
+                "There is no file name found for the uri {}",
                 &full_file_name_uri
             )),
         )?;

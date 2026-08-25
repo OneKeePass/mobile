@@ -4,6 +4,7 @@
    [onekeepass.mobile.rn-components :as rnc :refer [custom-color0
                                                     page-title-text-variant
                                                     appbar-text-color
+                                                    no-assist-text-props
                                                     page-background-color
                                                     rnp-text-input
                                                     rn-scroll-view
@@ -125,14 +126,15 @@
                       :on-change (select-on-change-factory-1 :capitalize-words)}]]
 
       [rn-view {:style {:margin-top 5}}
-       [rnp-text-input {:style {}
-                        :label (lstr-l 'separator)
-                        :editable true
-                        :defaultValue separator
-                        :onChangeText #(pg-events/pass-phrase-options-update  :separator %)}]]]]))
+       [rnp-text-input (merge no-assist-text-props
+                              {:style {}
+                               :label (lstr-l 'separator)
+                               :editable true
+                               :defaultValue separator
+                               :onChangeText #(pg-events/pass-phrase-options-update  :separator %)})]]]]))
 
 (defn password-gen-panel
-  [{:keys [numbers symbols lowercase-letters uppercase-letters]}]
+  [{:keys [numbers symbols lowercase-letters uppercase-letters exclude-similar-characters]}]
   [rn-view {:style (get-form-style)}
    [rn-view {:style {:flexDirection "row" :min-height 50}}  ;;:justify-content "space-between"
     [rnp-text {:style {:align-self "center" :width "20%"} :variant "titleMedium"} (lstr-l 'length)]
@@ -148,6 +150,10 @@
                  :onSlidingComplete (fn [v]
                                       (pg-events/password-options-update :length v))}]
     [rnp-text {:style {:align-self "center" :text-align "center" :width "15%"}} @(pg-events/password-length-slider-value)]]
+
+   ;; A hint shown below the length slider
+   [rn-view {:style {:margin-bottom 8}}
+    [rnp-text {:style {:color @rnc/outline-color} :variant "bodySmall"} (lstr-l 'lengthHint)]]
 
    [rnp-divider {:style {}}]
    [rn-view {:style {:flexDirection "row" :min-height 50 :justify-content "space-between"}}
@@ -177,7 +183,16 @@
     [rnp-text {:style {:align-self "center"} :variant "titleMedium"} (lstr-l 'symbols)]
     [rnp-switch {:style {:align-self "center"}
                  :value symbols
-                 :onValueChange #(pg-events/password-options-update :symbols (not symbols))}]]])
+                 :onValueChange #(pg-events/password-options-update :symbols (not symbols))}]]
+
+   [rnp-divider {:style {}}]
+   [rn-view {:style {:flexDirection "row" :min-height 50 :justify-content "space-between"}}
+    [rnp-text {:style {:align-self "center" :width "80%"} :variant "titleMedium"}
+     (lstr-l 'excludeSimilarCharacters)]
+    [rnp-switch {:style {:align-self "center"}
+                 :value exclude-similar-characters
+                 :onValueChange #(pg-events/password-options-update
+                                  :exclude-similar-characters (not exclude-similar-characters))}]]])
 
 (defn main-content []
   (let [{:keys [analyzed-password score]} @(pg-events/generator-password-result)
@@ -195,7 +210,10 @@
      [rn-view {:style (merge {:flexDirection "column"} (get-form-style))}
       [rn-view {:style {:flexDirection "row" :min-height 75}}
        [rn-view {:style {:flexDirection "row" :flexWrap "wrap" :align-content "center" :width "80%"}}
-        [rnp-text {:style {:align-self "center" :color @rnc/primary-color} :variant "titleLarge"} generated-password]]
+        ;; The generated value is shown in a fixed width font. Only a password is colorized
+        ;; per character; a pass phrase is read as words and uses the plain text color
+        [cc/colored-password generated-password (= panel-shown "password")
+         {:style {:align-self "center" :fontSize 22 :letterSpacing 0.5}}]]
        [rnp-icon-button  {:style {:align-self "center"}
                           :icon "content-copy"
                           :onPress (fn [_e]

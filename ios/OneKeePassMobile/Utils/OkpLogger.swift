@@ -21,8 +21,10 @@ class OkpLogger {
     ///
     /// - parameters:
     ///     * message: The message to log
-    func debug(_ message: String) {
-        log(message, type: .debug)
+    func debug(_ message: @autoclosure () -> String) {
+#if DEBUG
+        log(message(), type: .debug)
+#endif
     }
 
     /// Output an info log message

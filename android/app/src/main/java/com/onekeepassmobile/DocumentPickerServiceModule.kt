@@ -292,6 +292,20 @@ class DocumentPickerServiceModule(reactContext: ReactApplicationContext) : React
     }
 
     /**
+     * Called to save a copy of a database to a location picked by the user - the 'Save As' action
+     * @param fullPreparedDbFileName is the app local path of the db copy that is already prepared
+     * @param kdbxFileName is the name suggested to the user in the picker
+     *
+     * The copying done in the handler ('saveKeyFile') is a plain local file to the picked
+     * uri copy and is not specific to key files
+     */
+    @ReactMethod
+    fun pickKdbxFileToSave(fullPreparedDbFileName:String,kdbxFileName:String,promise:Promise) {
+        // Delegates to the existing picker used for saving key file from inside our app to device
+        pickKeyFileToSave(fullPreparedDbFileName,kdbxFileName,promise)
+    }
+
+    /**
      *  Called once user picks a location with name change if any
      *  @param pickedFullFileNameUri is the final name from Activity handler
      *  @param localKeyFileFullName

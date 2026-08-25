@@ -6,6 +6,7 @@
                                                     page-background-color
                                                     inverse-onsurface-color
                                                     page-title-text-variant
+                                                    no-assist-text-props
                                                     rn-view
                                                     rn-safe-area-view
                                                     rn-section-list
@@ -99,19 +100,19 @@
     [rn-view {:flex 1 :backgroundColor @page-background-color} ;;
      [form-header (lstr-l 'databaseDetails)]
      [rn-view {:style form-style}
-      [rnp-text-input {:label (lstr-l 'databaseName)
-                       ;;:value database-name
-                       ;; Need to use defaultValue prop instead of value prop to handle the text caret cursor movement
-                       ;; This is required mainly for android. Otherwise the cursor does not move after a letter is inserted 
-                       :defaultValue database-name
-                       :autoCapitalize "none"
-                       :onChangeText #(stgs-events/db-settings-data-field-update [:meta :database-name] %)}]
+      [rnp-text-input (merge no-assist-text-props
+                             {:label (lstr-l 'databaseName)
+                              ;;:value database-name
+                              ;; Need to use defaultValue prop instead of value prop to handle the text caret cursor movement
+                              ;; This is required mainly for android. Otherwise the cursor does not move after a letter is inserted
+                              :defaultValue database-name
+                              :onChangeText #(stgs-events/db-settings-data-field-update [:meta :database-name] %)})]
       (when-not (nil? error-text) [rnp-helper-text {:type "error" :visible true} error-text])
-      [rnp-text-input {:label (lstr-l 'databaseDesc)
-                       ;;:value database-description
-                       :defaultValue database-description
-                       :onChangeText #(stgs-events/db-settings-data-field-update [:meta :database-description] %)
-                       :autoCapitalize "none"}]]]))
+      [rnp-text-input (merge no-assist-text-props
+                             {:label (lstr-l 'databaseDesc)
+                              ;;:value database-description
+                              :defaultValue database-description
+                              :onChangeText #(stgs-events/db-settings-data-field-update [:meta :database-description] %)})]]]))
 
 (defn password-credential [{:keys [password-visible password-use-removed password-use-added]
                             {:keys [password
@@ -134,16 +135,17 @@
 
          [rn-view {:style {:flexDirection "row"}}
           [rn-view {:style {:width "85%"}}
-           [rnp-text-input {:style {}
-                            :label (if password-use-added (lstr-bl "addPassword") (lstr-bl "changePassword"))
-                            :value password
-                            :secureTextEntry (not password-visible)
-                            :right (r/as-element [rnp-text-input-icon
-                                                  {:icon  (if password-visible ICON-EYE ICON-EYE-OFF)
-                                                   :onPress #(stgs-events/db-settings-field-update
-                                                              :password-visible (not password-visible))}])
-                            ;; on-change-text is a single argument function
-                            :onChangeText update-password}]]
+           [rnp-text-input (merge no-assist-text-props
+                                  {:style {}
+                                   :label (if password-use-added (lstr-bl "addPassword") (lstr-bl "changePassword"))
+                                   :value password
+                                   :secureTextEntry (not password-visible)
+                                   :right (r/as-element [rnp-text-input-icon
+                                                         {:icon  (if password-visible ICON-EYE ICON-EYE-OFF)
+                                                          :onPress #(stgs-events/db-settings-field-update
+                                                                     :password-visible (not password-visible))}])
+                                   ;; on-change-text is a single argument function
+                                   :onChangeText update-password})]]
 
           [rn-view {:style {:backgroundColor @page-background-color}}  ;;
            [rnp-icon-button {:style {}

@@ -15,7 +15,7 @@ use crate::{
         AppLockPreference, DatabasePreference, Preference, PreferenceData, RecentlyUsed,
         PREFERENCE_JSON_FILE_NAME,
     },
-    remote_storage,
+    backup, remote_storage,
     udl_types::SecureKeyOperation,
     udl_uniffi_exports::{CommonDeviceServiceEx, SecureEnclaveCbService},
     util,
@@ -145,6 +145,19 @@ impl AppState {
         // As we started storing backup files to the folder 'backups/history' since 0.15.0 rlease
         // we remove the old backup files
         remove_old_0140v_backup_files(&app_dir);
+
+        // Any backup dir that belongs to no db in the recently used list is of no use to the
+        // user anymore. This is done only on the very first call as a repeat one can happen
+        // while a db is open and the backup dir of a transient db would then be deleted
+        // while it is still in use
+        if APP_STATE.get().is_none() {
+            let db_keys_in_use: Vec<String> = preference
+                .recent_dbs_info_ref()
+                .iter()
+                .map(|r| r.db_file_path.clone())
+                .collect();
+            backup::remove_orphaned_backup_dirs(&backup_history_dir_path, &db_keys_in_use);
+        }
 
         let app_state = AppState {
             app_home_dir: app_dir.into(),
@@ -491,6 +504,24 @@ impl AppState {
             .lock()
             .unwrap()
             .file_name_in_recently_used(db_key)
+    }
+
+    // The file name of a db taken from the recently used list first and derived from the uri
+    // when it is not in that list
+    //
+    // A db opened from another app's 'Open with' handover is deliberately kept out of the
+    // recently used list - see 'transient_db_ref' - and the callers that used to rely on that
+    // list for the name alone need to keep working for such a db
+    pub fn db_file_name(db_key: &str) -> Option<String> {
+        if let Some(file_name) = Self::file_name_in_recently_used(db_key) {
+            return Some(file_name);
+        }
+        let file_name = Self::uri_to_file_name(db_key);
+        if file_name.trim().is_empty() {
+            None
+        } else {
+            Some(file_name)
+        }
     }
 
     #[inline]

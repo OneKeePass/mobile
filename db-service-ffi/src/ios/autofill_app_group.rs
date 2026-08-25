@@ -1,3 +1,4 @@
+mod otp_identity_service;
 mod passkey_service;
 pub use passkey_service::PendingPasskeyRecord;
 
@@ -83,6 +84,9 @@ pub(crate) fn delete_copied_autofill_details(db_key: &str) -> OkpResult<()> {
         );
     }
 
+    // The db is no longer available to autofill, so the OS must stop offering its codes
+    otp_identity_service::remove_otp_identities_for_db(db_key);
+
     Ok(())
 }
 
@@ -109,6 +113,9 @@ pub(crate) fn copy_files_to_app_group_on_save_or_read(db_key: &str) {
     debug!("register_passkey_identities_for_db is called in copy_files_to_app_group_on_save_or_read ");
     // Update ASCredentialIdentityStore with current passkeys for this db
     passkey_service::register_passkey_identities_for_db(db_key);
+    // ...and with the entries that can produce a TOTP, which is what makes iOS offer us on
+    // a verification code field
+    otp_identity_service::register_otp_identities_for_db(db_key);
 }
 
 // Called during app reset
@@ -127,6 +134,9 @@ pub(crate) fn remove_all_app_extension_contents() {
     if let Ok(path) = app_group_root_sub_dir(passkey_service::REGISTERED_PASSKEY_IDS_DIR) {
         let _ = remove_dir_contents(path);
     }
+
+    // ...and the persisted registered one time code identity files
+    otp_identity_service::remove_all_registered_otp_identity_files();
 
     if let Some(path) = autofill_meta_json_file() {
         let _ = fs::remove_file(path);
@@ -445,6 +455,7 @@ impl IosAppGroupSupportService {
         let result = copy_files_to_app_group(&db_key)?;
         debug!("IosAppGroupSupportService:copy_files_to_app_group completed");
         passkey_service::register_passkey_identities_for_db(&db_key);
+        otp_identity_service::register_otp_identities_for_db(&db_key);
         Ok(result)
     }
 
@@ -542,13 +553,14 @@ impl IosAppGroupSupportService {
     // Gets the list of all entries in a database that is opened in autofill extension
     fn all_entries_on_db_open(&self, json_args: &str) -> ResponseJson {
         let inner_fn = || -> OkpResult<Vec<db_service::EntrySummary>> {
-            let (db_file_name, password, key_file_name, biometric_auth_used) = parse_command_args_or_err!(
+            let (db_file_name, password, key_file_name, biometric_auth_used, _) = parse_command_args_or_err!(
                 json_args,
                 OpenDbArg {
                     db_file_name,
                     password,
                     key_file_name,
-                    biometric_auth_used
+                    biometric_auth_used,
+                    transient_db_ref
                 }
             );
 
@@ -601,6 +613,17 @@ impl IosAppGroupSupportService {
     }
 
     fn credential_service_identifier_filtering(&self, json_args: &str) -> ResponseJson {
+        self.service_identifier_filtering(json_args, false)
+    }
+
+    // The TOTP counterpart of credential_service_identifier_filtering, used when the
+    // extension was launched for a one-time-code request. Only entries that can produce
+    // a code are returned; offering any other entry would dead-end the user
+    fn one_time_code_service_identifier_filtering(&self, json_args: &str) -> ResponseJson {
+        self.service_identifier_filtering(json_args, true)
+    }
+
+    fn service_identifier_filtering(&self, json_args: &str, require_otp: bool) -> ResponseJson {
         let inner_fn = || -> OkpResult<db_service::EntrySearchResult> {
             let (db_key,) = parse_command_args_or_err!(json_args, DbKey { db_key });
 
@@ -616,7 +639,13 @@ impl IosAppGroupSupportService {
             let input_url = if let Some(url) = identifiers.get("url") {
                 url.to_string()
             } else if let Some(domain) = identifiers.get("domain") {
-                format!("https://{}", domain)
+                // A domain that already carries a scheme is used as is. Prefixing it would
+                // give a url with two schemes, which parses to nothing the matcher can use
+                if domain.contains("://") {
+                    domain.to_string()
+                } else {
+                    format!("https://{}", domain)
+                }
             } else {
                 String::default()
             };
@@ -625,7 +654,7 @@ impl IosAppGroupSupportService {
             // Only Login entries whose URL (or Additional URLs) matches are offered
             // (consistent with the desktop browser extension).
             let entry_items =
-                db_service::autofill::find_matching_login_entries(&db_key, &input_url)?;
+                db_service::autofill::find_matching_entries(&db_key, &input_url, require_otp)?;
             // The auto-match term is left empty so the searchbar starts blank
             // (showing the full match url there is awkward). The matched entries
             // are returned regardless; the searchbar is only for manual override.
@@ -707,6 +736,9 @@ impl IosAppGroupSupportService {
             // "database_preferences" => ok_json_str(AppState::database_preferences()),
             "list_of_key_files" => self.list_of_key_files(),
             "all_entries_on_db_open" => self.all_entries_on_db_open(json_args),
+            "one_time_code_service_identifier_filtering" => {
+                self.one_time_code_service_identifier_filtering(json_args)
+            }
             "credential_service_identifier_filtering" => {
                 self.credential_service_identifier_filtering(json_args)
             }

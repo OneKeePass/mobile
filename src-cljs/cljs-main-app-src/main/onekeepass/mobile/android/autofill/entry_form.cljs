@@ -5,11 +5,12 @@
             [onekeepass.mobile.common-components :refer [select-field-view]]
             [onekeepass.mobile.constants :as const :refer [ONE_TIME_PASSWORD_TYPE
                                                            OTP]]
-            [onekeepass.mobile.entry-form-fields :refer [field-focus-action
-                                                         formatted-token text-field]]
+            [onekeepass.mobile.entry-form-fields :refer [field-focus-action text-field]]
+            [onekeepass.mobile.otp-badge :refer [formatted-token]]
             [onekeepass.mobile.rn-components
              :as rnc
-             :refer [animated-circular-progress page-background-color
+             :refer [animated-circular-progress no-autocorrect-text-props
+                     page-background-color
                      primary-container-color rn-view rnp-chip rnp-helper-text
                      rnp-text rnp-text-input]]
             [onekeepass.mobile.translation :refer [lstr-l lstr-section-name]]
@@ -35,12 +36,13 @@
   (let [value @(android-af-ef-events/entry-form-data-fields :notes)]
     (when (or edit (not (str/blank? value)))
       [rn-view {:style {:padding-right 5 :padding-left 5 :borderWidth 0.20 :borderRadius 4}}
-       [rnp-text-input {:style {:width "100%"} :multiline true :label (lstr-l "notes")
-                        :defaultValue value
-                        :ref (fn [^js/Ref ref]
-                               (reset! notes-ref ref))
-                        :showSoftInputOnFocus edit
-                        :onChangeText #()  #_(when edit #(form-events/entry-form-data-update-field-value :notes %))}]])))
+       [rnp-text-input (merge no-autocorrect-text-props
+                              {:style {:width "100%"} :multiline true :label (lstr-l "notes")
+                               :defaultValue value
+                               :ref (fn [^js/Ref ref]
+                                      (reset! notes-ref ref))
+                               :showSoftInputOnFocus edit
+                               :onChangeText #()  #_(when edit #(form-events/entry-form-data-update-field-value :notes %))})]])))
 
 (defn tags [edit]
   (let [entry-tags @(android-af-ef-events/entry-form-data-fields :tags)

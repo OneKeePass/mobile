@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">OneKeePass</string>
+    <!-- Use the following app name when we want to install debug version along with the play store one
+     on a device during dev time
+    -->
+    <!--    <string name="app_name">OKP</string>-->
+</resources>

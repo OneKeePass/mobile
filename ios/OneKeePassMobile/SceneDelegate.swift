@@ -24,6 +24,13 @@ class SceneDelegate: NSObject, UIWindowSceneDelegate {
   
   // Keep the ref to URL to use in native modules OkpDbService and OkpEvents
   static var openUrl: URL?
+
+  // False when the sending app handed over the file as a copy instead of opening it in place.
+  // In that case the copy is in our own Documents/Inbox dir and we do not open it. See
+  // FileUtils and OkpEvents.calledWithUrl.
+  // Which app sends a copy and which one opens in place is decided by the sending app,
+  // so this flag from iOS is the only signal we use
+  static var openUrlInPlace: Bool = true
   
   var window: UIWindow?
   
@@ -42,6 +49,7 @@ class SceneDelegate: NSObject, UIWindowSceneDelegate {
       // As ReactContext is not yet, we cannot emit event to UI, we can store here
       // and UI side the open url is pulled
       SceneDelegate.openUrl = urlContext.url
+      SceneDelegate.openUrlInPlace = urlContext.options.openInPlace
     }
 
     // Old way of setting rootViewController using AppDelegate's rctRootView
@@ -71,8 +79,8 @@ class SceneDelegate: NSObject, UIWindowSceneDelegate {
   func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
     logger.debug("scene with openURLContexts called \(URLContexts)")
     
-    if !URLContexts.isEmpty {
-      OkpEvents.calledWithUrl(URLContexts.first!.url)
+    if let urlContext = URLContexts.first {
+      OkpEvents.calledWithUrl(urlContext.url, openInPlace: urlContext.options.openInPlace)
     }
     
     URLContexts.forEach { context in

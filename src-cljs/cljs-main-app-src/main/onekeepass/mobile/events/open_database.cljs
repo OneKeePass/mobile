@@ -5,6 +5,7 @@
    [onekeepass.mobile.constants :as const]
    [onekeepass.mobile.events.common :refer [biometric-enabled-to-open-db
                                             biometric-enabled-to-unlock-db
+                                            current-page
                                             on-ok
                                             opened-db-keys
                                             is-db-locked]]
@@ -56,6 +57,19 @@
 (defn repick-confirm-data []
   (subscribe [:repick-confirm-data]))
 
+(defn copy-handed-over-close
+  "Called when the user dismisses the message shown for a db file that another app sent as a copy"
+  []
+  (dispatch [:open-database-copy-handed-over-close]))
+
+(defn copy-handed-over-open-database
+  "Called when the user accepts to pick the database from its own location"
+  []
+  (dispatch [:open-database-copy-handed-over-open-database]))
+
+(defn copy-handed-over-data []
+  (subscribe [:open-database-copy-handed-over-data]))
+
 (defn open-database-read-db-file
   "Called when user clicks the continue button. By this time user would have picked a file to open in the 
   previous pick file call and provided credentials that are stored in a map in :open-database 
@@ -85,9 +99,13 @@
                      :password nil
                      ;; This is the full key file path. See event :open-database-key-file-selected where it is set
                      :key-file-name nil
-                     ;; This is set and used when user tries to open a child database and the db is not found in the 
+                     ;; This is set and used when user tries to open a child database and the db is not found in the
                      ;; recently used list
-                     :auto-open-props {}})
+                     :auto-open-props {}
+
+                     ;; True when the db uri came from another app's 'Open with' or 'Open in'
+                     ;; See the event :open-database/app-opened-with-db-file
+                     :transient-db-ref false})
 
 (defn- init-open-database-data
   "Initializes all open db related values in the incoming main app db 
@@ -101,12 +119,13 @@
    the dialog-show field to true. 
    Returns the updated 'app-db'  
    "
-  [db  {:keys [file-name full-file-name-uri]}]
+  [db  {:keys [file-name full-file-name-uri transient-db-ref]}]
   (-> db init-open-database-data
       ;; database-file-name is just the 'file name' part derived from full uri 'database-full-file-name'
       ;; to show in the dialog
       (assoc-in [:open-database :database-file-name] file-name)
       (assoc-in [:open-database :database-full-file-name] full-file-name-uri)
+      (assoc-in [:open-database :transient-db-ref] (boolean transient-db-ref))
       (assoc-in [:open-database :dialog-show] true)))
 
 (defn- validate-required-fields
@@ -186,7 +205,70 @@
                                   #(dispatch [:database-file-pick-error %]))]
         (dispatch [:database-file-repicked picked-response]))))))
 
-;; A database file is already picked in the previous event (Storage selection dialog). 
+;;;;;;;;;;;;;;;;;;;;  A .kdbx file is pressed in another app ;;;;;;;;;;;;;;;;;;;;;
+
+;; Called when the user presses a .kdbx file in another app and picks our app
+;;
+;; The iOS side sends 'copy-handed-over' when the other app handed over a copy of the file
+;; instead of the file itself. That copy sits in a dir of our own sandbox that the user
+;; cannot see, it cannot be written to and it is deleted right away. So instead of opening
+;; it we ask the user to open the database from where it is actually kept
+;;
+;; Both messages are shown in the home page only. If the user is in an entry list, an entry
+;; form or any other page of an already opened db, just setting the dialog data leaves the
+;; user with no dialog at all and it pops up much later when the user happens to navigate
+;; back. So we come back to the home page first
+;; On android the uri another app hands over through its 'Open with' or 'Open in' action comes
+;; from a different content provider than the one our own 'Open database' action gets for the
+;; very same file - 'com.google.android.apps.docs.storage.legacy' against
+;; 'com.google.android.apps.docs.storage' for example. It is also a one time grant that we take
+;; no persistable permission on. So the db is opened and used normally but is not offered in the
+;; recently used list, as pressing it there later would fail and it would also sit next to the
+;; entry of the same db opened through our own action
+;;
+;; iOS is not marked. There an in place url is bookmarked exactly as the document picker does
+;; and it is the same db key for the same file - see FileUtils.coordinatedSyncBookMarking. The
+;; copy handover case is refused below and never opened at all
+(reg-event-fx
+ :open-database/app-opened-with-db-file
+ (fn [{:keys [db]} [_event-id {:keys [file-name copy-handed-over] :as kdbx-file-info-m}]]
+   (let [in-home-page? (= const/HOME_PAGE_ID (current-page db))
+         kdbx-file-info-m (assoc kdbx-file-info-m :transient-db-ref (bg/is-Android))
+         show-event (if (= "true" copy-handed-over)
+                      [:open-database-copy-handed-over-show file-name]
+                      [:open-database/database-file-picked kdbx-file-info-m])]
+     {:fx [(when-not in-home-page? [:dispatch [:common/to-home-page]])
+           [:dispatch show-event]]})))
+
+(reg-event-db
+ :open-database-copy-handed-over-show
+ (fn [db [_event-id file-name]]
+   (-> db
+       (assoc-in [:open-database :copy-handed-over :dialog-show] true)
+       (assoc-in [:open-database :copy-handed-over :file-name] file-name))))
+
+(reg-event-db
+ :open-database-copy-handed-over-close
+ (fn [db [_event-id]]
+   (-> db
+       (assoc-in [:open-database :copy-handed-over :dialog-show] false)
+       (assoc-in [:open-database :copy-handed-over :file-name] nil))))
+
+(reg-event-fx
+ :open-database-copy-handed-over-open-database
+ (fn [{:keys [db]} [_event-id]]
+   {:db (-> db
+            (assoc-in [:open-database :copy-handed-over] {:dialog-show false :file-name nil}))
+    :fx [[:dispatch [:pick-database-file]]]}))
+
+(reg-sub
+ :open-database-copy-handed-over-data
+ (fn [db _query-vec]
+   (get-in db [:open-database :copy-handed-over])))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; A database file is already picked in the previous event (Storage selection dialog).
 ;; This will make dialog open status true and login dialog is shown
 
 ;; This event is called from start page, remote page and native event handler
@@ -335,7 +417,7 @@
 (reg-event-fx
  :database-file-repicked
  (fn [{:keys [db]} [_event-id {:keys [full-file-name-uri] :as picked-response}]]
-   (let [{:keys [database-full-file-name password key-file-name]} (get db :open-database)]
+   (let [{:keys [database-full-file-name password key-file-name transient-db-ref]} (get db :open-database)]
      ;; There is a possibility that user might have picked up another database file instead of repicking the original database file
      (if (= database-full-file-name full-file-name-uri)
        ;; User picked up the same database file 
@@ -345,7 +427,10 @@
         :fx [[:bg-load-kdbx [{:db-file-name database-full-file-name
                               :password password
                               :key-file-name key-file-name
-                              :biometric-auth-used false}]]]}
+                              :biometric-auth-used false
+                              ;; The same uri as the earlier attempt and so it stays transient
+                              ;; if it was
+                              :transient-db-ref transient-db-ref}]]]}
        ;; User picked up a different database and it is then treated as similar to pressing 'Open databse' button
        ;; The Open database dialog is shown to enter new credentials
        ;; Do we need show some message about this to the user before proceeding this action?
@@ -367,21 +452,22 @@
  (fn [{:keys [db]} [_event-id]]
    (let [error-fields (validate-required-fields db)
          errors-found (boolean (seq error-fields))
-         {:keys [database-full-file-name password key-file-name]} (get-in db [:open-database])]
+         {:keys [database-full-file-name password key-file-name transient-db-ref]} (get-in db [:open-database])]
      (if errors-found
        {:db (assoc-in db [:open-database :error-fields] error-fields)}
        {:db (-> db (assoc-in [:open-database :status] :in-progress))
         :fx [[:bg-load-kdbx [{:db-file-name database-full-file-name
                               :password password
                               :key-file-name key-file-name
-                              :biometric-auth-used false}]]]}))))
+                              :biometric-auth-used false
+                              :transient-db-ref transient-db-ref}]]]}))))
 
 (reg-fx
  :bg-load-kdbx
- (fn [[{:keys [db-file-name password key-file-name biometric-auth-used kdbx-file-info-m]}]]
+ (fn [[{:keys [db-file-name password key-file-name biometric-auth-used transient-db-ref kdbx-file-info-m]}]]
    ;; db-file-name is db-key
    ;; kdbx-file-info-m will have non nil value only for biometric credentials usage
-   (bg/load-kdbx db-file-name password key-file-name biometric-auth-used
+   (bg/load-kdbx db-file-name password key-file-name biometric-auth-used (boolean transient-db-ref)
                  (fn [api-response]
                    (when-let [kdbx-loaded
                               (on-ok
@@ -693,6 +779,8 @@
          [:dispatch [:common/set-active-db-key (:db-key kdbx-loaded)]]
          [:dispatch [:app-settings/update-user-active-time (:db-key kdbx-loaded)]]
          [:dispatch [:common/message-snackbar-open 'databaseUnlocked]]
+         ;; Any 'otpauth://' url that arrived while the db was locked waits for this
+         [:dispatch [:otp-url-received/check-pending]]
          ;; iOS only: check for pending passkeys created by the Autofill extension
          (when (bg/is-iOS)
            [:dispatch [:passkey-pending/check db-key]])]}))

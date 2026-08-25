@@ -11,6 +11,7 @@
    [onekeepass.mobile.icons-list :refer [CUSTOM-ICONS-LIST-ICON-SIZE]]
    [onekeepass.mobile.rn-components :refer [cust-dialog
                                             icon-color
+                                            no-assist-text-props
                                             page-background-color
                                             rn-image
                                             rn-safe-area-view
@@ -77,12 +78,11 @@
   [cust-dialog {:visible open :dismissable true :onDismiss on-cancel}
    [rnp-dialog-title (lstr-dlg-title 'addCustomIcon)]
    [rnp-dialog-content
-    [rnp-text-input {:label "Url" #_(lstr-l 'url)
-                     :autoCapitalize "none"
-                     :autoCorrect false
-                     :keyboardType "url"
-                     :value (or url "")
-                     :onChangeText on-change}]]
+    [rnp-text-input (merge no-assist-text-props
+                           {:label "Url" #_(lstr-l 'url)
+                            :keyboardType "url"
+                            :value (or url "")
+                            :onChangeText on-change})]]
    [rnp-dialog-actions
     [rnp-button {:mode "text" :onPress on-cancel} (lstr-bl 'cancel)]
     [rnp-button {:mode "text"

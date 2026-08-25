@@ -59,6 +59,10 @@ pub enum AutoFillDbData {
     Login {
         username: Option<String>,
         password: Option<String>,
+        // The current TOTP token, when the autofill request had a 2FA code field. Set
+        // independently of username/password: a code-only fill (the second page of a
+        // two step login) sends this alone
+        otp: Option<String>,
     },
     CreditCard {},
 }

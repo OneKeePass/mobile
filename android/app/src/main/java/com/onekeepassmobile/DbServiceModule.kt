@@ -84,6 +84,13 @@ class DbServiceModule(reactContext: ReactApplicationContext) :
         promise.resolve(EventEmitter.kdbxUriToOpenOnCreate())
     }
 
+    // UI layer needs to call to see if the app is opened by pressing an 'otpauth://' link -
+    // typically the one shown by the device Camera app after scanning a 2FA QR code
+    @ReactMethod
+    fun otpAuthUrlOnCreate(promise: Promise) {
+        promise.resolve(EventEmitter.otpAuthUrlOnCreate())
+    }
+
     // IMPORTANT:
     // Need to use explicit background thread to call all the backend apis so that UI thread can be
     // released and otherwise UI thread will be blocked

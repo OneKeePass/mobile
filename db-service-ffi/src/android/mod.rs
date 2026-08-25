@@ -27,16 +27,25 @@ use regex::{Error, RegexSet};
 
 // See https://users.rust-lang.org/t/can-i-stop-vscode-rust-analyzer-from-shading-out-cfgs/58773
 
-const ANDROID_FP_SIZE: usize = 14;
+const ANDROID_FP_SIZE: usize = 17;
+
+// Though we have listed some ids when user opens a db with 'Open in' or 'Open with' 
+// feature in cloud drives, they are not used as we do keep such db_keys in recent files list
 
 #[cfg(target_os = "android")]
 const FILE_PROVIDER_IDS: [&str; ANDROID_FP_SIZE] = [
     r"com.android.externalstorage.documents",
     r"com.android.providers.downloads.documents",
     r"com.google.android.apps.docs.storage",
+    // The provider Gdrive uses for its own 'Open with' instead of the document one above
+    r"com.google.android.apps.docs.storage.legacy",
     //
     r"com.dropbox.product.android.dbapp.document_provider.documents",
+    // The provider Dropbox uses for its own 'Open with' instead of the document one above
+    r"com.dropbox.android.FileCache",
     r"com.microsoft.skydrive.content.StorageAccessProvider",
+    // The provider OneDrive uses for its own 'Open with' instead of the document one above
+    r"com.microsoft.skydrive.provider",
     r"mega.privacy.android.app",
     //
     r"com.nextcloud.client",
@@ -56,8 +65,11 @@ const FILE_PROVIDER_NAMES: [&str; ANDROID_FP_SIZE] = [
     "On My Device",
     "Downloads",
     "Google Drive",
+    "Google Drive",
     //
     "Dropbox",
+    "Dropbox",
+    "OneDrive",
     "OneDrive",
     "MEGA",
     //

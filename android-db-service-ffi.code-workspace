@@ -28,8 +28,8 @@
 		
 		"rust-analyzer.server.extraEnv": {
         	"CARGO_TARGET_DIR": "target",
-        	"CC_aarch64-linux-android":"/Users/jeyasankar/Library/Android/sdk/ndk/25.1.8937393/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang",
-        	"AR_aarch64_linux_android":"/Users/jeyasankar/Library/Android/sdk/ndk/25.1.8937393/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ar"
+        	"CC_aarch64-linux-android":"~/Library/Android/sdk/ndk/25.1.8937393/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang",
+        	"AR_aarch64_linux_android":"~/Library/Android/sdk/ndk/25.1.8937393/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ar"
     	},
     	
 		

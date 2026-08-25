@@ -63,6 +63,9 @@
         :no-remote-storage-connection
         [rnp-text {:style {:textAlign "justify"}} (lstr-modal-dlg-text 'noRemoteServerConnection)]
 
+        :permission-required-to-write
+        [rnp-text {:style {:textAlign "justify"}} (lstr-modal-dlg-text 'noWritePermission)]
+
         [rnp-text {:style {:textAlign "justify"}} error-message])
 
       #_(if (= error-type :content-change-detected)

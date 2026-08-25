@@ -22,7 +22,8 @@
             [onekeepass.ios.autofill.events.open-database :as opndb-events]
             [onekeepass.ios.autofill.events.entry-form :as form-events]
             [onekeepass.ios.autofill.rn-components :as rnc
-             :refer [appbar-text-color dots-icon-name page-title-text-variant
+             :refer [appbar-text-color dots-icon-name no-assist-text-props
+                     page-title-text-variant
                      primary-color primary-container-color rn-keyboard
                      rn-safe-area-view rn-section-list rn-view rnp-button
                      rnp-divider rnp-icon-button rnp-list-icon rnp-list-item
@@ -58,22 +59,23 @@
                       :value database-file-name
                       :editable false
                       :onChangeText #()}]
-     [rnp-text-input {:style {:margin-top 10}
-                      :label (lstr-l 'masterPassword)
-                      ;;:value password
-                      :defaultValue password
-                      :autoComplete "off"
-                      :autoCapitalize "none"
-                      :autoCorrect false
-                      :secureTextEntry (not password-visible)
-                      :right (r/as-element
-                              [rnp-text-input-icon
-                               {:icon (if password-visible "eye" "eye-off")
-                                :onPress #(opndb-events/database-field-update :password-visible (not password-visible))}])
-                      :onChangeText (fn [v]
-                                      ;; After entering some characters and delete is used to remove those charaters
-                                      ;; password will have a string value "" resulting in a non visible password. Need to use nil instead
-                                      (opndb-events/database-field-update :password (if (empty? v) nil v)))}]
+     [rnp-text-input (merge no-assist-text-props
+                            {:style {:margin-top 10}
+                             :label (lstr-l 'masterPassword)
+                             ;;:value password
+                             :defaultValue password
+                             ;; The database file field above is not editable. So the password
+                             ;; field gets the initial focus and keyboard is shown
+                             :autoFocus true
+                             :secureTextEntry (not password-visible)
+                             :right (r/as-element
+                                     [rnp-text-input-icon
+                                      {:icon (if password-visible "eye" "eye-off")
+                                       :onPress #(opndb-events/database-field-update :password-visible (not password-visible))}])
+                             :onChangeText (fn [v]
+                                             ;; After entering some characters and delete is used to remove those charaters
+                                             ;; password will have a string value "" resulting in a non visible password. Need to use nil instead
+                                             (opndb-events/database-field-update :password (if (empty? v) nil v)))})]
 
 
      [rn-view {}
@@ -195,25 +197,37 @@
 (defn login-page []
   [open-db-page])
 
-(defn top-bar-left-action [page]
+;; The title is based on the request for which iOS launched this extension and not on the page shown.
+;; Otherwise the pages shown before the passkey pages (unlocking a database in particular) will
+;; show the misleading 'AutoFill Password' title for a passkey request
+(defn- autofill-request-title [request-mode]
+  (condp = request-mode
+    :passkey-registration
+    (lstr-pt 'registerPasskey)
+
+    :passkey-assertion
+    (lstr-pt 'autoFillPasskey)
+
+    :one-time-code
+    (lstr-pt 'autoFillVerificationCode)
+
+    (lstr-pt 'autoFillPassword)))
+
+(defn top-bar-left-action [page request-mode]
   (cond
     (= page ENTRY_FORM_PAGE_ID)
     {:action form-events/cancel-entry-form
      :label (lstr-bl 'back)
      :title (lstr-pt 'entry)}
 
-    (#{PASSKEY_ASSERTION_PAGE_ID PASSKEY_REGISTRATION_PAGE_ID} page)
-    {:action cmn-events/cancel-extension
-     :label (lstr-bl 'cancel)
-     :title (lstr-pt 'autoFillPasskey)}
-
     :else
     {:action cmn-events/cancel-extension
      :label (lstr-bl 'cancel)
-     :title (lstr-pt 'autoFillPassword)}))
+     :title (autofill-request-title request-mode)}))
 
 (defn top-bar [page]
-  (let [{:keys [action label title]} (top-bar-left-action page)]
+  (let [request-mode @(cmn-events/autofill-request-mode)
+        {:keys [action label title]} (top-bar-left-action page request-mode)]
     [rn-view {:style {:flex 0.1
                       :justify-content "center"
                       :align-items "center"
@@ -255,37 +269,39 @@
 ;; Using :right (fn [..]), put the icon to the left instead of right - not sure why?
 ;; Using traileringIcon with onTraileringIconPress works and input text entry is not sluggish and also we can clear the text entered if required
 
-;; This issue is not seen in the main app's search box. Why?
+;; The main app's search box turned out to have the same problem - it showed up there as the
+;; cursor jumping about while typing rather than as sluggishness. Both are fixed in
+;; 'RNPSearchbar' now, which keeps the typed text in a local state so that no search bar waits
+;; on the app state coming back. This one keeps its ':defaultValue' and its trailering icon
 
 (defn- searchbar []
   (let [term @(cmn-events/search-term)]
     [rn-view {:margin-top 10}
-     [rnp-searchbar {;; clearIcon mostly visible when value has some vlaue
-                     ;; :clearIcon "close"
-                     :style {:margin-left 1
-                             :margin-right 1
-                             :borderWidth 0}
-                     :placeholder "Search"
-                     :onChangeText (fn [v]
-                                     (cmn-events/search-term-update v))
-                     :autoCapitalize "none"
-                     :autoCorrect false
-                     ;; :value term
-                     
-                     :defaultValue term
-                     :traileringIcon "close"
-                     :onTraileringIconPress (fn [_e]
-                                              (println "Calling cmn-events/search-term-update in onTraileringIconPress")
-                                              (cmn-events/search-term-clear))
+     [rnp-searchbar (merge
+                     no-assist-text-props
+                     {;; clearIcon mostly visible when value has some vlaue
+                      ;; :clearIcon "close"
+                      :style {:margin-left 1
+                              :margin-right 1
+                              :borderWidth 0}
+                      :placeholder "Search"
+                      :onChangeText (fn [v]
+                                      (cmn-events/search-term-update v))
+                      ;; :value term
 
-                     ;; This put the icon on the left instead of right side
-                     ;;  :right (fn [props]
-                     ;;           (r/as-element [rnc/rnp-text-input-icon
-                     ;;                          {:icon "close"
-                     ;;                           :style {:right 0}
-                     ;;                           :onPress #(println "Clear is clicked")}])
-                     ;;           )
-                     }]]))
+                      :defaultValue term
+                      :traileringIcon "close"
+                      :onTraileringIconPress (fn [_e]
+                                               (cmn-events/search-term-clear))
+
+                      ;; This put the icon on the left instead of right side
+                      ;;  :right (fn [props]
+                      ;;           (r/as-element [rnc/rnp-text-input-icon
+                      ;;                          {:icon "close"
+                      ;;                           :style {:right 0}
+                      ;;                           :onPress #(println "Clear is clicked")}])
+                      ;;           )
+                      })]]))
 
 
 #_(defn searchbar []

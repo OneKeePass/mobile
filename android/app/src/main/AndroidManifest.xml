@@ -82,6 +82,22 @@
                 <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.*" />
                 <data android:pathPattern=".*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\..*\\.*" />
             </intent-filter>
+
+            <!--
+              Makes the app appear in the chooser when the user taps an 'otpauth://totp/...' link -
+              typically the one the device Camera app shows after framing a 2FA QR code.
+              A custom scheme needs its own filter block and cannot share the mimeType and
+              pathPattern entries used above for the .kdbx files.
+              The host is restricted to 'totp' as HOTP urls are not supported - see OtpData::from_url
+            -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="otpauth" android:host="totp" />
+            </intent-filter>
         </activity>
 
         <activity
@@ -121,7 +137,7 @@
 
         <service
             android:name=".autofill.AuthenticatedAutofillService"
-            android:label="OneKeePass"
+            android:label="@string/app_name"
             android:permission="android.permission.BIND_AUTOFILL_SERVICE"
             android:exported="true">
             <intent-filter>
@@ -134,7 +150,7 @@
 
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="com.onekeepassmobile.fileprovider"
+            android:authorities="${applicationId}.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data

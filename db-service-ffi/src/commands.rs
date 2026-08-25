@@ -9,8 +9,8 @@ use onekeepass_core::async_service::{self, OtpTokenTtlInfoByField, TimerID};
 use onekeepass_core::db_content::AttachmentHashValue;
 use onekeepass_core::db_service::{
     self, CustomIconData, CustomIconSummary, DbSettings, EntryCategory, EntryCategoryGrouping,
-    EntryFormData, Group, KdbxLoaded, NewDatabase, OtpSettings, PassphraseGenerationOptions,
-    PasswordGenerationOptions,
+    EntryCloneOption, EntryFormData, Group, KdbxLoaded, NewDatabase, OtpSettings,
+    PassphraseGenerationOptions, PasswordGenerationOptions,
 };
 
 use data_encoding::BASE64;
@@ -101,6 +101,14 @@ pub enum CommandArg {
         password: Option<String>,
         key_file_name: Option<String>,
         biometric_auth_used: bool,
+
+        // True when the db uri was handed to us by another app - the 'Open with' or 'Open in'
+        // action of a cloud storage app on android. Such a uri is a one time grant that we
+        // cannot get back to later and the db is not added to the recently used list for it
+        //
+        // 'serde default' keeps all the other api callers that do not send this field working
+        #[serde(default)]
+        transient_db_ref: bool,
     },
     NewDbArgWithFileName {
         file_name: String,
@@ -140,6 +148,12 @@ pub enum CommandArg {
         new_db_key: String,
         file_name: String,
     },
+    // Writing a copy of an already prepared local db file to a remote storage location
+    // Needs to come before the variant 'DbKey' as that would otherwise match this arg
+    SaveAsToRemoteArg {
+        db_key: String,
+        local_file_path: String,
+    },
     GroupArg {
         db_key: String,
         group: Group,
@@ -152,6 +166,11 @@ pub enum CommandArg {
     EntryArg {
         db_key: String,
         form_data: EntryFormData,
+    },
+    CloneEntryArg {
+        db_key: String,
+        entry_uuid: Uuid,
+        entry_clone_option: EntryCloneOption,
     },
     SearchArg {
         db_key: String,
@@ -197,6 +216,21 @@ pub enum CommandArg {
         db_key: String,
         entry_uuid: Uuid,
         otp_fields: OtpTokenTtlInfoByField,
+    },
+
+    // Distinct from StartEntryOtpArg by the 'otp_field_name' field. Used by the autofill
+    // flows, which need one token now instead of a polling subscription
+    CurrentOtpArg {
+        db_key: String,
+        entry_uuid: Uuid,
+        otp_field_name: String,
+    },
+
+    // Current tokens for a whole list of entries in one call. Used to show a code on the
+    // rows of an entry list, where polling each entry separately would not scale
+    EntryListOtpArg {
+        db_key: String,
+        entry_uuids: Vec<Uuid>,
     },
 
     StartTimerArg {
@@ -537,8 +571,13 @@ impl Commands {
                     new_entry_form_data_by_id(&db_key,&entry_type_uuid,parent_group_uuid.as_ref().as_deref()))
             }
 
+            // Memory-security lock: encrypts the db content in memory and removes
+            // the decrypted content ( ) so nothing sensitive stays resident while
+            // locked. Restored by the unlock_kdbx / biometric unlock calls below.
+            "lock_kdbx" => db_service_call!(args, DbKey{db_key} => lock_kdbx(&db_key)),
+
             "unlock_kdbx" => {
-                service_call!(args, OpenDbArg{db_file_name,password,key_file_name,biometric_auth_used: _} =>
+                service_call!(args, OpenDbArg{db_file_name,password,key_file_name,biometric_auth_used: _, transient_db_ref: _} =>
                     Self unlock_kdbx(&db_file_name,password.as_deref(),key_file_name.as_deref()))
             }
 
@@ -546,7 +585,14 @@ impl Commands {
                 service_call!(args, DbKey{db_key} => Self unlock_kdbx_on_biometric_authentication(&db_key))
             }
 
-            "close_kdbx" => db_service_call!(args, DbKey{db_key} => close_kdbx(&db_key)),
+            "close_kdbx" => {
+                let (db_key,) = parse_command_args_or_json_error!(&args, DbKey { db_key });
+                // Drop any session cached connection config for this db so the
+                // config resolved from a kdbx connection entry does not linger
+                // after the remote db that needed it is closed
+                remote_storage::clear_cached_connection_config(&db_key);
+                InvokeResult::from(db_service::close_kdbx(&db_key)).json_str()
+            }
 
             "combined_category_details" => {
                 db_service_call! (args, CategoryDetailArg{db_key,grouping_kind} => combined_category_details(&db_key,&grouping_kind))
@@ -594,6 +640,12 @@ impl Commands {
                 db_service_call!(args, EntryArg{db_key,form_data} => update_entry_from_form_data(&db_key,form_data))
             }
 
+            // Returns the cloned entry's uuid
+            "clone_entry" => {
+                db_service_call!(args, CloneEntryArg{db_key,entry_uuid,entry_clone_option} =>
+                    clone_entry(&db_key,&entry_uuid,&entry_clone_option))
+            }
+
             "entry_summary_data" => {
                 db_service_call! (args, EntrySummaryArg{db_key,entry_category} => entry_summary_data(&db_key,entry_category))
             }
@@ -604,6 +656,21 @@ impl Commands {
 
             "form_otp_url" => {
                 db_service_call! (args, OtpSettingsArg{otp_settings} => form_otp_url(&otp_settings))
+            }
+
+            // Generates the current token for one otp field of an entry. The autofill
+            // flows use this at fill time so the code handed to the OS is never one that
+            // the polling UI happened to be holding as it expired
+            "entry_form_current_otp" => {
+                db_service_call! (args, CurrentOtpArg{db_key,entry_uuid,otp_field_name} =>
+                    entry_form_current_otp(&db_key,&entry_uuid,&otp_field_name))
+            }
+
+            // Current tokens for a list of entries. Entries with no usable otp field are
+            // absent from the reply, so the caller needs no separate 'has 2FA' query
+            "entry_list_current_otps" => {
+                db_service_call! (args, EntryListOtpArg{db_key,entry_uuids} =>
+                    entry_list_current_otps(&db_key,&entry_uuids))
             }
 
             "move_entry_to_recycle_bin" => {
@@ -654,6 +721,13 @@ impl Commands {
 
             // Manual search inside the autofill UI: Login-type entries matched on
             // their URL / Additional URLs fields only (not all fields).
+            // The TOTP counterpart of autofill_search_term - a manual search in one-time
+            // code mode must not surface entries the user cannot then fill a code from
+            "autofill_search_term_otp" => {
+                db_service_call! (args, SearchArg{db_key,term} =>
+                    autofill_search_term_filtered(&db_key,&term,true))
+            }
+
             "autofill_search_term" => {
                 db_service_call! (args, SearchArg{db_key,term} => autofill_search_term(&db_key,&term))
             }
@@ -840,6 +914,8 @@ impl Commands {
             "rs_save_kdbx" => crate::remote_storage::rs_save_kdbx(&args),
 
             "rs_create_kdbx" => crate::remote_storage::rs_create_kdbx(&args),
+
+            "rs_save_as_kdbx" => crate::remote_storage::rs_save_as_kdbx(&args),
 
             "rs_read_configs" => result_json_str(remote_storage::read_configs()),
 
@@ -1068,12 +1144,35 @@ impl Commands {
             let _ = util::clean_export_data_dir();
 
             // Check whether the db is opened now
-            let found = db_service::all_kdbx_cache_keys().map_or(false, |v| v.contains(&db_key));
-            let recent_opt = AppState::get_recently_used(&db_key);
-            // Form the export data file first by finding the kdbx file name from recent list
-            let export_file_path_opt = &recent_opt
+            let opened = db_service::all_kdbx_cache_keys().map_or(false, |v| v.contains(&db_key));
+
+            // A locked db has its content encrypted in memory and writing it from the
+            // cache fails with 'DbLocked'. The last saved content is taken from the backup
+            // instead - the same as it is done for a db that is not opened at all
+            let locked = opened && db_service::is_db_locked(&db_key).unwrap_or(false);
+
+            // I am not sure the following check is required on mobile apps
+            //  as we save any db changes immediately (auto save)
+            
+            // Edits made before the db was locked are not in the backup and so the copy
+            // formed here would be a stale one. That is not allowed to happen silently
+            if locked
+                && db_service::kdbx_context_statuses(&db_key)
+                    .map_or(false, |status| status.save_pending)
+            {
+                return error_json_str(
+                    "DbLockedWithUnsavedChanges: The database is locked and has unsaved changes. \
+                     Please unlock and save the database before this action",
+                );
+            }
+
+            let found = opened && !locked;
+            // Form the export data file first by finding the kdbx file name. A db handed over
+            // by another app is not in the recently used list and its name comes from the uri
+            let db_file_name_opt = AppState::db_file_name(&db_key);
+            let export_file_path_opt = &db_file_name_opt
                 .as_ref()
-                .and_then(|r| util::form_export_file_name(&r.file_name));
+                .and_then(|file_name| util::form_export_file_name(file_name));
 
             debug!("export_file_path is {:?}", &export_file_path_opt);
             let prefixed_path = if cfg!(target_os = "ios") {
@@ -1085,7 +1184,7 @@ impl Commands {
 
             let export_data_info = ExportDataInfo {
                 full_file_name_uri: Some(db_key.clone()),
-                file_name: recent_opt.as_ref().and_then(|r| Some(r.file_name.clone())),
+                file_name: db_file_name_opt.clone(),
                 exported_data_full_file_name: prefixed_path,
             };
 
@@ -1105,11 +1204,9 @@ impl Commands {
                 return r;
             } else {
                 // The db is not yet opened and we will form the export data from the backup
-                let backup_file_name_opt = &recent_opt.and_then(|r| {
-                    backup::latest_or_generate_backup_history_file_name(
-                        &r.db_file_path,
-                        &r.file_name,
-                    )
+                // 'db_file_path' of the recently used entry used here earlier is the db_key itself
+                let backup_file_name_opt = &db_file_name_opt.as_ref().and_then(|file_name| {
+                    backup::latest_or_generate_backup_history_file_name(&db_key, file_name)
                 });
 
                 debug!(
@@ -1157,6 +1254,8 @@ impl Commands {
 
         // Remove all files that were created for this db
         remove_app_files(&db_key);
+
+        remote_storage::clear_cached_connection_config(&db_key);
 
         InvokeResult::from(db_service::close_kdbx(&db_key)).json_str()
     }
