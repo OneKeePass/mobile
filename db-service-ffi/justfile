@@ -106,13 +106,24 @@ build-ios-device-lib-debug:build-ios-device-lib
 
 build-ios-device-lib-release:(build-ios-device-lib "true")
 
-build-ios-device-lib release="": 
+## The min version and cpu must be spelled out in the abi flags. Botan's build does not pass
+## IPHONEOS_DEPLOYMENT_TARGET on to clang, and '-arch arm64' alone carries no min version, so
+## clang falls back to the SDK default and picks a cpu baseline of ARMv8.3 or newer. That
+## emits FEAT_LRCPC instructions (ldapr/ldaprb) which are undefined on A11 devices - iPhone 8
+## and iPhone X, both capped at iOS 16.7 - and the app then dies with SIGILL in a dyld static
+## initializer, before main, on every launch.
+## 'apple-a7' is the ARMv8.0 baseline and matches an iOS 15.1 minimum. Botan compiles its
+## accelerated code in separate translation units with their own +crypto isa flags and picks
+## between them on runtime cpuid, so this does not give up hardware crypto on newer devices.
+## Check after building: otool -tV -arch arm64 <lib or app binary> | grep -cE '\bldapr(b|h)?\b'
+## must print 0
+build-ios-device-lib release="":
     #!/usr/bin/env bash
     set -euxo pipefail
     export SDKROOT={{ios_sdk_root}}
     export IPHONEOS_DEPLOYMENT_TARGET={{ios_deployment_target}}
     export BOTAN_CONFIGURE_OS='ios'
-    export BOTAN_CONFIGURE_CC_ABI_FLAGS='-arch arm64'
+    export BOTAN_CONFIGURE_CC_ABI_FLAGS='-arch arm64 -mios-version-min={{ios_deployment_target}} -mcpu=apple-a7'
     export BOTAN_CONFIGURE_CC='clang'
     export BOTAN_CONFIGURE_CPU='armv8-a'
     
