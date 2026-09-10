@@ -22,7 +22,44 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
+    installJsFatalHandler()
     return true
+  }
+
+  // React native ends the process when a javascript error reaches RCTFatal, and the
+  // message it was given is not in the crash reports that App Store Connect shows. The
+  // handler set here writes it to a file first. The process is then ended the same way
+  // it is without a handler, because the javascript state after such an error is not
+  // something the app has checked.
+  //
+  // This has to be set before react native starts, which is why it is here and not in
+  // SceneDelegate
+  private func installJsFatalHandler() {
+    RCTSetFatalHandler { error in
+      let nsError = error as NSError?
+      let message = nsError?.localizedDescription ?? "Unknown javascript error"
+
+      // React native puts the parsed javascript frames in the user info
+      var jsStack = ""
+      if let frames = nsError?.userInfo[RCTJSStackTraceKey] as? [[String: Any]] {
+        jsStack = frames.map { frame in
+          let name = frame["methodName"] as? String ?? "?"
+          let file = frame["file"] as? String ?? ""
+          let line = frame["lineNumber"] as? NSNumber
+          // Preserve the column/offset: release bundles can put many functions on
+          // one line, so the line alone is insufficient for source-map symbolication.
+          let column = frame["column"] as? NSNumber
+          return "\(name) (\(file):\(line?.stringValue ?? "?"):\(column?.stringValue ?? "?"))"
+        }.joined(separator: "\n")
+      }
+
+      OkpCrashLog.record(message: message, jsStack: jsStack)
+
+      // Same end as RCTFatal reaches when no handler is set
+      NSException(name: NSExceptionName(rawValue: RCTFatalExceptionName),
+                  reason: message,
+                  userInfo: nsError?.userInfo).raise()
+    }
   }
 }
 

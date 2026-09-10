@@ -312,7 +312,13 @@ class ReadFilePickDelegate: NSObject, UIDocumentPickerDelegate {
     let fc = NSFileCoordinator()
     let intent = NSFileAccessIntent.readingIntent(with: saved_file_url, options: [.withoutChanges, .resolvesSymbolicLink])
       
-    fc.coordinate(with: [intent], queue: .main) { [unowned self] err in
+    // 'self' is captured strongly on purpose. A picker holds its delegate weakly, so the
+    // only strong reference is the property on OkpDocumentPickerService. A second pick
+    // replaces that property and deallocates this delegate, and an 'unowned' capture then
+    // trapped when this callback ran - the coordinate call is not prompt, as the comment
+    // below records. A weak capture would not do either: 'resolve' and 'reject' are
+    // properties of this delegate, so losing it would leave the promise unsettled
+    fc.coordinate(with: [intent], queue: .main) { [self] err in
       if err != nil {
         // We do not read the file here. Only the bookmark is created and that needs the
         // security scoped access from the picker and not a coordinated read. This read intent
@@ -395,8 +401,10 @@ class KeyFilePickDelegate: NSObject, UIDocumentPickerDelegate {
     // such file can only be done after a successful 'startAccessingSecurityScopedResource'
     // Instead of opening and reading the file here, we keep a bookmark and that
     // bookmark is read in 'copyKeyFile' fun from OkpDbService. Without the bookmark, we cannot read the file
-      
-    fc.coordinate(with: [intent], queue: .main) { [unowned self] err in
+
+    // 'self' is captured strongly so that this delegate outlives a replacement of the
+    // property that holds it, keeping resolve and reject available when the callback runs
+    fc.coordinate(with: [intent], queue: .main) { [self] err in
       guard err == nil else {
         logger.error("Coordinate error  is \(String(describing: err))")
         reject(OkpDocumentPickerService.E_COORDINATOR_CALL_FAILED, "\(String(describing: err?.localizedDescription))", err)
@@ -449,8 +457,10 @@ class KeyFilePickDelegate: NSObject, UIDocumentPickerDelegate {
     // http://karmeye.com/2014/12/18/uidocumentpicker-nsfilecoordinator/
     let fc = NSFileCoordinator()
     let intent = NSFileAccessIntent.readingIntent(with: pickedFileUrl, options: [.withoutChanges, .resolvesSymbolicLink])
-      
-    fc.coordinate(with: [intent], queue: .main) { [unowned self] err in
+
+    // 'self' is captured strongly so that this delegate outlives a replacement of the
+    // property that holds it, keeping resolve and reject available when the callback runs
+    fc.coordinate(with: [intent], queue: .main) { [self] err in
       guard err == nil else {
         logger.error("Coordinate error  is \(String(describing: err))")
         // reject(CallError.coordinateError.rawValue, CallError.errorDescription(err! as NSError), err)
@@ -513,7 +523,9 @@ class KeyFilePickDelegate: NSObject, UIDocumentPickerDelegate {
      let writeIntent = NSFileAccessIntent.writingIntent(with: saved_file_url, options: [.forMerging])
      let readingIntent = NSFileAccessIntent.readingIntent(with: saved_file_url, options: [.withoutChanges, .resolvesSymbolicLink])
        
-     fc.coordinate(with: [writeIntent, readingIntent], queue: .main) { [unowned self] err in
+     // 'self' is captured strongly so that this delegate outlives a replacement of the
+     // property that holds it, keeping resolve and reject available when the callback runs
+     fc.coordinate(with: [writeIntent, readingIntent], queue: .main) { [self] err in
        guard err == nil else {
          logger.error("Coordinate error  is \(String(describing: err))")
          // reject(CallError.coordinateError.rawValue, CallError.errorDescription(err! as NSError), err)

@@ -394,7 +394,9 @@
 (reg-event-fx
  :otp-settings-form-url-error
  (fn [{:keys [db]} [_event-id error]]
-   (let [secret-code-field-error (if (str/starts-with? error OTP_KEY_DECODE_ERROR)
+   ;; The error may be a map rather than a string, and starts-with? throws on anything
+   ;; that is not a string
+   (let [secret-code-field-error (if (and (string? error) (str/starts-with? error OTP_KEY_DECODE_ERROR))
                                    (assoc {} :secret-or-url "Valid encoded key or full TOTPAuth URL is required") {})]
      {:db (-> db
               (assoc-in [:otp-settings-dialog :error-fields] secret-code-field-error))

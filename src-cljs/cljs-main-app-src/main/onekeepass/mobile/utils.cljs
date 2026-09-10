@@ -99,13 +99,40 @@
 
 ;; Based on some examples in https://stackoverflow.com/questions/32467299/clojurescript-convert-arbitrary-javascript-object-to-clojure-script-map
 ;; Somewhat old, but the solution used here works
-#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defn jsx->clj
-  "Converts objects of type '#object[Error Error: Document picker was cancelled..]' to 
+  "Converts objects of type '#object[Error Error: Document picker was cancelled..]' to
   {:nativeStackAndroid [], :code \"DOCUMENT_PICKER_CANCELED\"..}
   "
   [obj]
   (js->clj (-> obj js/JSON.stringify js/JSON.parse) :keywordize-keys true))
+
+(defn readable-error-text
+  "An error coming back from a backend api call is a string in some cases and a map with
+   :code and :message in others. Printing the map puts something like
+   '{:code \"COORDINATOR_CALL_FAILED\"}' in front of the user, so the readable part of it is
+   picked out instead"
+  [error]
+  (cond
+    (string? error)
+    error
+
+    (map? error)
+    (let [{:keys [code message]} error]
+      (cond
+        (and (not (str/blank? message)) (not (str/blank? code)))
+        (str message " (" code ")")
+
+        (not (str/blank? message))
+        message
+
+        (not (str/blank? code))
+        code
+
+        :else
+        (str error)))
+
+    :else
+    (str error)))
 
 (def KB 1024)
 

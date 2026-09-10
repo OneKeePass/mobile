@@ -28,6 +28,7 @@
    ["/components/RNPCustomization" :as rnp-customization]
    ["/components/KeyboardAvoidingDialog" :as kb-dialog]
    ["/components/CustomSafeAreaView" :as cust-safe-area-view]
+   ["/components/AppErrorBoundary" :as app-error-boundary]
    [onekeepass.mobile.background :refer [get-constants is-Android is-iOS]]
    [onekeepass.mobile.constants :as const :refer [DEFAULT-SYSTEM-THEME]]
    [react]
@@ -79,6 +80,10 @@
 #_(def rn-safe-area-view (r/adapt-react-class (.-SafeAreaView ^js/SASafeAreaView sa-context)))
 
 (def rn-safe-area-view (r/adapt-react-class (.-RNPSafeAreaView cust-safe-area-view)))
+
+;; Catches a throw while rendering and shows the message instead of letting the app be
+;; killed by the react native fatal handler
+(def cust-error-boundary (r/adapt-react-class (.-AppErrorBoundary app-error-boundary)))
 
 ;; https://github.com/dmtrKovalenko/date-io
 ;;DateAdapter is #object[DateFnsUtils] 

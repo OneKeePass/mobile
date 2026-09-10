@@ -81,7 +81,12 @@ public class OkpEvents: RCTEventEmitter {
         instance?.sendEvent(withName: EVENT_ON_APPLICATION_URL,
                             body: DbServiceAPI.formJsonWithFileName(url.absoluteString))
       } else {
-        instance?.sendEvent(withName: EVENT_ON_APPLICATION_URL, body: "{\"error\" \(String(describing: error?.localizedDescription))}")
+        // The json is formed by the shared lib and not by hand. A hand formed string
+        // missed the ':' separator and left the value unquoted, and the UI side throws
+        // while parsing such a body
+        instance?.sendEvent(withName: EVENT_ON_APPLICATION_URL,
+                            body: DbServiceAPI.jsonService()
+                              .errorJsonString(error?.localizedDescription ?? "Opening the database file failed"))
       }
     }
     // logger.debug("Bookmarking cll  ret val \(r))")

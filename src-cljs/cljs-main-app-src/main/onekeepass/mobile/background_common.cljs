@@ -111,6 +111,27 @@
 ;; development time. Need to uncomment the '(reset!...) call in fn 'call-api-async' for this
 (def test-raw-response-data (atom nil))
 
+(defn- api-call-error-response [err error-transform]
+  (let [cause (ex-cause err)]
+    {:error (cond
+              (nil? cause)
+              (or (ex-message err) err)
+
+              ;; When we reject the promise in a native module, iOS errors have
+              ;; :domain and :userInfo keys. Android errors may differ.
+
+              ;; 'message' is a non enumerable property of a js Error, so the
+              ;; JSON.stringify round trip in 'jsx->clj' drops it and the caller sees
+              ;; only {:code "..."}. It is read from the error itself for that reason.
+              ;; Callers that match on the message text depend on this
+              error-transform
+              (let [m (u/jsx->clj cause)]
+                {:code (:code m)
+                 :message (or (:message m) (.-message cause))})
+
+              :else
+              cause)}))
+
 (defn call-api-async
   "Calls the backend APIs asynchronously
    aync-fn returns a Promise
@@ -121,47 +142,21 @@
     :or {error-transform false}
     :as opts}]
   (go
-    (try
-      (let [r (<p! (aync-fn))
-            deserialized-response (transform-api-response r opts)]
-        ;; Uncomment for debugging raw response during dev time only  
-        ;;(reset! test-raw-response-data r)
-        (dispatch-fn deserialized-response))
-      (catch js/Error err
-        (do
-          ;;(reset! test-raw-response-data err)
-
-          ;; (println "type of err is " (type err))
-          ;; (println "type of (ex-cause err) is " (type (ex-cause err))) 
-          ;; (println "(ex-data err) is " (ex-data err))
-          ;; (println (js/Object.keys (ex-cause err)))
-
-          ;; (type err) is #object[cljs$core$ExceptionInfo], an instance of ExceptionInfo 
-          ;; (type (ex-cause err)) is #object[Error], an instance of js/Error
-
-          ;; The RN err object keys are (in both iOs and Android) - can be seen using '(js/Object.keys (ex-cause err)'
-          ;; #js [message data cause name description number fileName lineNumber columnNumber stack]
-          ;; (ex-cause err) keys are #js [code message domain userInfo nativeStackIOS]
-
-          ;;Call the dispatch-fn with any error returned by the back end API
-          (dispatch-fn {:error (cond
-                                 (nil? (ex-cause err))
-                                 (if (not (nil? (.-message err)))
-                                   (.-message err)
-                                   err)
-
-                                 ;; When we reject the promise in native module, we get a detailed
-                                 ;; object as described above comments
-                                 ;; iOS error has :domain :userInfo keys 
-                                 ;; Android not sure on that 
-                                 error-transform
-                                 (-> err ex-cause u/jsx->clj (select-keys [:code :message]))
-
-                                 :else
-                                 (ex-cause err))})
-          ;; We can see the console log output in xcode debug console and in Android studio Logcat window,
-          ;; We can also see the console log in the terminal screen where 'React native dev server' is running
-          (js/console.log (ex-cause err)))))))
+    (let [api-response (try
+                         (let [r (<p! (aync-fn))]
+                           ;; Uncomment for debugging raw response during dev time only
+                           ;; (reset! test-raw-response-data r)
+                           (transform-api-response r opts))
+                         (catch :default err
+                           ;; (reset! test-raw-response-data err)
+                           (js/console.error "Native API call failed" err)
+                           (api-call-error-response err error-transform)))]
+      ;; Keep consumer failures outside the API try/catch. Retrying the callback
+      ;; with an error response can repeat side effects and throw a second time.
+      (try
+        (dispatch-fn api-response)
+        (catch :default err
+          (js/console.error "Native API response callback failed" err))))))
 
 ;;TODO: Combine android-invoke-api,ios-autofill-invoke-api and invoke-api
 (defn invoke-api
@@ -242,7 +237,5 @@
                                                                 :convert-request convert-request
                                                                 :args-keys-excluded args-keys-excluded)))
                   dispatch-fn :convert-response convert-response :convert-response-fn convert-response-fn))
-
-
 
 

@@ -63,11 +63,15 @@ class FileUtils: NSObject {
       } catch {
         // Handle the error here.
         logger.error("E_READ_FILE_PICK_DELEGATE_FAILED: bookmarkData Error \(error)")
+        // The caller is told about the failure. Without this the reader is never called
+        // for a bookmarking failure and the UI is left waiting for an event that
+        // never arrives
+        reader(url, error)
       }
     }
-    
+
     if error != nil {
-      logger.debug("In readKdbx NSFileCoordinator().coordinate call error \(error?.localizedDescription)")
+      logger.debug("In readKdbx NSFileCoordinator().coordinate call error \(String(describing: error?.localizedDescription))")
       reader(url, error)
     }
     

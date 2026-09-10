@@ -241,10 +241,14 @@ class OkpDbService: NSObject {
             }
             
             guard error == nil else {
-              // logger.error("In readKdbx NSFileCoordinator().coordinate call error \(String(describing: error?.localizedDescription))")
-              // reject(E_COORDINATOR_CALL_FAILED, "\(String(describing: error!.localizedDescription))", error)
-              let msg = "\(error!.code) \(error!.localizedDescription) \(error!.description)"
-              reject(E_COORDINATOR_CALL_FAILED,msg, error)
+              // The whole NSError, with any underlying errors nested in it, goes to the log.
+              // Only the code and the localised text are handed to the UI - 'description' is a
+              // nested dump that fills the error dialog with text no user can act on.
+              // The leading code is read on the UI side to tell a file that could not be
+              // fetched from other coordination failures, so it has to stay at the front
+              logger.error("In readKdbx NSFileCoordinator().coordinate call error \(error!.description)")
+              let msg = "\(error!.code) \(error!.localizedDescription)"
+              reject(E_COORDINATOR_CALL_FAILED, msg, error)
               return
             }
           }
@@ -367,8 +371,31 @@ class OkpDbService: NSObject {
     DbServiceAPI.iosSupportService().deleteBookMarkData(keyFileUrl!.absoluteString)
   }
   
+  // Returns the javascript errors recorded by the fatal handler, as the text shown to the
+  // user on the launch after a crash. An empty string when there is nothing recorded
+  @objc
+  func lastCrashRecords(_ resolve: @escaping RCTPromiseResolveBlock,
+                        reject _: @escaping RCTPromiseRejectBlock)
+  {
+    resolve(DbServiceAPI.jsonService().okJsonString(OkpCrashLog.recordedCrashesText()))
+  }
+
+  // Called once the user has seen the recorded crashes so that they are not shown again
+  @objc
+  func clearLastCrashRecords(_ resolve: @escaping RCTPromiseResolveBlock,
+                             reject: @escaping RCTPromiseRejectBlock)
+  {
+    do {
+      try OkpCrashLog.clearRecordedCrashes()
+      resolve(DbServiceAPI.jsonService().okJsonString("cleared"))
+    } catch {
+      // Do not report success when the log could not be deleted.
+      reject("CRASH_LOG_CLEAR_FAILED", error.localizedDescription, error)
+    }
+  }
+
   // TDODO: Need to move authenticateWithBiometric and getAuthenticationErrorDescription to a common class and share between app and autofill
-  
+
   @objc
   func authenticateWithBiometric(_ resolve: @escaping RCTPromiseResolveBlock,
                                  reject _: @escaping RCTPromiseRejectBlock)

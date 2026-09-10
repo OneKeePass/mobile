@@ -40,6 +40,7 @@
 		F9AD1B6729B63B6C00BED32A /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9AD1B6629B63B6C00BED32A /* SceneDelegate.swift */; };
 		F9AD1B6B29B78F1200BED32A /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9AD1B6A29B78F1100BED32A /* AppDelegate.swift */; };
 		F9AE2F40290440380013D9AB /* OkpLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9AE2F3E290440380013D9AB /* OkpLogger.swift */; };
+		F9CB10022E6A000100AAAA02 /* OkpCrashLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9CB10012E6A000100AAAA01 /* OkpCrashLog.swift */; };
 		F9AE2F41290440380013D9AB /* FileUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9AE2F3F290440380013D9AB /* FileUtils.swift */; };
 		F9B3CE622BAF307C006BDCFA /* BackendEventDispatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9B3CE612BAF307C006BDCFA /* BackendEventDispatcher.swift */; };
 		F9C4D29729AFE1CE00B83DEB /* OkpEvents.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9C4D29629AFE1CE00B83DEB /* OkpEvents.swift */; };
@@ -133,6 +134,7 @@
 		F9AD1B6629B63B6C00BED32A /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SceneDelegate.swift; path = OneKeePassMobile/SceneDelegate.swift; sourceTree = "<group>"; };
 		F9AD1B6A29B78F1100BED32A /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = OneKeePassMobile/AppDelegate.swift; sourceTree = "<group>"; };
 		F9AE2F3E290440380013D9AB /* OkpLogger.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OkpLogger.swift; sourceTree = "<group>"; };
+		F9CB10012E6A000100AAAA01 /* OkpCrashLog.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OkpCrashLog.swift; sourceTree = "<group>"; };
 		F9AE2F3F290440380013D9AB /* FileUtils.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = FileUtils.swift; sourceTree = "<group>"; };
 		F9B3CE612BAF307C006BDCFA /* BackendEventDispatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendEventDispatcher.swift; sourceTree = "<group>"; };
 		F9C4D29629AFE1CE00B83DEB /* OkpEvents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OkpEvents.swift; sourceTree = "<group>"; };
@@ -332,6 +334,7 @@
 				F944B9EA2CE135B600AC010E /* SecureEnclaveServiceSupport.swift */,
 				F92CB10228FF7A7500A79F60 /* DbServiceAPI.swift */,
 				F9AE2F3E290440380013D9AB /* OkpLogger.swift */,
+				F9CB10012E6A000100AAAA01 /* OkpCrashLog.swift */,
 				F9AE2F3F290440380013D9AB /* FileUtils.swift */,
 				F90DF3742A466FF00041F9F5 /* SecureKeyService.swift */,
 				F9B3CE612BAF307C006BDCFA /* BackendEventDispatcher.swift */,
@@ -705,6 +708,7 @@
 				F90DF3752A466FF00041F9F5 /* SecureKeyService.swift in Sources */,
 				F9C4D29D29B11BAF00B83DEB /* OkpExportBridge.m in Sources */,
 				F9AE2F40290440380013D9AB /* OkpLogger.swift in Sources */,
+				F9CB10022E6A000100AAAA02 /* OkpCrashLog.swift in Sources */,
 				F9C4D29B29B11B1600B83DEB /* OkpExport.swift in Sources */,
 				F9AD1B6729B63B6C00BED32A /* SceneDelegate.swift in Sources */,
 				F955AC202C2E377600D0DFB6 /* ApiCallBackService.swift in Sources */,
@@ -796,7 +800,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/OneKeePassMobile/DbServiceFFILib",
 				);
-				MARKETING_VERSION = 0.23.0;
+				MARKETING_VERSION = 0.23.1;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-lc++",
@@ -843,7 +847,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/OneKeePassMobile/DbServiceFFILib",
 				);
-				MARKETING_VERSION = 0.23.0;
+				MARKETING_VERSION = 0.23.1;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -1062,7 +1066,7 @@
 					"$(PROJECT_DIR)/OneKeePassMobile/DbServiceFFILib",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 0.23.0;
+				MARKETING_VERSION = 0.23.1;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				OTHER_LDFLAGS = (
@@ -1119,7 +1123,7 @@
 					"$(PROJECT_DIR)/OneKeePassMobile/DbServiceFFILib",
 				);
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 0.23.0;
+				MARKETING_VERSION = 0.23.1;
 				MTL_FAST_MATH = YES;
 				OTHER_LDFLAGS = (
 					"$(inherited)",

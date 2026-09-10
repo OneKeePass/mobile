@@ -491,6 +491,23 @@
                                                       (dispatch [:open-database-read-kdbx-error error nil])))]
                                    (dispatch [:open-database-db-opened kdbx-loaded]))))))
 
+;; The message from readKdbx starts with the NSError code - see the coordinate call in
+;; OkpDbService.swift. 4101 is the XPC family and is raised when a file provider extension
+;; fails to reply, seen with GDrive. -1004 is NSFileProviderErrorDomain and is raised when the
+;; provider cannot reach its own server, seen with iCloud Drive with no connectivity. The
+;; causes differ but the outcome is the same - the file was never fetched - and both are
+;; answered by opening the latest backup read only. Other providers report their own codes and
+;; are added here as they are seen
+(def ^:private file-not-fetched-error-codes ["4101" "-1004"])
+
+(defn- file-not-fetched-error?
+  "True when the db file could not be fetched from its provider. The message is checked to be
+   a string as an error map carrying no :message reaches starts-with? as nil and that throws"
+  [error]
+  (and (= (:code error) const/COORDINATOR_CALL_FAILED)
+       (string? (:message error))
+       (boolean (some #(str/starts-with? (:message error) %) file-not-fetched-error-codes))))
+
 (reg-event-fx
  :open-database-read-kdbx-error
  (fn [{:keys [db]} [_event-id error kdbx-file-info-m]]
@@ -560,17 +577,21 @@
           [[:dispatch [:open-database-dialog-hide]]
            [:dispatch [:repick-confirm-show const/FILE_NOT_FOUND]]]
 
-          ;; Handles iOS NSFileCoordinator call error "4101 Couldn’t communicate with a helper application"
-          ;; This happened while trying to load a kdbx file from GDrive when user picks that db from the recent db list
-          (and (= (:code error) const/COORDINATOR_CALL_FAILED) (str/starts-with? (:message error) "4101"))
+          ;; The db file could not be fetched from its provider. The latest backup is opened
+          ;; read only - the backend marks the load as having had no connection and the UI
+          ;; then disables editing and says so
+          (file-not-fetched-error? error)
           (let [{:keys [database-full-file-name password key-file-name]} (get-in db [:open-database])]
             [[:bg-read-latest-backup-kdbx [{:db-file-name database-full-file-name
                                             :password password
                                             :key-file-name key-file-name
                                             :biometric-auth-used false}]]])
 
+          ;; The error may be a map and printing it puts something like
+          ;; '{:code "COORDINATOR_CALL_FAILED"}' in front of the user. Only the readable
+          ;; part of it is shown
           :else
-          [[:dispatch [:common/error-box-show "Database Open Error" error]]])}))
+          [[:dispatch [:common/error-box-show "Database Open Error" (u/readable-error-text error)]]])}))
 
 (reg-event-fx
  :open-database-db-opened

@@ -19,12 +19,15 @@
                                                        message-modal
                                                        message-snackbar]]
    [onekeepass.mobile.constants :refer [DARK-THEME]]
+   [onekeepass.mobile.crash-info :refer [crash-info-dialog-mounted]]
+   [onekeepass.mobile.events.crash-info :as crash-info-events]
    [onekeepass.mobile.events.app-settings :as as-events :refer [app-theme]]
    [onekeepass.mobile.events.common :as cmn-events]
    [onekeepass.mobile.events.external-db-change]
    [onekeepass.mobile.events.native-events :as native-events]
    [onekeepass.mobile.events.remote-storage :as rs-events]
    [onekeepass.mobile.events.save :as save-events]
+   [onekeepass.mobile.js-error :as js-error]
    [onekeepass.mobile.external-db-change :as external-db-change]
    [onekeepass.mobile.remote-connection-unavailable :as remote-connection-unavailable]
    [onekeepass.mobile.merging :refer [merge-result-dialog-mounted]]
@@ -59,6 +62,7 @@
       [external-db-change/external-db-change-dialog-mounted]
       [remote-connection-unavailable/remote-connection-unavailable-dialog-mounted]
       [otp-url-dialogs-mounted]
+      [crash-info-dialog-mounted]
       (when (bg/is-iOS)
         [ios-all-pending-passkeys-notification-dialog])]]))
 
@@ -120,17 +124,26 @@
   ;; Need to wrap the entry point with <GestureHandlerRootView> or gestureHandlerRootHOC
   ;; See https://docs.swmansion.com/react-native-gesture-handler/docs/installation
   [rnc/gh-gesture-handler-root-view {:style {:flex 1}}
-   [:f> main]])
+   ;; The boundary sits inside the gesture root so that everything the app renders is
+   ;; under it. A throw in any page is shown instead of ending the process.
+   ;; The text it shows is left to the component and is not translated - the translation
+   ;; lookup is itself something that can fail, and this has to render when the rest of
+   ;; the app could not
+   [rnc/cust-error-boundary
+    {:onError js-error/report-render-error}
+    [:f> main]]])
 
 (defn init-calls 
   "A common initialization functionalities for ios, android and android autofill"
   []
   (println "Common init-calls is called ...")
+  (js-error/install-global-error-handler)
   (native-events/register-backend-event-handlers)
   (cmn-events/sync-initialize)
   (as-events/init-session-timeout-tick)
   (t/load-language-translation)
   (rs-events/load-all-remote-connection-configs)
+  (crash-info-events/load-recorded-crashes)
   (when (bg/is-iOS)
     (pp-events/check-all)))
 

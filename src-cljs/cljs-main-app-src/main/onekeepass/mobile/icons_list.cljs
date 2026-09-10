@@ -105,7 +105,11 @@
 (def ^:private CUSTOM-ICONS-LIST-ICON-SIZE-2 30)
 
 (defn icon-id->name [index]
-  (name (nth standard-icons (if (< index icons-count) index 0))))
+  ;; Invalid IDs from database files use the default key icon.
+  (let [index (if (and (integer? index) (<= 0 index) (< index icons-count))
+                index
+                0)]
+    (name (nth standard-icons index))))
 
 (defn standard-icons-grid []
   [rn-view {:style {:flexDirection "row" :flexWrap "wrap"}}

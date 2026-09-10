@@ -17,6 +17,9 @@
 #import <React/RCTBundleURLProvider.h>
 #import <React/RCTEventEmitter.h>
 
+// Used in AppDelegate.swift for RCTSetFatalHandler and the RCTJSStackTraceKey key
+#import <React/RCTAssert.h>
+
 // See https://github.com/facebook/react-native/blob/v0.72.3/packages/react-native/Libraries/AppDelegate/RCTAppSetupUtils.h
 // Used in AppDelegate.swift
 #import <RCTAppDelegate.h>

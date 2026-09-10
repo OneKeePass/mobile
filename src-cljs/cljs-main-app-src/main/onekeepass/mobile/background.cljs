@@ -90,8 +90,20 @@
   [dispatch-fn]
   (call-api-async (fn [] (.hide rn-boot-splash true)) dispatch-fn))
 
+;; iOS only. The android side records nothing of this kind yet
+(defn last-crash-records
+  "Gets the javascript errors that the native fatal handler recorded, as text. The ':ok'
+   value is an empty string when nothing was recorded"
+  [dispatch-fn]
+  (call-api-async (fn [] (.lastCrashRecords okp-db-service)) dispatch-fn))
+
+(defn clear-last-crash-records
+  "Called once the user has seen the recorded crashes"
+  [dispatch-fn]
+  (call-api-async (fn [] (.clearLastCrashRecords okp-db-service)) dispatch-fn))
+
 (defn authenticate-with-biometric
-  "Called to authenticate the previously locked database. 
+  "Called to authenticate the previously locked database.
   There is no db specific biometric authentication settings or control. If the device supports
   the biometric, then that feature is used for any locked database to unlock
   "
@@ -975,6 +987,7 @@
              (js/console.log (ex-cause err)))))
        ;;To log the following messsage use 'if' instead of 'when' form
        #_(println "Tauri event listener for " event-name " is already registered"))))
+  ;; Typically this two arguments version is called where we hard code the caller-name as :common
   ([event-name event-handler-fn]
    (register-event-listener :common event-name event-handler-fn)))
 

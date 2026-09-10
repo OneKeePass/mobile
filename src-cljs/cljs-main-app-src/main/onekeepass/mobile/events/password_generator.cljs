@@ -32,6 +32,12 @@
   ([on-selection-callback]
    (dispatch [:password-generator/start on-selection-callback]))
   ([]
+   ;; Simulate js exception that crash the app. The js exception stack info is written to file which will
+   ;; be shown to user when the opens next time
+   #_(js/setTimeout
+      (fn []
+        (throw (js/Error. "OKP_TEST_FATAL_CRASH_LOG")))
+      1000)
    (dispatch [:password-generator/start nil])))
 
 (defn generator-panel-shown-update
