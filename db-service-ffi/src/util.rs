@@ -299,17 +299,46 @@ pub fn delete_key_file(key_file_name_component: &str) {
     log::debug!("Delete key file  {:?} result {:?}", &path, r);
 }
 
+// Returns the translation language id to use for the device locale
+// This is used only as the initial language when the preference is created; after that the
+// language selected in the app settings is used
 #[inline]
 pub fn current_locale_language() -> String {
-    // "en-US" language+region
-    // We use the language part only to locate translation json files
-    let lng = sys_locale::get_locale().unwrap_or_else(|| String::from("en"));
+    let locale = sys_locale::get_locale().unwrap_or_else(|| String::from("en"));
+    language_id_from_locale(&locale)
+}
 
-    // Returns the language id ( two letters)
-    lng.split("-")
-        .map(|s| s.to_string())
-        .next()
-        .unwrap_or_else(|| String::from("en"))
+// Maps a device locale like "en-US", "zh-Hant-TW" or "pt_BR" to the id of a translation json file
+// that we ship. Region or script is kept only for the languages that have region specific files
+// (zh-TW, zh-HK and pt-BR); for all others only the language part is used
+fn language_id_from_locale(locale: &str) -> String {
+    let normalized = locale.trim().replace('_', "-").to_lowercase();
+    let mut parts = normalized.split('-');
+
+    let language = match parts.next() {
+        Some(l) if !l.is_empty() => l.to_string(),
+        _ => return String::from("en"),
+    };
+
+    let subtags: Vec<&str> = parts.collect();
+    let has = |tag: &str| subtags.iter().any(|s| *s == tag);
+
+    match language.as_str() {
+        "zh" => {
+            if has("hans") {
+                // Simplified script wins over the region e.g "zh-Hans-HK"
+                language
+            } else if has("hk") || has("mo") {
+                String::from("zh-HK")
+            } else if has("tw") || has("hant") {
+                String::from("zh-TW")
+            } else {
+                language
+            }
+        }
+        "pt" if has("br") => String::from("pt-BR"),
+        _ => language,
+    }
 }
 
 ////
@@ -440,8 +469,46 @@ pub fn remove_backup_history_file(full_file_uri_str: &str, full_backup_file_name
 #[cfg(test)]
 mod tests {
 
+    use super::language_id_from_locale;
+
     #[test]
     fn verify1() {
         println!("A test module");
+    }
+
+    #[test]
+    fn verify_language_id_from_locale() {
+        let cases = [
+            ("en-US", "en"),
+            ("en", "en"),
+            ("fr-FR", "fr"),
+            ("ar-SA", "ar"),
+            ("zh", "zh"),
+            ("zh-CN", "zh"),
+            ("zh-Hans-CN", "zh"),
+            ("zh-Hans-HK", "zh"),
+            ("zh-Hant", "zh-TW"),
+            ("zh-Hant-TW", "zh-TW"),
+            ("zh-TW", "zh-TW"),
+            ("zh_TW", "zh-TW"),
+            ("zh-Hant-HK", "zh-HK"),
+            ("zh-HK", "zh-HK"),
+            ("zh-Hant-MO", "zh-HK"),
+            ("zh-MO", "zh-HK"),
+            ("pt-BR", "pt-BR"),
+            ("pt_BR", "pt-BR"),
+            ("pt-PT", "pt"),
+            ("", "en"),
+            ("  ", "en"),
+        ];
+
+        for (locale, expected) in cases {
+            assert_eq!(
+                language_id_from_locale(locale),
+                expected,
+                "locale {:?}",
+                locale
+            );
+        }
     }
 }
