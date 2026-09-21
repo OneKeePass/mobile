@@ -91,12 +91,19 @@ build-ios-sim-lib-debug:build-ios-sim-lib
 # All botan env passed here are based on https://botan.randombit.net/handbook/dev_ref/configure.html
 # https://github.com/randombit/botan/blob/3.7.1/configure.py#L709
 
+## The min version must be spelled out in the abi flags here too. Without it clang takes the
+## simulator SDK's own version (27.0 with Xcode 27) as the minimum and the lib will not load on
+## older simulators.
+## botan-sys does not rebuild when BOTAN_CONFIGURE_* changes, and a plain
+## 'cargo build --target aarch64-apple-ios-sim' outside this recipe builds Botan for macOS.
+## After either, run 'cargo clean -p botan-sys --target aarch64-apple-ios-sim' first
 build-ios-sim-lib release="":
     #!/usr/bin/env bash
     set -euxo pipefail
     export SDKROOT={{ios_sim_sdk_root}}
+    export IPHONEOS_DEPLOYMENT_TARGET={{ios_deployment_target}}
     export BOTAN_CONFIGURE_OS='ios'
-    export BOTAN_CONFIGURE_CC_ABI_FLAGS='-arch arm64'
+    export BOTAN_CONFIGURE_CC_ABI_FLAGS='-arch arm64 -mios-simulator-version-min={{ios_deployment_target}}'
     export BOTAN_CONFIGURE_CC='clang'
     export BOTAN_CONFIGURE_CPU='arm64'
     
