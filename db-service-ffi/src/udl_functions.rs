@@ -238,6 +238,9 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
         crate::ios::autofill_app_group::copy_files_to_app_group_on_save_or_read(&db_file_name);
     }
 
+    // The db file itself is loaded now and any earlier load of its latest backup is replaced
+    AppState::set_db_read_only(&db_file_name, false);
+
     // debug!("In read_kdbx: Added to recent db use list and going to store biometric credentials if needed");
 
     // Store the credentials if we will be using biometric
@@ -252,6 +255,20 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
 }
 
 pub(crate) fn save_kdbx(file_args: FileArgs, overwrite: bool) -> ApiResponse {
+    // Needs to be checked before the db file is opened for writing below
+    // On android the db file is opened (and truncated) before this call and there the same check
+    // is done first through the command 'ensure_db_writable' - see saveKdbx in DbServiceModule.kt
+    if let FileArgs::FileDecriptorWithFullFileName { full_file_name, .. }
+    | FileArgs::FullFileName { full_file_name } = &file_args
+    {
+        if crate::db_backup_read::ensure_db_writable(full_file_name).is_err() {
+            return ApiResponse::Failure {
+                result: InvokeResult::<()>::with_error(crate::db_backup_read::READ_ONLY_SAVE_REFUSED)
+                    .json_str(),
+            };
+        }
+    }
+
     let mut fd_used = false;
     let (mut writer, db_key, backup_file_name) = match file_args {
         FileArgs::FileDecriptorWithFullFileName {
@@ -386,6 +403,10 @@ pub(crate) fn write_to_backup_on_error(full_file_name_uri: String) -> ApiRespons
     // and that is converted to ApiResponse. Helps to use ?. May be used in fuctions also
     // to avoid using too many match calls
     let f = || {
+        // A db loaded from its latest backup would otherwise add that same content back to the
+        // backup history as the newest backup
+        crate::db_backup_read::ensure_db_writable(&full_file_name_uri)?;
+
         // The file name comes from the recently used list first as the uri based one used to
         // fail for some android content providers. A db handed over by another app is not in
         // that list at all and the uri based name is the only one available for it

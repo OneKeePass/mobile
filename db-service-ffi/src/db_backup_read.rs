@@ -55,7 +55,7 @@ impl From<KdbxLoaded> for KdbxLoadedEx {
 }
 
 pub(crate) fn read_latest_backup(json_args: &str) -> OkpResult<KdbxLoadedEx> {
-    let (db_file_name, password, key_file_name, _, _) = parse_command_args_or_err!(
+    let (db_file_name, password, key_file_name, biometric_auth_used, _) = parse_command_args_or_err!(
         json_args,
         OpenDbArg {
             db_file_name,
@@ -66,7 +66,16 @@ pub(crate) fn read_latest_backup(json_args: &str) -> OkpResult<KdbxLoadedEx> {
         }
     );
     let file_name = AppState::db_file_name(&db_file_name);
-    read_latest_backup_db_arg(&db_file_name, &password, &key_file_name, &file_name)
+    read_latest_backup_db_arg(&db_file_name, &password, &key_file_name, &file_name).map_err(|e| {
+        match e {
+            // The 'Open Offline' action may use the stored credentials and when they no longer
+            // work, the UI needs this error to popup the usual credentials dialog
+            error::Error::HeaderHmacHashCheckFailed if biometric_auth_used => {
+                error::Error::BiometricCredentialsAuthenticationFailed
+            }
+            _ => e,
+        }
+    })
 }
 
 pub(crate) fn read_latest_backup_db_arg(
@@ -91,7 +100,25 @@ pub(crate) fn read_latest_backup_db_arg(
         file_name.as_deref(),
     )?;
 
+    // The UI disables editing for this db. This makes sure that nothing writes the backup content
+    // back to the db file even if some UI path misses that
+    AppState::set_db_read_only(db_file_name, true);
+
     let k: KdbxLoadedEx = kdbx_loaded.into();
     // We return the no connection info so that we can show read only mode
     return Ok(k.set_no_read_connection());
+}
+
+// The UI matches on this exact error string to show its own read only message
+// See 'handle-save-error' in events/save.cljs
+pub(crate) const READ_ONLY_SAVE_REFUSED: &str = "DbOpenedReadOnly";
+
+// Called before writing a db to its db file or to its backup history
+pub(crate) fn ensure_db_writable(db_key: &str) -> OkpResult<()> {
+    if AppState::is_db_read_only(db_key) {
+        log::error!("Save refused as the db is loaded from its latest backup");
+        Err(error::Error::UnexpectedError(READ_ONLY_SAVE_REFUSED.into()))
+    } else {
+        Ok(())
+    }
 }

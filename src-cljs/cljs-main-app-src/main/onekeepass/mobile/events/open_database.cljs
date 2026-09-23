@@ -35,6 +35,14 @@
   [file-name full-file-name-uri]
   (dispatch [:open-database/database-file-picked-1 {:file-name file-name :full-file-name-uri full-file-name-uri}]))
 
+(defn open-selected-database-offline
+  "Called when user selects 'Open Offline' from the start page database list menu. The latest backup
+   of the db is opened read only without trying to fetch the db file itself"
+  [file-name full-file-name-uri]
+  (dispatch [:open-database/database-file-picked-1 {:file-name file-name
+                                                    :full-file-name-uri full-file-name-uri
+                                                    :offline-open? true}]))
+
 (defn database-field-update [kw-field-name value]
   (dispatch [:open-database-field-update kw-field-name value]))
 
@@ -105,7 +113,11 @@
 
                      ;; True when the db uri came from another app's 'Open with' or 'Open in'
                      ;; See the event :open-database/app-opened-with-db-file
-                     :transient-db-ref false})
+                     :transient-db-ref false
+
+                     ;; True when the user chose 'Open Offline' and the latest backup is read instead of the db file
+                     ;; See the fn 'open-selected-database-offline'
+                     :offline-open? false})
 
 (defn- init-open-database-data
   "Initializes all open db related values in the incoming main app db 
@@ -119,13 +131,14 @@
    the dialog-show field to true. 
    Returns the updated 'app-db'  
    "
-  [db  {:keys [file-name full-file-name-uri transient-db-ref]}]
+  [db  {:keys [file-name full-file-name-uri transient-db-ref offline-open?]}]
   (-> db init-open-database-data
       ;; database-file-name is just the 'file name' part derived from full uri 'database-full-file-name'
       ;; to show in the dialog
       (assoc-in [:open-database :database-file-name] file-name)
       (assoc-in [:open-database :database-full-file-name] full-file-name-uri)
       (assoc-in [:open-database :transient-db-ref] (boolean transient-db-ref))
+      (assoc-in [:open-database :offline-open?] (boolean offline-open?))
       (assoc-in [:open-database :dialog-show] true)))
 
 (defn- validate-required-fields
@@ -390,11 +403,19 @@
    {:fx [[:dispatch [:open-database-dialog-show kdbx-file-info-m]]
          [:dispatch [:common/error-box-show 'biometricDbOpenFirstTime 'biometricDbOpenFirstTime]]]}))
 
+(defn- read-db-fx
+  "Returns the fx that reads the db. For 'Open Offline' the latest backup is read instead of the db file.
+   Both fx take the same args map"
+  [offline-open? args-m]
+  (if offline-open?
+    [:bg-read-latest-backup-kdbx [args-m]]
+    [:bg-load-kdbx [args-m]]))
+
 ;; Called after getting the stored credentials ( a map from struct StoredCredential ) from secure enclave
 (reg-event-fx
  :open-database-db-open-credentials-retrieved
  ;; The args are stored-credentials , kdbx-file-info-m
- (fn [{:keys [db]} [_event-id {:keys [password key-file-name]} {:keys [full-file-name-uri] :as kdbx-file-info-m}]]
+ (fn [{:keys [db]} [_event-id {:keys [password key-file-name]} {:keys [full-file-name-uri offline-open?] :as kdbx-file-info-m}]]
    ;; Set the credentials fields in :open-database fields so that we can reuse the credentisals if repick is used
    ;; This repick may be asked if 'bg-load-kdbx' call response comes back with error 'FILE_NOT_FOUND' or 'PERMISSION_REQUIRED_TO_READ'
    ;; Particularly we see 'FILE_NOT_FOUND' error code when iCloud file sync is not yet happened 
@@ -404,12 +425,12 @@
             (assoc-in [:open-database :database-full-file-name] full-file-name-uri)
             (assoc-in [:open-database  :dialog-show] false))
     :fx [[:dispatch [:common/message-modal-show nil 'loading]]
-         ;; load-kdbx as we have credentials 
-         [:bg-load-kdbx  [{:db-file-name full-file-name-uri
-                           :password password
-                           :key-file-name key-file-name
-                           :biometric-auth-used true
-                           :kdbx-file-info-m kdbx-file-info-m}]]]}))
+         ;; load-kdbx as we have credentials
+         (read-db-fx offline-open? {:db-file-name full-file-name-uri
+                                    :password password
+                                    :key-file-name key-file-name
+                                    :biometric-auth-used true
+                                    :kdbx-file-info-m kdbx-file-info-m})]}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -452,15 +473,15 @@
  (fn [{:keys [db]} [_event-id]]
    (let [error-fields (validate-required-fields db)
          errors-found (boolean (seq error-fields))
-         {:keys [database-full-file-name password key-file-name transient-db-ref]} (get-in db [:open-database])]
+         {:keys [database-full-file-name password key-file-name transient-db-ref offline-open?]} (get-in db [:open-database])]
      (if errors-found
        {:db (assoc-in db [:open-database :error-fields] error-fields)}
        {:db (-> db (assoc-in [:open-database :status] :in-progress))
-        :fx [[:bg-load-kdbx [{:db-file-name database-full-file-name
-                              :password password
-                              :key-file-name key-file-name
-                              :biometric-auth-used false
-                              :transient-db-ref transient-db-ref}]]]}))))
+        :fx [(read-db-fx offline-open? {:db-file-name database-full-file-name
+                                        :password password
+                                        :key-file-name key-file-name
+                                        :biometric-auth-used false
+                                        :transient-db-ref transient-db-ref})]}))))
 
 (reg-fx
  :bg-load-kdbx
@@ -481,14 +502,16 @@
 
 (reg-fx
  :bg-read-latest-backup-kdbx
- (fn [[{:keys [db-file-name password key-file-name biometric-auth-used]}]]
-   (bg/read-latest-backup-kdbx db-file-name password key-file-name biometric-auth-used
+ ;; kdbx-file-info-m will have non nil value only for biometric credentials usage in 'Open Offline'
+ ;; and it lets a failed biometric credentials use fall back to the credentials dialog
+ (fn [[{:keys [db-file-name password key-file-name biometric-auth-used kdbx-file-info-m]}]]
+   (bg/read-latest-backup-kdbx db-file-name password key-file-name (boolean biometric-auth-used)
                                (fn [api-response]
                                  (when-some [kdbx-loaded
                                              (on-ok api-response
                                                     (fn [error]
                                                       (dispatch [:common/message-modal-hide])
-                                                      (dispatch [:open-database-read-kdbx-error error nil])))]
+                                                      (dispatch [:open-database-read-kdbx-error error kdbx-file-info-m])))]
                                    (dispatch [:open-database-db-opened kdbx-loaded]))))))
 
 ;; The message from readKdbx starts with the NSError code - see the coordinate call in

@@ -591,7 +591,15 @@ impl Commands {
                 // config resolved from a kdbx connection entry does not linger
                 // after the remote db that needed it is closed
                 remote_storage::clear_cached_connection_config(&db_key);
+                AppState::set_db_read_only(&db_key, false);
                 InvokeResult::from(db_service::close_kdbx(&db_key)).json_str()
+            }
+
+            // Android opens the db file for writing (and truncates it) before calling save_kdbx
+            // and so it calls this first. See saveKdbx in DbServiceModule.kt
+            "ensure_db_writable" => {
+                let (db_key,) = parse_command_args_or_json_error!(&args, DbKey { db_key });
+                InvokeResult::from(crate::db_backup_read::ensure_db_writable(&db_key)).json_str()
             }
 
             "combined_category_details" => {
@@ -1256,6 +1264,7 @@ impl Commands {
         remove_app_files(&db_key);
 
         remote_storage::clear_cached_connection_config(&db_key);
+        AppState::set_db_read_only(&db_key, false);
 
         InvokeResult::from(db_service::close_kdbx(&db_key)).json_str()
     }

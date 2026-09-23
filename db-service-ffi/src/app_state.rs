@@ -2,7 +2,7 @@ use log::{debug, error, info};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     fs,
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
@@ -69,6 +69,12 @@ pub struct AppState {
     // when db save fails (as the orginal db content changed)
     // This is reset to empty when the app starts
     last_backup_on_error: Mutex<HashMap<String, String>>,
+
+    // Db keys of the databases whose loaded content came from their latest backup and not from
+    // the db file itself (see db_backup_read.rs). Any write of such a db to its db file is refused
+    // as that would silently replace the file content with the older backup content
+    // This is reset to empty when the app starts
+    read_only_db_keys: Mutex<HashSet<String>>,
 
     preference: Mutex<Preference>,
 
@@ -170,6 +176,7 @@ impl AppState {
             export_data_dir_path,
             key_files_dir_path,
             last_backup_on_error: Mutex::new(HashMap::default()),
+            read_only_db_keys: Mutex::new(HashSet::default()),
             preference: Mutex::new(preference),
 
             common_device_service,
@@ -369,6 +376,25 @@ impl AppState {
             .unwrap()
             .get(full_file_name_uri)
             .map(|s| s.clone())
+    }
+
+    // Called with 'true' when a db is loaded from its latest backup and with 'false' when the db
+    // file itself is loaded or when the db is closed
+    pub fn set_db_read_only(db_key: &str, read_only: bool) {
+        let mut keys = Self::shared().read_only_db_keys.lock().unwrap();
+        if read_only {
+            keys.insert(db_key.into());
+        } else {
+            keys.remove(db_key);
+        }
+    }
+
+    pub fn is_db_read_only(db_key: &str) -> bool {
+        Self::shared()
+            .read_only_db_keys
+            .lock()
+            .unwrap()
+            .contains(db_key)
     }
 
     // Called to get the file name from the platform specific full file uri passed as arg 'full_file_name_uri'

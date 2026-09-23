@@ -469,17 +469,27 @@
                              file-name)}]
    ;; Dividers used in menu has a preset background-color
    [cust-rnp-divider]
-   (when opened
-     (if locked
-       [rnp-menu-item {:title  (lstr-ml "unlockdb")
-                       :onPress (db-action-menu-action
-                                 opndb-events/unlock-selected-db
-                                 file-name
-                                 db-file-path)}]
-       [rnp-menu-item {:title (lstr-ml "lockdb")
-                       :onPress (db-action-menu-action
-                                 cmn-events/lock-kdbx
-                                 db-file-path)}]))
+   (cond
+     (not opened)
+     ;; Opens the latest backup read only without trying to fetch the db file
+     [rnp-menu-item {:title (lstr-ml "openOffline")
+                     :onPress (db-action-menu-action
+                               opndb-events/open-selected-database-offline
+                               file-name
+                               db-file-path)}]
+
+     locked
+     [rnp-menu-item {:title  (lstr-ml "unlockdb")
+                     :onPress (db-action-menu-action
+                               opndb-events/unlock-selected-db
+                               file-name
+                               db-file-path)}]
+
+     :else
+     [rnp-menu-item {:title (lstr-ml "lockdb")
+                     :onPress (db-action-menu-action
+                               cmn-events/lock-kdbx
+                               db-file-path)}])
 
    [rnp-menu-item {:title (lstr-ml "closedb")
                    :disabled (not opened)

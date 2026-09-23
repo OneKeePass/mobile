@@ -391,7 +391,7 @@
             "biometricDbOpenEnabled": "You need to login again for this change to take effect",
             "newDatabaseCreatedNotOpened": "The database is created in the location you selected but that location is not ready to open it just yet. Please use 'Open database' and pick it from there",
             "noCamera": "No camera is found. Please enter the secret code manually",
-            "dbReadOnly": "Database is opened in read only mode as there is no connection to the server",
+            "dbReadOnly": "Database is opened in read only mode from the last saved backup",
             "otpUrlNoDatabaseOpen": "Another app sent a one time password code. Please open a database first and you will then be asked where to keep the code",
             "saveCompleted": "The newly saved database is loaded now"
         }
@@ -578,6 +578,7 @@
         "modifyCustomField": "Modify Custom Field",
         "move": "Move",
         "modifiedTime": "Modified Time",
+        "openOffline": "Open Offline",
         "openRemote": "Open Remote ..",
         "privacyPolicy": "Privacy Policy",
         "pwdGenerator": "Password Generator",

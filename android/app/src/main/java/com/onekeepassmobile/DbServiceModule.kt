@@ -187,6 +187,19 @@ class DbServiceModule(reactContext: ReactApplicationContext) :
         executorService.execute {
             val uri = Uri.parse(fullFileNameUri);
             try {
+                // A db loaded from its latest backup is read only. That is checked here before
+                // anything else as the "rwt" open below truncates the db file before save_kdbx
+                // gets a chance to refuse the save
+                val writableCheck = DbServiceAPI.invokeCommand(
+                    "ensure_db_writable",
+                    JSONObject().put("db_key", fullFileNameUri).toString()
+                )
+                if (JSONObject(writableCheck).has("error")) {
+                    Log.e(TAG, "Save refused as the db is opened read only")
+                    promise.resolve(writableCheck)
+                    return@execute
+                }
+
                 if (!overwrite && (verifyDbFileChanged(fullFileNameUri, promise))) {
                     Log.d(TAG, "Db contents have changed and saving is not done")
                     // Store the db file with changed data to backup for later offline use

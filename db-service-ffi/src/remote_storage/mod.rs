@@ -375,6 +375,9 @@ fn rs_read_file(json_args: &str) -> OkpResult<KdbxLoadedEx> {
         &file_modified_time,
     )?;
 
+    // The remote db file itself is loaded now and any earlier load of its latest backup is replaced
+    crate::app_state::AppState::set_db_read_only(&db_file_name, false);
+
     Ok(kdbx_loaded.into())
 }
 
@@ -710,6 +713,9 @@ pub(crate) fn rs_reload_with_remote(db_key: &str) -> OkpResult<db_service::Merge
 fn rs_write_file(json_args: &str) -> OkpResult<KdbxSaved> {
     let (db_key, overwrite) =
         parse_command_args_or_err!(json_args, SaveDbArg { db_key, overwrite });
+
+    // Checked first as the connection error handling below also writes to the backup history
+    crate::db_backup_read::ensure_db_writable(&db_key)?;
 
     let rs_operation_type = parse_db_key_to_rs_type_opertaion(&db_key)?;
 
