@@ -62,6 +62,12 @@ pub(crate) struct DatabasePreference {
     db_key: String,
     db_open_biometric_enabled: bool,
     db_unlock_biometric_enabled: bool,
+
+    // When true, the db file is always opened with editing disabled and saving refused till the
+    // user turns this off. 'serde default' keeps the preference files written before this field
+    // and the UI callers that do not send it working
+    #[serde(default)]
+    read_only: bool,
     //TDOO:
     // Add after how many times of using biometric, we need to ask user to enter password something similar MacOS does
     // Add PIN protection for each db  - db_open_pin_enabled:bool,; Need to store the PIN in secure enclave
@@ -517,6 +523,34 @@ impl Preference {
             .iter()
             .find(|p| p.db_key == db_key)
             .map_or(false, |d| d.db_open_biometric_enabled)
+    }
+
+    pub(crate) fn db_read_only(&self, db_key: &str) -> bool {
+        self.database_preferences
+            .iter()
+            .find(|p| p.db_key == db_key)
+            .map_or(false, |d| d.read_only)
+    }
+
+    // Only the read only flag is changed. 'upate_or_insert_database_preference' is not used here as
+    // it also removes the stored biometric credentials when a new preference is inserted
+    pub(crate) fn set_db_read_only(&mut self, db_key: &str, read_only: bool) {
+        if let Some(d) = self
+            .database_preferences
+            .iter_mut()
+            .find(|d| d.db_key == db_key)
+        {
+            d.read_only = read_only;
+        } else {
+            // Same defaults as the UI side uses for a db that has no preference yet
+            self.database_preferences.push(DatabasePreference {
+                db_key: db_key.to_string(),
+                db_open_biometric_enabled: false,
+                db_unlock_biometric_enabled: true,
+                read_only,
+            });
+        }
+        self.write_to_app_dir();
     }
 
     pub(crate) fn database_preferences(&self) -> &Vec<DatabasePreference> {

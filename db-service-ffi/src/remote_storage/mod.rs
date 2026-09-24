@@ -376,9 +376,19 @@ fn rs_read_file(json_args: &str) -> OkpResult<KdbxLoadedEx> {
     )?;
 
     // The remote db file itself is loaded now and any earlier load of its latest backup is replaced
-    crate::app_state::AppState::set_db_read_only(&db_file_name, false);
+    // It stays read only when the user has set the db as Read Only
+    let read_only = crate::app_state::AppState::db_read_only_preference(&db_file_name);
+    crate::app_state::AppState::set_db_read_only(
+        &db_file_name,
+        read_only.then_some(crate::app_state::ReadOnlyReason::UserPreference),
+    );
 
-    Ok(kdbx_loaded.into())
+    let kdbx_loaded: KdbxLoadedEx = kdbx_loaded.into();
+    if read_only {
+        Ok(kdbx_loaded.set_user_read_only())
+    } else {
+        Ok(kdbx_loaded)
+    }
 }
 
 // Sets the modified time of the backup file to that of the db file

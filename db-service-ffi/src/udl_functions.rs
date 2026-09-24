@@ -9,6 +9,7 @@ use std::io::Read;
 
 use crate::{
     backup::{self, matching_backup_exists},
+    db_backup_read::KdbxLoadedEx,
     biometric_auth,
     commands::{self, full_path_file_to_create, CommandArg, Commands, ResponseJson},
     event_dispatcher,
@@ -129,7 +130,7 @@ pub(crate) fn read_kdbx(file_args: FileArgs, json_args: String) -> ApiResponse {
     as_api_response(internal_read_kdbx(&mut file, &json_args))
 }
 
-fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service::KdbxLoaded> {
+fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<KdbxLoadedEx> {
     let CommandArg::OpenDbArg {
         db_file_name,
         password,
@@ -239,7 +240,12 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
     }
 
     // The db file itself is loaded now and any earlier load of its latest backup is replaced
-    AppState::set_db_read_only(&db_file_name, false);
+    // It stays read only when the user has set the db as Read Only
+    let read_only = AppState::db_read_only_preference(&db_file_name);
+    AppState::set_db_read_only(
+        &db_file_name,
+        read_only.then_some(crate::app_state::ReadOnlyReason::UserPreference),
+    );
 
     // debug!("In read_kdbx: Added to recent db use list and going to store biometric credentials if needed");
 
@@ -251,7 +257,12 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<db_service:
         biometric_auth_used,
     );
 
-    Ok(kdbx_loaded)
+    let kdbx_loaded: KdbxLoadedEx = kdbx_loaded.into();
+    if read_only {
+        Ok(kdbx_loaded.set_user_read_only())
+    } else {
+        Ok(kdbx_loaded)
+    }
 }
 
 pub(crate) fn save_kdbx(file_args: FileArgs, overwrite: bool) -> ApiResponse {

@@ -4,7 +4,7 @@
    and must be committed to the real KDBX database by the main app."
   (:require [onekeepass.mobile.background :as bg]
             [onekeepass.mobile.constants :refer [PASSKEY_PENDING_REVIEW_PAGE_ID]]
-            [onekeepass.mobile.events.common :refer [on-error]]
+            [onekeepass.mobile.events.common :refer [db-disable-edit on-error]]
             [re-frame.core :refer [dispatch reg-event-db reg-event-fx reg-fx reg-sub subscribe]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Public API ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -110,22 +110,24 @@
                        :ios-all-pending-passkeys-notification-dialog
                        {:pending-passkeys (or items [])}]])]}))
 
-;; Called after a database is opened (iOS only).
+;; Called after a database is opened or unlocked (iOS only).
 ;; Loads the pending passkey list for the given org-db-key.
+;; A read only db (opened offline or read only) cannot take the passkeys as its save is refused.
+;; The user is only told about them and they stay pending till the db is opened normally
 (reg-event-fx
  :passkey-pending/check
- (fn [{:keys [_db]} [_event-id db-key]]
-   {:fx [[:bg-passkey-pending-list [db-key]]]}))
+ (fn [{:keys [db]} [_event-id db-key]]
+   {:fx [[:bg-passkey-pending-list [db-key (db-disable-edit db db-key)]]]}))
 
 (reg-fx
  :bg-passkey-pending-list
- (fn [[db-key]]
+ (fn [[db-key read-only?]]
    (bg/ios-pending-passkeys-list
     db-key
     (fn [api-response]
       (when-not (on-error api-response)
         #_(println "bg/pending-passkeys-list api-response" api-response)
-        (dispatch [:passkey-pending/loaded (:ok api-response) db-key]))))))
+        (dispatch [:passkey-pending/loaded (:ok api-response) db-key read-only?]))))))
 
 ;; Stores the loaded items. If non-empty, opens the notification snackbar.
 #_(reg-event-db
@@ -138,15 +140,16 @@
 
 (reg-event-fx
  :passkey-pending/loaded
- (fn [{:keys [db]} [_event-id items db-key]]
+ (fn [{:keys [db]} [_event-id items db-key read-only?]]
    {:db (-> db
             (assoc-in [:passkey-pending :items] (or items []))
             (assoc-in [:passkey-pending :db-key] db-key))
-    ;; This will show the dialog
+    ;; This will show the dialog. For a read only db it only tells the user and offers no review
     :fx [(when (> (count items) 0)
            [:dispatch [:generic-dialog-show-with-state
                        :ios-pending-passkey-notification-dialog
-                       {:items-count (count items)}]])]}))
+                       {:items-count (count items)
+                        :read-only (boolean read-only?)}]])]}))
 
 #_(reg-event-db
    :passkey-pending/snackbar-close

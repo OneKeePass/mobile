@@ -684,6 +684,11 @@ impl super::IosAppGroupSupportService {
                 PasskeyPendingRecordArg { record_uuid, db_key }
             );
 
+            // The pending file is deleted below before the UI saves the db. For a read only db
+            // that save is refused and the passkey would be lost. So the pending file is left
+            // as it is till the db is opened normally
+            crate::db_backup_read::ensure_db_writable(&db_key)?;
+
             let dir = pending_passkeys_dir()?;
             let file_path = dir.join(format!("{}.json", &record_uuid));
 

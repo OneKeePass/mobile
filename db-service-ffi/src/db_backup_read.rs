@@ -1,6 +1,6 @@
 use std::fs;
 
-use crate::app_state::AppState;
+use crate::app_state::{AppState, ReadOnlyReason};
 use crate::backup::latest_backup_file_path;
 use crate::CommandArg;
 use crate::{parse_command_args_or_err, OkpError, OkpResult};
@@ -8,15 +8,17 @@ use onekeepass_core::db_service::KdbxLoaded;
 use onekeepass_core::{db_service, error, service_util};
 use serde::Serialize;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Default, Serialize)]
 struct RsAdditionalInfo {
+    // The db content is from its latest backup and not from the db file itself
     no_connection: bool,
+    // The user chose to open the db file itself read only
+    user_read_only: bool,
 }
 
 // This adds an additional info to the existing KdbxLoaded
-// For now we set 'no_connection' field only to indicate to the UI side
-// that we have opened the db content using the backup and editing should be
-// disabled for now
+// Either of the RsAdditionalInfo fields tells the UI side that editing is to be disabled
+// and which read only notice is to be shown
 #[derive(Debug, Serialize)]
 pub(crate) struct KdbxLoadedEx {
     db_key: String,
@@ -30,6 +32,15 @@ impl KdbxLoadedEx {
     pub(crate) fn set_no_read_connection(mut self) -> Self {
         self.rs_additional_info = Some(RsAdditionalInfo {
             no_connection: true,
+            ..Default::default()
+        });
+        self
+    }
+
+    pub(crate) fn set_user_read_only(mut self) -> Self {
+        self.rs_additional_info = Some(RsAdditionalInfo {
+            user_read_only: true,
+            ..Default::default()
         });
         self
     }
@@ -102,7 +113,7 @@ pub(crate) fn read_latest_backup_db_arg(
 
     // The UI disables editing for this db. This makes sure that nothing writes the backup content
     // back to the db file even if some UI path misses that
-    AppState::set_db_read_only(db_file_name, true);
+    AppState::set_db_read_only(db_file_name, Some(ReadOnlyReason::LoadedFromBackup));
 
     let k: KdbxLoadedEx = kdbx_loaded.into();
     // We return the no connection info so that we can show read only mode
@@ -114,9 +125,11 @@ pub(crate) fn read_latest_backup_db_arg(
 pub(crate) const READ_ONLY_SAVE_REFUSED: &str = "DbOpenedReadOnly";
 
 // Called before writing a db to its db file or to its backup history
+// A db is read only when it is loaded from its latest backup or when the user chose to open
+// the db file read only
 pub(crate) fn ensure_db_writable(db_key: &str) -> OkpResult<()> {
     if AppState::is_db_read_only(db_key) {
-        log::error!("Save refused as the db is loaded from its latest backup");
+        log::error!("Save refused as the db is opened read only");
         Err(error::Error::UnexpectedError(READ_ONLY_SAVE_REFUSED.into()))
     } else {
         Ok(())

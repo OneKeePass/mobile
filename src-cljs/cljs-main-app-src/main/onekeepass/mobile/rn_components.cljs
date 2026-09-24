@@ -306,6 +306,8 @@
 
 (def custom-color1 (r/atom nil))
 (def custom-color1-ontainer (r/atom nil))
+;; Text and icons drawn on 'custom-color1-ontainer' - an amber tint used for the read only strip
+(def on-custom-color1-container (r/atom nil))
 
 (def circular-progress-color custom-color0 #_(r/atom "#F8BD2A"))
 
@@ -371,7 +373,8 @@
     (reset! custom-color0-ontainer (.-custom0Container colors))
 
     (reset! custom-color1 (.-custom1 colors))
-    (reset! custom-color1-ontainer (.-custom1Container colors))))
+    (reset! custom-color1-ontainer (.-custom1Container colors))
+    (reset! on-custom-color1-container (.-onCustom1Container colors))))
 
 (defn is-light-theme? []
   (= const/LIGHT-THEME @current-theme))

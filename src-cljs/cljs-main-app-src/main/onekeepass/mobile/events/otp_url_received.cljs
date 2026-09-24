@@ -16,6 +16,7 @@
                                                  UUID_OF_ENTRY_TYPE_LOGIN]]
             [onekeepass.mobile.events.app-lock :refer [app-locked?]]
             [onekeepass.mobile.events.common :refer [active-db-key
+                                                     current-db-disable-edit
                                                      get-in-key-db
                                                      is-db-locked
                                                      on-ok]]
@@ -170,6 +171,11 @@
      ;; Nothing is put in front of the user over the app lock screen
      (app-locked? db)
      {}
+
+     ;; The open db is read only (opened offline or read only) and the code cannot be saved to it.
+     ;; The url stays pending and is routed again when a db is opened or unlocked
+     (and (db-usable? db) (current-db-disable-edit db))
+     {:fx [[:dispatch [:common/message-box-show 'otpUrlReceived 'otpUrlDbReadOnly]]]}
 
      (db-usable? db)
      {:fx [[:dispatch [:otp-url-received-destination-dialog-show]]]}
