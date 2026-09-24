@@ -268,7 +268,7 @@ fn internal_read_kdbx(file: &mut File, json_args: &str) -> OkpResult<KdbxLoadedE
 pub(crate) fn save_kdbx(file_args: FileArgs, overwrite: bool) -> ApiResponse {
     // Needs to be checked before the db file is opened for writing below
     // On android the db file is opened (and truncated) before this call and there the same check
-    // is done first through the command 'ensure_db_writable' - see saveKdbx in DbServiceModule.kt
+    // is done first through 'ensure_db_writable' - see saveKdbx in DbServiceModule.kt
     if let FileArgs::FileDecriptorWithFullFileName { full_file_name, .. }
     | FileArgs::FullFileName { full_file_name } = &file_args
     {
@@ -405,6 +405,13 @@ pub(crate) fn save_kdbx(file_args: FileArgs, overwrite: bool) -> ApiResponse {
     ApiResponse::Success {
         result: api_response,
     }
+}
+
+// Android opens the db file for writing (and truncates it) before calling save_kdbx and so it
+// calls this first. A Failure carries the error json that is passed on to the UI as it is
+// See saveKdbx in DbServiceModule.kt
+pub(crate) fn ensure_db_writable(full_file_name_uri: String) -> ApiResponse {
+    as_api_response(crate::db_backup_read::ensure_db_writable(&full_file_name_uri))
 }
 
 // Called to create the backup file whenever some save error happens during the save kdbx api call

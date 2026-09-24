@@ -60,7 +60,7 @@
   The args are the re-frame 'app-db' and KdbxLoaded struct returned by backend API.
   Returns the updated app-db
   "
-  [app-db {:keys [db-key database-name file-name _key-file-name]}] ;;kdbx-loaded 
+  [app-db {:keys [db-key database-name file-name _key-file-name rs-additional-info]}] ;;kdbx-loaded 
   (let [app-db  (if (nil? (:opened-db-list app-db)) (assoc app-db :opened-db-list []) app-db)
         ;; Existing db-key is removed first to maintain unique db-key
         dbs (filterv (fn [m] (not= db-key (:db-key m))) (:opened-db-list app-db))
@@ -81,6 +81,8 @@
         (update-in [:opened-db-list] conj {:db-key db-key
                                            :database-name database-name
                                            :file-name file-name
+                                           ;; Tells whether the db is opened offline or read only
+                                           :rs-additional-info rs-additional-info
                                            ;; user-action-time is used for db timeout
                                            ;; See onekeepass.mobile.events.app-settings
                                            :user-action-time (js/Date.now)
@@ -458,9 +460,16 @@
 
 (reg-event-fx
  :android-af/kdbx-database-opened
- (fn [{:keys [db]} [_event-id {:keys [db-key _database-name] :as kdbx-loaded}]]
-   (let [android-af-context-mode (get-in db [:android-af-context-mode])]
+ (fn [{:keys [db]} [_event-id {:keys [db-key _database-name rs-additional-info] :as kdbx-loaded}]]
+   (let [android-af-context-mode (get-in db [:android-af-context-mode])
+         read-only? (boolean (or (:no-connection rs-additional-info) (:user-read-only rs-additional-info)))]
      #_(println "In :android-af/kdbx-database-opened android-af-context-mode" android-af-context-mode)
+     (if (and read-only? (= android-af-context-mode :passkey-registration-context))
+       ;; The list does not let a read only db be picked for a new passkey. This covers a db picked
+       ;; through 'Open database' instead. It is closed again and the user picks another one
+       {:db (android-af-db-opened db kdbx-loaded)
+        :fx [[:dispatch [:android-af/close-opened-db db-key]]
+             [:dispatch [:common/message-box-show 'dbReadOnly 'passkeyRegistrationDbReadOnly]]]}
      ;; TODO: We need to add this opened db to the list, but Main app's current-db-file-name
      ;; is not be set and instead [:android-af :current-db-file-name] is set
      ;; The main app current-db-file-name is not set in db-opened
@@ -482,7 +491,7 @@
              [:dispatch [:android-pk/check-assertion-context]]
 
              :passkey-registration-context
-             [:dispatch [:android-pk/check-registration-context]])]})))
+             [:dispatch [:android-pk/check-registration-context]])]}))))
 
 #_(reg-event-fx
    :android-af/kdbx-database-opened

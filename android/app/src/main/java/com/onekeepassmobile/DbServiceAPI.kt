@@ -125,6 +125,12 @@ object DbServiceAPI {
         return onekeepass.mobile.ffi.verifyDbFileChecksum(fileArgs)
     }
 
+    // Failure when the db is opened read only and must not be written. Its result is the error json
+    // that is passed on to the UI as it is
+    fun ensureDbWritable(fullFileName: String): ApiResponse {
+        return onekeepass.mobile.ffi.ensureDbWritable(fullFileName)
+    }
+
     fun writeToBackupOnError(fullFileName: String) {
 
         val r = onekeepass.mobile.ffi.writeToBackupOnError(fullFileName)

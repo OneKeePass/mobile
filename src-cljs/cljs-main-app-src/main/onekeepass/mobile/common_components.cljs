@@ -10,7 +10,7 @@
                      on-background-color rn-scroll-view
                      rn-text rn-view rnms-modal-selector rnp-button rnp-chip
                      rnp-dialog rnp-dialog-actions rnp-dialog-content
-                     rnp-dialog-icon rnp-dialog-title rnp-divider rnp-modal rn-pressable
+                     rnp-dialog-icon rnp-dialog-title rnp-divider rnp-icon rnp-modal rn-pressable
                      rnp-snackbar rnp-text rnp-text-input rnp-text-input-icon
                      tertiary-color]]
             [onekeepass.mobile.translation :refer [lstr-bl
@@ -26,6 +26,17 @@
             [reagent.core :as r]))
 
 (set! *warn-on-infer* true)
+
+(defn read-only-db-label
+  "Shown under the name of a db in a databases list when the db is opened offline (kind :offline)
+   or is set as Read Only (kind :read-only)"
+  [kind]
+  (let [offline? (= kind :offline)
+        color @rnc/custom-color1]
+    [rn-view {:style {:flexDirection "row" :alignItems "center" :marginTop 2}}
+     [rnp-icon {:source (if offline? "cloud-off-outline" "lock-outline") :size 14 :color color}]
+     [rnp-text {:style {:marginLeft 4 :color color} :variant "labelSmall"}
+      (lstr-l (if offline? 'offline 'readOnly))]]))
 
 ;; TODO: Need to use 'generic-dialog-*' as done in onekeepass.mobile.events.dialogs
 ;; for all dialogs data provider and events

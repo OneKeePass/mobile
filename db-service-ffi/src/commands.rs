@@ -607,13 +607,6 @@ impl Commands {
                 InvokeResult::with_ok(()).json_str()
             }
 
-            // Android opens the db file for writing (and truncates it) before calling save_kdbx
-            // and so it calls this first. See saveKdbx in DbServiceModule.kt
-            "ensure_db_writable" => {
-                let (db_key,) = parse_command_args_or_json_error!(&args, DbKey { db_key });
-                InvokeResult::from(crate::db_backup_read::ensure_db_writable(&db_key)).json_str()
-            }
-
             "combined_category_details" => {
                 db_service_call! (args, CategoryDetailArg{db_key,grouping_kind} => combined_category_details(&db_key,&grouping_kind))
             }

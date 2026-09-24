@@ -400,6 +400,7 @@
             "dbReadOnly": "Database is opened in read only mode from the last saved backup",
             "otpUrlDbReadOnly": "Another app sent a one time password code but this database is read only. Once Read Only is turned off for a database that is not opened offline, you will be asked where to keep the code. The code is kept only till the app is closed",
             "otpUrlNoDatabaseOpen": "Another app sent a one time password code. Please open a database first and you will then be asked where to keep the code",
+            "passkeyRegistrationDbReadOnly": "This database is read only and a new passkey cannot be saved to it. Please choose another database, or turn off Read Only for this database in the app",
             "saveCompleted": "The newly saved database is loaded now"
         }
     },

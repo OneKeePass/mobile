@@ -24,7 +24,7 @@
                      rn-keyboard rn-safe-area-view rn-scroll-view rn-section-list rn-view
                      rnp-button rnp-dialog-actions rnp-dialog-content
                      rnp-dialog-title rnp-divider rnp-helper-text
-                     rnp-icon rnp-icon-button rnp-list-icon rnp-list-item rnp-menu
+                     rnp-icon-button rnp-list-icon rnp-list-item rnp-menu
                      rnp-menu-item rnp-modal rnp-portal rnp-progress-bar rnp-text
                      rnp-text-input rnp-text-input-icon]]
             [onekeepass.mobile.translation :refer [lstr-bl lstr-l lstr-dlg-text
@@ -595,16 +595,6 @@
     :else
     (opndb-events/open-selected-database file-name db-file-path)))
 
-(defn- read-only-row-label
-  "Shown under the name of an opened db that is opened offline or read only"
-  [kind]
-  (let [offline? (= kind :offline)
-        color @rnc/custom-color1]
-    [rn-view {:style {:flexDirection "row" :alignItems "center" :marginTop 2}}
-     [rnp-icon {:source (if offline? "cloud-off-outline" "lock-outline") :size 14 :color color}]
-     [rnp-text {:style {:marginLeft 4 :color color} :variant "labelSmall"}
-      (lstr-l (if offline? 'offline 'readOnly))]]))
-
 (defn row-item
   "The first arg is map from recently-used and the second arg is a vec of db keys of the opened databases 
    Returns a row item component"
@@ -619,9 +609,8 @@
                       :title (r/as-element
                               [rnp-text {:style {:color color #_(if found primary-color rnc/outline-color)}
                                          :variant (if found "titleMedium" "titleSmall")} file-name])
-                      ;; Only an opened db can have a read only kind
                       :description (when read-only-kind
-                                     (fn [_props] (r/as-element [read-only-row-label read-only-kind])))
+                                     (fn [_props] (r/as-element [cc/read-only-db-label read-only-kind])))
                       :left (fn [_props]
                               (r/as-element
                                [rnp-list-icon {:style {:height 24}

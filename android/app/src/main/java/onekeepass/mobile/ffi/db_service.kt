@@ -1023,6 +1023,8 @@ internal open class UniffiVTableCallbackInterfaceSecureEnclaveCbService(
 
 
 
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -1045,6 +1047,8 @@ fun uniffi_db_service_ffi_checksum_func_copy_picked_key_file(
 fun uniffi_db_service_ffi_checksum_func_create_temp_kdbx(
 ): Short
 fun uniffi_db_service_ffi_checksum_func_db_service_enable_logging(
+): Short
+fun uniffi_db_service_ffi_checksum_func_ensure_db_writable(
 ): Short
 fun uniffi_db_service_ffi_checksum_func_extract_file_provider(
 ): Short
@@ -1275,6 +1279,8 @@ fun uniffi_db_service_ffi_fn_func_create_temp_kdbx(`fileArgs`: RustBuffer.ByValu
 ): RustBuffer.ByValue
 fun uniffi_db_service_ffi_fn_func_db_service_enable_logging(uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
+fun uniffi_db_service_ffi_fn_func_ensure_db_writable(`fullFileNameUri`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_db_service_ffi_fn_func_extract_file_provider(`fullFileNameUri`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_db_service_ffi_fn_func_invoke_command(`commandName`: RustBuffer.ByValue,`args`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1431,6 +1437,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_ffi_checksum_func_db_service_enable_logging() != 27628.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_ffi_checksum_func_ensure_db_writable() != 38497.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_ffi_checksum_func_extract_file_provider() != 63250.toShort()) {
@@ -4862,6 +4871,15 @@ public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.Str
         _status)
 }
     
+    
+ fun `ensureDbWritable`(`fullFileNameUri`: kotlin.String): ApiResponse {
+            return FfiConverterTypeApiResponse.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_func_ensure_db_writable(
+        FfiConverterString.lower(`fullFileNameUri`),_status)
+}
+    )
+    }
     
  fun `extractFileProvider`(`fullFileNameUri`: kotlin.String): kotlin.String {
             return FfiConverterString.lift(

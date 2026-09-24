@@ -59,6 +59,7 @@ class ApiCallbackServiceImpl():AndroidApiService,CommonDeviceServiceEx {
 
     // Called by Rust after signing a passkey assertion; delegates to PasskeyModule companion.
     override fun completePasskeyAssertion(data: AndroidPasskeyAssertionCallbackData) {
+        Log.d(TAG,"completePasskeyAssertion is called from backend")
         PasskeyModule.completePasskeyAssertion(data.authenticationResponseJson)
     }
 
