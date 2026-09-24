@@ -67,4 +67,11 @@ class ApiCallbackServiceImpl():AndroidApiService,CommonDeviceServiceEx {
     override fun storePasskeyRegistrationResponse(data: AndroidPasskeyRegistrationCallbackData) {
         PasskeyRequestStore.registrationResponseJson = data.registrationResponseJson
     }
+
+    // Called by Rust after a db is closed. The passkey provider must not offer passkeys of a closed db
+    override fun dbClosed(dbKey: String) {
+        if (PasskeyRequestStore.currentDbKey == dbKey) {
+            PasskeyRequestStore.currentDbKey = null
+        }
+    }
 }

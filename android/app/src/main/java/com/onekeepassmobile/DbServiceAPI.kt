@@ -125,6 +125,16 @@ object DbServiceAPI {
         return onekeepass.mobile.ffi.verifyDbFileChecksum(fileArgs)
     }
 
+    // Passkeys of an opened db for a relying party. An empty 'allowIds' means no filtering by
+    // credential id
+    fun findMatchingPasskeys(
+        dbKey: String,
+        rpId: String,
+        allowIds: List<String>
+    ): List<AndroidPasskeySummaryData> {
+        return androidSupportServiceExtra.findMatchingPasskeys(dbKey, rpId, allowIds)
+    }
+
     // Failure when the db is opened read only and must not be written. Its result is the error json
     // that is passed on to the UI as it is
     fun ensureDbWritable(fullFileName: String): ApiResponse {

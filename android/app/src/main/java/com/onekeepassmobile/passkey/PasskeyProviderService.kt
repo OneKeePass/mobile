@@ -151,38 +151,17 @@ class PasskeyProviderService : CredentialProviderService() {
     private fun findMatchingPasskeys(rpId: String, allowIds: List<String>): List<PasskeySummary> {
         val dbKey = PasskeyRequestStore.currentDbKey ?: return emptyList()
         return try {
-            val idsJson = if (allowIds.isEmpty()) "null"
-            else allowIds.joinToString(",", "[", "]") { "\"$it\"" }
-            val args = """{"db_key":"${dbKey.escapeJson()}","rp_id":"${rpId.escapeJson()}","allow_credential_ids":$idsJson}"""
-            val result = DbServiceAPI.androidInvokeCommand("passkey_find_matching", args)
-            parsePasskeySummaries(result, dbKey)
-        } catch (e: Exception) {
-            Log.e(TAG, "findMatchingPasskeys error", e)
-            emptyList()
-        }
-    }
-
-    // Parse the InvokeResult JSON returned by passkey_find_matching.
-    private fun parsePasskeySummaries(resultJson: String, dbKey: String): List<PasskeySummary> {
-        return try {
-            val root = JSONObject(resultJson)
-            val okArray = root.optJSONArray("ok") ?: return emptyList()
-            buildList {
-                for (i in 0 until okArray.length()) {
-                    val item = okArray.getJSONObject(i)
-                    add(
-                        PasskeySummary(
-                            entryUuid = item.getString("entry_uuid"),
-                            dbKey = item.optString("db_key", dbKey),
-                            username = item.optString("username", ""),
-                            rpId = item.optString("rp_id", ""),
-                            credentialIdB64url = item.optString("credential_id_b64url", "")
-                        )
-                    )
-                }
+            DbServiceAPI.findMatchingPasskeys(dbKey, rpId, allowIds).map {
+                PasskeySummary(
+                    entryUuid = it.entryUuid,
+                    dbKey = it.dbKey,
+                    username = it.username,
+                    rpId = it.rpId,
+                    credentialIdB64url = it.credentialIdB64url
+                )
             }
         } catch (e: Exception) {
-            Log.e(TAG, "parsePasskeySummaries error", e)
+            Log.e(TAG, "findMatchingPasskeys error", e)
             emptyList()
         }
     }
@@ -242,7 +221,3 @@ class PasskeyProviderService : CredentialProviderService() {
         private const val REQUEST_CODE_ASSERTION_GENERIC = 1002
     }
 }
-
-// Simple JSON string escaping for building argument JSON manually.
-private fun String.escapeJson(): String =
-    replace("\\", "\\\\").replace("\"", "\\\"")

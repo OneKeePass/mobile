@@ -597,7 +597,10 @@ impl Commands {
                 // after the remote db that needed it is closed
                 remote_storage::clear_cached_connection_config(&db_key);
                 AppState::set_db_read_only(&db_key, None);
-                InvokeResult::from(db_service::close_kdbx(&db_key)).json_str()
+                let r = InvokeResult::from(db_service::close_kdbx(&db_key)).json_str();
+                #[cfg(target_os = "android")]
+                android::notify_db_closed(&db_key);
+                r
             }
 
             "set_db_read_only" => {
@@ -1271,7 +1274,10 @@ impl Commands {
         remote_storage::clear_cached_connection_config(&db_key);
         AppState::set_db_read_only(&db_key, None);
 
-        InvokeResult::from(db_service::close_kdbx(&db_key)).json_str()
+        let r = InvokeResult::from(db_service::close_kdbx(&db_key)).json_str();
+        #[cfg(target_os = "android")]
+        android::notify_db_closed(&db_key);
+        r
     }
 
     // Gets the recent files list

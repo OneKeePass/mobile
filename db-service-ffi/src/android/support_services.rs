@@ -18,7 +18,7 @@ use crate::{
     util, OkpError, OkpResult,
 };
 
-use super::{AndroidApiCallbackImpl, AutoFillDbData};
+use super::{AndroidApiCallbackImpl, AndroidPasskeySummaryData, AutoFillDbData};
 
 use serde::Serialize;
 
@@ -81,6 +81,24 @@ impl AndroidSupportServiceExtra {
         };
 
         r
+    }
+
+    // Called from Kotlin (PasskeyProviderService) to list the passkeys of an opened db for a relying
+    // party. The string command 'passkey_find_matching' in 'invoke' does the same for cljs
+    // An error is logged and an empty list returned, as there is then nothing to offer
+    pub fn find_matching_passkeys(
+        &self,
+        db_key: String,
+        rp_id: String,
+        allow_credential_ids: Vec<String>,
+    ) -> Vec<AndroidPasskeySummaryData> {
+        match passkey::find_matching_passkeys(&[db_key], &rp_id, &allow_credential_ids) {
+            Ok(summaries) => summaries.into_iter().map(|s| s.into()).collect(),
+            Err(e) => {
+                log::error!("find_matching_passkeys failed with error {}", e);
+                vec![]
+            }
+        }
     }
 
     // called after DocumentPickerServiceModule.pickKdbxFileToCreate to do Save as feature
