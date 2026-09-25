@@ -114,6 +114,8 @@
         "readOnly": "Read only",
         "readOnlyStripDetail": "Changes cannot be saved",
         "rootUrl": "Root Url",
+        "savedInDbFile": "Saved in the database file",
+        "savedOnThisDevice": "Saved on this device only",
         "scanQRcode": "Scan QR Code",
         "search": "Search",
         "secretCodeOrUrl": "Secret code or Url",

@@ -112,18 +112,25 @@
                                             (cmn-events/tags-dialog-done))} (lstr-bl 'close)]]]))
 
 (defn settings-section-header
-  "The arg title is expected to be the translation key"
-  [title]
-  [rn-view  {:style {:flexDirection "row"
-                     :width "100%"
-                     :backgroundColor @inverse-onsurface-color
-                     :margin-top 0
-                     :min-height 38}}
-   [rnp-text {:style {:textTransform "uppercase"
-                      :alignSelf "center"
-                      ;;:width "85%"
-                      :text-align "center"
-                      :padding-left 5} :variant "titleSmall"} (lstr-l title)]])
+  "The arg title is expected to be the translation key. The optional subtitle, also a translation
+   key, is shown in a smaller text under the title"
+  ([title]
+   (settings-section-header title nil))
+  ([title subtitle]
+   [rn-view  {:style {:flexDirection "column"
+                      :justifyContent "center"
+                      :width "100%"
+                      :backgroundColor @inverse-onsurface-color
+                      :margin-top 0
+                      :padding-vertical (if subtitle 6 0)
+                      :min-height 38}}
+    [rnp-text {:style {:textTransform "uppercase"
+                       ;;:width "85%"
+                       :padding-left 5} :variant "titleSmall"} (lstr-l title)]
+    (when subtitle
+      [rnp-text {:style {:padding-left 5
+                         :margin-top 2
+                         :color @rnc/on-surface-variant} :variant "bodySmall"} (lstr-l subtitle)])]))
 
 (defn list-section-header
   "The arg title is expected to be the translation key"
