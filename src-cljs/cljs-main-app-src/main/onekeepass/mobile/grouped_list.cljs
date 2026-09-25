@@ -71,14 +71,17 @@
 
 (defn card-row-separator
   "Separator between two rows of the same card. It carries the card background itself so that
-   the line stays within the card instead of running the full width of the page"
-  []
-  [rn-view {:style {:background-color @grouped-list-card-color
-                    :margin-left CARD-SIDE-MARGIN
-                    :margin-right CARD-SIDE-MARGIN}}
-   [rn-view {:style {:height 1
-                     :margin-left ROW-SEPARATOR-INSET
-                     :background-color @outline-variant}}]])
+   the line stays within the card instead of running the full width of the page.
+   An inset of 0 runs the line across the whole row"
+  ([]
+   (card-row-separator ROW-SEPARATOR-INSET))
+  ([inset]
+   [rn-view {:style {:background-color @grouped-list-card-color
+                     :margin-left CARD-SIDE-MARGIN
+                     :margin-right CARD-SIDE-MARGIN}}
+    [rn-view {:style {:height 1
+                      :margin-left inset
+                      :background-color @outline-variant}}]]))
 
 (defn row-count-text
   "Renders the right hand side count of a row in the muted secondary color"

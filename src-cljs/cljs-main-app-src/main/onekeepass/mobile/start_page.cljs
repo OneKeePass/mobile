@@ -443,6 +443,17 @@
 
 (def confirm-remove (:show remove-confirm-dialog-info))
 
+;; Kept for a leading check instead of the trailing one used now. Every item then gets a blank
+;; leading icon so that the texts of all items stay lined up with the checked one. To use it,
+;; replace rnp-menu-item with db-menu-item in db-action-menu and use the Read Only item's
+;; commented out :leadingIcon
+#_(defn- no-leading-icon [_props] nil)
+
+#_(defn- db-menu-item
+    "A menu item with a blank leading icon unless one is given"
+    [props]
+    [rnp-menu-item (merge {:leadingIcon no-leading-icon} props)])
+
 (defn db-action-menu [{:keys [show x y file-name db-file-path opened locked]}]
   ;; db-file-path is the full-file-name-uri and used as db-key
   [rnp-menu {:visible show :key (str show) :onDismiss hide-db-action-menu :anchor (clj->js {:x x :y y})}
@@ -494,7 +505,10 @@
    ;; A setting kept for the db. When on, the db file is always opened with editing disabled
    (let [read-only? @(cmn-events/db-read-only-preference db-file-path)]
      [rnp-menu-item {:title (lstr-ml "readOnly")
-                     :leadingIcon (when read-only? "check")
+                     ;; A check at the end keeps the texts of all items lined up without
+                     ;; a blank leading space on every item
+                     :trailingIcon (when read-only? "check")
+                     ;; :leadingIcon (if read-only? "check" no-leading-icon)
                      :onPress (db-action-menu-action
                                cmn-events/set-db-read-only
                                db-file-path
@@ -507,7 +521,9 @@
                              db-file-path)}]
    ;; Another way of setting the background-color of dividers in menu
    [rnp-divider {:style {:background-color @divider-color-1}}]
+   ;; The theme's error color marks the one item that takes something away
    [rnp-menu-item {:title (lstr-ml "remove")
+                   :titleStyle {:color @rnc/error-color}
                    :onPress (fn []
                               (hide-db-action-menu)
                               (swap! remove-confirm-dialog-data assoc
@@ -595,6 +611,8 @@
     :else
     (opndb-events/open-selected-database file-name db-file-path)))
 
+(def ^:private DB-ROW-MIN-HEIGHT 70)
+
 (defn row-item
   "The first arg is map from recently-used and the second arg is a vec of db keys of the opened databases 
    Returns a row item component"
@@ -604,8 +622,14 @@
           locked? @(cmn-events/locked? db-file-path)
           read-only-kind @(cmn-events/db-read-only-kind db-file-path)
           [icon-name color] (icon-name-color found locked?)]
-      [rnp-list-item {:style {}
+      ;; Every row gets the height of a row that shows the read only label under its name, so
+      ;; that rows with and without the label are the same height. A row without the label is
+      ;; centered in that height
+      [rnp-list-item {:style {:min-height DB-ROW-MIN-HEIGHT :justify-content "center"}
                       :onPress #(row-item-on-press recently-used found locked?)
+                      ;; A shortcut to the same menu that the dots button shows
+                      :onLongPress (fn [e] (show-db-action-menu
+                                            e file-name db-file-path found locked?))
                       :title (r/as-element
                               [rnp-text {:style {:color color #_(if found primary-color rnc/outline-color)}
                                          :variant (if found "titleMedium" "titleSmall")} file-name])
@@ -642,7 +666,7 @@
                           [gl/card-row (gl/row-position index (count (:data section)))
                            [row-item item opened-databases-files]])))
         :ItemSeparatorComponent (fn [_p]
-                                  (r/as-element [gl/card-row-separator]))
+                                  (r/as-element [gl/card-row-separator 0]))
         ;; The listed databases are all there is on this page, so there is nothing to be
         ;; gained by collapsing them - the header carries no chevron
         :renderSectionHeader (fn [props] ;; key is :section
