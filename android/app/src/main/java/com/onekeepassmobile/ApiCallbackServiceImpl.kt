@@ -68,7 +68,9 @@ class ApiCallbackServiceImpl():AndroidApiService,CommonDeviceServiceEx {
         PasskeyRequestStore.registrationResponseJson = data.registrationResponseJson
     }
 
-    // Called by Rust after a db is closed. The passkey provider must not offer passkeys of a closed db
+    // Called by Rust after a db is closed. PasskeyProviderService lists the passkeys of currentDbKey
+    // when a site asks for one, before our UI opens. A closed db already yields an empty list there;
+    // clearing the key only makes that explicit instead of relying on the failed lookup
     override fun dbClosed(dbKey: String) {
         if (PasskeyRequestStore.currentDbKey == dbKey) {
             PasskeyRequestStore.currentDbKey = null
