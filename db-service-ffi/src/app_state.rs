@@ -39,15 +39,19 @@ pub(crate) const OKP_SHARED_DIR: &str = "okp_shared";
 
 pub(crate) const KEY_FILES_DIR: &str = "key_files";
 
-// Any mutable field needs to be behind Mutex
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ReadOnlyReason {
-    // The db content is from its latest backup and not from the db file itself
+    // The db content is from its latest backup and not from the db file itself. This happens
+    // when the user picks 'Open Offline', when the file provider could not fetch the file (iOS
+    // only, which is not always a lack of network) or when the user opens offline from the remote
+    // connection unavailable dialog. Nothing may be written back to the file from this content,
+    // so turning off the user's Read Only preference does not clear it
     LoadedFromBackup,
     // The db file itself is loaded and the user has set the db as Read Only
     UserPreference,
 }
 
+// Any mutable field needs to be behind Mutex
 pub struct AppState {
     app_home_dir: String,
 
