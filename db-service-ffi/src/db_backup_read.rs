@@ -130,6 +130,12 @@ pub(crate) const READ_ONLY_SAVE_REFUSED: &str = "DbOpenedReadOnly";
 pub(crate) fn ensure_db_writable(db_key: &str) -> OkpResult<()> {
     if AppState::is_db_read_only(db_key) {
         log::error!("Save refused as the db is opened read only");
+        
+        // Should we do someting like error::Error::DbFileContentChangeDetected or error::Error::NoRemoteStorageConnection
+        // instead of using generic error::Error::UnexpectedError("DbOpenedReadOnly")? 
+        // This involves core lib change then.
+        // Or should we use this generic error concept to handle all ffi side rust error?
+        
         Err(error::Error::UnexpectedError(READ_ONLY_SAVE_REFUSED.into()))
     } else {
         Ok(())
