@@ -160,9 +160,10 @@ cp-ios-ffi-device-release-lib-src:build-ios-device-lib-release generate-swift-de
 
 
 ## For uniffi use and this points to a lib built and uniffi reads and determines the api to generate in kotlin
-## Here we assume the lib is first built for aarch64-linux-android/debug and used for all other targets
-## However, in iOS we use each build's lib. So we may need to do the same for android if required
+## As in iOS, the bindings are generated from the lib of the same build (debug or release)
+## so that a release-only build on a fresh clone works
 android-aarch64-debug-lib-output := "target/aarch64-linux-android/debug/libdb_service_ffi.so"
+android-aarch64-release-lib-output := "target/aarch64-linux-android/release/libdb_service_ffi.so"
 
 android-db-service-src-dir  := "../android/app/src/main/java"
 android-db-service-lib-dir  := "../android/app/src/main"
@@ -207,9 +208,9 @@ ndk_cxx := ndk_botan_build_home + "/toolchains/llvm/prebuilt/darwin-x86_64/bin/"
 #     mkdir  -p {{kotlin-src-dir}}
 #     ../uniffi-bindgen/target/release/uniffi-bindgen generate -l kotlin {{udl_src}} --out-dir {{kotlin-src-dir}}
 
-generate-kotlin:
+generate-kotlin release="":
     mkdir  -p {{kotlin-src-dir}}
-    {{ uniffi-generate }} -l kotlin --lib-file {{android-aarch64-debug-lib-output}} --out-dir {{kotlin-src-dir}} {{udl_src}}
+    {{ uniffi-generate }} -l kotlin --lib-file {{ if release == "true" {android-aarch64-release-lib-output} else {android-aarch64-debug-lib-output} }} --out-dir {{kotlin-src-dir}} {{udl_src}}
 
 
 ## From cargo-ndk v3.2.2 onwards, we need to add 
@@ -253,7 +254,7 @@ build-android-lib-all release="":
 ## Dev time used 
 ## Call 'just bca' 
 ## "just bca true" for release; Instead call 'just bca-r' - See alias for 'build-android-lib-cp-src-release'
-build-android-lib-cp-src release="":(build-android-lib-all release) generate-kotlin
+build-android-lib-cp-src release="":(build-android-lib-all release) (generate-kotlin release)
     cp -R {{kotlin-src-dir}}/ {{android-db-service-src-dir}}
     cp -R {{android-lib-output-dir}} {{android-db-service-lib-dir}}
 
