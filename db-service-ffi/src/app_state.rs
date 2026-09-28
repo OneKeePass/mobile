@@ -39,6 +39,18 @@ pub(crate) const OKP_SHARED_DIR: &str = "okp_shared";
 
 pub(crate) const KEY_FILES_DIR: &str = "key_files";
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ReadOnlyReason {
+    // The db content is from its latest backup and not from the db file itself. This happens
+    // when the user picks 'Open Offline', when the file provider could not fetch the file (iOS
+    // only, which is not always a lack of network) or when the user opens offline from the remote
+    // connection unavailable dialog. Nothing may be written back to the file from this content,
+    // so turning off the user's Read Only preference does not clear it
+    LoadedFromBackup,
+    // The db file itself is loaded and the user has set the db as Read Only
+    UserPreference,
+}
+
 // Any mutable field needs to be behind Mutex
 pub struct AppState {
     app_home_dir: String,
@@ -69,6 +81,12 @@ pub struct AppState {
     // when db save fails (as the orginal db content changed)
     // This is reset to empty when the app starts
     last_backup_on_error: Mutex<HashMap<String, String>>,
+
+    // Db keys of the loaded databases that are read only and why. Any write of such a db to its
+    // db file is refused. For a backup load, that write would silently replace the file content
+    // with the older backup content
+    // This is reset to empty when the app starts
+    read_only_db_keys: Mutex<HashMap<String, ReadOnlyReason>>,
 
     preference: Mutex<Preference>,
 
@@ -170,6 +188,7 @@ impl AppState {
             export_data_dir_path,
             key_files_dir_path,
             last_backup_on_error: Mutex::new(HashMap::default()),
+            read_only_db_keys: Mutex::new(HashMap::default()),
             preference: Mutex::new(preference),
 
             common_device_service,
@@ -371,6 +390,42 @@ impl AppState {
             .map(|s| s.clone())
     }
 
+    // Called whenever a db is loaded or closed. 'None' when the loaded db can be saved or the db
+    // is closed
+    pub fn set_db_read_only(db_key: &str, reason: Option<ReadOnlyReason>) {
+        let mut keys = Self::shared().read_only_db_keys.lock().unwrap();
+        match reason {
+            Some(r) => {
+                keys.insert(db_key.into(), r);
+            }
+            None => {
+                keys.remove(db_key);
+            }
+        }
+    }
+
+    pub fn db_read_only_reason(db_key: &str) -> Option<ReadOnlyReason> {
+        Self::shared()
+            .read_only_db_keys
+            .lock()
+            .unwrap()
+            .get(db_key)
+            .copied()
+    }
+
+    pub fn is_db_read_only(db_key: &str) -> bool {
+        Self::db_read_only_reason(db_key).is_some()
+    }
+
+    // The Read Only setting the user keeps for a db in its database preference
+    pub fn db_read_only_preference(db_key: &str) -> bool {
+        Self::shared()
+            .preference
+            .lock()
+            .unwrap()
+            .db_read_only(db_key)
+    }
+
     // Called to get the file name from the platform specific full file uri passed as arg 'full_file_name_uri'
     // The uri may start with file: or content: or Sftp or WebDav
     pub fn uri_to_file_name(full_file_name_uri: &str) -> String {
@@ -429,6 +484,26 @@ impl AppState {
     pub fn preference_clone() -> Preference {
         let store_pref = Self::shared().preference.lock().unwrap();
         store_pref.clone()
+    }
+
+    // Saves the Read Only setting of a db. When that db is loaded from its db file, it becomes read
+    // only or editable right away. A db loaded from its latest backup stays read only whatever the
+    // setting is, as saving it would replace the db file content with the older backup content
+    pub fn set_db_read_only_preference(db_key: &str, read_only: bool) {
+        Self::shared()
+            .preference
+            .lock()
+            .unwrap()
+            .set_db_read_only(db_key, read_only);
+
+        let loaded_from_backup =
+            Self::db_read_only_reason(db_key) == Some(ReadOnlyReason::LoadedFromBackup);
+        if kp_service::is_db_opened(db_key) && !loaded_from_backup {
+            Self::set_db_read_only(
+                db_key,
+                read_only.then_some(ReadOnlyReason::UserPreference),
+            );
+        }
     }
 
     pub fn update_preference(preference_data: PreferenceData) -> OkpResult<()> {

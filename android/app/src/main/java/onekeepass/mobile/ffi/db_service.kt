@@ -708,6 +708,9 @@ internal interface UniffiCallbackInterfaceAndroidApiServiceMethod3 : com.sun.jna
 internal interface UniffiCallbackInterfaceAndroidApiServiceMethod4 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`data`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
 }
+internal interface UniffiCallbackInterfaceAndroidApiServiceMethod5 : com.sun.jna.Callback {
+    fun callback(`uniffiHandle`: Long,`dbKey`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
+}
 internal interface UniffiCallbackInterfaceCommonDeviceServiceExMethod0 : com.sun.jna.Callback {
     fun callback(`uniffiHandle`: Long,`clipData`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,)
 }
@@ -798,13 +801,14 @@ internal open class UniffiVTableCallbackInterfaceEventDispatch(
     }
 
 }
-@Structure.FieldOrder("clipboardCopyString", "autofillClientAppUrlInfo", "completeAutofill", "completePasskeyAssertion", "storePasskeyRegistrationResponse", "uniffiFree")
+@Structure.FieldOrder("clipboardCopyString", "autofillClientAppUrlInfo", "completeAutofill", "completePasskeyAssertion", "storePasskeyRegistrationResponse", "dbClosed", "uniffiFree")
 internal open class UniffiVTableCallbackInterfaceAndroidApiService(
     @JvmField internal var `clipboardCopyString`: UniffiCallbackInterfaceAndroidApiServiceMethod0? = null,
     @JvmField internal var `autofillClientAppUrlInfo`: UniffiCallbackInterfaceAndroidApiServiceMethod1? = null,
     @JvmField internal var `completeAutofill`: UniffiCallbackInterfaceAndroidApiServiceMethod2? = null,
     @JvmField internal var `completePasskeyAssertion`: UniffiCallbackInterfaceAndroidApiServiceMethod3? = null,
     @JvmField internal var `storePasskeyRegistrationResponse`: UniffiCallbackInterfaceAndroidApiServiceMethod4? = null,
+    @JvmField internal var `dbClosed`: UniffiCallbackInterfaceAndroidApiServiceMethod5? = null,
     @JvmField internal var `uniffiFree`: UniffiCallbackInterfaceFree? = null,
 ) : Structure() {
     class UniffiByValue(
@@ -813,8 +817,9 @@ internal open class UniffiVTableCallbackInterfaceAndroidApiService(
         `completeAutofill`: UniffiCallbackInterfaceAndroidApiServiceMethod2? = null,
         `completePasskeyAssertion`: UniffiCallbackInterfaceAndroidApiServiceMethod3? = null,
         `storePasskeyRegistrationResponse`: UniffiCallbackInterfaceAndroidApiServiceMethod4? = null,
+        `dbClosed`: UniffiCallbackInterfaceAndroidApiServiceMethod5? = null,
         `uniffiFree`: UniffiCallbackInterfaceFree? = null,
-    ): UniffiVTableCallbackInterfaceAndroidApiService(`clipboardCopyString`,`autofillClientAppUrlInfo`,`completeAutofill`,`completePasskeyAssertion`,`storePasskeyRegistrationResponse`,`uniffiFree`,), Structure.ByValue
+    ): UniffiVTableCallbackInterfaceAndroidApiService(`clipboardCopyString`,`autofillClientAppUrlInfo`,`completeAutofill`,`completePasskeyAssertion`,`storePasskeyRegistrationResponse`,`dbClosed`,`uniffiFree`,), Structure.ByValue
 
    internal fun uniffiSetValue(other: UniffiVTableCallbackInterfaceAndroidApiService) {
         `clipboardCopyString` = other.`clipboardCopyString`
@@ -822,6 +827,7 @@ internal open class UniffiVTableCallbackInterfaceAndroidApiService(
         `completeAutofill` = other.`completeAutofill`
         `completePasskeyAssertion` = other.`completePasskeyAssertion`
         `storePasskeyRegistrationResponse` = other.`storePasskeyRegistrationResponse`
+        `dbClosed` = other.`dbClosed`
         `uniffiFree` = other.`uniffiFree`
     }
 
@@ -1023,6 +1029,12 @@ internal open class UniffiVTableCallbackInterfaceSecureEnclaveCbService(
 
 
 
+
+
+
+
+
+
 // For large crates we prevent `MethodTooLargeException` (see #2340)
 // N.B. the name of the extension is very misleading, since it is 
 // rather `InterfaceTooLargeException`, caused by too many methods 
@@ -1045,6 +1057,8 @@ fun uniffi_db_service_ffi_checksum_func_copy_picked_key_file(
 fun uniffi_db_service_ffi_checksum_func_create_temp_kdbx(
 ): Short
 fun uniffi_db_service_ffi_checksum_func_db_service_enable_logging(
+): Short
+fun uniffi_db_service_ffi_checksum_func_ensure_db_writable(
 ): Short
 fun uniffi_db_service_ffi_checksum_func_extract_file_provider(
 ): Short
@@ -1090,9 +1104,13 @@ fun uniffi_db_service_ffi_checksum_method_androidapiservice_complete_passkey_ass
 ): Short
 fun uniffi_db_service_ffi_checksum_method_androidapiservice_store_passkey_registration_response(
 ): Short
+fun uniffi_db_service_ffi_checksum_method_androidapiservice_db_closed(
+): Short
 fun uniffi_db_service_ffi_checksum_method_androidsupportserviceextra_complete_save_as_on_error(
 ): Short
 fun uniffi_db_service_ffi_checksum_method_androidsupportserviceextra_create_kdbx(
+): Short
+fun uniffi_db_service_ffi_checksum_method_androidsupportserviceextra_find_matching_passkeys(
 ): Short
 fun uniffi_db_service_ffi_checksum_method_androidsupportserviceextra_invoke(
 ): Short
@@ -1229,6 +1247,8 @@ fun uniffi_db_service_ffi_fn_method_androidapiservice_complete_passkey_assertion
 ): Unit
 fun uniffi_db_service_ffi_fn_method_androidapiservice_store_passkey_registration_response(`ptr`: Pointer,`data`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
+fun uniffi_db_service_ffi_fn_method_androidapiservice_db_closed(`ptr`: Pointer,`dbKey`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): Unit
 fun uniffi_db_service_ffi_fn_clone_androidsupportserviceextra(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
 ): Pointer
 fun uniffi_db_service_ffi_fn_free_androidsupportserviceextra(`ptr`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
@@ -1238,6 +1258,8 @@ fun uniffi_db_service_ffi_fn_constructor_androidsupportserviceextra_new(uniffi_o
 fun uniffi_db_service_ffi_fn_method_androidsupportserviceextra_complete_save_as_on_error(`ptr`: Pointer,`fileDescriptor`: Long,`oldFullFileNameUri`: RustBuffer.ByValue,`newFullFileNameUri`: RustBuffer.ByValue,`fileName`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_db_service_ffi_fn_method_androidsupportserviceextra_create_kdbx(`ptr`: Pointer,`fileDescriptor`: Long,`jsonArgs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
+fun uniffi_db_service_ffi_fn_method_androidsupportserviceextra_find_matching_passkeys(`ptr`: Pointer,`dbKey`: RustBuffer.ByValue,`rpId`: RustBuffer.ByValue,`allowCredentialIds`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_db_service_ffi_fn_method_androidsupportserviceextra_invoke(`ptr`: Pointer,`commandName`: RustBuffer.ByValue,`jsonArgs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1275,6 +1297,8 @@ fun uniffi_db_service_ffi_fn_func_create_temp_kdbx(`fileArgs`: RustBuffer.ByValu
 ): RustBuffer.ByValue
 fun uniffi_db_service_ffi_fn_func_db_service_enable_logging(uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
+fun uniffi_db_service_ffi_fn_func_ensure_db_writable(`fullFileNameUri`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
+): RustBuffer.ByValue
 fun uniffi_db_service_ffi_fn_func_extract_file_provider(`fullFileNameUri`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
 fun uniffi_db_service_ffi_fn_func_invoke_command(`commandName`: RustBuffer.ByValue,`args`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
@@ -1433,6 +1457,9 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_db_service_ffi_checksum_func_db_service_enable_logging() != 27628.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_db_service_ffi_checksum_func_ensure_db_writable() != 38497.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_db_service_ffi_checksum_func_extract_file_provider() != 63250.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
@@ -1499,10 +1526,16 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_db_service_ffi_checksum_method_androidapiservice_store_passkey_registration_response() != 20251.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
+    if (lib.uniffi_db_service_ffi_checksum_method_androidapiservice_db_closed() != 18477.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
     if (lib.uniffi_db_service_ffi_checksum_method_androidsupportserviceextra_complete_save_as_on_error() != 15929.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_ffi_checksum_method_androidsupportserviceextra_create_kdbx() != 49847.toShort()) {
+        throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
+    }
+    if (lib.uniffi_db_service_ffi_checksum_method_androidsupportserviceextra_find_matching_passkeys() != 5566.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_ffi_checksum_method_androidsupportserviceextra_invoke() != 39395.toShort()) {
@@ -2038,6 +2071,8 @@ public interface AndroidApiService {
     
     fun `storePasskeyRegistrationResponse`(`data`: AndroidPasskeyRegistrationCallbackData)
     
+    fun `dbClosed`(`dbKey`: kotlin.String)
+    
     companion object
 }
 
@@ -2185,6 +2220,18 @@ open class AndroidApiServiceImpl: Disposable, AutoCloseable, AndroidApiService
     
 
     
+    @Throws(ApiCallbackException::class)override fun `dbClosed`(`dbKey`: kotlin.String)
+        = 
+    callWithPointer {
+    uniffiRustCallWithError(ApiCallbackException) { _status ->
+    UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_method_androidapiservice_db_closed(
+        it, FfiConverterString.lower(`dbKey`),_status)
+}
+    }
+    
+    
+
+    
 
     
     
@@ -2279,6 +2326,23 @@ internal object uniffiCallbackInterfaceAndroidApiService {
             )
         }
     }
+    internal object `dbClosed`: UniffiCallbackInterfaceAndroidApiServiceMethod5 {
+        override fun callback(`uniffiHandle`: Long,`dbKey`: RustBuffer.ByValue,`uniffiOutReturn`: Pointer,uniffiCallStatus: UniffiRustCallStatus,) {
+            val uniffiObj = FfiConverterTypeAndroidApiService.handleMap.get(uniffiHandle)
+            val makeCall = { ->
+                uniffiObj.`dbClosed`(
+                    FfiConverterString.lift(`dbKey`),
+                )
+            }
+            val writeReturn = { _: Unit -> Unit }
+            uniffiTraitInterfaceCallWithError(
+                uniffiCallStatus,
+                makeCall,
+                writeReturn,
+                { e: ApiCallbackException -> FfiConverterTypeApiCallbackError.lower(e) }
+            )
+        }
+    }
 
     internal object uniffiFree: UniffiCallbackInterfaceFree {
         override fun callback(handle: Long) {
@@ -2292,6 +2356,7 @@ internal object uniffiCallbackInterfaceAndroidApiService {
         `completeAutofill`,
         `completePasskeyAssertion`,
         `storePasskeyRegistrationResponse`,
+        `dbClosed`,
         uniffiFree,
     )
 
@@ -2436,6 +2501,8 @@ public interface AndroidSupportServiceExtraInterface {
     
     fun `createKdbx`(`fileDescriptor`: kotlin.ULong, `jsonArgs`: kotlin.String): ApiResponse
     
+    fun `findMatchingPasskeys`(`dbKey`: kotlin.String, `rpId`: kotlin.String, `allowCredentialIds`: List<kotlin.String>): List<AndroidPasskeySummaryData>
+    
     fun `invoke`(`commandName`: kotlin.String, `jsonArgs`: kotlin.String): kotlin.String
     
     fun `saveKeyFile`(`fileDescriptor`: kotlin.ULong, `fullKeyFileName`: kotlin.String): kotlin.String
@@ -2550,6 +2617,18 @@ open class AndroidSupportServiceExtra: Disposable, AutoCloseable, AndroidSupport
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_method_androidsupportserviceextra_create_kdbx(
         it, FfiConverterULong.lower(`fileDescriptor`),FfiConverterString.lower(`jsonArgs`),_status)
+}
+    }
+    )
+    }
+    
+
+    override fun `findMatchingPasskeys`(`dbKey`: kotlin.String, `rpId`: kotlin.String, `allowCredentialIds`: List<kotlin.String>): List<AndroidPasskeySummaryData> {
+            return FfiConverterSequenceTypeAndroidPasskeySummaryData.lift(
+    callWithPointer {
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_method_androidsupportserviceextra_find_matching_passkeys(
+        it, FfiConverterString.lower(`dbKey`),FfiConverterString.lower(`rpId`),FfiConverterSequenceString.lower(`allowCredentialIds`),_status)
 }
     }
     )
@@ -3906,6 +3985,54 @@ public object FfiConverterTypeAndroidPasskeyRegistrationCallbackData: FfiConvert
 
 
 
+data class AndroidPasskeySummaryData (
+    var `entryUuid`: kotlin.String, 
+    var `dbKey`: kotlin.String, 
+    var `credentialIdB64url`: kotlin.String, 
+    var `rpId`: kotlin.String, 
+    var `username`: kotlin.String, 
+    var `userHandleB64url`: kotlin.String
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypeAndroidPasskeySummaryData: FfiConverterRustBuffer<AndroidPasskeySummaryData> {
+    override fun read(buf: ByteBuffer): AndroidPasskeySummaryData {
+        return AndroidPasskeySummaryData(
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+            FfiConverterString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: AndroidPasskeySummaryData) = (
+            FfiConverterString.allocationSize(value.`entryUuid`) +
+            FfiConverterString.allocationSize(value.`dbKey`) +
+            FfiConverterString.allocationSize(value.`credentialIdB64url`) +
+            FfiConverterString.allocationSize(value.`rpId`) +
+            FfiConverterString.allocationSize(value.`username`) +
+            FfiConverterString.allocationSize(value.`userHandleB64url`)
+    )
+
+    override fun write(value: AndroidPasskeySummaryData, buf: ByteBuffer) {
+            FfiConverterString.write(value.`entryUuid`, buf)
+            FfiConverterString.write(value.`dbKey`, buf)
+            FfiConverterString.write(value.`credentialIdB64url`, buf)
+            FfiConverterString.write(value.`rpId`, buf)
+            FfiConverterString.write(value.`username`, buf)
+            FfiConverterString.write(value.`userHandleB64url`, buf)
+    }
+}
+
+
+
 data class AppClipboardCopyData (
     var `fieldName`: kotlin.String, 
     var `fieldValue`: kotlin.String, 
@@ -4797,6 +4924,62 @@ public object FfiConverterSequenceUByte: FfiConverterRustBuffer<List<kotlin.UByt
 /**
  * @suppress
  */
+public object FfiConverterSequenceString: FfiConverterRustBuffer<List<kotlin.String>> {
+    override fun read(buf: ByteBuffer): List<kotlin.String> {
+        val len = buf.getInt()
+        return List<kotlin.String>(len) {
+            FfiConverterString.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<kotlin.String>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterString.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<kotlin.String>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterString.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
+public object FfiConverterSequenceTypeAndroidPasskeySummaryData: FfiConverterRustBuffer<List<AndroidPasskeySummaryData>> {
+    override fun read(buf: ByteBuffer): List<AndroidPasskeySummaryData> {
+        val len = buf.getInt()
+        return List<AndroidPasskeySummaryData>(len) {
+            FfiConverterTypeAndroidPasskeySummaryData.read(buf)
+        }
+    }
+
+    override fun allocationSize(value: List<AndroidPasskeySummaryData>): ULong {
+        val sizeForLength = 4UL
+        val sizeForItems = value.map { FfiConverterTypeAndroidPasskeySummaryData.allocationSize(it) }.sum()
+        return sizeForLength + sizeForItems
+    }
+
+    override fun write(value: List<AndroidPasskeySummaryData>, buf: ByteBuffer) {
+        buf.putInt(value.size)
+        value.iterator().forEach {
+            FfiConverterTypeAndroidPasskeySummaryData.write(it, buf)
+        }
+    }
+}
+
+
+
+
+/**
+ * @suppress
+ */
 public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.String, kotlin.String>> {
     override fun read(buf: ByteBuffer): Map<kotlin.String, kotlin.String> {
         val len = buf.getInt()
@@ -4862,6 +5045,15 @@ public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.Str
         _status)
 }
     
+    
+ fun `ensureDbWritable`(`fullFileNameUri`: kotlin.String): ApiResponse {
+            return FfiConverterTypeApiResponse.lift(
+    uniffiRustCall() { _status ->
+    UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_func_ensure_db_writable(
+        FfiConverterString.lower(`fullFileNameUri`),_status)
+}
+    )
+    }
     
  fun `extractFileProvider`(`fullFileNameUri`: kotlin.String): kotlin.String {
             return FfiConverterString.lift(

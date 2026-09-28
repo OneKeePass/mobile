@@ -1,0 +1,5 @@
+# Release builds are made with this exact Rust version so that each release tag
+# records the compiler it was built with. Update it when moving to a newer Rust.
+[toolchain]
+channel = "1.91.0"
+targets = ["aarch64-linux-android", "aarch64-apple-ios", "aarch64-apple-ios-sim"]

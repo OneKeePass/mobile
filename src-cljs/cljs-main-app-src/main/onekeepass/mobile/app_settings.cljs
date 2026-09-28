@@ -55,6 +55,8 @@
                        {:key "fr" :label "fr - Français"}
                        {:key "de" :label "de - Deutsch"}
                        {:key "zh" :label "zh - 中文"}
+                       {:key "zh-TW" :label "zh-TW - 繁體中文 (台灣)"}
+                       {:key "zh-HK" :label "zh-HK - 繁體中文 (香港)"}
                        {:key "ar" :label "ar - العربية"}
                        {:key "ru" :label "ru - Русский"}
                        {:key "id" :label "id - Bahasa Indonesia"}

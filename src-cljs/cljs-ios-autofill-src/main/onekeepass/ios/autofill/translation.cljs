@@ -256,9 +256,12 @@
    :read (fn [language _namespace callback]
            ;;(println "language ids from translations map are " (keys translations))
            #_(println "create-back-end language namespace callback " language namespace callback)
-           ;; language is a string type whereas the keys in translations map are keyword
-           #_(println "data  is... " (clj->js (get translations (keyword language))))
-           (callback nil (clj->js (get translations (keyword language)))))})
+           ;; language is a string type whereas the keys in translations map are keyword.
+           ;; The keys were produced by 'transform-api-response' via csk/->kebab-case-keyword,
+           ;; so a region-tagged id like "zh-TW" is stored as :zh-tw (region lowercased).
+           ;; We must look up with the same transform; (keyword "zh-TW") => :zh-TW would not match.
+           #_(println "data  is... " (clj->js (get translations (csk/->kebab-case-keyword language))))
+           (callback nil (clj->js (get translations (csk/->kebab-case-keyword language)))))})
 
 (defn- setup-i18n-with-backend [language back-end]
   (let [m  {:lng language

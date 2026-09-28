@@ -16,7 +16,6 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
-import org.json.JSONObject
 
 
 private const val TAG = "DbServiceModule"  //TAG can only be max 23 characters
@@ -138,12 +137,9 @@ class DbServiceModule(reactContext: ReactApplicationContext) :
                         // However in CreateKdbx and saveKdbx, kotlin side is responsible for closing the file
                         val response = DbServiceAPI.readKdbx(fd.detachFd().toULong(), args)
                         // Track the open db key so PasskeyProviderService can find matching passkeys
+                        // read_kdbx returns Success only when the db is read and loaded
                         if (response is ApiResponse.Success) {
-                            try {
-                                if (!JSONObject(response.result).has("error")) {
-                                    PasskeyRequestStore.currentDbKey = fullFileNameUri
-                                }
-                            } catch (_: Exception) {}
+                            PasskeyRequestStore.currentDbKey = fullFileNameUri
                         }
                         resolveResponse(response, promise)
                         // Log.d(TAG, "File created using fd with response $response")
@@ -187,6 +183,16 @@ class DbServiceModule(reactContext: ReactApplicationContext) :
         executorService.execute {
             val uri = Uri.parse(fullFileNameUri);
             try {
+                // A db loaded from its latest backup is read only. That is checked here before
+                // anything else as the "rwt" open below truncates the db file before save_kdbx
+                // gets a chance to refuse the save
+                val writableCheck = DbServiceAPI.ensureDbWritable(fullFileNameUri)
+                if (writableCheck is ApiResponse.Failure) {
+                    Log.e(TAG, "Save refused as the db is opened read only")
+                    promise.resolve(writableCheck.result)
+                    return@execute
+                }
+
                 if (!overwrite && (verifyDbFileChanged(fullFileNameUri, promise))) {
                     Log.d(TAG, "Db contents have changed and saving is not done")
                     // Store the db file with changed data to backup for later offline use

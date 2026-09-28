@@ -70,8 +70,10 @@
                                                              rnp-appbar-content
                                                              rnp-appbar-header
                                                              rnp-menu
+                                                             rnp-icon
                                                              rnp-menu-item
-                                                             rnp-text]]
+                                                             rnp-text
+                                                             rnp-touchable-ripple]]
             [onekeepass.mobile.rs-config-form :as rs-form]
             [onekeepass.mobile.rs-configs :as rs-configs]
             [onekeepass.mobile.rs-files-folders :as rs-files-folders]
@@ -79,7 +81,7 @@
             [onekeepass.mobile.search :as search]
             [onekeepass.mobile.settings :as settings :refer [db-settings-form-content]]
             [onekeepass.mobile.start-page :refer [open-page-content]]
-            [onekeepass.mobile.translation :refer [lstr-ml lstr-pt]]
+            [onekeepass.mobile.translation :refer [lstr-l lstr-ml lstr-pt]]
             [onekeepass.mobile.utils :as u]
             [reagent.core :as r]))
 
@@ -399,6 +401,47 @@
      (is-settings-page page))
     [positioned-title :page page]))
 
+;; Pages that show the content of the current db. The read only strip is shown on these
+(def ^:private current-db-pages [ENTRY_CATEGORY_PAGE_ID
+                                 ENTRY_LIST_PAGE_ID
+                                 ENTRY_FORM_PAGE_ID
+                                 ENTRY_HISTORY_LIST_PAGE_ID
+                                 GROUP_FORM_PAGE_ID
+                                 SEARCH_PAGE_ID
+                                 ICONS_LIST_PAGE_ID
+                                 MANAGE_CUSTOM_ICONS_PAGE_ID
+                                 PASSKEY_PENDING_REVIEW_PAGE_ID
+                                 SETTINGS_PAGE_ID
+                                 SETTINGS_GENERAL_PAGE_ID
+                                 SETTINGS_CREDENTIALS_PAGE_ID
+                                 SETTINGS_SECURITY_PAGE_ID
+                                 SETTINGS_ENCRYPTION_PAGE_ID
+                                 SETTINGS_KDF_PAGE_ID])
+
+(defn- read-only-strip
+  "A strip right under the appbar that stays on every page of a db opened offline or read only,
+   so the user does not forget that nothing done here is saved. Pressing it shows the notice
+   that was shown when the db was opened"
+  []
+  (when-let [kind @(cmn-events/current-db-read-only-kind)]
+    (let [offline? (= kind :offline)
+          color @rnc/on-custom-color1-container]
+      [rnp-touchable-ripple {:style {:backgroundColor @rnc/custom-color1-ontainer}
+                             :onPress #(cmn-events/show-read-only-info kind)}
+       [rn-view {:style {:flexDirection "row"
+                         :alignItems "center"
+                         :paddingHorizontal 16
+                         :paddingVertical 6}}
+        [rnp-icon {:source (if offline? "cloud-off-outline" "lock-outline") :size 16 :color color}]
+        [rnp-text {:style {:flex 1 :marginLeft 8 :color color}
+                   :variant "labelMedium"
+                   :numberOfLines 1
+                   :ellipsizeMode "tail"}
+         [rnp-text {:style {:fontWeight "bold" :color color} :variant "labelMedium"}
+          (lstr-l (if offline? 'offline 'readOnly))]
+         (str "  ·  " (lstr-l (if offline? 'offlineStripDetail 'readOnlyStripDetail)))]
+        [rnp-icon {:source "information-outline" :size 16 :color color}]]])))
+
 ;; All pages that has back action using default "<" button
 (def back-button-pages [ABOUT_PAGE_ID
                         PRIVACY_POLICY_PAGE_ID
@@ -575,6 +618,8 @@
        (if-not (= lock-state :locked)
          [rn-view {:style {:flex 1}}
           [appbar-header-content page-info]
+          (when (u/contains-val? current-db-pages (:page page-info))
+            [read-only-strip])
           [appbar-body-content page-info]]
          [rn-view {:style {:flex 1}}
           [app-lock/content]

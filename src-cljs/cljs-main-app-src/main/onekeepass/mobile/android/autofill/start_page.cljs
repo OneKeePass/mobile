@@ -178,12 +178,19 @@
   (fn [{:keys [file-name db-file-path]} opened-databases-files]
     (let [found (u/contains-val? opened-databases-files db-file-path)
           locked? @(cmn-events/locked? db-file-path)
+          read-only-kind @(cmn-events/db-read-only-kind db-file-path)
+          ;; A new passkey cannot be saved to a read only db and so it cannot be picked for that
+          disabled? (and (some? read-only-kind)
+                         (= :passkey-registration-context @(android-af-cmn-events/autofill-request-mode)))
           [icon-name color] (icon-name-color found locked?)]
-      [rnp-list-item {:style {}
+      [rnp-list-item {:style {:opacity (if disabled? 0.5 1)}
+                      :disabled disabled?
                       :onPress #(row-item-on-press file-name db-file-path found locked?)
                       :title (r/as-element
                               [rnp-text {:style {:color color #_(if found primary-color rnc/outline-color)}
                                          :variant (if found "titleMedium" "titleSmall")} file-name])
+                      :description (when read-only-kind
+                                     (fn [_props] (r/as-element [cc/read-only-db-label read-only-kind])))
                       :left (fn [_props]
                               (r/as-element
                                [rnp-list-icon {:style {:height 24}

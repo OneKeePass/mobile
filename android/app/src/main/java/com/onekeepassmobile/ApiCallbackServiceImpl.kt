@@ -59,11 +59,21 @@ class ApiCallbackServiceImpl():AndroidApiService,CommonDeviceServiceEx {
 
     // Called by Rust after signing a passkey assertion; delegates to PasskeyModule companion.
     override fun completePasskeyAssertion(data: AndroidPasskeyAssertionCallbackData) {
+        Log.d(TAG,"completePasskeyAssertion is called from backend")
         PasskeyModule.completePasskeyAssertion(data.authenticationResponseJson)
     }
 
     // Called by Rust after creating a passkey registration and stores the response to be sent later
     override fun storePasskeyRegistrationResponse(data: AndroidPasskeyRegistrationCallbackData) {
         PasskeyRequestStore.registrationResponseJson = data.registrationResponseJson
+    }
+
+    // Called by Rust after a db is closed. PasskeyProviderService lists the passkeys of currentDbKey
+    // when a site asks for one, before our UI opens. A closed db already yields an empty list there;
+    // clearing the key only makes that explicit instead of relying on the failed lookup
+    override fun dbClosed(dbKey: String) {
+        if (PasskeyRequestStore.currentDbKey == dbKey) {
+            PasskeyRequestStore.currentDbKey = null
+        }
     }
 }

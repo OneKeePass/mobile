@@ -2209,8 +2209,8 @@ checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
 name = "onekeepass-core"
-version = "0.25.0"
-source = "git+https://github.com/OneKeePass/onekeepass-core.git?tag=v0.25.0#11a3fe01fd295f60d70a2bbcd32820e1d97a30ee"
+version = "0.25.1"
+source = "git+https://github.com/OneKeePass/onekeepass-core.git?tag=v0.25.1#1e57070fe7ca0c7d3ae4fb6fe38cc9ebbca95da5"
 dependencies = [
  "argon2-sys",
  "base64",
@@ -2659,9 +2659,9 @@ dependencies = [
 
 [[package]]
 name = "psl"
-version = "2.1.224"
+version = "2.1.238"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6fd4be744906217175e617ecbaff30e1d4574954e5ab2ad6ac0fead0e9abc3a"
+checksum = "2e6aa2cd4e8e062e78ac5d7df6206e2f8e39b624f658efd6f34f9aa1928ac5da"
 dependencies = [
  "psl-types",
 ]

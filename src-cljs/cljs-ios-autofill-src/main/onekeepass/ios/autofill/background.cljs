@@ -426,9 +426,8 @@
   #_(invoke-api "stop_polling_all_entries_otp_fields" {:db-key db-key} dispatch-fn)
   (invoke-api "stop_polling_all_entries_otp_fields" {} dispatch-fn))
 
-;;Note: load_language_translations uses data from AppState's default Preference struct and because of 
-;; that the current locale language is used. Any ln overriden in the App's settings is not used
-;; The same applies for the theme
+;;Note: load_language_translations uses the language from AppState's Preference. On iOS the preference
+;; file is in the app group shared dir, so the language selected in the main app's settings is used here too
 (defn load-language-translations [language-ids dispatch-fn]
   (invoke-api "load_language_translations" {:language-ids language-ids} dispatch-fn))
 

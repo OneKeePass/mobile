@@ -99,6 +99,14 @@ abstract_target 'OneKeePassMobile-Abstract' do
       target.build_configurations.each do |config|
         # Allow non app-extension-safe APIs so React Native can compile for the extension
         config.build_settings['APPLICATION_EXTENSION_API_ONLY'] = 'NO'
+
+        # Some pods still declare an older minimum (react-native-svg's RNSVGFilters resource
+        # bundle says 12.4), which Xcode 27 warns is below its supported 15.0. Raise any such
+        # target to the app's own minimum
+        deployment_target = config.build_settings['IPHONEOS_DEPLOYMENT_TARGET']
+        if deployment_target && Gem::Version.new(deployment_target) < Gem::Version.new(min_ios_version_supported)
+          config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = min_ios_version_supported
+        end
       end
     end
 

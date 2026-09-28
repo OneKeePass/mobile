@@ -417,6 +417,7 @@
 ;; 'transient-db-ref' is true when the db uri was handed over by another app - the 'Open with'
 ;; or 'Open in' action of a cloud storage app on android. The backend then does not add the db
 ;; to the recently used list as that uri cannot be opened again later
+;; Whether the db is loaded read only is decided by the backend from the db's Read Only setting
 (defn load-kdbx
   ([db-file-name password key-file-name biometric-auth-used dispatch-fn]
    (load-kdbx db-file-name password key-file-name biometric-auth-used false dispatch-fn))
@@ -435,6 +436,12 @@
                      dispatch-fn :error-transform true)
      (bg-rs/read-kdbx db-file-name password key-file-name biometric-auth-used dispatch-fn))))
 
+
+(defn set-db-read-only
+  "Saves the Read Only setting of a db. A loaded db becomes read only or editable right away unless
+   it is loaded from its latest backup"
+  [db-key read-only dispatch-fn]
+  (invoke-api "set_db_read_only" {:db-key db-key :read-only (boolean read-only)} dispatch-fn))
 
 (defn read-latest-backup-kdbx [db-file-name password key-file-name biometric-auth-used dispatch-fn]
   (invoke-api "read_latest_backup" {:db-file-name db-file-name

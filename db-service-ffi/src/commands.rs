@@ -208,6 +208,11 @@ pub enum CommandArg {
         db_open_enabled: bool,
     },
 
+    DbReadOnlyArg {
+        db_key: String,
+        read_only: bool,
+    },
+
     OtpSettingsArg {
         otp_settings: OtpSettings,
     },
@@ -591,7 +596,18 @@ impl Commands {
                 // config resolved from a kdbx connection entry does not linger
                 // after the remote db that needed it is closed
                 remote_storage::clear_cached_connection_config(&db_key);
-                InvokeResult::from(db_service::close_kdbx(&db_key)).json_str()
+                AppState::set_db_read_only(&db_key, None);
+                let r = InvokeResult::from(db_service::close_kdbx(&db_key)).json_str();
+                #[cfg(target_os = "android")]
+                android::notify_db_closed(&db_key);
+                r
+            }
+
+            "set_db_read_only" => {
+                let (db_key, read_only) =
+                    parse_command_args_or_json_error!(&args, DbReadOnlyArg { db_key, read_only });
+                AppState::set_db_read_only_preference(&db_key, read_only);
+                InvokeResult::with_ok(()).json_str()
             }
 
             "combined_category_details" => {
@@ -1256,8 +1272,12 @@ impl Commands {
         remove_app_files(&db_key);
 
         remote_storage::clear_cached_connection_config(&db_key);
+        AppState::set_db_read_only(&db_key, None);
 
-        InvokeResult::from(db_service::close_kdbx(&db_key)).json_str()
+        let r = InvokeResult::from(db_service::close_kdbx(&db_key)).json_str();
+        #[cfg(target_os = "android")]
+        android::notify_db_closed(&db_key);
+        r
     }
 
     // Gets the recent files list

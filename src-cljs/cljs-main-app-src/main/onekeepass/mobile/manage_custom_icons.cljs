@@ -4,6 +4,7 @@
    File buttons. Mirrors the desktop dialog of the same name."
   (:require
    [onekeepass.mobile.constants :as const]
+   [onekeepass.mobile.events.common :as cmn-events]
    [re-frame.core :refer [dispatch]]
    [reagent.core :as r]
    [onekeepass.mobile.common-components :refer [confirm-dialog-with-lstr]]
@@ -49,7 +50,7 @@
                         :align-items "center"}}
        [rn-text "…"]])))
 
-(defn- icon-cell [{:keys [uuid]}]
+(defn- icon-cell [{:keys [uuid]} read-only?]
   [rn-view {:style {:width 72 :height 80 :margin 4 :padding 4
                     :border-width 1 :border-color "#ccc" :border-radius 4
                     :justify-content "center" :align-items "center"}}
@@ -59,6 +60,8 @@
                      :size 14
                      :style {:position "absolute" :top -6 :right -6
                              :margin 0 :padding 0}
+                     ;; The icons are kept in the database file and a read only db cannot be saved
+                     :disabled read-only?
                      :onPress #(show-delete-confirm uuid)}]])
 
 (defn- delete-confirm-dialog []
@@ -93,6 +96,7 @@
   (let [dialog-state (r/atom {:open false :url ""})]
     (fn []
       (let [icons @(ci-events/icons-list)
+            read-only? @(cmn-events/current-db-disable-edit)
             {:keys [open url]} @dialog-state
             close-dialog #(reset! dialog-state {:open false :url ""})
             on-add (fn []
@@ -105,10 +109,12 @@
                            :padding 8}}
           [rnp-button {:mode "outlined"
                        :icon "link"
+                       :disabled read-only?
                        :onPress #(reset! dialog-state {:open true :url ""})}
            (lstr-l 'addFromUrl)]
           [rnp-button {:mode "outlined"
                        :icon "file-image"
+                       :disabled read-only?
                        :onPress (fn [] (ci-events/add-icon-from-file nil))}
            (lstr-l 'addFromFile)]]
 
@@ -120,7 +126,7 @@
                               :padding 8}}
              (doall
               (for [icon icons]
-                ^{:key (:uuid icon)} [icon-cell icon]))]])
+                ^{:key (:uuid icon)} [icon-cell icon read-only?]))]])
 
          [url-add-dialog
           {:open open

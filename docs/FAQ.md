@@ -208,6 +208,28 @@ This is different from **Export To**, which hands the database file over to the 
 
 When you lock a database - from the menu or after the session timeout - its content is encrypted in memory and the decrypted content is removed. Nothing readable is left in the app's memory while the database is locked. Unlocking with your credentials or biometrics decrypts it again and you continue from where you were.
 
+## Can I open my database when its file cannot be reached?
+
+Yes, with **Open Offline**. Each time a database is opened or saved, OneKeePass keeps a backup copy of it on the device. Open Offline opens that latest copy instead of the database file, so it works when the file's location cannot be reached - for example a cloud drive or an SFTP or WebDAV server with no network.
+
+Open Offline is in the database menu on the home page (the **⋯** button or a long press on the database). It is offered only for a database that is not already open, and you still need your credentials.
+
+A database opened offline is **read only**. It shows the latest copy on this device, which may be older than the file itself, and nothing can be saved back from it. The home page shows an **Offline** label on the database, and an amber strip under the title bar reminds you while it is open. Close it and open it normally when the file can be reached again to make changes.
+
+You may also get there without choosing it: when an SFTP or WebDAV server cannot be reached, OneKeePass offers to open offline, and on iOS, when a cloud drive cannot provide the file, the latest copy is opened offline right away.
+
+## How do I keep a database from being changed?
+
+Turn on **Read Only** in the database menu on the home page. A check mark shows the setting is on. It is remembered for that database on this device, and it applies right away, also to a database that is already open.
+
+A read only database opens from its file as usual, so you always see its latest content, but editing is turned off and nothing is saved to it. The home page shows a **Read only** label on the database, and an amber strip under the title bar reminds you while it is open. Choose **Read Only** again to turn it off.
+
+While a database is read only:
+
+- The database settings, credentials and custom icons cannot be changed. Settings kept on the device only, such as opening with Face ID or fingerprint, can still be changed.
+- AutoFill can use its logins and passkeys, but cannot save to it. On Android, a read only database cannot be picked when saving a new passkey.
+- Anything waiting to be added to it - a passkey created in iOS AutoFill or a scanned one-time code link - is kept until Read Only is turned off, and you are told so.
+
 ## Why can a database opened from another app sometimes not be saved?
 
 It depends on how the other app hands the file over.

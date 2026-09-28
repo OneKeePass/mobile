@@ -98,6 +98,13 @@
     (and (string? error) (str/starts-with? error "UnRecoverableError"))
     (dispatch [:common/error-box-show "Error" error])
 
+    ;; The backend refuses to save a db loaded from its latest backup. Normally the save is
+    ;; refused in ':save/save-current-kdbx' itself and this is reached only when some save path
+    ;; missed that check
+    (= error "DbOpenedReadOnly")
+    (dispatch [:common/error-box-show (lstr-msg-dlg-title 'dbReadOnly)
+               (lstr-error-dlg-text 'editingDisabledReadOnly)])
+
     :else
     (dispatch [:save-error-modal-show {:error-type :unnown-error
                                        :message (:message error)

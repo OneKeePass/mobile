@@ -206,10 +206,45 @@
     (-> (filter (fn [m] (= curr-dbkey (:db-key m))) (:opened-db-list app-db))
         first)))
 
+(defn- read-only-kind
+  "Returns :offline when the db content is from its latest backup (no-connection), :read-only when
+   the user opened the db file read only (user-read-only) or nil for a db that can be edited"
+  [kdbx-loaded-info]
+  (let [{:keys [no-connection user-read-only]} (:rs-additional-info kdbx-loaded-info)]
+    (cond
+      no-connection :offline
+      user-read-only :read-only)))
+
+(defn- disable-edit? [kdbx-loaded-info]
+  (some? (read-only-kind kdbx-loaded-info)))
+
+(defn- opened-db-info [app-db db-key]
+  (first (filter (fn [m] (= db-key (:db-key m))) (:opened-db-list app-db))))
+
+(defn db-disable-edit
+  "Editing is disabled for the opened db with this db-key when it is opened offline or read only"
+  [app-db db-key]
+  (disable-edit? (opened-db-info app-db db-key)))
+
+(defn current-db-read-only-kind
+  "Subscribes to the read only kind (:offline, :read-only or nil) of the current db"
+  []
+  (subscribe [:common-current-db-read-only-kind]))
+
+(defn show-read-only-info
+  "Shows again the read only notice that was shown when the db was opened"
+  [kind]
+  (dispatch [:common/message-box-show 'dbReadOnly (if (= kind :offline) 'dbReadOnly 'dbOpenedReadOnly)]))
+
+(reg-sub
+ :common-current-db-read-only-kind
+ (fn [db _query-vec]
+   (read-only-kind (current-kdbx-loaded-info db))))
+
 (defn current-db-disable-edit
+  "Same as 'db-disable-edit' for the current db"
   ([app-db]
-   (let [{:keys [rs-additional-info]} (current-kdbx-loaded-info app-db)]
-     (boolean (:no-connection rs-additional-info))))
+   (disable-edit? (current-kdbx-loaded-info app-db)))
   ([]
    (subscribe [:current-db-disable-edit])))
 
@@ -281,6 +316,8 @@
          [:dispatch [:common/load-entry-type-headers]]
          [:dispatch [:custom-icons/load]]
 
+         ;; A db opened with its Read Only setting on gets no notice here. The user has set that
+         ;; and the read only strip on every page of the db says so
          (when (boolean (:no-connection rs-additional-info))
            [:dispatch [:common/message-box-show 'dbReadOnly 'dbReadOnly]])
          ;; Loads the updated recent dbs info
@@ -540,7 +577,8 @@
         db-p (first (filter (fn [db-pref] (= (:db-key db-pref) db-key)) db-prefs))]
     (if (empty? db-p) {:db-key db-key
                        :db-open-biometric-enabled false
-                       :db-unlock-biometric-enabled true}  db-p)))
+                       :db-unlock-biometric-enabled true
+                       :read-only false}  db-p)))
 
 
 (defn update-database-preference-list
@@ -556,6 +594,78 @@
         ;; At this time the order of db-pref does not matter
         db-prefs (conj db-prefs in-db-pref)]
     (assoc-in app-db [:app-preference :data :database-preferences] db-prefs)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Read Only setting ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn db-read-only-kind
+  "Subscribes to the read only kind of the db with this db-key. For an opened db it is how that db
+   is loaded (:offline or :read-only). For a db that is not opened it is :read-only when the user has
+   set the db as Read Only. Otherwise nil"
+  [db-key]
+  (subscribe [:common-db-read-only-kind db-key]))
+
+(defn db-read-only-preference
+  "Subscribes to the Read Only setting the user keeps for the db with this db-key"
+  [db-key]
+  (subscribe [:common-db-read-only-preference db-key]))
+
+(defn set-db-read-only
+  "Turns the Read Only setting of a db on or off. An opened db becomes read only or editable
+   right away unless it is opened offline"
+  [db-key read-only]
+  (dispatch [:common-set-db-read-only db-key read-only]))
+
+(reg-sub
+ :common-db-read-only-preference
+ (fn [db [_query-id db-key]]
+   (boolean (:read-only (database-preference-by-db-key db db-key)))))
+
+(reg-sub
+ :common-db-read-only-kind
+ (fn [db [_query-id db-key]]
+   (or (read-only-kind (opened-db-info db db-key))
+       (when (and (nil? (opened-db-info db db-key))
+                  (:read-only (database-preference-by-db-key db db-key)))
+         :read-only))))
+
+(reg-event-fx
+ :common-set-db-read-only
+ (fn [{:keys [_db]} [_event-id db-key read-only]]
+   {:fx [[:bg-set-db-read-only [db-key read-only]]]}))
+
+(reg-fx
+ :bg-set-db-read-only
+ (fn [[db-key read-only]]
+   (bg/set-db-read-only db-key read-only
+                        (fn [api-response]
+                          (when-not (on-error api-response)
+                            (dispatch [:common-db-read-only-set db-key read-only]))))))
+
+;; The backend has saved the setting and changed the loaded db if any. The same is done here for
+;; the local copy of the preference and for the opened db so that editing is disabled or enabled
+;; right away. A db opened offline is left as it is - it stays read only till it is closed
+(reg-event-fx
+ :common-db-read-only-set
+ (fn [{:keys [db]} [_event-id db-key read-only]]
+   (let [db-pref (assoc (database-preference-by-db-key db db-key) :read-only read-only)
+         opened-dbs (mapv (fn [{:keys [rs-additional-info] :as m}]
+                            (if (and (= db-key (:db-key m))
+                                     (not (:no-connection rs-additional-info)))
+                              (assoc-in m [:rs-additional-info :user-read-only] read-only)
+                              m))
+                          (:opened-db-list db))
+         ;; An opened db that can now be edited takes what was held back while it was read only
+         now-editable? (and (not read-only)
+                            (some? (opened-db-info db db-key))
+                            (not (:no-connection (:rs-additional-info (opened-db-info db db-key)))))]
+     {:db (-> db
+              (update-database-preference-list db-pref)
+              (assoc :opened-db-list opened-dbs))
+      :fx [[:dispatch [:common/message-snackbar-open (if read-only 'readOnlyOn 'readOnlyOff)]]
+           (when now-editable?
+             [:dispatch [:otp-url-received/check-pending]])
+           (when (and now-editable? (bg/is-iOS))
+             [:dispatch [:passkey-pending/check db-key]])]})))
 
 (defn biometric-enabled-to-open-db
   "Called to check whether a db can be opened with biometric authentication or not"

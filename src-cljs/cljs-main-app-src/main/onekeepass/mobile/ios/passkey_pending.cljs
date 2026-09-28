@@ -45,18 +45,26 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; Notification Dialog ;;;;;;;;;;;;;;;;;;;;;
 
 (defn ios-pending-passkey-notification-dialog
-  ([{:keys [dialog-show]}]
+  ;; 'read-only' is true when the db is opened offline or read only. The passkeys cannot be saved
+  ;; to it and so the user is only told about them
+  ([{:keys [dialog-show read-only]}]
    [cust-dialog {:style {} :dismissable false :visible dialog-show :onDismiss #()}
     [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1 :style {:color @rnc/error-color}} (lstr-dlg-title 'pendingPasskeys)]
     [rnp-dialog-content
      [rn-view {:style {:flexDirection "column" :justify-content "center"}}
-      [rnp-text (lstr-dlg-text 'pendingPasskeysMergeNeeded)]]]
+      [rnp-text (if read-only
+                  (lstr-dlg-text 'pendingPasskeysReadOnly)
+                  (lstr-dlg-text 'pendingPasskeysMergeNeeded))]]]
     [rnp-dialog-actions
-     [rnp-button {:mode "text"
-                  :onPress (fn []
-                             (dlg-events/ios-pending-passkey-notification-dialog-close)
-                             (pp-events/show-review))}
-      (lstr-bl 'review)]]])
+     (if read-only
+       [rnp-button {:mode "text"
+                    :onPress dlg-events/ios-pending-passkey-notification-dialog-close}
+        (lstr-bl 'close)]
+       [rnp-button {:mode "text"
+                    :onPress (fn []
+                               (dlg-events/ios-pending-passkey-notification-dialog-close)
+                               (pp-events/show-review))}
+        (lstr-bl 'review)])]])
 
   ([]
    (ios-pending-passkey-notification-dialog @(dlg-events/ios-pending-passkey-notification-dialog-data))))

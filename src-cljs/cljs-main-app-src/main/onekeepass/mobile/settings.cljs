@@ -130,6 +130,8 @@
             [rn-view {:style {:margin-top 20 :margin-bottom 20 :align-items "center"}}
              [rnp-button {:style {:width "50%"}
                           :mode "contained"
+                          ;; Removing the password cannot be saved to a read only db
+                          :disabled @(cmn-events/current-db-disable-edit)
                           :on-press stgs-events/db-settings-password-removed} (lstr-bl "removePassword")]]
             [rnp-divider {:bold true :style {:margin-top 5}}]])
 
@@ -158,6 +160,7 @@
         [rn-view {:style {:margin-top 20 :margin-bottom 20 :align-items "center"}}
          [rnp-button {:style {:width "50%"}
                       :mode "contained"
+                      :disabled @(cmn-events/current-db-disable-edit)
                       :on-press stgs-events/db-settings-password-added}
           (lstr-bl 'addPassword)]
 
@@ -167,26 +170,31 @@
 
 (defn key-file-credential [{:keys []
                             {:keys [key-file-name-part]} :data}]
-
-  [rn-view {:style {:backgroundColor @page-background-color}} ;;
-   [form-header (lstr-l 'keyFile)]
-   [rn-view  {:style form-style}
-    (when key-file-name-part
-      [rnp-text-input {:style {:margin-top 10}
-                       :label (lstr-l 'keyFile)
-                       :defaultValue key-file-name-part
-                       :readOnly (if (is-iOS) true false)
-                       :onPressIn #(stgs-events/show-key-file-form)
-                       :onChangeText nil
-                       :placeholder (lstr-mt 'dbSettings 'pickKeyFile)
-                       :right (r/as-element [rnp-text-input-icon
-                                             {:icon const/ICON-CLOSE
-                                              :onPress (fn []
-                                                         (stgs-events/clear-key-file-field))}])}])
-    [rnp-text {:style {:margin-top 15
-                       :textDecorationLine "underline"
-                       :text-align "center"}
-               :onPress #(stgs-events/show-key-file-form)} (lstr-bl 'keyFile)]]])
+  ;; A key file cannot be picked or cleared for a read only db as the change cannot be saved
+  (let [read-only? @(cmn-events/current-db-disable-edit)]
+    [rn-view {:style {:backgroundColor @page-background-color}} ;;
+     [form-header (lstr-l 'keyFile)]
+     [rn-view  {:style form-style}
+      (when key-file-name-part
+        [rnp-text-input {:style {:margin-top 10}
+                         :label (lstr-l 'keyFile)
+                         :defaultValue key-file-name-part
+                         :readOnly (if (is-iOS) true false)
+                         :disabled read-only?
+                         :onPressIn #(stgs-events/show-key-file-form)
+                         :onChangeText nil
+                         :placeholder (lstr-mt 'dbSettings 'pickKeyFile)
+                         :right (r/as-element [rnp-text-input-icon
+                                               {:icon const/ICON-CLOSE
+                                                :disabled read-only?
+                                                :onPress (fn []
+                                                           (stgs-events/clear-key-file-field))}])}])
+      [rnp-text {:style (cond-> {:margin-top 15
+                                 :textDecorationLine "underline"
+                                 :text-align "center"}
+                          read-only? (assoc :opacity 0.38))
+                 :disabled read-only?
+                 :onPress (when-not read-only? #(stgs-events/show-key-file-form))} (lstr-bl 'keyFile)]]]))
 
 (defn credential-content []
   [rn-view {:style {:flex 1 :backgroundColor @page-background-color}}
@@ -265,7 +273,10 @@
 (def ^:private ^:const SECTION-KEY-ADDITIONAL-DB-ACCESS "AdditionalDatabaseAcccess")
 (def ^:private ^:const SECTION-KEY-APP-SETTINGS "AppSettings")
 (def ^:private ^:const SECTION-KEY-AUTOFILL "AutofillSettings")
-(def ^:private ^:const SECTION-KEY-CUSTOM-ICONS "CustomIcons")
+
+;; Manage Custom Icons is listed with the database settings as the icons are kept in the
+;; database file. This page-id tells its row apart from the settings panels
+(def ^:private ^:const CUSTOM-ICONS-PAGE-ID "CustomIcons")
 
 
 (defn field-explain []
@@ -286,6 +297,9 @@
                      :contentStyle {}
                      :onPress (fn []
                                 (cond
+                                  (= page-id CUSTOM-ICONS-PAGE-ID)
+                                  (manage-custom-icons/open-page)
+
                                   (= section-key SECTION-KEY-DB-SETTINGS)
                                   (stgs-events/select-db-settings-panel (keyword page-id))
 
@@ -294,9 +308,6 @@
 
                                   (and (= section-key SECTION-KEY-AUTOFILL) (is-iOS))
                                   (af-events/to-autofill-settings-page)
-
-                                  (= section-key SECTION-KEY-CUSTOM-ICONS)
-                                  (manage-custom-icons/open-page)
 
                                   (= section-key SECTION-KEY-APP-SETTINGS)
                                   (as-events/to-app-settings-page)))
@@ -311,19 +322,20 @@
 
 
 (defn sections-data []
+  ;; The subtitles tell where each group is kept. Only what is kept in the database file is
+  ;; affected when the database is read only
   [{:title "dbSettings"
+    :subtitle "savedInDbFile"
     :key SECTION-KEY-DB-SETTINGS
     :data [{:title "general" :page-id const/SETTINGS_GENERAL_PAGE_ID}
            {:title "credentials" :page-id const/SETTINGS_CREDENTIALS_PAGE_ID}
-           {:title "security" :page-id const/SETTINGS_SECURITY_PAGE_ID}]}
+           {:title "security" :page-id const/SETTINGS_SECURITY_PAGE_ID}
+           {:title "manageCustomIcons" :page-id CUSTOM-ICONS-PAGE-ID}]}
 
    {:title "additionalDbAcccess"
+    :subtitle "savedOnThisDevice"
     :key SECTION-KEY-ADDITIONAL-DB-ACCESS
     :data [{:title "enableDisable"}]}
-
-   {:title "customIcons"
-    :key SECTION-KEY-CUSTOM-ICONS
-    :data [{:title "manageCustomIcons"}]}
 
    ;; For android this is nil and need to be filtered out
    (when (is-iOS)
@@ -349,16 +361,18 @@
 
                        :renderSectionHeader (fn [props]
                                               (let [props (js->clj props :keywordize-keys true)
-                                                    {:keys [title]} (-> props :section)]
-                                                (r/as-element [settings-section-header title])))}]))
+                                                    {:keys [title subtitle]} (-> props :section)]
+                                                (r/as-element [settings-section-header title subtitle])))}]))
 
 (defn main-content []
   [rn-view {:style {:flex 1}}
 
-   [rn-view {:style {:flex 0.8}}
+   ;; The list takes all the space left and the link keeps only its own height at the bottom,
+   ;; so the list does not have to scroll when it would fit
+   [rn-view {:style {:flex 1}}
     [settings-list-content]]
 
-   [rn-view {:style {:flex 0.2}}
+   [rn-view {:style {:padding-top 12 :padding-bottom 16}}
     [rnp-text {:style {:textDecorationLine "underline"
                        :text-align "center"}
                :variant "titleMedium"
