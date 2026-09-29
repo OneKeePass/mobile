@@ -107,6 +107,13 @@ abstract_target 'OneKeePassMobile-Abstract' do
         if deployment_target && Gem::Version.new(deployment_target) < Gem::Version.new(min_ios_version_supported)
           config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = min_ios_version_supported
         end
+
+        # Xcode 27 explicit Swift module builds ignore the deployment target when Swift code
+        # instantiates libc++ templates through C++ interop (Nitro modules). make_exception_ptr
+        # then references exception_ptr::__from_native_exception_pointer, which libc++ only has
+        # from iOS 18, and dyld kills the app at launch on older iOS. Implicit modules honour the
+        # deployment target. The app targets already set this to NO
+        config.build_settings['SWIFT_ENABLE_EXPLICIT_MODULES'] = 'NO'
       end
     end
 
