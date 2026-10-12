@@ -229,7 +229,8 @@
                                                       :onFocus #(field-focus-action key true)
                                                       :onBlur #(field-focus-action key false)
                                                       :onChangeText (if edit on-change-text nil)
-                                                      :onPressOut (if-not edit
+                                                      ;; Copies only on a completed tap - see 'ios-form-text-input'
+                                                      :onPress (if-not edit
                                                                     #(cmn-events/write-string-to-clipboard
                                                                       {:field-name key
                                                                        :protected protected
@@ -334,7 +335,11 @@
                      :onFocus #(field-focus-action key true)
                      :onBlur #(field-focus-action key false)
                      :onChangeText (if edit on-change-text nil)
-                     :onPressOut (if-not edit
+                     ;; 'onPressOut' fires on every release of a touch, including one that was the
+                     ;; start of a scroll or of the system swipe to switch apps. The field under the
+                     ;; finger then had its value copied, replacing what the user had just copied.
+                     ;; 'onPress' fires only for a completed tap
+                     :onPress (if-not edit
                                    #(cmn-events/write-string-to-clipboard 
                                      {:field-name key
                                       :protected protected
@@ -678,7 +683,8 @@
                        :onFocus #(field-focus-action key true)
                        :onBlur #(field-focus-action key false)
                        :onChangeText nil
-                       :onPressOut #(cmn-events/write-string-to-clipboard
+                       ;; Copies only on a completed tap - see 'ios-form-text-input'
+                       :onPress #(cmn-events/write-string-to-clipboard
                                      {:field-name key
                                       :protected protected
                                       :value token})

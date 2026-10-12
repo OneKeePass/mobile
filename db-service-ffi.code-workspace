@@ -12,7 +12,9 @@
 		// the extension's standalone server, which may require a newer compiler.
 		// Used: 'rustup component add rust-analyzer' and this installed rustc version (1.91)
 		// specific analyzer
-		//rust-analyzer --version  => rust-analyzer 1.91.0 (f8297e35 2025-10-28)
+		// rust-analyzer --version  => rust-analyzer 1.91.0 (f8297e35 2025-10-28)
+		// rust-analyzer --version  => rust-analyzer 1.99.0 (b940084d 2026-09-28)
+		// See db-service-ffi/rust-toolchain.toml shows the exact rust version used after rust update
 		// Next time when we call 'rustup update stable', the 'rust-analyzer' version will be
 		// updated along with rustc
 		// If we want to use the extension's standalone server, then this path should be commented out
