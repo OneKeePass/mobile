@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.credentials.provider.PendingIntentHandler
 import com.facebook.react.ReactActivity
+import com.onekeepassmobile.ScreenCaptureGuard
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
 import com.facebook.react.defaults.DefaultReactActivityDelegate
@@ -86,6 +87,11 @@ class PasskeyActivity : ReactActivity() {
         }
 
         super.onCreate(savedInstanceState)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        ScreenCaptureGuard.apply(this)
     }
 
     override fun onDestroy() {

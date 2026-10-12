@@ -27,6 +27,8 @@ pub struct PreferenceData {
     app_lock_timeout: Option<i64>,
     app_lock_attempts_allowed: Option<usize>,
     app_lock_lock_app_settings: Option<bool>,
+
+    screen_capture_blocked: Option<bool>,
     //app_lock_preference: Option<AppLockPreference>,
 
     // Generator options sent from the password generator page
@@ -209,6 +211,13 @@ pub(crate) struct Preference {
     // serde default keeps the preference files written before this field was introduced loadable
     #[serde(default)]
     password_gen_preference: PasswordGeneratorPreference,
+
+    // When true, the app asks the OS to keep its screens out of screenshots, recordings and the
+    // app switcher. Android enforces it with FLAG_SECURE; iOS can only cover the screen while it
+    // is being recorded or mirrored and when the app goes to the background
+    // serde default keeps the preference files written before this field loadable
+    #[serde(default)]
+    screen_capture_blocked: bool,
 }
 
 impl Default for Preference {
@@ -228,6 +237,7 @@ impl Default for Preference {
             database_preferences: vec![],
             app_lock_preference: AppLockPreference::default(),
             password_gen_preference: PasswordGeneratorPreference::default(),
+            screen_capture_blocked: false,
         }
     }
 }
@@ -294,6 +304,13 @@ impl Preference {
             self,
             preference_data.app_lock_lock_app_settings,
             app_lock_preference.lock_app_settings,
+            updated
+        );
+
+        pref_update!(
+            self,
+            preference_data.screen_capture_blocked,
+            screen_capture_blocked,
             updated
         );
 
@@ -683,6 +700,7 @@ impl From<PreferenceV400> for Preference {
             database_preferences,
             app_lock_preference: AppLockPreference::default(),
             password_gen_preference: PasswordGeneratorPreference::default(),
+            screen_capture_blocked: false,
         };
 
         // RecentlyUsed is changed in the new Preference struct

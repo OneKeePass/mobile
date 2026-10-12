@@ -33,6 +33,8 @@ RCT_EXTERN_METHOD(saveKdbx:(NSString *) fullFileNameUri overwrite:(BOOL)overwrit
 
 RCT_EXTERN_METHOD(authenticateWithBiometric:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 
+RCT_EXTERN_METHOD(setScreenCaptureBlocked:(BOOL)blocked resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
+
 // Javascript errors recorded by the fatal handler - see OkpCrashLog
 RCT_EXTERN_METHOD(lastCrashRecords:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject)
 

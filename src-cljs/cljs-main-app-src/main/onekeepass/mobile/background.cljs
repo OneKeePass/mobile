@@ -102,6 +102,12 @@
   [dispatch-fn]
   (call-api-async (fn [] (.clearLastCrashRecords okp-db-service)) dispatch-fn))
 
+(defn set-screen-capture-blocked
+  "Tells the native side whether to keep the app out of screenshots and screen recordings.
+   Android blocks them; iOS covers the screen while it is captured and in the app switcher"
+  [blocked? dispatch-fn]
+  (call-api-async (fn [] (.setScreenCaptureBlocked okp-db-service blocked?)) dispatch-fn))
+
 (defn authenticate-with-biometric
   "Called to authenticate the previously locked database.
   There is no db specific biometric authentication settings or control. If the device supports

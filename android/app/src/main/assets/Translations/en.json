@@ -20,6 +20,7 @@
         "appSecureStoreConnections": "App Secure Store",
         "autofillSettings": "Autofill Settings",
         "biometrics": "Biometrics",
+        "blockScreenshots": "Block screenshots",
         "bytes": "bytes",
         "capitalizeFirstLetter": "Capitalize first letter",
         "capitalizeWords": "Capitalize words",
@@ -614,6 +615,8 @@
             "noPersonalInfoCollection": "The application does not collect any of the personal identifiable information. Nothing is collected or shared with any external party"
         },
         "appSettings": {
+            "blockScreenshotsAndroid": "Hides the app from screenshots, screen recordings and recent apps",
+            "blockScreenshotsIos": "iOS does not allow apps to block screenshots. The app is hidden in the app switcher and while the screen is recorded or mirrored",
             "clipboardCleard1": "Clipboard will not be cleared",
             "clipboardCleard2": "Clipboard will be cleared in {{clipboardTimeoutTime}}",
             "dbRemainOpened": "Database will remain open till locked or closed",

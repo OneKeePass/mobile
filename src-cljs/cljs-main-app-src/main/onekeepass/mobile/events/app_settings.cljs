@@ -143,6 +143,12 @@
 (defn app-language-update [lng-selected call-on-success]
   (dispatch [:app-settings/app-preference-update-data :language lng-selected call-on-success]))
 
+(defn screen-capture-blocked-update [blocked?]
+  (dispatch [:app-settings-screen-capture-blocked-update blocked?]))
+
+(defn screen-capture-blocked []
+  (subscribe [:app-preference-data :screen-capture-blocked false]))
+
 (defn db-session-timeout-value
   "An atom that gives the db session timeout in milli seconds"
   []
@@ -217,6 +223,21 @@
                              (when-not (nil? call-on-success)
                                (call-on-success pref-update-m)))))))
 
+;; Saves the setting and also tells the native side right away so that the change
+;; takes effect without restarting the app
+(reg-event-fx
+ :app-settings-screen-capture-blocked-update
+ (fn [{:keys [_db]} [_event-id blocked?]]
+   {:fx [[:dispatch [:app-settings/app-preference-update-data :screen-capture-blocked blocked? nil]]
+         [:bg-set-screen-capture-blocked blocked?]]}))
+
+(reg-fx
+ :bg-set-screen-capture-blocked
+ (fn [blocked?]
+   (bg/set-screen-capture-blocked (boolean blocked?)
+                                  (fn [api-response]
+                                    (on-error api-response)))))
+
 (reg-sub
  :db-session-timeout
  (fn [db [_event-id]]
@@ -244,8 +265,11 @@
  :app-settings/app-preference-loaded
  (fn [{:keys [db]} [_event-id]]
    (let [dbt (get-in db [:app-preference :data :db-session-timeout])
-         cbt (get-in db [:app-preference :data :clipboard-timeout])]
-     {:fx [[:update-timeouts-from-pref [dbt cbt]]]})))
+         cbt (get-in db [:app-preference :data :clipboard-timeout])
+         scb (get-in db [:app-preference :data :screen-capture-blocked])]
+     ;; The native side does not read the preference itself and gets the stored value on each load
+     {:fx [[:update-timeouts-from-pref [dbt cbt]]
+           [:bg-set-screen-capture-blocked scb]]})))
 
 (reg-fx
  :update-timeouts-from-pref

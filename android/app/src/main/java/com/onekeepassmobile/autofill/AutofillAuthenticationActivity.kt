@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.util.Log
 import androidx.annotation.RequiresApi
 import com.facebook.react.ReactActivity
+import com.onekeepassmobile.ScreenCaptureGuard
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
 import com.facebook.react.defaults.DefaultReactActivityDelegate
@@ -49,6 +50,11 @@ class AutofillAuthenticationActivity() : ReactActivity() {
         Log.d("AutofillAuthenticationActivity", "onCreate of AutofillAuthenticationActivity is called ...with intent ${intent}")
         autofillActivity = this
         super.onCreate(savedInstanceState)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        ScreenCaptureGuard.apply(this)
     }
 
     companion object {

@@ -38,11 +38,70 @@ class SceneDelegate: NSObject, UIWindowSceneDelegate {
   // This ensures that we do not send native event in 'sceneWillResignActive'
   // It looks like 'sceneWillResignActive' is fired when FaceID is shown. This causes the App lock
   static var inBiometricCall: Bool = false
-  
+
+  // The user's 'Block screenshots' setting. Set from OkpDbService.setScreenCaptureBlocked each time
+  // the UI loads the app preference and when the setting changes.
+  // iOS does not let an app block screenshots. When this is true, a cover is shown instead while
+  // the screen is recorded or mirrored, and when the app goes to the background so that the
+  // app switcher snapshot does not show the database content
+  private(set) static var screenCaptureBlocked: Bool = false
+
+  private static weak var current: SceneDelegate?
+
+  // A separate window above the app window so that the cover is also above any RN modal
+  private var privacyCoverWindow: UIWindow?
+
+  private var inBackground: Bool = false
+
+  static func setScreenCaptureBlocked(_ blocked: Bool) {
+    screenCaptureBlocked = blocked
+    current?.updatePrivacyCover()
+  }
+
+  private func updatePrivacyCover() {
+    guard let windowScene = window?.windowScene else { return }
+
+    let show = Self.screenCaptureBlocked && (inBackground || windowScene.screen.isCaptured)
+
+    if show, privacyCoverWindow == nil {
+      let coverWindow = UIWindow(windowScene: windowScene)
+      coverWindow.windowLevel = .alert + 1
+      coverWindow.rootViewController = Self.privacyCoverViewController()
+      coverWindow.isHidden = false
+      privacyCoverWindow = coverWindow
+    } else if !show, let coverWindow = privacyCoverWindow {
+      coverWindow.isHidden = true
+      privacyCoverWindow = nil
+    }
+  }
+
+  // Uses the boot splash screen as the cover so that it looks like a deliberate screen
+  private static func privacyCoverViewController() -> UIViewController {
+    if let vc = UIStoryboard(name: "BootSplash", bundle: nil).instantiateInitialViewController() {
+      return vc
+    }
+    let vc = UIViewController()
+    vc.view.backgroundColor = .systemBackground
+    return vc
+  }
+
+  @objc private func screenCaptureChanged(_: Notification) {
+    logger.debug("Screen capture changed")
+    updatePrivacyCover()
+  }
+
   func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
     // A new scene was added to the app.
-    
+
     logger.debug("In SceneDelegate scene func...\(connectionOptions.urlContexts)")
+
+    SceneDelegate.current = self
+
+    // Posted when screen recording, AirPlay mirroring or similar capture starts or stops
+    NotificationCenter.default.addObserver(self,
+                                           selector: #selector(screenCaptureChanged(_:)),
+                                           name: UIScreen.capturedDidChangeNotification,
+                                           object: nil)
     
     // The url is passed when the user presses .kdbx file and the app is not running
     if let urlContext = connectionOptions.urlContexts.first {
@@ -92,6 +151,9 @@ class SceneDelegate: NSObject, UIWindowSceneDelegate {
     // A scene is about to enter the foreground.
     // It appears all RN modules init are happening after this call only
     logger.debug("A scene is about to enter the foreground")
+
+    inBackground = false
+    updatePrivacyCover()
   }
   
   func sceneDidBecomeActive(_ scene: UIScene) {
@@ -127,6 +189,11 @@ class SceneDelegate: NSObject, UIWindowSceneDelegate {
   func sceneDidEnterBackground(_ scene: UIScene) {
     // A scene did enter the background.
     logger.debug("A scene did enter the background")
+
+    // The app switcher snapshot is taken after this call. 'sceneWillResignActive' is not used for
+    // the cover as it is also called for Face ID, Control Center and the notification pull-down
+    inBackground = true
+    updatePrivacyCover()
   }
 
   func sceneDidDisconnect(_ scene: UIScene) {
