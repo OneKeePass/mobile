@@ -373,6 +373,7 @@
             "scanError": "Scan Error",
             "restricted": "Restricted",
             "invalidReference": "Invalid reference",
+            "invalidUrl": "Invalid URL",
             "saveAsError": "Save as Error",
             "uploadStatus": "Upload status"
         },
@@ -383,7 +384,8 @@
             "scannedUrlNotOtpUri": "The scanned url is not an otp type url",
             "dbMovedOrRenamed": "It appears the database file might have been moved or renamed. Please remove the database and reopen the moved or renamed file",
             "editingDisabledReadOnly": "Editing is disabled as the database is opened in read only mode",
-            "uploadStatus": "The uploaded attachment is the same as the existing one"
+            "uploadStatus": "The uploaded attachment is the same as the existing one",
+            "urlSchemeNotSupported": "Only web addresses (http or https) are supported"
         }
     },
     "messageDialog": {
