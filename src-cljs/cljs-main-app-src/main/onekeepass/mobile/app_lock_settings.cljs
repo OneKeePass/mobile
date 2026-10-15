@@ -36,6 +36,7 @@
     [rn-view {:flexDirection "column"}
      [rnp-text-input (merge no-assist-text-props
                             {:label (lstr-l 'pin)
+                             :autoFocus true
                              :keyboardType "number-pad"
                              :defaultValue pin-value
                              :secureTextEntry (not visible)
@@ -71,6 +72,7 @@
     [rn-view {:flexDirection "column"}
      [rnp-text-input (merge no-assist-text-props
                             {:label (lstr-l 'pin)
+                             :autoFocus true
                              :keyboardType "number-pad"
                              :defaultValue pin-value
                              :secureTextEntry (not visible)
@@ -89,7 +91,7 @@
                  :onPress (fn []
                             (let [val (str->int pin-value)]
                               (if (str/blank? pin-value)
-                                (dlg-events/app-pin-lock-settings-dialog-update-with-map
+                                (dlg-events/locked-app-log-in-dialog-update-with-map
                                  {:error-text (lstr-mt 'enterPin 'validPinRequired)})
                                 (app-lock-events/verify-pin-entered
                                  val
@@ -165,9 +167,9 @@
                                    (al-settings-events/app-lock-settings-preference-update :lock-timeout (.-key option)))}]
        (if  (> lock-timeout 0)
          [rn-view {:style {:margin-top 10 :margin-bottom 10 :padding 10}}
-          [rnp-text "The app will be locked after this timeout. You need to enter the PIN to use OneKeePass"]]
+          [rnp-text "The app will be locked when it is not used for this long, whether it is in the foreground or in the background. You need to enter the PIN to use OneKeePass"]]
          [rn-view {:style {:margin-top 10 :margin-bottom 10 :padding 10}}
-          [rnp-text "The app will be locked when app looses focus. You need to enter the PIN to use OneKeePass"]])]
+          [rnp-text "The app will be locked when it goes to the background, or after 1 minute without use. You need to enter the PIN to use OneKeePass"]])]
 
       [rnp-divider]
 

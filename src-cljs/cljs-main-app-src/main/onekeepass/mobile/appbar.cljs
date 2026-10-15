@@ -604,23 +604,17 @@
 (defn appbar-main-content
   "An App bar has both header and the body combined"
   []
-  (let [handler-fns-m {:onStartShouldSetPanResponderCapture (fn []
-                                                              (as-events/user-action-detected)
-                                                              ;; Returns false so that the event is passed to other 
-                                                              ;; listeners
-                                                              false)}
-
-        pan-handlers-m (-> (rnc/create-pan-responder handler-fns-m)
-                           (js->clj :keywordize-keys true) :panHandlers)]
-    [rn-view (merge {:style {:flex 1}} pan-handlers-m)
-     (let [lock-state @(app-lock-events/app-lock-state)
-           page-info @(cmn-events/page-info)]
-       (if-not (= lock-state :locked)
-         [rn-view {:style {:flex 1}}
-          [appbar-header-content page-info]
-          (when (u/contains-val? current-db-pages (:page page-info))
-            [read-only-strip])
-          [appbar-body-content page-info]]
-         [rn-view {:style {:flex 1}}
-          [app-lock/content]
-          #_[rnc/rnp-text "App locked"]]))]))
+  ;; User touches are detected in onekeepass.mobile.core so that the dialogs shown through
+  ;; the portal are also covered
+  [rn-view {:style {:flex 1}}
+   (let [lock-state @(app-lock-events/app-lock-state)
+         page-info @(cmn-events/page-info)]
+     (if-not (= lock-state :locked)
+       [rn-view {:style {:flex 1}}
+        [appbar-header-content page-info]
+        (when (u/contains-val? current-db-pages (:page page-info))
+          [read-only-strip])
+        [appbar-body-content page-info]]
+       [rn-view {:style {:flex 1}}
+        [app-lock/content]
+        #_[rnc/rnp-text "App locked"]]))])

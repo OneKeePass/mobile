@@ -49,14 +49,21 @@
    {:db (-> db (assoc-in [:app-lock-settings :pin-auth-completed] false))
     :fx [[:dispatch [:common/next-page APP_LOCK_SETTINGS_PAGE_ID "appLockSettings"]]]}))
 
+;; Lock delay applied whenever the PIN lock is turned on. Same as the 'lock_timeout' default
+;; in db-service-ffi app_preference.rs
+;; The delay picker is hidden while the PIN lock is off, so a stored value at that point
+;; was never seen by the user (older installs stored 0 - "Immediately" - by default)
+(def ^:private DEFAULT-LOCK-TIMEOUT 60000)
+
 (reg-event-fx
  :pin-store-action-completed
  (fn [{:keys [db]} [_event-id flag]]
-   ;; local data upate as backend is updated 
+   ;; local data upate as backend is updated
    {:db  (update-app-lock-preference-field-data db :pin-lock-enabled flag)
-    ;; Need to set :pin-auth-completed to true so that user is not asked to enter pin 
-    ;; after they enable the app lock and set up a new pins
-    :fx [(when flag [:dispatch [:app-lock-settings-pin-verified-success]])]}))
+    :fx [;; Need to set :pin-auth-completed to true so that user is not asked to enter pin
+         ;; after they enable the app lock and set up a new pins
+         (when flag [:dispatch [:app-lock-settings-pin-verified-success]])
+         (when flag [:dispatch [:app-lock-settings-preference-update :lock-timeout DEFAULT-LOCK-TIMEOUT]])]}))
 
 ;; See :pin-store-completed for pin-lock-enabled updating
 ;; :lock-timeout :attempts-allowed 

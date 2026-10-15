@@ -111,12 +111,15 @@ object EventEmitter {
             .emit(EVENT_APP_BECOMES_ACTIVE, "{}")
     }
 
-    fun emitAppBecomesInactive() {
+    // 'ownActivity' is true when the app goes to the background because it opened a picker or
+    // share sheet itself. The UI side then allows more time before locking the app
+    fun emitAppBecomesInactive(ownActivity: Boolean) {
         if (!::reactApplicationContext.isInitialized) {
             return
         }
+        val body = if (ownActivity) DbServiceAPI.jsonService().okJsonString("ActivityForResult") else "{}"
         reactApplicationContext.getJSModule(RCTDeviceEventEmitter::class.java)
-            .emit(EVENT_APP_BECOMES_INACTIVE, "{}")
+            .emit(EVENT_APP_BECOMES_INACTIVE, body)
     }
 
     // This does not work as the registration of a listener for this event in UI is done only after this call

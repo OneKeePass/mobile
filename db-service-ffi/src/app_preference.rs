@@ -100,7 +100,10 @@ impl Default for AppLockPreference {
     fn default() -> Self {
         Self {
             pin_lock_enabled: false,
-            lock_timeout: Default::default(),
+            // 60 seconds rather than 0 ("Immediately") so that a short trip out of the app does not
+            // ask for the PIN again. The UI resets to the same value (DEFAULT-LOCK-TIMEOUT in
+            // events/app_lock_settings.cljs) whenever the PIN lock is turned on
+            lock_timeout: 60000,
             attempts_allowed: 10,
             lock_app_settings: Default::default(),
         }

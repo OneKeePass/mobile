@@ -93,6 +93,7 @@
 (defn register-app-becomes-active []
   (register-guarded-event-listener EVENT_APP_BECOMES_ACTIVE
                                    (fn [_event-message]
+                                     (dispatch [:app-lock/app-becoming-active])
                                      (dispatch [:external-db-change/poll-open-remote-dbs])
                                      ;; Neither the entry list's refresh timer nor the native
                                      ;; animation of its token bars can be trusted across a
@@ -101,8 +102,12 @@
 
 (defn register-app-becomes-inactive []
   (register-guarded-event-listener EVENT_APP_BECOMES_INACTIVE
-                                   (fn [_event-message]
-                                     (dispatch [:app-lock/app-becoming-inactive]))))
+                                   (fn [event-message]
+                                     ;; Android sends {"ok" "ActivityForResult"} when the app itself
+                                     ;; opened a picker or share sheet. iOS always sends {}
+                                     (let [own-activity? (= "ActivityForResult"
+                                                            (:ok (bg/transform-api-response event-message {})))]
+                                       (dispatch [:app-lock/app-becoming-inactive own-activity?])))))
 
 
 (defn register-backend-event-handlers []

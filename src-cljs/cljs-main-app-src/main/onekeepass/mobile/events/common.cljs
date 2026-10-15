@@ -891,11 +891,12 @@
  :lock-on-session-timeout
  (fn [{:keys [db]} [_event-id db-key]]
    (let [curr-dbkey (:current-db-file-name db)
-         ;; The navigation/app-lock dispatches only apply when the timed-out db is
-         ;; the one currently on screen; they run only after the lock succeeds.
+         ;; The navigation only applies when the timed-out db is the one currently
+         ;; on screen; it runs only after the lock succeeds.
+         ;; The app lock is not done here. It follows its own lock delay
+         ;; (see :app-lock/lock-on-idle) so that it does not fire earlier than the user set
          follow-ups (if (= curr-dbkey db-key)
-                      [[:common/to-home-page]
-                       [:app-lock/current-db-locked-on-timeout]]
+                      [[:common/to-home-page]]
                       [])]
      {:fx [[:bg-lock-kdbx [db-key follow-ups]]]})))
 

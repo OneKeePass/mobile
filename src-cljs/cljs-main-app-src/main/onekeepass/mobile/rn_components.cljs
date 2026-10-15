@@ -96,6 +96,8 @@
 
 (def rn-back-handler ^js/RNBackHandler rn/BackHandler)
 
+(def rn-app-state ^js/RNAppState rn/AppState)
+
 ;; React native components
 (declare-comp-classes [ActivityIndicator
                        Button

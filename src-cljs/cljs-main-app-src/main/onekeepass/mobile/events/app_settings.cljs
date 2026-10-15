@@ -45,7 +45,7 @@
     (<! (timeout 5000))
     (let [tick (js/Date.now)]
       (dispatch [:check-db-list-to-lock tick])
-      (dispatch [:app-lock/lock-on-timeout tick]))
+      (dispatch [:app-lock/lock-on-idle tick]))
     (when @continue-tick
       (recur))))
 

@@ -21,6 +21,7 @@
    [onekeepass.mobile.constants :refer [DARK-THEME]]
    [onekeepass.mobile.crash-info :refer [crash-info-dialog-mounted]]
    [onekeepass.mobile.events.crash-info :as crash-info-events]
+   [onekeepass.mobile.events.app-lock :as app-lock-events]
    [onekeepass.mobile.events.app-settings :as as-events :refer [app-theme]]
    [onekeepass.mobile.events.common :as cmn-events]
    [onekeepass.mobile.events.external-db-change]
@@ -69,6 +70,16 @@
 ;; System back action handler (Android)
 (def ^:private back-handler (atom nil))
 
+;; Any touch in the app, including in the dialogs rendered through the portal, resets the
+;; database session and app lock idle times
+(def ^:private user-action-pan-handlers
+  (-> (rnc/create-pan-responder {:onStartShouldSetPanResponderCapture (fn []
+                                                                        (as-events/user-action-detected)
+                                                                        ;; Returns false so that the event is passed to other
+                                                                        ;; listeners
+                                                                        false)})
+      (js->clj :keywordize-keys true) :panHandlers))
+
 (defn main
   "A functional component so that we can call the react hook set-translator and use any react useEffects"
   []
@@ -116,8 +127,18 @@
          ;; Empty parameter array to useEffect fn
          (clj->js [])))
 
-      [rnp-provider {:theme (if (= DARK-THEME theme-name) rnc/dark-theme rnc/light-theme)}
-       [main-content]])))
+      (react-use-effect
+       (fn []
+         (let [show-sub (.addListener rnc/rn-keyboard "keyboardDidShow" #(app-lock-events/keyboard-visibility-changed true))
+               hide-sub (.addListener rnc/rn-keyboard "keyboardDidHide" #(app-lock-events/keyboard-visibility-changed false))]
+           (fn []
+             (.remove ^js/RNSubscription show-sub)
+             (.remove ^js/RNSubscription hide-sub))))
+       (clj->js []))
+
+      [rnc/rn-view (merge {:style {:flex 1}} user-action-pan-handlers)
+       [rnp-provider {:theme (if (= DARK-THEME theme-name) rnc/dark-theme rnc/light-theme)}
+        [main-content]]])))
 
 (defn app-root
   []

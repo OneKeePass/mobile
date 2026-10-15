@@ -12,6 +12,9 @@ import com.onekeepassmobile.EventEmitter
 import com.zoontek.rnbootsplash.RNBootSplash
 
 class MainActivity : ReactActivity() {
+    // True from the launch of an activity for result until this activity resumes again
+    private var awaitingActivityResult = false
+
     /**
      * Returns the name of the main component registered from JavaScript. This is used to schedule
      * rendering of the component.
@@ -88,10 +91,23 @@ class MainActivity : ReactActivity() {
         //Log.d("MainActivity", "EventEmitter.onNewIntent is called...")
     }
 
+    // Every startActivityForResult call - our document pickers, the export share sheet and any
+    // library using the activity result APIs - ends up in this method. Plain startActivity calls
+    // (browser, system settings) pass a negative request code and are not counted
+    @Suppress("OVERRIDE_DEPRECATION")
+    override fun startActivityForResult(intent: Intent, requestCode: Int, options: Bundle?) {
+        if (requestCode >= 0) {
+            awaitingActivityResult = true
+        }
+        super.startActivityForResult(intent, requestCode, options)
+    }
+
     override fun onPause() {
         super.onPause();
         Log.d("MainActivity", "On pause is called...")
-        EventEmitter.emitAppBecomesInactive()
+        // A picker the app itself opened is not the user leaving the app. The UI side uses this
+        // flag so that the app lock delay does not lock the app while a database file is picked
+        EventEmitter.emitAppBecomesInactive(awaitingActivityResult)
     }
 
     override fun onStart() {
@@ -107,6 +123,7 @@ class MainActivity : ReactActivity() {
     override fun onResume() {
         super.onResume()
         Log.d("MainActivity", "On resume is called...")
+        awaitingActivityResult = false
         ScreenCaptureGuard.apply(this)
         // Symmetric to onPause's emitAppBecomesInactive. The UI side listens for this event
         // (see onekeepass/mobile/events/native_events.cljs register-app-becomes-active) to poll
