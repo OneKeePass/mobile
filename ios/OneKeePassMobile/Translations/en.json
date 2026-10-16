@@ -1,5 +1,7 @@
 {
     "commonTexts": {
+        "appLockDelay": "App lock delay",
+        "attempts": "Attempts",
         "confirmPin": "Confirm PIN",
         "newPin": "Enter a new PIN",
         "pin4Digits": "4 digits",
@@ -619,6 +621,13 @@
     "messageTexts": {
         "about": {
             "noPersonalInfoCollection": "The application does not collect any of the personal identifiable information. Nothing is collected or shared with any external party"
+        },
+        "appLockSettings": {
+            "attemptsResetInfo": "When PIN authentication fails more than this many times, the app will be reset. All references to database files, key files and internal caches will be removed",
+            "dbFilesNotRemoved": "The database files in their original locations are not removed",
+            "lockDelayImmediately": "The app will be locked when it goes to the background, or after 1 minute without use. You need to enter the PIN to use OneKeePass",
+            "lockDelayTimeout": "The app will be locked when it is not used for this long, whether it is in the foreground or in the background. You need to enter the PIN to use OneKeePass",
+            "pinProtected": "The app is protected with a PIN. You need to enter the PIN to use OneKeePass"
         },
         "appSettings": {
             "blockScreenshotsAndroid": "Hides the app from screenshots, screen recordings and recent apps",

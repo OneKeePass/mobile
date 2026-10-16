@@ -71,12 +71,12 @@
 
     (when pin-lock-enabled
       [rn-view {:style {}}
-       [rnp-text "The app is protected with a PIN authentication. You need to enter the PIN to use OneKeePass"]])]
+       [rnp-text (lstr-mt 'appLockSettings 'pinProtected)]])]
 
    (when pin-lock-enabled
      [rn-view  {:style (get-form-style)}
       [rn-view {:style {}}
-       [select-field {:text-label "App lock delay"
+       [select-field {:text-label (lstr-l 'appLockDelay)
                       :options lock-timeout-options
                       :value (find-matching-label lock-timeout-options lock-timeout)
                                                               ;;:label-extractor-fn cc/select-field-tr-key-label-extractor 
@@ -85,14 +85,14 @@
                                    (al-settings-events/app-lock-settings-preference-update :lock-timeout (.-key option)))}]
        (if  (> lock-timeout 0)
          [rn-view {:style {:margin-top 10 :margin-bottom 10 :padding 10}}
-          [rnp-text "The app will be locked when it is not used for this long, whether it is in the foreground or in the background. You need to enter the PIN to use OneKeePass"]]
+          [rnp-text (lstr-mt 'appLockSettings 'lockDelayTimeout)]]
          [rn-view {:style {:margin-top 10 :margin-bottom 10 :padding 10}}
-          [rnp-text "The app will be locked when it goes to the background, or after 1 minute without use. You need to enter the PIN to use OneKeePass"]])]
+          [rnp-text (lstr-mt 'appLockSettings 'lockDelayImmediately)]])]
 
       [rnp-divider]
 
       [rn-view {:style {:margin-top 15}}
-       [select-field {:text-label "Attempts"
+       [select-field {:text-label (lstr-l 'attempts)
                       :options attemps-allowed-options
                       :value (find-matching-label attemps-allowed-options attempts-allowed)
                       :text-input-style {:background-color @(:background-color modal-selector-colors)}
@@ -101,10 +101,10 @@
 
        [rn-view {:style {:margin-top 10 :margin-bottom 10
                          :padding 10}}
-        [rnp-text {:style {:color @rnc/error-color}} "When PIN authentication failure exceeds this many attempts, the app will be reset. All previous references of database files, key files and internal caches will be removed"]]
+        [rnp-text {:style {:color @rnc/error-color}} (lstr-mt 'appLockSettings 'attemptsResetInfo)]]
 
        [rn-view {:style {:margin-top 5 :margin-bottom 5 :padding 10}}
-        [rnp-text {:style {:color @rnc/error-color}} "The database files from its original locations are not removed"]]]])])
+        [rnp-text {:style {:color @rnc/error-color}} (lstr-mt 'appLockSettings 'dbFilesNotRemoved)]]]])])
 
 (defn authenticate-with-pin
   "Asks for the current PIN before the app lock settings are shown. A wrong PIN here does not
