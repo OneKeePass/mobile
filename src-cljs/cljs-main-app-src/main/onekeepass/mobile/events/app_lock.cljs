@@ -3,26 +3,27 @@
   (:require
    [onekeepass.mobile.events.common :as cmn-events :refer [app-lock-preference  on-ok on-error]]
    [re-frame.core :refer [dispatch subscribe reg-event-fx reg-sub reg-fx]]
-   [onekeepass.mobile.translation :refer [lstr-mt]]
    [onekeepass.mobile.background :as bg]))
 
-(defn app-lock-verify-pin-handler
-  "Called when pin verification backend returns. This is fn is passed from the pin entry dialog"
-  [verify-result]
-  (dispatch [:app-lock-verified verify-result]))
-
-(defn verify-pin-entered [pin verify-pin-handler-fn]
+(defn verify-pin-entered
+  "Checks the PIN with the stored one. 'verify-pin-handler-fn' receives true or false, or nil
+   when the check itself failed (the error is already shown by 'on-ok')"
+  [pin verify-pin-handler-fn]
   (bg/pin-verify pin
                  (fn [api-reponse]
-                   ;; Need to use when-some instead of when-let
-                   ;; when-some evaluates when 'on-ok' return a non nil value
+                   ;; (:ok api-reponse) is either true or false
+                   (verify-pin-handler-fn (on-ok api-reponse)))))
 
-                   ;; However when-let evaluates when 'on-ok' return value is true 
-                   ;; ( i.e (boolean (on-ok ...)) = true and not false)
-
-                   ;; (:ok api-reponse) is either true or false 
-                   (when-some [verify-result (on-ok api-reponse)]
-                     (verify-pin-handler-fn verify-result)))))
+(defn verify-app-lock-pin
+  "Checks the PIN entered on the app lock screen. 'rejected-fn' is called when the PIN is wrong
+   or could not be checked. A failed check does not count as a wrong attempt"
+  [pin rejected-fn]
+  (verify-pin-entered pin
+                      (fn [verified?]
+                        (when (some? verified?)
+                          (dispatch [:app-lock-verified verified?]))
+                        (when-not verified?
+                          (rejected-fn)))))
 
 (defn app-lock-state []
   (subscribe [:app-lock-state]))
@@ -33,21 +34,13 @@
   [app-db]
   (= :locked (get-in app-db [:app-lock :state])))
 
-(defn pin-dialog-show-when-locked []
-  (dispatch [:app-lock/pin-dialog-show-when-locked]))
+(defn attempts-remaining
+  "The number of wrong PINs still allowed before the app is reset"
+  []
+  (subscribe [:app-lock-attempts-remaining]))
 
 (defn keyboard-visibility-changed [visible?]
   (dispatch [:app-lock/keyboard-visibility-changed visible?]))
-
-;;;;;;;;;; Some generic dialog direct events ;;;;;;;;
-
-(defn locked-app-log-in-dialog-close-disp-fx-vec []
-  [:generic-dialog-close :locked-app-log-in-dialog])
-
-(defn locked-app-log-in-dialog-update-with-map-disp-fx-vec [state-m]
-  [:generic-dialog-update-with-map :locked-app-log-in-dialog state-m])
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 #_(reg-event-fx
    :app-lock-app-locked
@@ -116,20 +109,7 @@
             (lock-app db attempts-allowed)
             ;; Coming back to the app is a user action. The time away was checked above and
             ;; must not count again against the foreground idle time
-            (assoc-in db [:app-lock :last-user-action-time] (js/Date.now)))
-      ;; Uses the app-db as updated above as re-frame handles the dispatched events in order
-      :fx [[:dispatch [:app-lock/pin-dialog-show-when-locked]]]})))
-
-;; Opens the PIN entry dialog so that the user can type the PIN without first pressing
-;; 'Enter PIN'. Called on the lock screen mount and from the native event when app comes to foreground.
-;; The dialog is left alone when it is already showing so that any typed PIN is kept
-(reg-event-fx
- :app-lock/pin-dialog-show-when-locked
- (fn [{:keys [db]} [_event-id]]
-   (if (and (app-locked? db)
-            (not (get-in db [:locked-app-log-in-dialog :dialog-show])))
-     {:fx [[:dispatch [:generic-dialog-show-with-state :locked-app-log-in-dialog {}]]]}
-     {})))
+            (assoc-in db [:app-lock :last-user-action-time] (js/Date.now)))})))
 
 ;; Called when the app starts and this event called in this sequence:
 ;; :load-app-preference ->  :bg-app-preference -> :app-preference-loaded
@@ -205,10 +185,9 @@
                 (assoc-in [:app-lock :attempts-count-remaining] attempts-allowed)
                 ;; The idle time starts again from the unlock
                 (assoc-in [:app-lock :last-user-action-time] (js/Date.now)))
-        :fx [[:dispatch (locked-app-log-in-dialog-close-disp-fx-vec)]
-             ;; Any 'otpauth://' url that arrived while the app lock screen was showing
-             ;; waits for this
-             [:dispatch [:otp-url-received/check-pending]]]})
+        ;; Any 'otpauth://' url that arrived while the app lock screen was showing
+        ;; waits for this
+        :fx [[:dispatch [:otp-url-received/check-pending]]]})
 
      ;; PIN verification failed (else part)
      (let [{:keys [attempts-count-remaining]} (get-in db [:app-lock])
@@ -221,9 +200,8 @@
        (if attempts-exceeded
          ;; Call app reset
          {:fx [[:bg-app-reset]]}
-         {:db (-> db (assoc-in [:app-lock :attempts-count-remaining] attempts-count-remaining))
-          :fx [[:dispatch (locked-app-log-in-dialog-update-with-map-disp-fx-vec
-                           {:error-text (lstr-mt 'enterPin 'validPinRequired)})]]})))))
+         ;; The PIN pad shakes and clears its dots for a wrong PIN
+         {:db (-> db (assoc-in [:app-lock :attempts-count-remaining] attempts-count-remaining))})))))
 
 (reg-fx
  :bg-app-reset
@@ -238,9 +216,7 @@
    ;; Ensure that app-lock is in unlocked state as app is reset
    {:db (-> db (assoc-in [:app-lock :state] :unlocked)) 
     :fx [;; This event loads app peference and then navigates to home page
-         [:dispatch [:common/to-home-page]]
-         ;; Need to close the dialog 
-         [:dispatch (locked-app-log-in-dialog-close-disp-fx-vec)]]}))
+         [:dispatch [:common/to-home-page]]]}))
 
 (reg-sub
  :app-lock-state
@@ -248,6 +224,11 @@
    (let [s (get-in db [:app-lock :state])]
      (if-not (nil? s) s
              :unlocked))))
+
+(reg-sub
+ :app-lock-attempts-remaining
+ (fn [db _query-vec]
+   (get-in db [:app-lock :attempts-count-remaining])))
 
 (comment
   (in-ns 'onekeepass.mobile.events.app-lock)

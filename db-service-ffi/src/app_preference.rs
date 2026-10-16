@@ -27,6 +27,7 @@ pub struct PreferenceData {
     app_lock_timeout: Option<i64>,
     app_lock_attempts_allowed: Option<usize>,
     app_lock_lock_app_settings: Option<bool>,
+    app_lock_pin_length: Option<usize>,
 
     screen_capture_blocked: Option<bool>,
     //app_lock_preference: Option<AppLockPreference>,
@@ -91,6 +92,14 @@ pub(crate) struct AppLockPreference {
     // When this is true and pin_lock_enabled is true, user can access the 'App Settings' only
     // after reentering the PIN again
     lock_app_settings: bool,
+
+    // Number of digits of the PIN when it was set with a fixed length (iOS only). The UI then
+    // shows that many places and checks the PIN once the last digit is entered.
+    // None for PINs set on Android or before this was added. The UI then lets the PIN be of
+    // any length and asks the user to confirm it
+    // The PIN is stored as a number and so the length cannot be got from it (leading zeros)
+    #[serde(default)]
+    pin_length: Option<usize>,
     // May be used in the future
     // When this is enabled, the app will be reset when the no of pin auth failures > attempts_allowed
     // reset_on_lock_failures:bool,
@@ -106,6 +115,7 @@ impl Default for AppLockPreference {
             lock_timeout: 60000,
             attempts_allowed: 10,
             lock_app_settings: Default::default(),
+            pin_length: None,
         }
     }
 }
@@ -310,6 +320,11 @@ impl Preference {
             updated
         );
 
+        if let Some(len) = preference_data.app_lock_pin_length {
+            self.app_lock_preference.pin_length = Some(len);
+            updated = true;
+        }
+
         pref_update!(
             self,
             preference_data.screen_capture_blocked,
@@ -482,6 +497,9 @@ impl Preference {
 
     pub(crate) fn update_app_lock_with_pin_enabled(&mut self, pin_lock_enabled: bool) {
         self.app_lock_preference.pin_lock_enabled = pin_lock_enabled;
+        // Any earlier length belongs to the previous PIN. The UI sends the length of a new
+        // fixed length PIN after this
+        self.app_lock_preference.pin_length = None;
         self.write_to_app_dir();
     }
 

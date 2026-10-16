@@ -1,110 +1,28 @@
 (ns onekeepass.mobile.app-lock-settings
   (:require
-   [clojure.string :as str]
    [onekeepass.mobile.background :refer [is-iOS]]
-   [onekeepass.mobile.rn-components :as rnc :refer [cust-dialog
-                                                    no-assist-text-props
-                                                    rnp-dialog-title
-                                                    rnp-dialog-content
-                                                    rnp-dialog-actions
-                                                    rnp-helper-text
-                                                    rnp-portal
-                                                    modal-selector-colors
+   [onekeepass.mobile.rn-components :as rnc :refer [modal-selector-colors
                                                     page-background-color
-                                                    rnp-text-input
                                                     rn-scroll-view
-                                                    rn-keyboard-avoiding-view
                                                     rn-view
-                                                    rnp-button
                                                     rnp-divider
+                                                    rnp-segmented-buttons
                                                     rnp-switch
                                                     rnp-text]]
    [onekeepass.mobile.common-components :as cc :refer [select-field find-matching-label get-form-style ]]
    [onekeepass.mobile.utils :as u :refer [str->int]]
    [onekeepass.mobile.events.common :as cmn-events]
-   [onekeepass.mobile.events.dialogs :as dlg-events]
    [onekeepass.mobile.events.app-lock :as app-lock-events]
    [onekeepass.mobile.events.app-lock-settings :as al-settings-events]
-   [onekeepass.mobile.translation :refer [lstr-bl lstr-l  lstr-dlg-title lstr-mt]]))
+   [onekeepass.mobile.pin-pad :refer [pin-pad]]
+   [onekeepass.mobile.translation :refer [lstr-l lstr-dlg-title lstr-mt]]
+   [reagent.core :as r]))
 
-;;;;;;;;;;;; dialog ;;;;;;;;;;
+;; New PINs on Android need at least these many digits. PINs set earlier with any length still work
+(def ^:private NEW-PIN-MIN-LENGTH 4)
 
-(defn app-pin-lock-settings-dialog [{:keys [dialog-show error-text pin-value visible]}]
-  [cust-dialog {:style {} :dismissable true :visible dialog-show :onDismiss #()}
-   [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1} (lstr-dlg-title 'enterPin)]
-   [rnp-dialog-content
-    [rn-view {:flexDirection "column"}
-     [rnp-text-input (merge no-assist-text-props
-                            {:label (lstr-l 'pin)
-                             :autoFocus true
-                             :keyboardType "number-pad"
-                             :defaultValue pin-value
-                             :secureTextEntry (not visible)
-                             :onChangeText #(dlg-events/app-pin-lock-settings-dialog-update-with-map
-                                             {:pin-value %
-                                              :error-text nil})})]
-     (when error-text
-       [rnp-helper-text {:type "error" :visible true}
-        error-text])]]
-   [rnp-dialog-actions
-    [rnp-button {:mode "text"
-                 :onPress (fn [] (dlg-events/app-pin-lock-settings-dialog-close))}
-     (lstr-bl "cancel")]
-    [rnp-button {:mode "text"
-                 :disabled (not (nil? error-text))
-                 :onPress (fn []
-                            (let [val (str->int pin-value)]
-                              (if (str/blank? pin-value)
-                                (dlg-events/app-pin-lock-settings-dialog-update-with-map
-                                 {:error-text (lstr-mt 'enterPin 'validPinRequired)})
-                                (do
-                                  (al-settings-events/pin-entered val)
-                                  (dlg-events/app-pin-lock-settings-dialog-close)))))}
-     (lstr-bl "ok")]]])
-
-;; This dialog component is copied from app_lock.cljs and slightly modified
-;; so that we can ask user to enter pin before making changes to the app lock settings
-;; TDOO: Make a single component
-(defn locked-app-log-in-dialog [{:keys [dialog-show error-text pin-value visible]}]
-  [cust-dialog {:style {} :dismissable true :visible dialog-show :onDismiss #()}
-   [rnp-dialog-title {:ellipsizeMode "tail" :numberOfLines 1} (lstr-dlg-title 'enterPin)]
-   [rnp-dialog-content
-    [rn-view {:flexDirection "column"}
-     [rnp-text-input (merge no-assist-text-props
-                            {:label (lstr-l 'pin)
-                             :autoFocus true
-                             :keyboardType "number-pad"
-                             :defaultValue pin-value
-                             :secureTextEntry (not visible)
-                             :onChangeText #(dlg-events/locked-app-log-in-dialog-update-with-map
-                                             {:pin-value %
-                                              :error-text nil})})]
-     (when error-text
-       [rnp-helper-text {:type "error" :visible true}
-        error-text])]]
-   [rnp-dialog-actions
-    [rnp-button {:mode "text"
-                 :onPress (fn [] (dlg-events/locked-app-log-in-dialog-close))}
-     (lstr-bl "cancel")]
-    [rnp-button {:mode "text"
-                 :disabled (not (nil? error-text))
-                 :onPress (fn []
-                            (let [val (str->int pin-value)]
-                              (if (str/blank? pin-value)
-                                (dlg-events/locked-app-log-in-dialog-update-with-map
-                                 {:error-text (lstr-mt 'enterPin 'validPinRequired)})
-                                (app-lock-events/verify-pin-entered
-                                 val
-                                 (fn [pin-verify-result]
-                                   (if pin-verify-result
-                                     (do
-                                       (al-settings-events/app-lock-settings-pin-verified-success)
-                                       (dlg-events/locked-app-log-in-dialog-close))
-                                     (dlg-events/locked-app-log-in-dialog-update-with-map
-                                      {:error-text (lstr-mt 'enterPin 'validPinRequired)})))))))}
-     (lstr-bl "ok")]]])
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; New PINs on iOS have a fixed length as the iOS passcode does. The user may switch to 4
+(def ^:private IOS-DEFAULT-PIN-LENGTH 6)
 
 (def lock-timeout-options [{:key 0 :label  "Immediately"}
                            {:key 15000 :label "15 seconds"}
@@ -148,7 +66,7 @@
                    :value pin-lock-enabled
                    :onValueChange (fn [new-val]
                                     (if new-val
-                                      (dlg-events/app-pin-lock-settings-dialog-show-with-state {})
+                                      (al-settings-events/pin-setup-start)
                                       (al-settings-events/pin-removed)))}]]]
 
     (when pin-lock-enabled
@@ -188,32 +106,82 @@
        [rn-view {:style {:margin-top 5 :margin-bottom 5 :padding 10}}
         [rnp-text {:style {:color @rnc/error-color}} "The database files from its original locations are not removed"]]]])])
 
-(defn authenticate-with-pin []
-  [rn-view {:flex 1 :justify-content "center"}
-   [rn-view {:style {}}
-    [rnp-button {:style {:margin-top 10}
-                 :labelStyle {:fontWeight "bold" :fontSize 15 :color @rnc/tertiary-color}
-                 :mode "text"
-                 :onPress (fn []
-                            (dlg-events/locked-app-log-in-dialog-show))} "Enter PIN"]]])
+(defn authenticate-with-pin
+  "Asks for the current PIN before the app lock settings are shown. A wrong PIN here does not
+   count against the allowed attempts"
+  [pin-length]
+  [pin-pad {:title (lstr-dlg-title 'enterPin)
+            :pin-length pin-length
+            :on-submit (fn [pin rejected-fn]
+                         (app-lock-events/verify-pin-entered
+                          (str->int pin)
+                          (fn [verified?]
+                            (if verified?
+                              (al-settings-events/app-lock-settings-pin-verified-success)
+                              (rejected-fn)))))}])
+
+(defn- pin-setup
+  "Enter and confirm steps for a new PIN. A mismatch goes back to the enter step.
+   Each step is a pad of its own (by key) so that the digits start empty.
+   On iOS the PIN has a fixed length (6 or 4) and is taken once the last digit is entered.
+   On Android the PIN may be of any length from NEW-PIN-MIN-LENGTH and is confirmed with the done key"
+  []
+  (let [first-pin (r/atom nil)
+        mismatch (r/atom false)
+        pin-length (r/atom (when (is-iOS) IOS-DEFAULT-PIN-LENGTH))]
+    (fn []
+      (let [len @pin-length]
+        [rn-view
+         (if (nil? @first-pin)
+           ^{:key (str "enter" len)}
+           [pin-pad {:title (lstr-l 'newPin)
+                     ;; The length is chosen here, as in iOS 'Passcode Options', and not on the
+                     ;; confirm step so that it cannot change between the two entries
+                     :header (when len
+                               [rnp-segmented-buttons {:style {:width 240}
+                                                       :density "small"
+                                                       :value (str len)
+                                                       :onValueChange #(reset! pin-length (js/parseInt % 10))
+                                                       :buttons (clj->js [{:value "4" :label (lstr-l 'pin4Digits)}
+                                                                          {:value "6" :label (lstr-l 'pin6Digits)}])}])
+                     :message (cond
+                                @mismatch (lstr-mt 'enterPin 'pinsNotMatching)
+                                (nil? len) (lstr-mt 'enterPin 'pinMinLength))
+                     :message-error? @mismatch
+                     :pin-length len
+                     :min-length NEW-PIN-MIN-LENGTH
+                     :on-submit (fn [pin _rejected-fn]
+                                  (reset! mismatch false)
+                                  (reset! first-pin pin))
+                     :on-cancel al-settings-events/pin-setup-cancel}]
+
+           ^{:key (str "confirm" len)}
+           [pin-pad {:title (lstr-l 'confirmPin)
+                     :pin-length len
+                     :min-length NEW-PIN-MIN-LENGTH
+                     :on-submit (fn [pin _rejected-fn]
+                                  (if (= pin @first-pin)
+                                    (al-settings-events/pin-entered (str->int pin) len)
+                                    (do
+                                      (reset! mismatch true)
+                                      (reset! first-pin nil))))
+                     :on-cancel al-settings-events/pin-setup-cancel}])]))))
 
 (defn main-content []
-  (let [{:keys [pin-lock-enabled] :as ap} @(cmn-events/app-lock-preference)
+  (let [{:keys [pin-lock-enabled pin-length] :as ap} @(cmn-events/app-lock-preference)
         pin-auth-completed? @(al-settings-events/app-lock-settings-pin-auth-completed)]
     ;; pin-auth-completed? is used to determine whether we need to ask user 
     ;; PIN authentication before allowing to make changes in app lock settings
-    (if  (and pin-lock-enabled (not pin-auth-completed?))
-      [authenticate-with-pin]
+    (cond
+      (and pin-lock-enabled (not pin-auth-completed?))
+      [authenticate-with-pin pin-length]
+
+      @(al-settings-events/pin-setup-active)
+      [pin-setup]
+
+      :else
       [page-content ap])))
 
 (defn content []
-  [rn-keyboard-avoiding-view {:style {:flex 1}
-                              ;; After Android 'compileSdkVersion = 35 introduction
-                              ;; Also see comments in js/components/KeyboardAvoidingDialog.js
-                              :behavior "padding" #_(if (is-iOS) "padding" nil)}
-   [rn-scroll-view {:contentContainerStyle {:flexGrow 1 :background-color @page-background-color}}
-    [main-content]]
-
-   [rnp-portal
-    [app-pin-lock-settings-dialog @(dlg-events/app-pin-lock-settings-dialog-data)]
-    [locked-app-log-in-dialog @(dlg-events/locked-app-log-in-dialog-data)]]])
+  [rn-scroll-view {:contentContainerStyle {:flexGrow 1 :background-color @page-background-color}}
+   [main-content]])

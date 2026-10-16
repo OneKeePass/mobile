@@ -1,5 +1,9 @@
 {
     "commonTexts": {
+        "confirmPin": "Confirm PIN",
+        "newPin": "Enter a new PIN",
+        "pin4Digits": "4 digits",
+        "pin6Digits": "6 digits",
         "Source": "Source",
         "about": "About",
         "add": "Add",
@@ -654,6 +658,9 @@
             "selectGroup": "Please select a group"
         },
         "enterPin": {
+            "lastAttemptWarning": "One more wrong PIN will reset the app",
+            "pinMinLength": "Use at least 4 digits",
+            "pinsNotMatching": "The PINs do not match. Try again",
             "validPinRequired": "Please enter a valid PIN"
         },
         "keyFileForm": {

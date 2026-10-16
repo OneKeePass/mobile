@@ -61,7 +61,7 @@
       <RemoteRunnable
          runnableDebuggingMode = "0"
          BundleIdentifier = "com.onekeepass.ios"
-         RemotePath = "/Users/jeyasankar/Library/Developer/CoreSimulator/Devices/826CC898-2E52-4243-B746-FFFB402F737C/data/Containers/Bundle/Application/4E9AB48F-965C-48CF-A25C-C7FFBB57B064/OneKeePassMobile.app">
+         RemotePath = "/Users/jeyasankar/Library/Developer/CoreSimulator/Devices/826CC898-2E52-4243-B746-FFFB402F737C/data/Containers/Bundle/Application/E24644F4-8169-4839-ABBA-DD87D45C1FE0/OneKeePassMobile.app">
       </RemoteRunnable>
       <MacroExpansion>
          <BuildableReference
