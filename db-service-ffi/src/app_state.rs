@@ -506,6 +506,30 @@ impl AppState {
         }
     }
 
+    pub fn db_key_file_name_preference(db_key: &str) -> Option<String> {
+        Self::shared()
+            .preference
+            .lock()
+            .unwrap()
+            .db_key_file_name(db_key)
+    }
+
+    pub fn set_db_key_file_name_preference(db_key: &str, key_file_name: Option<String>) {
+        Self::shared()
+            .preference
+            .lock()
+            .unwrap()
+            .set_db_key_file_name(db_key, key_file_name);
+    }
+
+    pub fn clear_key_file_name_references(key_file_name: &str) {
+        Self::shared()
+            .preference
+            .lock()
+            .unwrap()
+            .clear_key_file_name_references(key_file_name);
+    }
+
     pub fn update_preference(preference_data: PreferenceData) -> OkpResult<()> {
         let mut store_pref = Self::shared().preference.lock().unwrap();
         store_pref.update(preference_data)

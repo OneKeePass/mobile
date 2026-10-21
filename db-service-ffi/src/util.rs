@@ -297,6 +297,36 @@ pub fn delete_key_file(key_file_name_component: &str) {
     let path = &AppState::key_files_dir_path().join(key_file_name_component);
     let r = fs::remove_file(&path);
     log::debug!("Delete key file  {:?} result {:?}", &path, r);
+    AppState::clear_key_file_name_references(key_file_name_component);
+}
+
+// Returns the file name part of a key file found in the app's key files dir. The arg may be the
+// full key file path that the UI uses or just the file name
+pub fn key_file_name_component(key_file_name: &str) -> Option<String> {
+    let file_name = Path::new(key_file_name.trim()).file_name()?.to_str()?.to_string();
+    AppState::key_files_dir_path()
+        .join(&file_name)
+        .is_file()
+        .then_some(file_name)
+}
+
+// The key file remembered for a db with its full path formed from the current key files dir.
+// None when nothing is remembered or that key file is no longer found
+pub fn db_remembered_key_file(db_key: &str) -> Option<KeyFileInfo> {
+    key_file_info(AppState::db_key_file_name_preference(db_key)?)
+}
+
+// Forms the full path of a key file in the app's key files dir. None when it is not found
+pub fn key_file_info(file_name: String) -> Option<KeyFileInfo> {
+    let path = AppState::key_files_dir_path().join(&file_name);
+    if !path.is_file() {
+        return None;
+    }
+    Some(KeyFileInfo {
+        full_file_name: path.as_os_str().to_string_lossy().to_string(),
+        file_name,
+        file_size: None,
+    })
 }
 
 // Returns the translation language id to use for the device locale

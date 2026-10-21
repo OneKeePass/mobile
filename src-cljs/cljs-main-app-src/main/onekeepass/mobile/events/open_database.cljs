@@ -85,6 +85,11 @@
   []
   (dispatch [:open-database-read-db-file]))
 
+(defn remember-key-file-toggle
+  "Called when the user presses the 'Remember key file' option in the open database dialog"
+  []
+  (dispatch [:open-database-remember-key-file-toggle]))
+
 (defn show-key-file-form []
   ;; kw :open-database-key-file-selected is used in events in ns onekeepass.mobile.events.key-file-form
   ;; to send back the selected key file 
@@ -107,6 +112,11 @@
                      :password nil
                      ;; This is the full key file path. See event :open-database-key-file-selected where it is set
                      :key-file-name nil
+                     ;; When true, the key file used is remembered for this db once it is opened
+                     :remember-key-file false
+                     ;; The hint about remembering is shown only after the user selects the option in
+                     ;; this dialog and not when it comes already selected for a remembered key file
+                     :remember-key-file-hint false
                      ;; This is set and used when user tries to open a child database and the db is not found in the
                      ;; recently used list
                      :auto-open-props {}
@@ -141,6 +151,51 @@
       (assoc-in [:open-database :offline-open?] (boolean offline-open?))
       (assoc-in [:open-database :dialog-show] true)))
 
+(defn- show-open-database-dialog-fx
+  "Shows the open database dialog and gets the key file remembered for the db if any. 
+   A db handed over by another app is not in the recently used list and cannot have one
+   Returns the effects map"
+  [db {:keys [full-file-name-uri transient-db-ref] :as kdbx-file-info-m}]
+  {:db (init-show-open-database-dialog db kdbx-file-info-m)
+   :fx [(when-not transient-db-ref
+          [:bg-db-remembered-key-file full-file-name-uri])]})
+
+(reg-fx
+ :bg-db-remembered-key-file
+ (fn [db-key]
+   (bg/db-remembered-key-file
+    db-key
+    (fn [api-response]
+      ;; Not finding it only means the user enters the key file as before
+      (when-some [key-file-info (on-ok api-response #(println "Remembered key file is not loaded " %))]
+        (dispatch [:open-database-remembered-key-file-loaded db-key key-file-info]))))))
+
+(reg-event-db
+ :open-database-remembered-key-file-loaded
+ (fn [db [_event-id db-key {:keys [file-name full-file-name]}]]
+   (let [{:keys [database-full-file-name key-file-name]} (:open-database db)]
+     ;; The response comes back after the dialog is shown. It is used only when the dialog is still
+     ;; for the same db and the user has not picked a key file in the meantime
+     (if (and (= db-key database-full-file-name) (nil? key-file-name))
+       (-> db
+           (assoc-in [:open-database :key-file-name-part] file-name)
+           (assoc-in [:open-database :key-file-name] full-file-name)
+           (assoc-in [:open-database :remember-key-file] true))
+       db))))
+
+(defn- remember-key-file-flag
+  "True to remember the key file used in the open database dialog and false to forget any remembered one"
+  [remember-key-file key-file-name]
+  (boolean (and remember-key-file key-file-name)))
+
+(reg-event-db
+ :open-database-remember-key-file-toggle
+ (fn [db [_event-id]]
+   (let [remember? (not (get-in db [:open-database :remember-key-file]))]
+     (-> db
+         (assoc-in [:open-database :remember-key-file] remember?)
+         (assoc-in [:open-database :remember-key-file-hint] remember?)))))
+
 (defn- validate-required-fields
   [db]
   (let [error-fields {} #_(cond-> {}
@@ -149,10 +204,10 @@
     error-fields))
 
 ;; Shows the open db login dialog
-(reg-event-db
+(reg-event-fx
  :open-database-dialog-show
- (fn [db [_event-id kdbx-file-info-m]]
-   (init-show-open-database-dialog db kdbx-file-info-m)))
+ (fn [{:keys [db]} [_event-id kdbx-file-info-m]]
+   (show-open-database-dialog-fx db kdbx-file-info-m)))
 
 ;; TODO: 
 ;; iOS specific
@@ -306,7 +361,7 @@
        ;; Or if it is from auto open but the user picked file-name does not match the one from auto open entry
        ;; In both the cases we open the 'open-database-dialog' prompting user to enter credentials
        (or (empty? auto-open-props) (not= db-file-name file-name))
-       {:db (init-show-open-database-dialog db kdbx-file-info-m)}
+       (show-open-database-dialog-fx db kdbx-file-info-m)
 
        ;; Launched from Auto open 
        ;; Note: the db-key in 'auto-open-props' is nil and that is the reason we asked user to pick a file
@@ -346,12 +401,12 @@
        {;; Calls the biometric authentication to get stored credentials
         :fx [[:bg-authenticate-with-biometric-before-db-open [kdbx-file-info-m]]]}
        ;; Calls the regular open db dialog
-       {:db (init-show-open-database-dialog db kdbx-file-info-m)}))))
+       (show-open-database-dialog-fx db kdbx-file-info-m)))))
 
 (reg-event-fx
  :open-database-biometric-auth-cancelled-or-failed
  (fn [{:keys [db]} [_event_id {:keys [_file-name _full-file-name-uri] :as kdbx-file-info-m}]]
-   {:db  (init-show-open-database-dialog db kdbx-file-info-m)}))
+   (show-open-database-dialog-fx db kdbx-file-info-m)))
 
 (defn- handle-db-credentials-response
   "A dispatch fn handler that is called when the backend api 
@@ -438,7 +493,7 @@
 (reg-event-fx
  :database-file-repicked
  (fn [{:keys [db]} [_event-id {:keys [full-file-name-uri] :as picked-response}]]
-   (let [{:keys [database-full-file-name password key-file-name transient-db-ref]} (get db :open-database)]
+   (let [{:keys [database-full-file-name password key-file-name remember-key-file transient-db-ref]} (get db :open-database)]
      ;; There is a possibility that user might have picked up another database file instead of repicking the original database file
      (if (= database-full-file-name full-file-name-uri)
        ;; User picked up the same database file 
@@ -448,6 +503,7 @@
         :fx [[:bg-load-kdbx [{:db-file-name database-full-file-name
                               :password password
                               :key-file-name key-file-name
+                              :remember-key-file (remember-key-file-flag remember-key-file key-file-name)
                               :biometric-auth-used false
                               ;; The same uri as the earlier attempt and so it stays transient
                               ;; if it was
@@ -473,19 +529,31 @@
  (fn [{:keys [db]} [_event-id]]
    (let [error-fields (validate-required-fields db)
          errors-found (boolean (seq error-fields))
-         {:keys [database-full-file-name password key-file-name transient-db-ref offline-open?]} (get-in db [:open-database])]
+         {:keys [database-full-file-name password key-file-name remember-key-file
+                 transient-db-ref offline-open?]} (get-in db [:open-database])]
      (if errors-found
        {:db (assoc-in db [:open-database :error-fields] error-fields)}
        {:db (-> db (assoc-in [:open-database :status] :in-progress))
         :fx [(read-db-fx offline-open? {:db-file-name database-full-file-name
                                         :password password
                                         :key-file-name key-file-name
+                                        :remember-key-file (remember-key-file-flag remember-key-file key-file-name)
                                         :biometric-auth-used false
                                         :transient-db-ref transient-db-ref})]}))))
 
+(defn- save-remembered-key-file
+  "Called only after the db is opened so that a wrong key file is never remembered.
+   The arg 'remember-key-file' is nil when the db is opened without the open database dialog
+   (e.g biometric) and the remembered key file is then left as is"
+  [db-key remember-key-file key-file-name]
+  (when (some? remember-key-file)
+    (bg/set-db-key-file db-key remember-key-file key-file-name
+                        (fn [api-response]
+                          (on-ok api-response #(println "Saving the remembered key file failed " %))))))
+
 (reg-fx
  :bg-load-kdbx
- (fn [[{:keys [db-file-name password key-file-name biometric-auth-used transient-db-ref kdbx-file-info-m]}]]
+ (fn [[{:keys [db-file-name password key-file-name remember-key-file biometric-auth-used transient-db-ref kdbx-file-info-m]}]]
    ;; db-file-name is db-key
    ;; kdbx-file-info-m will have non nil value only for biometric credentials usage
    (bg/load-kdbx db-file-name password key-file-name biometric-auth-used (boolean transient-db-ref)
@@ -498,13 +566,14 @@
                                  ;; The same thing is also done in 'common/kdbx-database-opened'
                                  (dispatch [:common/message-modal-hide])
                                  (dispatch [:open-database-read-kdbx-error error kdbx-file-info-m])))]
+                     (save-remembered-key-file db-file-name remember-key-file key-file-name)
                      (dispatch [:open-database-db-opened kdbx-loaded]))))))
 
 (reg-fx
  :bg-read-latest-backup-kdbx
  ;; kdbx-file-info-m will have non nil value only for biometric credentials usage in 'Open Offline'
  ;; and it lets a failed biometric credentials use fall back to the credentials dialog
- (fn [[{:keys [db-file-name password key-file-name biometric-auth-used kdbx-file-info-m]}]]
+ (fn [[{:keys [db-file-name password key-file-name remember-key-file biometric-auth-used kdbx-file-info-m]}]]
    (bg/read-latest-backup-kdbx db-file-name password key-file-name (boolean biometric-auth-used)
                                (fn [api-response]
                                  (when-some [kdbx-loaded
@@ -512,6 +581,7 @@
                                                     (fn [error]
                                                       (dispatch [:common/message-modal-hide])
                                                       (dispatch [:open-database-read-kdbx-error error kdbx-file-info-m])))]
+                                   (save-remembered-key-file db-file-name remember-key-file key-file-name)
                                    (dispatch [:open-database-db-opened kdbx-loaded]))))))
 
 ;; The message from readKdbx starts with the NSError code - see the coordinate call in
@@ -757,10 +827,11 @@
    {:fx [[:bg-authenticate-with-biometric [kdbx-file-info-m]]]}))
 
 ;; Confirm dialog
+;; Any remembered key file is filled in here too. The remember option itself is not shown on unlock
 (reg-event-fx
  :open-database-unlock-dialog-show
  (fn [{:keys [db]} [_event-id {:keys [_file-name _full-file-name-uri] :as kdbx-file-info-m}]]
-   {:db (init-show-open-database-dialog db kdbx-file-info-m)}))
+   (show-open-database-dialog-fx db kdbx-file-info-m)))
 
 ;; Somewhat similar to :open-database-read-db-file
 ;; Called after user enters the credentials to unlock db

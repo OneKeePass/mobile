@@ -26,7 +26,7 @@
                      rnp-dialog-title rnp-divider rnp-helper-text
                      rnp-icon-button rnp-list-icon rnp-list-item rnp-menu
                      rnp-menu-item rnp-modal rnp-portal rnp-progress-bar rnp-text
-                     rnp-text-input rnp-text-input-icon]]
+                     rnp-text-input rnp-text-input-icon rnp-touchable-ripple]]
             [onekeepass.mobile.translation :refer [lstr-bl lstr-l lstr-dlg-text
                                                    lstr-dlg-title lstr-ml]]
             [reagent.core :as r]))
@@ -289,6 +289,9 @@
                                   password
                                   password-visible
                                   key-file-name-part
+                                  remember-key-file
+                                  remember-key-file-hint
+                                  transient-db-ref
                                   error-fields
                                   status]}]
 
@@ -355,7 +358,23 @@
          [rnp-text {:style {:margin-top 15
                             :textDecorationLine "underline"
                             :text-align "center"}
-                    :onPress #(opndb-events/show-key-file-form)} (lstr-l 'keyFile)])]
+                    :onPress #(opndb-events/show-key-file-form)} (lstr-l 'keyFile)])
+
+       ;; Not offered on unlock (key file is already known) and for a db handed over by another
+       ;; app as it is not kept in the recently used list
+       (when (and key-file-name-part (not locked?) (not transient-db-ref))
+         [rn-view {:style {:margin-top 10}}
+          [rnp-touchable-ripple {:style {:align-self "center"}
+                                 :onPress opndb-events/remember-key-file-toggle}
+           [rn-view {:flexDirection "row" :style {:alignItems "center"}}
+            [rn-view {:pointerEvents "none"}
+             [rnp-icon-button {:icon (if remember-key-file
+                                       const/ICON-CHECKBOX-OUTLINE
+                                       const/ICON-CHECKBOX-BLANK-OUTLINE)
+                               :style {:margin 0}}]]
+            [rnp-text (lstr-l "rememberKeyFile")]]]
+          (when (and remember-key-file remember-key-file-hint)
+            [rnp-text {:variant "bodySmall" :style {:text-align "center"}} (lstr-dlg-text "rememberKeyFileHelp")])])]
 
       [rnp-progress-bar {:style {:margin-top 10} :visible in-progress? :indeterminate true}]]
 

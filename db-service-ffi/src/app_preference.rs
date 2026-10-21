@@ -71,6 +71,11 @@ pub(crate) struct DatabasePreference {
     // and the UI callers that do not send it working
     #[serde(default)]
     read_only: bool,
+
+    // The key file the user opted to remember for this db. Only the file name in the app's key
+    // files dir is kept as the full path of that dir can change (iOS app container on app update)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    key_file_name: Option<String>,
     //TDOO:
     // Add after how many times of using biometric, we need to ask user to enter password something similar MacOS does
     // Add PIN protection for each db  - db_open_pin_enabled:bool,; Need to store the PIN in secure enclave
@@ -468,7 +473,13 @@ impl Preference {
             .iter_mut()
             .find(|d| d.db_key == db_pref.db_key)
         {
-            *m = db_pref;
+            // The UI never changes the remembered key file through this update and its copy of
+            // the preference may be older than the one here. So the existing value is kept
+            let key_file_name = m.key_file_name.take();
+            *m = DatabasePreference {
+                key_file_name,
+                ..db_pref
+            };
         } else {
             self.database_preferences.push(db_pref);
         }
@@ -586,9 +597,62 @@ impl Preference {
                 db_open_biometric_enabled: false,
                 db_unlock_biometric_enabled: true,
                 read_only,
+                key_file_name: None,
             });
         }
         self.write_to_app_dir();
+    }
+
+    pub(crate) fn db_key_file_name(&self, db_key: &str) -> Option<String> {
+        self.database_preferences
+            .iter()
+            .find(|p| p.db_key == db_key)
+            .and_then(|d| d.key_file_name.clone())
+    }
+
+    // Stores or clears the remembered key file of a db. Does nothing when the db is not in the
+    // recently used list (e.g a db handed over by another app) as it cannot be reopened from there
+    pub(crate) fn set_db_key_file_name(&mut self, db_key: &str, key_file_name: Option<String>) {
+        if self.find_db_info(db_key).is_none() {
+            return;
+        }
+
+        if let Some(d) = self
+            .database_preferences
+            .iter_mut()
+            .find(|d| d.db_key == db_key)
+        {
+            if d.key_file_name == key_file_name {
+                return;
+            }
+            d.key_file_name = key_file_name;
+        } else if key_file_name.is_some() {
+            // Same defaults as the UI side uses for a db that has no preference yet
+            self.database_preferences.push(DatabasePreference {
+                db_key: db_key.to_string(),
+                db_open_biometric_enabled: false,
+                db_unlock_biometric_enabled: true,
+                read_only: false,
+                key_file_name,
+            });
+        } else {
+            return;
+        }
+        self.write_to_app_dir();
+    }
+
+    // Called when a key file is deleted from the app's key files dir
+    pub(crate) fn clear_key_file_name_references(&mut self, key_file_name: &str) {
+        let mut changed = false;
+        for d in self.database_preferences.iter_mut() {
+            if d.key_file_name.as_deref() == Some(key_file_name) {
+                d.key_file_name = None;
+                changed = true;
+            }
+        }
+        if changed {
+            self.write_to_app_dir();
+        }
     }
 
     pub(crate) fn database_preferences(&self) -> &Vec<DatabasePreference> {

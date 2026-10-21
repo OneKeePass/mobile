@@ -449,6 +449,19 @@
   [db-key read-only dispatch-fn]
   (invoke-api "set_db_read_only" {:db-key db-key :read-only (boolean read-only)} dispatch-fn))
 
+(defn set-db-key-file
+  "Remembers the key file 'key-file-name' (full path) for the db when 'remember-key-file' is true
+   or forgets any remembered one when false"
+  [db-key remember-key-file key-file-name dispatch-fn]
+  (invoke-api "set_db_key_file" {:db-key db-key
+                                 :remember-key-file (boolean remember-key-file)
+                                 :key-file-name key-file-name} dispatch-fn))
+
+(defn db-remembered-key-file
+  "Gets the remembered key file of a db as a map {:file-name .. :full-file-name ..} or nil"
+  [db-key dispatch-fn]
+  (invoke-api "db_remembered_key_file" {:db-key db-key} dispatch-fn))
+
 (defn read-latest-backup-kdbx [db-file-name password key-file-name biometric-auth-used dispatch-fn]
   (invoke-api "read_latest_backup" {:db-file-name db-file-name
                                     :password password

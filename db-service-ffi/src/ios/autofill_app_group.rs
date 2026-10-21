@@ -20,7 +20,7 @@ use onekeepass_core::error;
 use crate::{
     OkpError, OkpResult, app_lock, app_preference::{AppLockPreference, DatabasePreference, Preference}, app_state::{AppState, OKP_SHARED_DIR}, commands::{
         CommandArg, CustomIconDataResponse, InvokeResult, ResponseJson, error_json_str, ok_json_str, result_json_str
-    }, parse_command_args_or_err, util::{self, remove_dir_contents}
+    }, file_util::KeyFileInfo, parse_command_args_or_err, util::{self, remove_dir_contents}
 };
 
 use super::IosApiCallbackImpl;
@@ -550,6 +550,20 @@ impl IosAppGroupSupportService {
         result_json_str(inner_fn())
     }
 
+    // Gets the key file remembered in the main app for a db. The arg db_key is the main app's db key
+    // (org_db_file_path). The preference is read fresh as the main app may have changed it after
+    // this extension process was started. The key files dir is shared with the main app
+    fn db_remembered_key_file(&self, json_args: &str) -> ResponseJson {
+        let inner_fn = || -> OkpResult<Option<KeyFileInfo>> {
+            let (db_key,) = parse_command_args_or_err!(json_args, DbKey { db_key });
+            let fresh_pref = Preference::read(AppState::preference_home_dir());
+            Ok(fresh_pref
+                .db_key_file_name(&db_key)
+                .and_then(util::key_file_info))
+        };
+        result_json_str(inner_fn())
+    }
+
     // Gets the list of all entries in a database that is opened in autofill extension
     fn all_entries_on_db_open(&self, json_args: &str) -> ResponseJson {
         let inner_fn = || -> OkpResult<Vec<db_service::EntrySummary>> {
@@ -735,6 +749,7 @@ impl IosAppGroupSupportService {
             // "list_of_autofill_db_infos" => self.list_of_autofill_db_infos(),
             // "database_preferences" => ok_json_str(AppState::database_preferences()),
             "list_of_key_files" => self.list_of_key_files(),
+            "db_remembered_key_file" => self.db_remembered_key_file(json_args),
             "all_entries_on_db_open" => self.all_entries_on_db_open(json_args),
             "one_time_code_service_identifier_filtering" => {
                 self.one_time_code_service_identifier_filtering(json_args)

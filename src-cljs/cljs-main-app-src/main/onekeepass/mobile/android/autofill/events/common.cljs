@@ -263,7 +263,31 @@
             ;; to show in the dialog
             (assoc-in [:android-af :open-database :database-file-name] file-name)
             (assoc-in [:android-af :open-database :database-full-file-name] full-file-name-uri)
-            (assoc-in [:android-af :open-database :dialog-show] true))}))
+            (assoc-in [:android-af :open-database :dialog-show] true))
+    ;; Any key file remembered in the main app for this db is filled in
+    :fx [[:android-af/bg-db-remembered-key-file full-file-name-uri]]}))
+
+(reg-fx
+ :android-af/bg-db-remembered-key-file
+ (fn [db-key]
+   (bg/db-remembered-key-file
+    db-key
+    (fn [api-response]
+      ;; Not finding it only means the user selects the key file as before
+      (when-some [key-file-info (on-ok api-response #(println "Remembered key file is not loaded " %))]
+        (dispatch [:android-af/open-database-remembered-key-file-loaded db-key key-file-info]))))))
+
+(reg-event-db
+ :android-af/open-database-remembered-key-file-loaded
+ (fn [db [_event-id db-key {:keys [file-name full-file-name]}]]
+   (let [{:keys [database-full-file-name key-file-name]} (get-in db [:android-af :open-database])]
+     ;; Used only when the dialog is still for the same db and the user has not selected a key
+     ;; file in the meantime
+     (if (and (= db-key database-full-file-name) (nil? key-file-name))
+       (-> db
+           (assoc-in [:android-af :open-database :key-file-name-part] file-name)
+           (assoc-in [:android-af :open-database :key-file-name] full-file-name))
+       db))))
 
 ;; Called to set a previously opened database as current active one
 ;; Based on :common/set-active-db-key

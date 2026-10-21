@@ -217,6 +217,12 @@
 (defn list-key-files [dispatch-fn]
   (autofill-invoke-api "list_of_key_files" {} dispatch-fn))
 
+(defn db-remembered-key-file
+  "Gets the key file remembered in the main app for a db as a map {:file-name .. :full-file-name ..} or nil.
+   The arg 'org-db-key' is the db key used in the main app"
+  [org-db-key dispatch-fn]
+  (autofill-invoke-api "db_remembered_key_file" {:db-key org-db-key} dispatch-fn))
+
 #_(defn database-preferences [dispatch-fn]
     (autofill-invoke-api "database_preferences" {} dispatch-fn))
 
