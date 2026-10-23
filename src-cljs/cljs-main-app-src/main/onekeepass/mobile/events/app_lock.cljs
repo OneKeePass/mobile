@@ -39,6 +39,14 @@
   []
   (subscribe [:app-lock-attempts-remaining]))
 
+(defn in-use-without-touch?
+  "True while the user works in the app without touching it - typing with the keyboard up, or
+   in a picker or share sheet the app itself opened. The database session timeout
+   does not lock the database on screen meanwhile, as that would drop any unsaved edit"
+  [app-db]
+  (let [{:keys [keyboard-visible inactive-since]} (get-in app-db [:app-lock])]
+    (boolean (or keyboard-visible (:own-activity inactive-since)))))
+
 (defn keyboard-visibility-changed [visible?]
   (dispatch [:app-lock/keyboard-visibility-changed visible?]))
 
@@ -70,19 +78,18 @@
       (assoc-in [:app-lock :attempts-count-remaining] attempts-allowed)))
 
 ;; Called from the native event when app goes background
-;; 'own-activity?' is true when the app went to the background because it opened a picker
-;; or share sheet (Android only)
+;; 'own-activity?' is true when the app opened a picker or share sheet. On iOS the app does not
+;; go to the background for a picker and this event is sent by the picker itself
 ;; The time spent out of the app is checked in ':app-lock/app-becoming-active'
 ;; The foreground idle time is checked in ':app-lock/lock-on-idle'
+;; ':inactive-since' is kept whether or not the PIN lock is on, as the database session timeout
+;; also uses it (see 'in-use-without-touch?')
 (reg-event-fx
  :app-lock/app-becoming-inactive
  (fn [{:keys [db]} [_event-id own-activity?]]
    (let [{:keys [pin-lock-enabled lock-timeout attempts-allowed]} (app-lock-preference db)]
      (cond
-       (not pin-lock-enabled)
-       {}
-
-       (and (= lock-timeout 0) (not own-activity?))
+       (and pin-lock-enabled (= lock-timeout 0) (not own-activity?))
        {:db (lock-app db attempts-allowed)}
 
        ;; iOS may send more than one inactive event before the app is active again
@@ -109,7 +116,11 @@
             (lock-app db attempts-allowed)
             ;; Coming back to the app is a user action. The time away was checked above and
             ;; must not count again against the foreground idle time
-            (assoc-in db [:app-lock :last-user-action-time] (js/Date.now)))})))
+            (assoc-in db [:app-lock :last-user-action-time] (js/Date.now)))
+      ;; Time in the app's own picker is not idle time for the database on screen either.
+      ;; Time spent in other apps still counts against the database session timeout
+      :fx [(when (and own-activity (not lock?))
+             [:dispatch [:user-action-detected]])]})))
 
 ;; Called when the app starts and this event called in this sequence:
 ;; :load-app-preference ->  :bg-app-preference -> :app-preference-loaded
@@ -150,8 +161,10 @@
 (reg-event-fx
  :app-lock/keyboard-visibility-changed
  (fn [{:keys [db]} [_event-id visible?]]
-   {:db (cond-> (assoc-in db [:app-lock :keyboard-visible] visible?)
-          (not visible?) (assoc-in [:app-lock :last-user-action-time] (js/Date.now)))}))
+   {:db (assoc-in db [:app-lock :keyboard-visible] visible?)
+    ;; The typing just ended is a user action for both the app lock and the database on screen
+    :fx [(when-not visible?
+           [:dispatch [:user-action-detected]])]}))
 
 ;; Called on every tick while the app is in the foreground. The app locks when there was no
 ;; user action for the lock delay. Time out of the app is not counted here. That is checked
@@ -164,7 +177,7 @@
          idle-timeout (if (= lock-timeout 0) IMMEDIATELY-FOREGROUND-IDLE-TIMEOUT lock-timeout)]
      (if (and pin-lock-enabled
               (not (app-locked? db))
-              ;; Android may still run the tick while the app is in a picker
+              ;; The tick keeps running while a picker is open (always on iOS, often on Android)
               (nil? inactive-since)
               (not keyboard-visible)
               (some? last-user-action-time)

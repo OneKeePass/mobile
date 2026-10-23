@@ -103,8 +103,9 @@
 (defn register-app-becomes-inactive []
   (register-guarded-event-listener EVENT_APP_BECOMES_INACTIVE
                                    (fn [event-message]
-                                     ;; Android sends {"ok" "ActivityForResult"} when the app itself
-                                     ;; opened a picker or share sheet. iOS always sends {}
+                                     ;; {"ok" "ActivityForResult"} is sent when the app itself opened a
+                                     ;; picker or share sheet (Android MainActivity, iOS
+                                     ;; OkpDocumentPickerViewController). Otherwise the body is {}
                                      (let [own-activity? (= "ActivityForResult"
                                                             (:ok (bg/transform-api-response event-message {})))]
                                        (dispatch [:app-lock/app-becoming-inactive own-activity?])))))

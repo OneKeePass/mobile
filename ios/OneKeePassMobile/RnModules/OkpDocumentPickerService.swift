@@ -28,7 +28,7 @@ class OkpDocumentPickerService: NSObject {
       //self.promiseWrapper = PromiseWrapper(resolve: resolve, reject: reject)
       let controller = RCTPresentedViewController()
       // let documentPicker = UIDocumentPickerViewController(documentTypes: ["public.item"], in: .open)
-      let documentPicker = UIDocumentPickerViewController(forOpeningContentTypes: [.data, .content, .item])
+      let documentPicker = OkpDocumentPickerViewController(forOpeningContentTypes: [.data, .content, .item])
       documentPicker.allowsMultipleSelection = false
       documentPicker.modalPresentationStyle = .pageSheet
       
@@ -47,7 +47,7 @@ class OkpDocumentPickerService: NSObject {
       //self.promiseWrapper = PromiseWrapper(resolve: resolve, reject: reject)
       let controller = RCTPresentedViewController()
       // let documentPicker = UIDocumentPickerViewController(documentTypes: ["public.item"], in: .open)
-      let documentPicker = UIDocumentPickerViewController(forOpeningContentTypes: [.data, .content, .item])
+      let documentPicker = OkpDocumentPickerViewController(forOpeningContentTypes: [.data, .content, .item])
       documentPicker.allowsMultipleSelection = false
       documentPicker.modalPresentationStyle = .pageSheet
       
@@ -91,7 +91,7 @@ class OkpDocumentPickerService: NSObject {
       
       let controller = RCTPresentedViewController()
       // When we use this option, the UIDocumentPickerView shows "Save" on the top right side
-      let documentPicker = UIDocumentPickerViewController(forExporting: [keyFileUrl], asCopy: true) // to export or copy
+      let documentPicker = OkpDocumentPickerViewController(forExporting: [keyFileUrl], asCopy: true) // to export or copy
       
       documentPicker.allowsMultipleSelection = false
       //documentPicker.modalPresentationStyle = .pageSheet
@@ -167,7 +167,7 @@ class OkpDocumentPickerService: NSObject {
       
       let controller = RCTPresentedViewController()
       // When we use this option, the UIDocumentPickerView shows "Save" on the top right side
-      let documentPicker = UIDocumentPickerViewController(forExporting: [fileUrl], asCopy: true) // to export or copy
+      let documentPicker = OkpDocumentPickerViewController(forExporting: [fileUrl], asCopy: true) // to export or copy
       
       documentPicker.allowsMultipleSelection = false
       //documentPicker.modalPresentationStyle = .pageSheet
@@ -202,7 +202,7 @@ class OkpDocumentPickerService: NSObject {
       
       self.logger.info("Temp kbbx file \(fileURL) is written")
       
-      let documentPicker = UIDocumentPickerViewController(forExporting: [fileURL], asCopy: true)
+      let documentPicker = OkpDocumentPickerViewController(forExporting: [fileURL], asCopy: true)
       documentPicker.allowsMultipleSelection = false
       
       // We are reusing the same delegate as that is used in readKdbx call
@@ -254,7 +254,7 @@ class OkpDocumentPickerService: NSObject {
       self.logger.debug("tempFileUrl is \(tempFileUrl.absoluteString)")
       
       // If we use this, the UIDocumentPickerView shows "Save" on the top right side
-      let documentPicker = UIDocumentPickerViewController(forExporting: [tempFileUrl], asCopy: true) // to export or copy
+      let documentPicker = OkpDocumentPickerViewController(forExporting: [tempFileUrl], asCopy: true) // to export or copy
       
       // The temp file is moved when user selects a location
       // If we use this, the UIDocumentPickerView shows "Move" on the top right side
@@ -272,7 +272,22 @@ class OkpDocumentPickerService: NSObject {
 
 }
 
-// Used mainly when we want to do "Save As" of an attachment
+// The document picker is presented over the app and the app stays active, so no scene event
+// tells the UI that the user is in a picker. The UI side idle timers would then count the
+// picking time and lock the database on screen behind the picker.
+// This sends the same events that Android sends around its picker activity
+class OkpDocumentPickerViewController: UIDocumentPickerViewController {
+  override func viewWillAppear(_ animated: Bool) {
+    super.viewWillAppear(animated)
+    OkpEvents.sendOwnPickerShown()
+  }
+
+  override func viewDidDisappear(_ animated: Bool) {
+    super.viewDidDisappear(animated)
+    OkpEvents.sendAppBecomesActive()
+  }
+}
+
 class DummyDocumentPickDelegate : NSObject, UIDocumentPickerDelegate{
   private let logger = OkpLogger(tag: "DummyDocumentPickDelegate")
   var resolve: RCTPromiseResolveBlock
@@ -445,233 +460,4 @@ class KeyFilePickDelegate: NSObject, UIDocumentPickerDelegate {
   func documentPickerWasCancelled(_: UIDocumentPickerViewController) {
     reject(OkpDocumentPickerService.E_DOCUMENT_PICKER_CANCELED, "User cancelled the picking a directory or a document", nil)
   }
-  
-  /*
-  
-   // This did not work as we have not read the file here itself or created a bookmark.
-  func documentPicker(_: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
-    // logger.debug("Picked urls: \(urls)")
-    let pickedFileUrl = urls.first!
-    
-    // Rational for the needto use NSFileCoordinator though somewhat old
-    // http://karmeye.com/2014/12/18/uidocumentpicker-nsfilecoordinator/
-    let fc = NSFileCoordinator()
-    let intent = NSFileAccessIntent.readingIntent(with: pickedFileUrl, options: [.withoutChanges, .resolvesSymbolicLink])
-
-    // 'self' is captured strongly so that this delegate outlives a replacement of the
-    // property that holds it, keeping resolve and reject available when the callback runs
-    fc.coordinate(with: [intent], queue: .main) { [self] err in
-      guard err == nil else {
-        logger.error("Coordinate error  is \(String(describing: err))")
-        // reject(CallError.coordinateError.rawValue, CallError.errorDescription(err! as NSError), err)
-        reject(OkpDocumentPickerService.E_COORDINATOR_CALL_FAILED, "\(String(describing: err?.localizedDescription))", err)
-        return
-      }
-    
-      // Need to access the url with security scope
-      guard pickedFileUrl.startAccessingSecurityScopedResource() else {
-        logger.error("startAccessingSecurityScopedResource call failed")
-        reject(OkpDocumentPickerService.E_ACCESSING_SECURITY_SCOPED_RESOURCE, "startAccessingSecurityScopedResource failed", nil)
-        return
-      }
-
-      // Make sure we release the security-scoped resource when finished.
-      defer { pickedFileUrl.stopAccessingSecurityScopedResource() }
-      
-      // Send the picked full uri to the cljs caller.
-      // The file is read and loaded only in the subsequent call from UI
-      resolve(DbServiceAPI.jsonService().okJsonString(pickedFileUrl.absoluteString))
-    }
-  }
-   */
 }
-
-
-///
-///
-
-
-/*
- 
- class PromiseWrapper {
-   var resolve: RCTPromiseResolveBlock
-   var reject: RCTPromiseRejectBlock
-
-   init(resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-     self.resolve = resolve
-     self.reject = reject
-   }
- }
- 
- // Not used- see comments in pickAndSaveNewKdbxFile
- // Leaving it here in case we need to use this if the current way of doing stuff fails
- // Delegate used in testing the creation of a new kdbx file
- // This delegate uses writingIntent in addition to readingIntent. This did not work for OneDrive and GDrive
- class CreateFilePickDelegate: NSObject, UIDocumentPickerDelegate {
-   private let logger = OkpLogger(tag: "CreateFilePickDelegate")
-   var resolve: RCTPromiseResolveBlock
-   var reject: RCTPromiseRejectBlock
-   init(_ resolve: @escaping RCTPromiseResolveBlock, _ reject: @escaping RCTPromiseRejectBlock) {
-     self.resolve = resolve
-     self.reject = reject
-   }
-     
-   func documentPicker(_: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
-     logger.debug("CreateFilePickDelegate Picked urls: \(urls)")
-     let saved_file_url = urls.first!
-     let fc = NSFileCoordinator()
-     let writeIntent = NSFileAccessIntent.writingIntent(with: saved_file_url, options: [.forMerging])
-     let readingIntent = NSFileAccessIntent.readingIntent(with: saved_file_url, options: [.withoutChanges, .resolvesSymbolicLink])
-       
-     // 'self' is captured strongly so that this delegate outlives a replacement of the
-     // property that holds it, keeping resolve and reject available when the callback runs
-     fc.coordinate(with: [writeIntent, readingIntent], queue: .main) { [self] err in
-       guard err == nil else {
-         logger.error("Coordinate error  is \(String(describing: err))")
-         // reject(CallError.coordinateError.rawValue, CallError.errorDescription(err! as NSError), err)
-         reject(OkpDocumentPickerService.E_COORDINATOR_CALL_FAILED, "\(String(describing: err?.localizedDescription))", err)
-         return
-       }
-     
-       self.logger.debug("In CreateFilePickDelegate coordinate saved_file_url is \(saved_file_url)")
-       // Need to access the url with security scope
-       guard saved_file_url.startAccessingSecurityScopedResource() else {
-         logger.error("startAccessingSecurityScopedResource call failed")
-         reject(OkpDocumentPickerService.E_ACCESSING_SECURITY_SCOPED_RESOURCE, "startAccessingSecurityScopedResource failed", nil)
-         return
-       }
-
-       // Make sure we release the security-scoped resource when finished.
-       defer { saved_file_url.stopAccessingSecurityScopedResource() }
-       do {
-         // Secured access to url should be available before bookmarking
-         logger.debug("Creating bookmark for the saved_file_url \(saved_file_url)")
-         let bookmarkData = try saved_file_url.bookmarkData(options: .minimalBookmark, includingResourceValuesForKeys: nil, relativeTo: nil)
-         let byteArray: [UInt8] = .init(bookmarkData)
-
-         logger.debug("Calling rust api to save bookmark data with size \(byteArray.count)")
-         let b = DbServiceAPI.iosSupportService().saveBookMarkData(saved_file_url.absoluteString, byteArray)
-         logger.debug("Bookmark save rust api call result is \(b)")
-       
-         // logger.debug("Json with file name \(DbServiceAPI.formJsonWithFileName(saved_file_url.absoluteString))")
-         // resolve ("\(urls.first!)")
-         resolve(DbServiceAPI.formJsonWithFileName(saved_file_url.absoluteString))
-         
-       } catch {
-         // Handle the error here.
-         logger.error("E_READ_FILE_PICK_DELEGATE_FAILED: bookmarkData Error \(error)")
-         reject(OkpDocumentPickerService.E_READ_FILE_PICK_DELEGATE_FAILED, "\(error.localizedDescription)", error)
-       }
-     }
-   }
-   
-   func documentPickerWasCancelled(_: UIDocumentPickerViewController) {
-     reject(OkpDocumentPickerService.E_DOCUMENT_PICKER_CANCELED, "User cancelled the picking a directory or a document", nil)
-   }
- }
-
- 
- 
- 
- 
-// Delegate used in testing the creation of a new kdbx file
-class Delegate1: NSObject, UIDocumentPickerDelegate {
-  private let logger = OkpLogger(tag: "CreateFilePickDelegate")
-  var resolve: RCTPromiseResolveBlock
-  var reject: RCTPromiseRejectBlock
-  init(_ resolve: @escaping RCTPromiseResolveBlock, _ reject: @escaping RCTPromiseRejectBlock) {
-    self.resolve = resolve
-    self.reject = reject
-  }
-  
-  // Default delegate. Used in deprecated pickKdbxFileToCreate call
-  func documentPicker(_: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
-    logger.debug("urls is \(urls)")
-    
-    guard !urls.isEmpty else {
-      reject(OkpDocumentPickerService.E_DOCUMENT_PICKER_EMPTY_URLS, "No file is picked. At leaset one file should have been picked", nil)
-      return
-    }
-
-    // Need to store the url's book mark and then return url to UI
-    if FileUtils.bookMark(url: urls.first!) {
-      logger.debug("Bookmark created for the url  \(urls.first!)")
-      resolve(DbServiceAPI.formJsonWithFileName(urls.first!.absoluteString))
-    } else {
-      logger.error("Bookmarking failed and still sending the url selected to UI layer")
-      reject(OkpDocumentPickerService.E_ACCESSING_SECURITY_SCOPED_RESOURCE, "startAccessingSecurityScopedResource failed", nil)
-    }
-  }
-
-  func documentPickerWasCancelled(_: UIDocumentPickerViewController) {
-    reject(OkpDocumentPickerService.E_DOCUMENT_PICKER_CANCELED, "User cancelled the picking a directory or a document", nil)
-  }
-}
-*/
-
-///
-
-/*
- 
- /// ---------------------------------------------------------------------------------------------
- // Leaving it here in case we need to use this if the current way of doing stuff fails
- 
- // *** Not used currently ***
- // See pickAndSaveNewKdbxFile
- 
- // Used to create a new kdbx file followed by createKdbx call
- // This worked fine for Local,iCloud and Dropbox. It did not work with GDrive
- // In case of OneDrive, empty file is created.
- // We need to call saveKdbx (e.g by adding a new entry or changing db name etc) for the newly created db to be written
- @available(*, deprecated, message: "See pickAndSaveNewKdbxFile")
- @objc
- func pickKdbxFileToCreate(_ fileName: String, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-   logger.debug("pickKdbxFileToCreate is called for the fileName \(fileName)")
-   DispatchQueue.main.async {
-     self.promiseWrapper = PromiseWrapper(resolve: resolve, reject: reject)
-     let controller = RCTPresentedViewController()
-
-     let fileManager = FileManager.default
-     do {
-       // Need to create an empty temp file before using UIDocumentPickerViewController with option 'forExporting' and 'asCopy'
-       // Otherwise the file is not created when user saves the file in the location presented in UIDocumentPickerView
-       // TODO: Need to delete this temp file in documentPicker and in documentPickerWasCancelled
-       let fileURL = fileManager.temporaryDirectory.appendingPathComponent(fileName)
-       let data = Data()
-       try data.write(to: fileURL)
-       self.logger.debug("Empty file \(fileURL) is written")
-       
-       let documentPicker = UIDocumentPickerViewController(forExporting: [fileURL], asCopy: true)
-       documentPicker.allowsMultipleSelection = false
-       
-       documentPicker.delegate = self
-       
-       self.logger.debug("Going to present to controller ")
-       controller?.present(documentPicker, animated: true, completion: nil)
-
-     } catch {
-       // Handle the error here.
-       self.logger.error("Error is \(error)")
-       reject(OkpDocumentPickerService.E_TEMP_DB_FILE_CREATE, "\(error.localizedDescription)", error)
-     }
-   }
- }
- 
- // *** Not used currently ***
- // Picking dir works for File App folder and iCloud.
- // All other drives - Dropbox,OneDrive and GDrive are grayed out on device and not used
- @objc
- func pickDirectory(_ resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
-   DispatchQueue.main.async {
-     self.promiseWrapper = PromiseWrapper(resolve: resolve, reject: reject)
-     let controller = RCTPresentedViewController()
-     let documentPicker = UIDocumentPickerViewController(forOpeningContentTypes: [.folder]) // This works only in iOs14+
-     // let documentPicker = UIDocumentPickerViewController(documentTypes: ["public.folder"], in: .open)
-     documentPicker.delegate = self
-     controller?.present(documentPicker, animated: true, completion: nil)
-   }
- }
- 
- /// ---------------------------------------------------------------------------------------------
- 
- */
