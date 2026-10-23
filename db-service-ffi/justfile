@@ -108,6 +108,7 @@ build-ios-sim-lib release="":
     export BOTAN_CONFIGURE_CPU='arm64'
     
     cargo build --target aarch64-apple-ios-sim {{ if release == "true" {"--release" } else {""}  }}
+    # CARGO_LOG=cargo::core::compiler::fingerprint=info cargo build -vv --target aarch64-apple-ios-sim {{ if release == "true" {"--release" } else {""}  }}
 
 build-ios-device-lib-debug:build-ios-device-lib
 

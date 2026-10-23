@@ -100,16 +100,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "argon2-sys"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "190bcd1a5417d25c2fff051cd443de3c9c348094d1cb5760d28ecf88428b76a0"
-dependencies = [
- "cc",
- "libc",
-]
-
-[[package]]
 name = "askama"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2243,9 +2233,9 @@ checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 name = "onekeepass-core"
 version = "0.26.0"
 dependencies = [
- "argon2-sys",
  "base64",
  "botan",
+ "botan-sys",
  "cfg-if",
  "chbs",
  "chrono",
