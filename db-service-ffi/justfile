@@ -195,8 +195,8 @@ android-lib-output-dir := "target/jniLibs"
 ## CFLAGS_AARCH64_LINUX_ANDROID="--target=aarch64-linux-android31" and CXXFLAGS_AARCH64_LINUX_ANDROID="--target=aarch64-linux-android31"
 
 
-#28.2.13676358 is the NDK version with 16KB page size
-ndk_version := "28.2.13676358/android-ndk-r28c" 
+# 28.2.13676358 is the NDK version with 16KB page size
+ndk_version := "28.2.13676358"
 ndk_api_level := "31"
 ndk_cxx_ver :=  "aarch64-linux-android"+ndk_api_level+"-clang++"  
 ndk_botan_build_home := env_var('HOME')+"/Library/Android/sdk/ndk/" + ndk_version

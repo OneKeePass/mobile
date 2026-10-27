@@ -4,7 +4,9 @@ buildscript {
         minSdkVersion = 24
         compileSdkVersion = 36
         targetSdkVersion = 36
-        ndkVersion = "27.1.12297006"
+        // Must match the NDK used to build libdb_service_ffi.so (db-service-ffi/justfile ndk_version);
+        // the packaged libc++_shared.so comes from this NDK and must not be older than the one Rust/Botan was built with
+        ndkVersion = "28.2.13676358"
         kotlinVersion = "2.1.20"
     }
     repositories {
