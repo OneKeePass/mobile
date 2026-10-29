@@ -56,9 +56,9 @@ pub struct PendingPasskeyRecord {
 
 // ── File-system helpers ────────────────────────────────────────────────────────
 
-// Returns AppGroup/okp/pending_passkeys/, creating it if needed
+// Returns AppGroup/okp_shared/pending_passkeys/, creating it if needed
 fn pending_passkeys_dir() -> OkpResult<PathBuf> {
-    super::app_group_shared_root_sub_dir(PENDING_PASSKEYS_DIR)
+    super::app_group_okp_shared_sub_dir(PENDING_PASSKEYS_DIR)
 }
 
 // Scans the pending_passkeys directory and removes all records whose org_db_key matches db_key.
@@ -146,7 +146,20 @@ pub(super) fn passkey_summary_from_pending(record: &PendingPasskeyRecord) -> Pas
 }
 
 fn registered_passkeys_dir() -> OkpResult<PathBuf> {
-    super::app_group_shared_root_sub_dir(REGISTERED_PASSKEY_IDS_DIR)
+    super::app_group_okp_shared_sub_dir(REGISTERED_PASSKEY_IDS_DIR)
+}
+
+// Removes all pending passkey records and all persisted registered passkey id files.
+// Called during app reset
+pub(super) fn remove_all_passkey_files() {
+    if let Ok(path) = pending_passkeys_dir() {
+        // log::debug!("Removing all passkeys from path {:?}", &path);
+        let _ = crate::util::remove_dir_contents(path);
+    }
+    if let Ok(path) = registered_passkeys_dir() {
+        // log::debug!("Removing all registered passkeys from path {:?}", &path);
+        let _ = crate::util::remove_dir_contents(path);
+    }
 }
 
 fn registered_passkeys_file(db_key: &str) -> OkpResult<PathBuf> {
@@ -392,7 +405,7 @@ impl super::IosAppGroupSupportService {
 
     // ── Pending passkey queue ────────────────────────────────────────────
 
-    // Writes a PendingPasskeyRecord to AppGroup/okp/pending_passkeys/<uuid>.json.
+    // Writes a PendingPasskeyRecord to AppGroup/okp_shared/pending_passkeys/<uuid>.json.
     // Called by the autofill extension after a passkey creation ceremony.
     pub(super) fn passkey_store_pending(&self, json_args: &str) -> ResponseJson {
         debug!("In passkey_store_pending Rust ffi");

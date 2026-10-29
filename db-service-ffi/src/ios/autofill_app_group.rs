@@ -41,7 +41,7 @@ const META_JSON_FILE_VERSION: &str = "2.0.0";
 /////////  Some public exposed fns ////////////////
 
 pub(crate) fn delete_copied_autofill_details(db_key: &str) -> OkpResult<()> {
-    let db_file_root = app_group_root_sub_dir(AG_DATA_FILES_DIR)?;
+    let db_file_root = app_group_okp_sub_dir(AG_DATA_FILES_DIR)?;
     let hash_of_db_key = string_to_simple_hash(&db_key).to_string();
 
     let group_db_file_dir = Path::new(&db_file_root).join(&hash_of_db_key);
@@ -121,18 +121,20 @@ pub(crate) fn copy_files_to_app_group_on_save_or_read(db_key: &str) {
 // Called during app reset
 // Removes all data and key files. Also the autofill config removed
 pub(crate) fn remove_all_app_extension_contents() {
-    if let Ok(path) = app_group_root_sub_dir(AG_DATA_FILES_DIR) {
+    if let Ok(path) = app_group_okp_sub_dir(AG_DATA_FILES_DIR) {
         let _ = remove_dir_contents(path);
     }
 
-    // Also remove pending passkey records
-    if let Ok(path) = app_group_root_sub_dir(passkey_service::PENDING_PASSKEYS_DIR) {
-        let _ = remove_dir_contents(path);
-    }
+    // Also remove pending passkey records and persisted registered passkey id files
+    passkey_service::remove_all_passkey_files();
 
-    // Also remove persisted registered passkey id files
-    if let Ok(path) = app_group_root_sub_dir(passkey_service::REGISTERED_PASSKEY_IDS_DIR) {
-        let _ = remove_dir_contents(path);
+    // Earlier resets created these two dirs under 'okp' though the passkey files are under
+    // 'okp_shared'. Nothing uses them, and any leftover record in them may hold a plaintext
+    // private key, so the dirs are removed with whatever they contain
+    if let Ok(root) = app_group_okp_root() {
+        // log::debug!("Remove old okp passkey related dirs from dir {:?}",&root);
+        let _ = fs::remove_dir_all(root.join(passkey_service::PENDING_PASSKEYS_DIR));
+        let _ = fs::remove_dir_all(root.join(passkey_service::REGISTERED_PASSKEY_IDS_DIR));
     }
 
     // ...and the persisted registered one time code identity files
@@ -145,9 +147,8 @@ pub(crate) fn remove_all_app_extension_contents() {
 
 /////////////////////////////////////////////
 
-// Gets the app extension root
-// e.g app_group_root/okp
-fn app_extension_root() -> OkpResult<PathBuf> {
+// Gets the path of the autofill extension's root AppGroup/okp. The dir is not created here
+fn app_group_okp_root() -> OkpResult<PathBuf> {
     let Some(app_group_home_dir) = AppState::app_group_home_dir() else {
         return Err(OkpError::UnexpectedError(
             "No app group home dir is found".into(),
@@ -158,8 +159,9 @@ fn app_extension_root() -> OkpResult<PathBuf> {
     Ok(full_path_dir.to_path_buf())
 }
 
-// Gets the shared root so that both the main app and extension share the contents here
-fn app_extension_shared_root() -> OkpResult<PathBuf> {
+// Gets the path of AppGroup/okp_shared, the root shared by both the main app and the extension.
+// The dir is not created here
+fn app_group_okp_shared_root() -> OkpResult<PathBuf> {
     let Some(app_group_home_dir) = AppState::app_group_home_dir() else {
         return Err(OkpError::UnexpectedError(
             "No app group home dir is found".into(),
@@ -170,16 +172,16 @@ fn app_extension_shared_root() -> OkpResult<PathBuf> {
     Ok(full_path_dir.to_path_buf())
 }
 
-// Creates a sub dir with the given name under the app group root
-fn app_group_root_sub_dir(sub_dir_name: &str) -> OkpResult<PathBuf> {
-    let app_group_home_dir = app_extension_root()?;
+// Creates a sub dir with the given name under AppGroup/okp
+fn app_group_okp_sub_dir(sub_dir_name: &str) -> OkpResult<PathBuf> {
+    let app_group_home_dir = app_group_okp_root()?;
     let p = util::create_sub_dir(app_group_home_dir.to_string_lossy().as_ref(), sub_dir_name);
     Ok(p)
 }
 
-// Creates a sub dir with the given name under the app group shared root
-fn app_group_shared_root_sub_dir(sub_dir_name: &str) -> OkpResult<PathBuf> {
-    let app_shared_group_home_dir = app_extension_shared_root()?;
+// Creates a sub dir with the given name under AppGroup/okp_shared
+fn app_group_okp_shared_sub_dir(sub_dir_name: &str) -> OkpResult<PathBuf> {
+    let app_shared_group_home_dir = app_group_okp_shared_root()?;
     let p = util::create_sub_dir(app_shared_group_home_dir.to_string_lossy().as_ref(), sub_dir_name);
     Ok(p)
 }
@@ -190,7 +192,7 @@ fn autofill_meta_json_file() -> Option<PathBuf> {
     //     return None;
     // };
 
-    let Ok(app_group_home_dir) = app_extension_root() else {
+    let Ok(app_group_home_dir) = app_group_okp_root() else {
         return None;
     };
 
@@ -205,7 +207,7 @@ fn copy_files_to_app_group(db_key: &str) -> OkpResult<CopiedDbFileInfo> {
     let file_name = AppState::uri_to_file_name(&db_key);
     debug!("File name from db_file_name  is {} ", &file_name);
 
-    let db_file_root = app_group_root_sub_dir(AG_DATA_FILES_DIR)?;
+    let db_file_root = app_group_okp_sub_dir(AG_DATA_FILES_DIR)?;
 
     let hash_of_db_key = string_to_simple_hash(&db_key).to_string();
 
@@ -797,10 +799,10 @@ impl IosAppGroupSupportService {
 
 // pub(crate) fn app_extension_data_files_dir() -> OkpResult<PathBuf> {
 //     // e.g app_group_root/okp/data_files
-//     app_group_root_sub_dir(AG_DATA_FILES_DIR)
+//     app_group_okp_sub_dir(AG_DATA_FILES_DIR)
 // }
 
 // pub(crate) fn app_extension_key_files_dir() -> OkpResult<PathBuf> {
 //     // e.g app_group_root/okp/key_files
-//     app_group_root_sub_dir(AG_KEY_FILES_DIR)
+//     app_group_okp_sub_dir(AG_KEY_FILES_DIR)
 // }
