@@ -367,7 +367,10 @@
  (fn [{:keys [_db]} [_event-id]]
    {:fx [[:dispatch [:entry-category/load-categories-to-show]]
          [:dispatch [:groups/load]]
-         [:dispatch [:entry-list/reload-selected-entry-items]]]}))
+         [:dispatch [:entry-list/reload-selected-entry-items]]
+         ;; The search term stays in place across these changes, so its matches are
+         ;; fetched again - a deleted entry must not linger in the results
+         [:dispatch [:search/reload]]]}))
 
 ;; Called to set a previously opened database as current active one
 (reg-event-fx
