@@ -207,6 +207,18 @@ fn extract_file_provider(full_file_name_uri: String) -> String {
     android::extract_file_provider(&full_file_name_uri)
 }
 
+// The uniffi scaffolding needs these two fns on every target. These are compiled only for
+// a host build (macOS 'cargo test') so that the platform independent code can be unit tested
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn create_temp_kdbx(_file_args: FileArgs, _json_args: String) -> ApiResponse {
+    unimplemented!()
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn extract_file_provider(_full_file_name_uri: String) -> String {
+    unimplemented!()
+}
+
 ///////////////  Including uniffi generated rust source code - uniffi::include_scaffolding   ///////////////
 
 // We may get all functions that are used in 'db_service.uniffi.rs' (generated file) marked as

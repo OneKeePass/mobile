@@ -42,7 +42,11 @@ class DbServiceAPI {
       
       let securEnclaveService = SecureEnclaveServiceSupport()
       
-      dbServiceInitialize(cmnService, secKeyOps, eventDispatcher, apiCallBackService, securEnclaveService)
+      // App home dir move (v0.25.0)
+      // Anything still in the other home location is moved to the current one by the rust side
+      let initOptions = PlatformInitOptions(previousAppHomeDir: AppHomeLocation.previous)
+
+      dbServiceInitialize(cmnService, secKeyOps, eventDispatcher, apiCallBackService, securEnclaveService, initOptions)
       
       initialized = true
       Swift.debugPrint("API initialize is done")
@@ -132,6 +136,38 @@ enum CallbackErrors: Error {
   case apiIsNotSupported
 }
 
+// App home dir move (v0.25.0). 'previous' must keep returning 'documents' while users may still
+// update from a version before v0.25.0. The OKP_HOME_IN_DOCUMENTS toggle can be removed earlier
+// The main app's home dir for its internal dirs and files (bookmarks, backups, export_data,
+// remote_storage). It was the app sandbox's 'Documents' and is now 'okp_main' in the app group
+// container, which keeps these out of the dir meant for user visible documents.
+// The AutoFill extension does not use this and stays on its own 'Documents'
+enum AppHomeLocation {
+  static let documents: String = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).first!
+
+  // nil only when the app group entitlement is missing
+  static let okpMain: String? = FileManager.default
+    .containerURL(forSecurityApplicationGroupIdentifier: "group.com.onekeepass.afshared")?
+    .appendingPathComponent("okp_main", isDirectory: true).path
+
+  // App home dir move (v0.25.0): Debug toggle, removable once the move is verified on devices
+  // OKP_HOME_IN_DOCUMENTS is set only in the Debug configuration to verify the move both ways.
+  // Without it the app group location is used
+  static var current: String {
+    #if OKP_HOME_IN_DOCUMENTS
+    return documents
+    #else
+    return okpMain ?? documents
+    #endif
+  }
+
+  // The location not in use. Anything found there is moved to 'current' on app start
+  static var previous: String? {
+    guard let okpMain else { return nil }
+    return current == okpMain ? documents : okpMain
+  }
+}
+
 class CommonDeviceServiceImpl: CommonDeviceService {
  
   func appHomeDir() -> String {
@@ -147,13 +183,7 @@ class CommonDeviceServiceImpl: CommonDeviceService {
 //    cmnLogger.debug("$$$$$ orResource is \(String(describing: p))")
 //
     
-    // TODO:
-    // Need to use "Libary" or "Library/Application Support"  instead of using 'Documents' as app_home dir
-    // Existing prefernce.json, bookmarked,backup and keyfiles are need to be copied to the new app_home accordingly
-    // See
-    // https://developer.apple.com/library/archive/documentation/FileManagement/Conceptual/FileSystemProgrammingGuide/FileSystemOverview/FileSystemOverview.html#//apple_ref/doc/uid/TP40010672-CH2-SW13
-    
-    return NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true).first!
+    AppHomeLocation.current
   }
   
   func cacheDir() -> String {

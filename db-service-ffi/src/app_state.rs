@@ -17,7 +17,7 @@ use crate::{
     },
     backup, remote_storage,
     udl_types::SecureKeyOperation,
-    udl_uniffi_exports::{CommonDeviceServiceEx, SecureEnclaveCbService},
+    udl_uniffi_exports::{CommonDeviceServiceEx, PlatformInitOptions, SecureEnclaveCbService},
     util,
 };
 use crate::{
@@ -126,6 +126,7 @@ impl AppState {
         event_dispatcher: Arc<dyn EventDispatch>,
         common_device_service_ex: Arc<dyn CommonDeviceServiceEx>,
         secure_enclave_cb_service: Arc<dyn SecureEnclaveCbService>,
+        platform_init_options: PlatformInitOptions,
     ) {
         let app_dir = util::url_to_unix_file_name(&common_device_service.app_home_dir());
         let cache_dir = util::url_to_unix_file_name(&common_device_service.cache_dir());
@@ -137,6 +138,17 @@ impl AppState {
         } else {
             None
         };
+
+        info!("App home dir is {}", &app_dir);
+
+        // App home dir move (v0.25.0)
+        // Must be done before anything below reads or creates files in the app home dir.
+        // Only on the very first call, as a repeat one can happen while a db is open
+        if APP_STATE.get().is_none() {
+            if let Some(previous) = &platform_init_options.previous_app_home_dir {
+                move_from_previous_app_home_dir(&util::url_to_unix_file_name(previous), &app_dir);
+            }
+        }
 
         // Ensure that preference home dir is available before preference reading
         let preference_home_dir = Self::create_preference_dir_path(&app_dir, &app_group_home_dir);
@@ -757,6 +769,33 @@ impl AppState {
 
     // }
 }
+// App home dir move (v0.25.0)
+#[cfg(target_os = "ios")]
+fn move_from_previous_app_home_dir(previous: &str, current: &str) {
+    let report = crate::ios::app_home_migration::migrate_app_home(
+        Path::new(previous),
+        Path::new(current),
+    );
+    if report.is_empty() {
+        info!("Nothing to move from the previous app home dir {}", previous);
+        return;
+    }
+    info!(
+        "Moved from the previous app home dir {} : moved {:?}, conflicts {:?}",
+        previous, &report.moved, &report.conflicts
+    );
+    for (name, err) in &report.failed {
+        error!("Moving {} from the previous app home dir failed: {}", name, err);
+    }
+}
+
+// App home dir move (v0.25.0)
+// Only the iOS main app has a previous app home dir
+#[cfg(not(target_os = "ios"))]
+fn move_from_previous_app_home_dir(previous: &str, _current: &str) {
+    info!("Previous app home dir {} is ignored on this platform", previous);
+}
+
 // Added in 0.15.0 version as we changed backups creation and location
 // Should be removed in later release
 fn remove_old_0140v_backup_files(app_dir: &str) {

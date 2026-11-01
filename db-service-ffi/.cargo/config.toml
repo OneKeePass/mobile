@@ -1,0 +1,4 @@
+# Runs the test binaries built for the iOS simulator inside the booted simulator.
+# Use 'just test-ios-sim' so that Botan is built with the simulator settings
+[target.aarch64-apple-ios-sim]
+runner = "xcrun simctl spawn booted"

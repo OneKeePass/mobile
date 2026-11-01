@@ -110,6 +110,22 @@ build-ios-sim-lib release="":
     cargo build --target aarch64-apple-ios-sim {{ if release == "true" {"--release" } else {""}  }}
     # CARGO_LOG=cargo::core::compiler::fingerprint=info cargo build -vv --target aarch64-apple-ios-sim {{ if release == "true" {"--release" } else {""}  }}
 
+## Runs the rust unit tests inside the booted iOS simulator ('xcrun simctl boot <UDID>' first).
+## The cargo runner in .cargo/config.toml does the 'simctl spawn'. All iOS only code is compiled.
+## Uses the same env as 'build-ios-sim-lib' - building this target without it puts a macOS built
+## Botan in the simulator target dir. e.g 'just test-ios-sim app_home_migration'
+test-ios-sim filter="":
+    #!/usr/bin/env bash
+    set -euxo pipefail
+    export SDKROOT={{ios_sim_sdk_root}}
+    export IPHONEOS_DEPLOYMENT_TARGET={{ios_deployment_target}}
+    export BOTAN_CONFIGURE_OS='ios'
+    export BOTAN_CONFIGURE_CC_ABI_FLAGS='-arch arm64 -mios-simulator-version-min={{ios_deployment_target}}'
+    export BOTAN_CONFIGURE_CC='clang'
+    export BOTAN_CONFIGURE_CPU='arm64'
+
+    cargo test --lib --target aarch64-apple-ios-sim -- {{filter}}
+
 build-ios-device-lib-debug:build-ios-device-lib
 
 build-ios-device-lib-release:(build-ios-device-lib "true")

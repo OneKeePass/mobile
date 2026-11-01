@@ -3,6 +3,10 @@ pub(crate) mod autofill_app_group;
 #[cfg(target_os = "ios")]
 pub use autofill_app_group::*;
 
+// App home dir move (v0.25.0)
+#[cfg(target_os = "ios")]
+pub(crate) mod app_home_migration;
+
 #[cfg(target_os = "ios")]
 pub(crate) mod bookmark;
 #[cfg(target_os = "ios")]

@@ -40,6 +40,17 @@ pub struct AppClipboardCopyData {
     pub cleanup_after: u32,
 }
 
+// Platform specific values used for the initial actions in AppState setup.
+// Every field has a default so that a caller needing none of them passes 'PlatformInitOptions()'
+#[derive(uniffi::Record, Default, Debug)]
+pub struct PlatformInitOptions {
+    // App home dir move (v0.25.0)
+    // iOS main app only: the other possible home dir. Anything found there is moved into the
+    // app home dir before the preference is read. None on Android and in the iOS extension
+    #[uniffi(default = None)]
+    pub previous_app_home_dir: Option<String>,
+}
+
 // As per uniffi 'callback_interface' is 'soft' deprecated
 // If we use this, we need to use Box<dyn SecureEnclaveService> instead of Arc<dyn SecureEnclaveService>
 //#[uniffi::export(callback_interface)]
@@ -167,6 +178,7 @@ pub(crate) fn db_service_initialize(
     event_dispatcher: Arc<dyn EventDispatch>,
     common_device_service_ex: Arc<dyn CommonDeviceServiceEx>,
     secure_enclave_cb_service: Arc<dyn SecureEnclaveCbService>,
+    platform_init_options: PlatformInitOptions,
 ) {
     AppState::setup(
         common_device_service,
@@ -174,6 +186,7 @@ pub(crate) fn db_service_initialize(
         event_dispatcher,
         common_device_service_ex,
         secure_enclave_cb_service,
+        platform_init_options,
     );
     log::info!(
         "AppState with CommonDeviceService,secure_key_operation,event_dispatcher is initialized"

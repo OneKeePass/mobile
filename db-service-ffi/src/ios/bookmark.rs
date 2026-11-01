@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use log::debug;
 use onekeepass_core::db_service::{self, service_util::string_to_simple_hash};
 
-const BOOK_MARK_FILES_DIR: &str = "bookmarks";
+pub(crate) const BOOK_MARK_FILES_DIR: &str = "bookmarks";
 
 pub(crate) fn bookmark_dir() -> PathBuf {
     Path::new(AppState::app_home_dir()).join(BOOK_MARK_FILES_DIR)

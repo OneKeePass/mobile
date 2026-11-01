@@ -1315,7 +1315,7 @@ fun uniffi_db_service_ffi_fn_func_write_to_backup_on_error(`fullFileNameUri`: Ru
 ): RustBuffer.ByValue
 fun uniffi_db_service_ffi_fn_func_android_callback_service_initialize(`androidApiService`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
-fun uniffi_db_service_ffi_fn_func_db_service_initialize(`commonDeviceService`: Long,`secureKeyOperation`: Long,`eventDispatcher`: Pointer,`commonDeviceServiceEx`: Pointer,`secureEnclaveCbService`: Pointer,uniffi_out_err: UniffiRustCallStatus, 
+fun uniffi_db_service_ffi_fn_func_db_service_initialize(`commonDeviceService`: Long,`secureKeyOperation`: Long,`eventDispatcher`: Pointer,`commonDeviceServiceEx`: Pointer,`secureEnclaveCbService`: Pointer,`platformInitOptions`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): Unit
 fun uniffi_db_service_ffi_fn_func_handle_picked_file(`fileArgs`: RustBuffer.ByValue,`jsonArgs`: RustBuffer.ByValue,uniffi_out_err: UniffiRustCallStatus, 
 ): RustBuffer.ByValue
@@ -1484,7 +1484,7 @@ private fun uniffiCheckApiChecksums(lib: IntegrityCheckingUniffiLib) {
     if (lib.uniffi_db_service_ffi_checksum_func_android_callback_service_initialize() != 3941.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
-    if (lib.uniffi_db_service_ffi_checksum_func_db_service_initialize() != 37733.toShort()) {
+    if (lib.uniffi_db_service_ffi_checksum_func_db_service_initialize() != 50534.toShort()) {
         throw RuntimeException("UniFFI API checksum mismatch: try cleaning and rebuilding your project")
     }
     if (lib.uniffi_db_service_ffi_checksum_func_handle_picked_file() != 62434.toShort()) {
@@ -4145,6 +4145,34 @@ public object FfiConverterTypeKdbxCreated: FfiConverterRustBuffer<KdbxCreated> {
 
 
 
+data class PlatformInitOptions (
+    var `previousAppHomeDir`: kotlin.String? = null
+) {
+    
+    companion object
+}
+
+/**
+ * @suppress
+ */
+public object FfiConverterTypePlatformInitOptions: FfiConverterRustBuffer<PlatformInitOptions> {
+    override fun read(buf: ByteBuffer): PlatformInitOptions {
+        return PlatformInitOptions(
+            FfiConverterOptionalString.read(buf),
+        )
+    }
+
+    override fun allocationSize(value: PlatformInitOptions) = (
+            FfiConverterOptionalString.allocationSize(value.`previousAppHomeDir`)
+    )
+
+    override fun write(value: PlatformInitOptions, buf: ByteBuffer) {
+            FfiConverterOptionalString.write(value.`previousAppHomeDir`, buf)
+    }
+}
+
+
+
 
 
 sealed class ApiCallbackException: kotlin.Exception() {
@@ -5126,11 +5154,11 @@ public object FfiConverterMapStringString: FfiConverterRustBuffer<Map<kotlin.Str
 }
     
     
- fun `dbServiceInitialize`(`commonDeviceService`: CommonDeviceService, `secureKeyOperation`: SecureKeyOperation, `eventDispatcher`: EventDispatch, `commonDeviceServiceEx`: CommonDeviceServiceEx, `secureEnclaveCbService`: SecureEnclaveCbService)
+ fun `dbServiceInitialize`(`commonDeviceService`: CommonDeviceService, `secureKeyOperation`: SecureKeyOperation, `eventDispatcher`: EventDispatch, `commonDeviceServiceEx`: CommonDeviceServiceEx, `secureEnclaveCbService`: SecureEnclaveCbService, `platformInitOptions`: PlatformInitOptions)
         = 
     uniffiRustCall() { _status ->
     UniffiLib.INSTANCE.uniffi_db_service_ffi_fn_func_db_service_initialize(
-        FfiConverterTypeCommonDeviceService.lower(`commonDeviceService`),FfiConverterTypeSecureKeyOperation.lower(`secureKeyOperation`),FfiConverterTypeEventDispatch.lower(`eventDispatcher`),FfiConverterTypeCommonDeviceServiceEx.lower(`commonDeviceServiceEx`),FfiConverterTypeSecureEnclaveCbService.lower(`secureEnclaveCbService`),_status)
+        FfiConverterTypeCommonDeviceService.lower(`commonDeviceService`),FfiConverterTypeSecureKeyOperation.lower(`secureKeyOperation`),FfiConverterTypeEventDispatch.lower(`eventDispatcher`),FfiConverterTypeCommonDeviceServiceEx.lower(`commonDeviceServiceEx`),FfiConverterTypeSecureEnclaveCbService.lower(`secureEnclaveCbService`),FfiConverterTypePlatformInitOptions.lower(`platformInitOptions`),_status)
 }
     
     
