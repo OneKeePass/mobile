@@ -47,7 +47,9 @@ class DbServiceAPI {
       let initOptions = PlatformInitOptions(previousAppHomeDir: AppHomeLocation.previous)
 
       dbServiceInitialize(cmnService, secKeyOps, eventDispatcher, apiCallBackService, securEnclaveService, initOptions)
-      
+
+      BackupExclusion.apply()
+
       initialized = true
       Swift.debugPrint("API initialize is done")
     } else {
@@ -165,6 +167,65 @@ enum AppHomeLocation {
   static var previous: String? {
     guard let okpMain else { return nil }
     return current == okpMain ? documents : okpMain
+  }
+}
+
+// Leaves the dirs below out of iCloud and computer backups. Everything else is backed up, which
+// is meant for 'okp_shared/preference.json', 'okp_shared/key_files' and the app home's 'backups'.
+// A dir is marked rather than its files, as the rust side often writes a file to a temp file and
+// renames it over the old one, which drops a mark set on the file. The mark is set on every app
+// start, as a dir can be created again (e.g after a reset). A missing dir is created here so that
+// it is marked before anything (e.g the AutoFill extension) writes into it.
+// The dir names are the same as the constants used on the rust side (app_state.rs,
+// autofill_app_group.rs, passkey_service.rs, otp_identity_service.rs)
+enum BackupExclusion {
+  static let logger = OkpLogger(tag: "BackupExclusion")
+
+  // Relative to the main app's home dir
+  // 'remote_storage' : its configs are encrypted with a key that never leaves this device and the
+  // sftp private keys are in plain text. 'bookmarks' : security scoped bookmarks are stale on
+  // another device. 'export_data' : temporary files for sharing
+  private static let appHomeDirs = ["remote_storage", "bookmarks", "export_data"]
+
+  // Relative to the app group container
+  // 'okp' : AutoFill's copies of dbs, made again from the main app. 'pending_passkeys' holds private
+  // keys in plain text. The registered ids mirror the system credential identity store of this device
+  private static let appGroupDirs = [
+    "okp",
+    "okp_shared/pending_passkeys",
+    "okp_shared/registered_passkey_ids",
+    "okp_shared/registered_otp_ids",
+  ]
+
+  // Must be called after 'dbServiceInitialize', so that the app home dir has been set up
+  static func apply() {
+    var paths = appHomeDirs.map { (AppHomeLocation.current as NSString).appendingPathComponent($0) }
+    if let groupRoot = FileManager.default
+      .containerURL(forSecurityApplicationGroupIdentifier: "group.com.onekeepass.afshared")?.path
+    {
+      paths += appGroupDirs.map { (groupRoot as NSString).appendingPathComponent($0) }
+    }
+
+    var marked: [String] = []
+    for path in paths {
+      var url = URL(fileURLWithPath: path, isDirectory: true)
+      do {
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try url.setResourceValues(values)
+        // Read back so that the log shows the mark as iOS has stored it
+        let stored = try url.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup ?? false
+        if stored {
+          marked.append(path)
+        } else {
+          logger.error("Backup exclusion is not stored for \(path)")
+        }
+      } catch {
+        logger.error("Setting backup exclusion for \(path) failed: \(error)")
+      }
+    }
+    logger.info("Excluded from backup: \(marked)")
   }
 }
 
