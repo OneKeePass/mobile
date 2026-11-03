@@ -710,7 +710,13 @@
      [rn-view {:style {:height 10}}]
      [rn-view {:style {:flexDirection "row" :justify-content "space-between"}}
       [rnp-text {:variant "bodySmall" :style {:color @rnc/on-surface-variant}} "Last Modification Time"]
-      [rnp-text {:variant "bodySmall"} (utc-str-to-local-datetime-str last-modification-time)]]]))
+      [rnp-text {:variant "bodySmall"} (utc-str-to-local-datetime-str last-modification-time)]]
+     (when-let [group-name @(form-events/entry-group-name)]
+       [:<>
+        [rn-view {:style {:height 10}}]
+        [rn-view {:style {:flexDirection "row" :justify-content "space-between"}}
+         [rnp-text {:variant "bodySmall" :style {:color @rnc/on-surface-variant}} (lstr-l 'group)]
+         [rnp-text {:variant "bodySmall" :style {:flexShrink 1 :textAlign "right" :margin-left 10}} group-name]]])]))
 
 ;;;;;;;;;;;;;;;;;;;;  Attachment ;;;;;;;;;;;;;;;;;;;;
 
