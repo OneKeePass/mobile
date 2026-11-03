@@ -105,7 +105,7 @@
            [:app-settings/bg-update-preference [{:app-lock-pin-length pin-length} (fn [_m])]])]}))
 
 ;; See :pin-store-completed for pin-lock-enabled updating
-;; :lock-timeout :attempts-allowed 
+;; :lock-timeout :attempts-allowed :last-attempt-warning
 (reg-event-fx
  :app-lock-settings-preference-update
  (fn [{:keys [db]} [_event-id kw value]]
@@ -115,6 +115,9 @@
 
                   :attempts-allowed
                   {:app-lock-attempts-allowed value}
+
+                  :last-attempt-warning
+                  {:app-lock-last-attempt-warning value}
                   ;; default
                   {})]
      {;; Updates local copy (should this be called after backend update ?)

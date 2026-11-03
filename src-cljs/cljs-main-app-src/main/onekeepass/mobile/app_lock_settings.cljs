@@ -54,7 +54,7 @@
 
 (defn page-content 
   "App lock settings component"
-  [{:keys [pin-lock-enabled lock-timeout attempts-allowed]}]
+  [{:keys [pin-lock-enabled lock-timeout attempts-allowed last-attempt-warning]}]
   [rn-view {:style {:margin-top 10}}
    [rn-view  {:style (get-form-style)}
     [rn-view {:style {:flexDirection "row" :min-height 50 :justify-content "space-between"}}
@@ -104,7 +104,20 @@
         [rnp-text {:style {:color @rnc/error-color}} (lstr-mt 'appLockSettings 'attemptsResetInfo)]]
 
        [rn-view {:style {:margin-top 5 :margin-bottom 5 :padding 10}}
-        [rnp-text {:style {:color @rnc/error-color}} (lstr-mt 'appLockSettings 'dbFilesNotRemoved)]]]])])
+        [rnp-text {:style {:color @rnc/error-color}} (lstr-mt 'appLockSettings 'dbFilesNotRemoved)]]]
+
+      [rnp-divider]
+
+      [rn-view {:style {:flexDirection "row" :min-height 50 :justify-content "space-between" :margin-top 10}}
+       [rnp-text {:style {:align-self "center" :padding-left 5 :flex 1} :variant "titleMedium"}
+        (lstr-l 'lastAttemptWarning)]
+       [rn-view {:style {:padding-right 10 :align-self "center"}}
+        [rnp-switch {:value (boolean last-attempt-warning)
+                     :onValueChange #(al-settings-events/app-lock-settings-preference-update :last-attempt-warning %)}]]]
+      [rn-view {:style {:margin-bottom 10 :padding 10}}
+       [rnp-text (if last-attempt-warning
+                   (lstr-mt 'appLockSettings 'lastAttemptWarningOn)
+                   (lstr-mt 'appLockSettings 'lastAttemptWarningOff))]]])])
 
 (defn authenticate-with-pin
   "Asks for the current PIN before the app lock settings are shown. A wrong PIN here does not

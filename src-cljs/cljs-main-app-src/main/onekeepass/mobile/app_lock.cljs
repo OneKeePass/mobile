@@ -12,7 +12,7 @@
 (defn content []
   (let [attempts-left @(app-lock-events/attempts-remaining)
         ;; Set only for a fixed length PIN (iOS). nil lets the PIN be of any length
-        {:keys [pin-length]} @(cmn-events/app-lock-preference)]
+        {:keys [pin-length last-attempt-warning]} @(cmn-events/app-lock-preference)]
     ;; Scrolls when the pad does not fit, e.g a phone in landscape
     [rn-scroll-view {:style {:flex 1 :backgroundColor @page-background-color}
                      :contentContainerStyle {:flexGrow 1 :justifyContent "center"}}
@@ -21,8 +21,9 @@
      [pin-pad {:title (lstr-dlg-title 'enterPin)
                :pin-length pin-length
                ;; The number of attempts left is not shown. Only the last one is called out as
-               ;; one more wrong PIN resets the app
-               :message (when (= attempts-left 1) (lstr-mt 'enterPin 'lastAttemptWarning))
+               ;; one more wrong PIN resets the app, and only when the user wants that warning
+               :message (when (and last-attempt-warning (= attempts-left 1))
+                          (lstr-mt 'enterPin 'lastAttemptWarning))
                :message-error? true
                :on-submit (fn [pin rejected-fn]
                             (app-lock-events/verify-app-lock-pin (str->int pin) rejected-fn))}]]))

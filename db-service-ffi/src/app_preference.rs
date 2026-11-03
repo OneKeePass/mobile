@@ -28,6 +28,7 @@ pub struct PreferenceData {
     app_lock_attempts_allowed: Option<usize>,
     app_lock_lock_app_settings: Option<bool>,
     app_lock_pin_length: Option<usize>,
+    app_lock_last_attempt_warning: Option<bool>,
 
     screen_capture_blocked: Option<bool>,
     //app_lock_preference: Option<AppLockPreference>,
@@ -105,9 +106,19 @@ pub(crate) struct AppLockPreference {
     // The PIN is stored as a number and so the length cannot be got from it (leading zeros)
     #[serde(default)]
     pin_length: Option<usize>,
+
+    // When true, the lock screen warns that one more wrong PIN resets the app. Some users want
+    // the reset to happen without any warning to whoever is trying PINs
+    #[serde(default = "default_last_attempt_warning")]
+    last_attempt_warning: bool,
     // May be used in the future
     // When this is enabled, the app will be reset when the no of pin auth failures > attempts_allowed
     // reset_on_lock_failures:bool,
+}
+
+// Preference files from before this setting keep the warning that was shown till then
+fn default_last_attempt_warning() -> bool {
+    false
 }
 
 impl Default for AppLockPreference {
@@ -121,6 +132,7 @@ impl Default for AppLockPreference {
             attempts_allowed: 10,
             lock_app_settings: Default::default(),
             pin_length: None,
+            last_attempt_warning: default_last_attempt_warning(),
         }
     }
 }
@@ -322,6 +334,13 @@ impl Preference {
             self,
             preference_data.app_lock_lock_app_settings,
             app_lock_preference.lock_app_settings,
+            updated
+        );
+
+        pref_update!(
+            self,
+            preference_data.app_lock_last_attempt_warning,
+            app_lock_preference.last_attempt_warning,
             updated
         );
 
