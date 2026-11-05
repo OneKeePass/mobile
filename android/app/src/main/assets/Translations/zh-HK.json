@@ -1,5 +1,12 @@
 {
     "commonTexts": {
+        "appLockDelay": "應用鎖定延遲",
+        "attempts": "嘗試次數",
+        "confirmPin": "確認 PIN 碼",
+        "lastAttemptWarning": "重設前發出警告",
+        "newPin": "輸入新的 PIN 碼",
+        "pin4Digits": "4 位數字",
+        "pin6Digits": "6 位數字",
         "Source": "來源",
         "about": "關於",
         "add": "添加",
@@ -20,6 +27,7 @@
         "appSecureStoreConnections": "應用安全存儲",
         "autofillSettings": "自動填充設置",
         "biometrics": "生物識別",
+        "blockScreenshots": "阻止截圖",
         "bytes": "字節",
         "capitalizeFirstLetter": "首字母大寫",
         "capitalizeWords": "單詞首字母大寫",
@@ -65,6 +73,7 @@
         "fileSize": "文件大小",
         "general": "通用",
         "good": "好",
+        "group": "分組",
         "groupOrCategory": "分組/分類",
         "groups": "分組",
         "host": "主機",
@@ -113,6 +122,7 @@
         "protected": "受保護",
         "readOnly": "只讀",
         "readOnlyStripDetail": "無法保存更改",
+        "rememberKeyFile": "記住密鑰文件",
         "rootUrl": "根URL",
         "savedInDbFile": "保存在資料庫檔案中",
         "savedOnThisDevice": "僅保存在此設備上",
@@ -353,6 +363,7 @@
             "pendingPasskeysDisableWarning": "有待處理的 Passkey 尚未提交到資料庫。請在禁用自動填充之前檢查它們。",
             "pendingPasskeysMultiDb": "以下資料庫有待處理的 Passkey。請開啟每個資料庫來檢查並保存它們。",
             "pendingPasskeysReadOnly": "此資料庫有一個或多個待處理的 Passkey。它們已被安全保留，在為該資料庫關閉只讀並且資料庫不是以離線方式開啟時即可保存。",
+            "rememberKeyFileHelp": "下次開啟此資料庫時將自動填入此密鑰文件。",
             "saveAsFileExists": "所選文件夾中已存在同名文件。要覆蓋它嗎？",
             "setupOtp": "您可以通過掃描二維碼或手動輸入密鑰或OTPAuth URL來設置TOTP",
             "remoteConfigNotAvailable": "此資料庫的連接詳情存儲在另一個當前未開啟的資料庫中。請先開啟該資料庫，然後重新開啟此資料庫——或從最新備份離線開啟此資料庫（只讀模式）。",
@@ -372,6 +383,7 @@
             "scanError": "掃描錯誤",
             "restricted": "受限",
             "invalidReference": "無效引用",
+            "invalidUrl": "無效的 URL",
             "saveAsError": "另存為錯誤",
             "uploadStatus": "上傳狀態"
         },
@@ -382,7 +394,8 @@
             "scannedUrlNotOtpUri": "掃描的URL不是OTP類型的URL",
             "dbMovedOrRenamed": "資料庫文件似乎已被移動或重命名。請刪除該資料庫並重新開啟已移動或重命名的文件",
             "editingDisabledReadOnly": "編輯已禁用，因為資料庫以只讀模式開啟",
-            "uploadStatus": "上傳的附件與現有附件相同"
+            "uploadStatus": "上傳的附件與現有附件相同",
+            "urlSchemeNotSupported": "僅支援網址（http 或 https）"
         }
     },
     "messageDialog": {
@@ -613,7 +626,18 @@
         "about": {
             "noPersonalInfoCollection": "本應用不會收集任何個人身份信息，不會收集也不會與任何第三方共享任何信息"
         },
+        "appLockSettings": {
+            "attemptsResetInfo": "當 PIN 碼驗證失敗次數超過此數值時，應用將被重設。所有對資料庫文件、密鑰文件的引用以及內部快取都將被刪除",
+            "dbFilesNotRemoved": "原始位置的資料庫文件不會被刪除",
+            "lastAttemptWarningOff": "最後一次允許的嘗試失敗時，應用將在沒有任何警告的情況下被重設",
+            "lastAttemptWarningOn": "當再輸錯一次 PIN 碼就會重設應用時，鎖定畫面會發出警告",
+            "lockDelayImmediately": "應用轉入背景或 1 分鐘未使用時將被鎖定。您需要輸入 PIN 碼才能使用 OneKeePass",
+            "lockDelayTimeout": "無論應用在前景還是背景，未使用達到此時長後都將被鎖定。您需要輸入 PIN 碼才能使用 OneKeePass",
+            "pinProtected": "應用已受 PIN 碼保護。您需要輸入 PIN 碼才能使用 OneKeePass"
+        },
         "appSettings": {
+            "blockScreenshotsAndroid": "在截圖、螢幕錄影和最近使用的應用中隱藏本應用",
+            "blockScreenshotsIos": "iOS 不允許應用阻止截圖。在應用切換器中以及螢幕被錄影或鏡像時，本應用會被隱藏",
             "clipboardCleard1": "剪貼板不會被清除",
             "clipboardCleard2": "剪貼板將在 {{clipboardTimeoutTime}} 後被清除",
             "dbRemainOpened": "資料庫將保持開啟狀態直到被鎖定或關閉",
@@ -649,6 +673,9 @@
             "selectGroup": "請選擇一個分組"
         },
         "enterPin": {
+            "lastAttemptWarning": "再輸錯一次 PIN 碼將重設應用",
+            "pinMinLength": "請至少使用 4 位數字",
+            "pinsNotMatching": "PIN 碼不一致，請重試",
             "validPinRequired": "請輸入有效的 PIN 碼"
         },
         "keyFileForm": {

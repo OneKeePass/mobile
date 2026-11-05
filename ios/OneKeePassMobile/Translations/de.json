@@ -1,5 +1,12 @@
 {
     "commonTexts": {
+        "appLockDelay": "Verzögerung der App-Sperre",
+        "attempts": "Versuche",
+        "confirmPin": "PIN bestätigen",
+        "lastAttemptWarning": "Vor dem Zurücksetzen warnen",
+        "newPin": "Geben Sie eine neue PIN ein",
+        "pin4Digits": "4 Ziffern",
+        "pin6Digits": "6 Ziffern",
         "Source": "Quelle",
         "about": "Über",
         "add": "Hinzufügen",
@@ -20,6 +27,7 @@
         "appSecureStoreConnections": "App-Sicherheitsspeicher",
         "autofillSettings": "Autofill-Einstellungen",
         "biometrics": "Biometrie",
+        "blockScreenshots": "Bildschirmfotos blockieren",
         "bytes": "Bytes",
         "capitalizeFirstLetter": "Ersten Buchstaben großschreiben",
         "capitalizeWords": "Wörter großschreiben",
@@ -65,6 +73,7 @@
         "fileSize": "Dateigröße",
         "general": "Allgemein",
         "good": "Gut",
+        "group": "Gruppe",
         "groupOrCategory": "Gruppe/Kategorie",
         "groups": "Gruppen",
         "host": "Host",
@@ -113,6 +122,7 @@
         "protected": "Geschützt",
         "readOnly": "Schreibgeschützt",
         "readOnlyStripDetail": "Änderungen können nicht gespeichert werden",
+        "rememberKeyFile": "Schlüsseldatei merken",
         "rootUrl": "Root-URL",
         "savedInDbFile": "In der Datenbankdatei gespeichert",
         "savedOnThisDevice": "Nur auf diesem Gerät gespeichert",
@@ -353,6 +363,7 @@
             "pendingPasskeysDisableWarning": "Es gibt ausstehende Passkeys, die noch nicht in die Datenbank übernommen wurden. Bitte überprüfen Sie diese, bevor Sie AutoFill deaktivieren.",
             "pendingPasskeysMultiDb": "Die folgenden Datenbanken haben ausstehende Passkeys. Öffnen Sie jede Datenbank, um diese zu überprüfen und zu speichern.",
             "pendingPasskeysReadOnly": "Für diese Datenbank gibt es einen oder mehrere ausstehende Passkeys. Sie werden sicher aufbewahrt und können gespeichert werden, sobald der Schreibschutz für die Datenbank ausgeschaltet ist und sie nicht offline geöffnet ist.",
+            "rememberKeyFileHelp": "Diese Schlüsseldatei wird beim nächsten Öffnen dieser Datenbank eingetragen.",
             "saveAsFileExists": "Im ausgewählten Ordner gibt es bereits eine Datei mit diesem Namen. Möchten Sie sie überschreiben?",
             "setupOtp": "Sie können TOTP einrichten, indem Sie einen QR-Code scannen oder das Geheimnis oder eine OTPAuth-URL manuell eingeben",
             "remoteConfigNotAvailable": "Die Verbindungsdetails dieser Datenbank sind in einer anderen, derzeit nicht geöffneten Datenbank gespeichert. Öffnen Sie zuerst diese Datenbank und dann erneut diese – oder öffnen Sie diese offline aus dem letzten Backup, im schreibgeschützten Modus.",
@@ -372,6 +383,7 @@
             "scanError": "Scanfehler",
             "restricted": "Eingeschränkt",
             "invalidReference": "Ungültige Referenz",
+            "invalidUrl": "Ungültige URL",
             "saveAsError": "Fehler beim Speichern unter",
             "uploadStatus": "Upload-Status"
         },
@@ -382,7 +394,8 @@
             "scannedUrlNotOtpUri": "Die gescannte URL ist keine OTP-URL",
             "dbMovedOrRenamed": "Die Datenbankdatei wurde möglicherweise verschoben oder umbenannt. Bitte entfernen Sie die Datenbank und öffnen Sie die verschobene oder umbenannte Datei erneut",
             "editingDisabledReadOnly": "Die Bearbeitung ist deaktiviert, da die Datenbank im Nur-Lesen-Modus geöffnet ist",
-            "uploadStatus": "Der hochgeladene Anhang ist identisch mit dem bestehenden"
+            "uploadStatus": "Der hochgeladene Anhang ist identisch mit dem bestehenden",
+            "urlSchemeNotSupported": "Es werden nur Webadressen (http oder https) unterstützt"
         }
     },
     "messageDialog": {
@@ -613,7 +626,18 @@
         "about": {
             "noPersonalInfoCollection": "Die Anwendung sammelt keine persönlich identifizierbaren Informationen. Nichts wird gesammelt oder mit Dritten geteilt"
         },
+        "appLockSettings": {
+            "attemptsResetInfo": "Wenn die PIN-Authentifizierung öfter als diese Anzahl fehlschlägt, wird die App zurückgesetzt. Alle Verweise auf Datenbankdateien, Schlüsseldateien und interne Caches werden entfernt",
+            "dbFilesNotRemoved": "Die Datenbankdateien an ihren ursprünglichen Speicherorten werden nicht entfernt",
+            "lastAttemptWarningOff": "Die App wird ohne Warnung zurückgesetzt, wenn der letzte erlaubte Versuch fehlschlägt",
+            "lastAttemptWarningOn": "Der Sperrbildschirm warnt, wenn eine weitere falsche PIN die App zurücksetzt",
+            "lockDelayImmediately": "Die App wird gesperrt, wenn sie in den Hintergrund wechselt oder 1 Minute lang nicht verwendet wird. Sie müssen die PIN eingeben, um OneKeePass zu verwenden",
+            "lockDelayTimeout": "Die App wird gesperrt, wenn sie so lange nicht verwendet wird, egal ob sie im Vorder- oder Hintergrund ist. Sie müssen die PIN eingeben, um OneKeePass zu verwenden",
+            "pinProtected": "Die App ist mit einer PIN geschützt. Sie müssen die PIN eingeben, um OneKeePass zu verwenden"
+        },
         "appSettings": {
+            "blockScreenshotsAndroid": "Verbirgt die App in Bildschirmfotos, Bildschirmaufnahmen und der Liste der letzten Apps",
+            "blockScreenshotsIos": "iOS erlaubt Apps nicht, Bildschirmfotos zu blockieren. Die App wird im App-Umschalter sowie während einer Bildschirmaufnahme oder -spiegelung ausgeblendet",
             "clipboardCleard1": "Die Zwischenablage wird nicht geleert",
             "clipboardCleard2": "Die Zwischenablage wird in {{clipboardTimeoutTime}} geleert",
             "dbRemainOpened": "Datenbank bleibt geöffnet, bis sie gesperrt oder geschlossen wird",
@@ -649,6 +673,9 @@
             "selectGroup": "Bitte wählen Sie eine Gruppe aus"
         },
         "enterPin": {
+            "lastAttemptWarning": "Eine weitere falsche PIN setzt die App zurück",
+            "pinMinLength": "Verwenden Sie mindestens 4 Ziffern",
+            "pinsNotMatching": "Die PINs stimmen nicht überein. Versuchen Sie es erneut",
             "validPinRequired": "Bitte geben Sie eine gültige PIN ein"
         },
         "keyFileForm": {

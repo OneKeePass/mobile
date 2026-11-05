@@ -1,5 +1,12 @@
 {
     "commonTexts": {
+        "appLockDelay": "Délai de verrouillage de l'application",
+        "attempts": "Tentatives",
+        "confirmPin": "Confirmer le code PIN",
+        "lastAttemptWarning": "Avertir avant la réinitialisation",
+        "newPin": "Saisissez un nouveau code PIN",
+        "pin4Digits": "4 chiffres",
+        "pin6Digits": "6 chiffres",
         "Source": "Source",
         "about": "À propos de",
         "add": "Ajouter",
@@ -20,6 +27,7 @@
         "appSecureStoreConnections": "Stockage sécurisé de l'app",
         "autofillSettings": "Paramètres de remplissage automatique",
         "biometrics": "Biométrie",
+        "blockScreenshots": "Bloquer les captures d'écran",
         "bytes": "octets",
         "capitalizeFirstLetter": "Mettre la première lettre en majuscule",
         "capitalizeWords": "Mettre les mots en majuscule",
@@ -65,6 +73,7 @@
         "fileSize": "Taille du fichier",
         "general": "Général",
         "good": "Bon",
+        "group": "Groupe",
         "groupOrCategory": "Groupe/Catégorie",
         "groups": "Groupes",
         "host": "Hôte",
@@ -113,6 +122,7 @@
         "protected": "Protégé",
         "readOnly": "Lecture seule",
         "readOnlyStripDetail": "Les modifications ne peuvent pas être enregistrées",
+        "rememberKeyFile": "Mémoriser le fichier clé",
         "rootUrl": "URL racine",
         "savedInDbFile": "Enregistré dans le fichier de la base de données",
         "savedOnThisDevice": "Enregistré sur cet appareil uniquement",
@@ -353,6 +363,7 @@
             "pendingPasskeysDisableWarning": "Il y a des passkeys en attente qui n'ont pas été validés dans la base de données. Veuillez les vérifier avant de désactiver le remplissage automatique.",
             "pendingPasskeysMultiDb": "Les bases de données suivantes ont des passkeys en attente. Ouvrez chaque base de données pour les vérifier et les enregistrer.",
             "pendingPasskeysReadOnly": "Il y a une ou plusieurs passkeys en attente pour cette base de données. Elles sont conservées en toute sécurité et pourront être enregistrées une fois la lecture seule désactivée pour la base de données, à condition qu'elle ne soit pas ouverte hors ligne.",
+            "rememberKeyFileHelp": "Ce fichier clé sera renseigné la prochaine fois que vous ouvrirez cette base de données.",
             "saveAsFileExists": "Un fichier portant ce nom existe déjà dans le dossier sélectionné. Voulez-vous l'écraser ?",
             "setupOtp": "Vous pouvez configurer le mot de passe à usage unique en numérisant un code QR ou en saisissant manuellement le secret ou un URL OTPAuth.",
             "remoteConfigNotAvailable": "Les détails de connexion de cette base de données sont stockés dans une autre base de données qui n'est pas ouverte actuellement. Ouvrez d'abord cette base de données, puis rouvrez celle-ci — ou ouvrez celle-ci hors ligne à partir de la dernière sauvegarde, en lecture seule.",
@@ -372,6 +383,7 @@
             "scanError": "Erreur de numérisation",
             "restricted": "Restreint",
             "invalidReference": "Référence invalide",
+            "invalidUrl": "URL non valide",
             "saveAsError": "Erreur d'enregistrement sous",
             "uploadStatus": "Statut du téléchargement"
         },
@@ -382,7 +394,8 @@
             "scannedUrlNotOtpUri": "L'URL scanné n'est pas un URL de type OTP",
             "dbMovedOrRenamed": "Il semble que le fichier de base de données a été déplacé ou renommé. Veuillez supprimer la base de données et rouvrir le fichier déplacé ou renommé",
             "editingDisabledReadOnly": "L'édition est désactivée car la base de données est ouverte en mode lecture seule",
-            "uploadStatus": "La pièce jointe téléchargée est identique à la pièce existante"
+            "uploadStatus": "La pièce jointe téléchargée est identique à la pièce existante",
+            "urlSchemeNotSupported": "Seules les adresses web (http ou https) sont prises en charge"
         }
     },
     "messageDialog": {
@@ -613,7 +626,18 @@
         "about": {
             "noPersonalInfoCollection": "L'application ne recueille aucune information personnelle identifiable. Rien n'est collecté ou partagé avec un tiers"
         },
+        "appLockSettings": {
+            "attemptsResetInfo": "Si l'authentification par code PIN échoue plus de ce nombre de fois, l'application sera réinitialisée. Toutes les références aux fichiers de base de données, aux fichiers clés et aux caches internes seront supprimées",
+            "dbFilesNotRemoved": "Les fichiers de base de données à leur emplacement d'origine ne sont pas supprimés",
+            "lastAttemptWarningOff": "L'application est réinitialisée sans avertissement lorsque la dernière tentative autorisée échoue",
+            "lastAttemptWarningOn": "L'écran de verrouillage avertit lorsqu'un code PIN erroné de plus réinitialisera l'application",
+            "lockDelayImmediately": "L'application sera verrouillée lorsqu'elle passe en arrière-plan, ou après 1 minute d'inactivité. Vous devez saisir le code PIN pour utiliser OneKeePass",
+            "lockDelayTimeout": "L'application sera verrouillée après cette durée d'inactivité, qu'elle soit au premier plan ou en arrière-plan. Vous devez saisir le code PIN pour utiliser OneKeePass",
+            "pinProtected": "L'application est protégée par un code PIN. Vous devez saisir le code PIN pour utiliser OneKeePass"
+        },
         "appSettings": {
+            "blockScreenshotsAndroid": "Masque l'application dans les captures d'écran, les enregistrements d'écran et les applications récentes",
+            "blockScreenshotsIos": "iOS ne permet pas aux applications de bloquer les captures d'écran. L'application est masquée dans le sélecteur d'apps et pendant l'enregistrement ou la recopie de l'écran",
             "clipboardCleard1": "Le presse-papier ne sera pas effacé",
             "clipboardCleard2": "Le presse-papier sera vidé en {{clipboardTimeoutTime}}",
             "dbRemainOpened": "La base de données restera ouverte jusqu'à ce qu'elle soit verrouillée ou fermée",
@@ -649,6 +673,9 @@
             "selectGroup": "Veuillez sélectionner un groupe"
         },
         "enterPin": {
+            "lastAttemptWarning": "Un code PIN erroné de plus réinitialisera l'application",
+            "pinMinLength": "Utilisez au moins 4 chiffres",
+            "pinsNotMatching": "Les codes PIN ne correspondent pas. Réessayez",
             "validPinRequired": "Veuillez saisir un code PIN valide"
         },
         "keyFileForm": {

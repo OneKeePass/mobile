@@ -1,5 +1,12 @@
 {
     "commonTexts": {
+        "appLockDelay": "Atraso do bloqueio do app",
+        "attempts": "Tentativas",
+        "confirmPin": "Confirmar PIN",
+        "lastAttemptWarning": "Avisar antes de redefinir",
+        "newPin": "Insira um novo PIN",
+        "pin4Digits": "4 dígitos",
+        "pin6Digits": "6 dígitos",
         "Source": "Origem",
         "about": "Sobre",
         "add": "Adicionar",
@@ -20,6 +27,7 @@
         "appSecureStoreConnections": "Armazenamento Seguro do App",
         "autofillSettings": "Configurações de preenchimento automático",
         "biometrics": "Biometria",
+        "blockScreenshots": "Bloquear capturas de tela",
         "bytes": "bytes",
         "capitalizeFirstLetter": "Colocar primeira letra em maiúscula",
         "capitalizeWords": "Colocar palavras em maiúscula",
@@ -65,6 +73,7 @@
         "fileSize": "Tamanho do Arquivo",
         "general": "Geral",
         "good": "Boa",
+        "group": "Grupo",
         "groupOrCategory": "Grupo/categoria",
         "groups": "Grupos",
         "host": "Host",
@@ -113,6 +122,7 @@
         "protected": "Protegida",
         "readOnly": "Somente leitura",
         "readOnlyStripDetail": "As alterações não podem ser salvas",
+        "rememberKeyFile": "Lembrar arquivo-chave",
         "rootUrl": "URL raiz",
         "savedInDbFile": "Salvo no arquivo do banco de dados",
         "savedOnThisDevice": "Salvo apenas neste dispositivo",
@@ -353,6 +363,7 @@
             "pendingPasskeysDisableWarning": "Há passkeys pendentes que ainda não foram confirmadas no banco de dados. Revise-as antes de desativar o preenchimento automático.",
             "pendingPasskeysMultiDb": "Os bancos de dados a seguir têm passkeys pendentes. Abra cada banco de dados para revisá-las e salvá-las.",
             "pendingPasskeysReadOnly": "Há uma ou mais passkeys pendentes para este banco de dados. Elas são mantidas com segurança e poderão ser salvas assim que Somente leitura for desativado para o banco de dados e ele não estiver aberto offline.",
+            "rememberKeyFileHelp": "Este arquivo-chave será preenchido na próxima vez que você abrir este banco de dados.",
             "saveAsFileExists": "Já existe um arquivo com este nome na pasta selecionada. Deseja sobrescrevê-lo?",
             "setupOtp": "Você pode configurar o TOTP lendo um código QR ou inserindo manualmente o segredo ou uma URL OTPAuth",
             "remoteConfigNotAvailable": "Os detalhes de conexão deste banco de dados estão armazenados em outro banco de dados que não está aberto no momento. Abra esse banco de dados primeiro e reabra este — ou abra este offline a partir do backup mais recente, em modo somente leitura.",
@@ -372,6 +383,7 @@
             "scanError": "Erro de leitura",
             "restricted": "Restrito",
             "invalidReference": "Referência inválida",
+            "invalidUrl": "URL inválida",
             "saveAsError": "Erro ao salvar como",
             "uploadStatus": "Status do envio"
         },
@@ -382,7 +394,8 @@
             "scannedUrlNotOtpUri": "A URL lida não é uma URL do tipo OTP",
             "dbMovedOrRenamed": "Parece que o arquivo de banco de dados pode ter sido movido ou renomeado. Remova o banco de dados e reabra o arquivo movido ou renomeado",
             "editingDisabledReadOnly": "A edição está desativada porque o banco de dados foi aberto em modo somente leitura",
-            "uploadStatus": "O anexo enviado é igual ao existente"
+            "uploadStatus": "O anexo enviado é igual ao existente",
+            "urlSchemeNotSupported": "Somente endereços da web (http ou https) são suportados"
         }
     },
     "messageDialog": {
@@ -613,7 +626,18 @@
         "about": {
             "noPersonalInfoCollection": "O aplicativo não coleta nenhuma informação de identificação pessoal. Nada é coletado ou compartilhado com terceiros"
         },
+        "appLockSettings": {
+            "attemptsResetInfo": "Se a autenticação por PIN falhar mais do que esse número de vezes, o app será redefinido. Todas as referências a arquivos de banco de dados, arquivos-chave e caches internos serão removidas",
+            "dbFilesNotRemoved": "Os arquivos de banco de dados em seus locais originais não são removidos",
+            "lastAttemptWarningOff": "O app é redefinido sem nenhum aviso quando a última tentativa permitida falha",
+            "lastAttemptWarningOn": "A tela de bloqueio avisa quando mais um PIN errado vai redefinir o app",
+            "lockDelayImmediately": "O app será bloqueado quando for para segundo plano ou após 1 minuto sem uso. Você precisa inserir o PIN para usar o OneKeePass",
+            "lockDelayTimeout": "O app será bloqueado quando ficar sem uso por esse tempo, esteja em primeiro ou em segundo plano. Você precisa inserir o PIN para usar o OneKeePass",
+            "pinProtected": "O app está protegido por um PIN. Você precisa inserir o PIN para usar o OneKeePass"
+        },
         "appSettings": {
+            "blockScreenshotsAndroid": "Oculta o app em capturas de tela, gravações de tela e apps recentes",
+            "blockScreenshotsIos": "O iOS não permite que apps bloqueiem capturas de tela. O app fica oculto no alternador de apps e enquanto a tela é gravada ou espelhada",
             "clipboardCleard1": "A área de transferência não será limpa",
             "clipboardCleard2": "A área de transferência será limpa em {{clipboardTimeoutTime}}",
             "dbRemainOpened": "O banco de dados permanecerá aberto até ser bloqueado ou fechado",
@@ -649,6 +673,9 @@
             "selectGroup": "Selecione um grupo"
         },
         "enterPin": {
+            "lastAttemptWarning": "Mais um PIN errado vai redefinir o app",
+            "pinMinLength": "Use pelo menos 4 dígitos",
+            "pinsNotMatching": "Os PINs não coincidem. Tente novamente",
             "validPinRequired": "Insira um PIN válido"
         },
         "keyFileForm": {

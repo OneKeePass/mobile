@@ -1,5 +1,12 @@
 {
     "commonTexts": {
+        "appLockDelay": "Thời gian chờ khóa ứng dụng",
+        "attempts": "Số lần thử",
+        "confirmPin": "Xác nhận mã PIN",
+        "lastAttemptWarning": "Cảnh báo trước khi đặt lại",
+        "newPin": "Nhập mã PIN mới",
+        "pin4Digits": "4 chữ số",
+        "pin6Digits": "6 chữ số",
         "Source": "Nguồn",
         "about": "Giới thiệu",
         "add": "Thêm",
@@ -20,6 +27,7 @@
         "appSecureStoreConnections": "Kho lưu trữ bảo mật ứng dụng",
         "autofillSettings": "Cài đặt tự động điền",
         "biometrics": "Sinh trắc học",
+        "blockScreenshots": "Chặn chụp màn hình",
         "bytes": "byte",
         "capitalizeFirstLetter": "Viết hoa chữ cái đầu",
         "capitalizeWords": "Viết hoa các từ",
@@ -65,6 +73,7 @@
         "fileSize": "Kích thước tệp",
         "general": "Chung",
         "good": "Tốt",
+        "group": "Nhóm",
         "groupOrCategory": "Nhóm/Danh mục",
         "groups": "Các nhóm",
         "host": "Máy chủ (Host)",
@@ -113,6 +122,7 @@
         "protected": "Được bảo vệ",
         "readOnly": "Chỉ đọc",
         "readOnlyStripDetail": "Không thể lưu các thay đổi",
+        "rememberKeyFile": "Ghi nhớ tệp khóa",
         "rootUrl": "URL gốc",
         "savedInDbFile": "Được lưu trong tệp cơ sở dữ liệu",
         "savedOnThisDevice": "Chỉ được lưu trên thiết bị này",
@@ -353,6 +363,7 @@
             "pendingPasskeysDisableWarning": "Có các Passkey đang chờ xử lý chưa được lưu vào cơ sở dữ liệu. Vui lòng xem lại trước khi tắt tính năng tự động điền.",
             "pendingPasskeysMultiDb": "Các cơ sở dữ liệu sau đây có Passkey đang chờ xử lý. Mở từng cơ sở dữ liệu để xem lại và lưu chúng.",
             "pendingPasskeysReadOnly": "Có một hoặc nhiều Passkey đang chờ xử lý cho cơ sở dữ liệu này. Chúng được giữ an toàn và có thể được lưu khi chế độ Chỉ đọc được tắt cho cơ sở dữ liệu và cơ sở dữ liệu không được mở ngoại tuyến.",
+            "rememberKeyFileHelp": "Tệp khóa này sẽ được điền sẵn vào lần tới bạn mở cơ sở dữ liệu này.",
             "saveAsFileExists": "Đã có tệp trùng tên trong thư mục đã chọn. Bạn có muốn ghi đè không?",
             "setupOtp": "Bạn có thể thiết lập TOTP bằng cách quét mã QR hoặc nhập thủ công mã bí mật hoặc URL OTPAuth",
             "remoteConfigNotAvailable": "Chi tiết kết nối của cơ sở dữ liệu này được lưu trữ trong một cơ sở dữ liệu khác hiện không mở. Hãy mở cơ sở dữ liệu đó trước rồi mở lại cơ sở dữ liệu này — hoặc mở cơ sở dữ liệu này ngoại tuyến từ bản sao lưu mới nhất, ở chế độ chỉ đọc.",
@@ -372,6 +383,7 @@
             "scanError": "Lỗi quét",
             "restricted": "Bị hạn chế",
             "invalidReference": "Tham chiếu không hợp lệ",
+            "invalidUrl": "URL không hợp lệ",
             "saveAsError": "Lỗi lưu thành tệp mới (Save as)",
             "uploadStatus": "Trạng thái tải lên"
         },
@@ -382,7 +394,8 @@
             "scannedUrlNotOtpUri": "URL đã quét không phải là URL dạng OTP",
             "dbMovedOrRenamed": "Có vẻ như tệp cơ sở dữ liệu đã bị di chuyển hoặc đổi tên. Vui lòng xóa cơ sở dữ liệu khỏi danh sách và mở lại tệp đã di chuyển hoặc đổi tên",
             "editingDisabledReadOnly": "Tính năng chỉnh sửa bị tắt vì cơ sở dữ liệu được mở ở chế độ chỉ đọc",
-            "uploadStatus": "Tệp đính kèm được tải lên giống hệt tệp hiện có"
+            "uploadStatus": "Tệp đính kèm được tải lên giống hệt tệp hiện có",
+            "urlSchemeNotSupported": "Chỉ hỗ trợ địa chỉ web (http hoặc https)"
         }
     },
     "messageDialog": {
@@ -613,7 +626,18 @@
         "about": {
             "noPersonalInfoCollection": "Ứng dụng không thu thập bất kỳ thông tin nhận dạng cá nhân nào. Không có dữ liệu nào bị thu thập hoặc chia sẻ với bên thứ ba"
         },
+        "appLockSettings": {
+            "attemptsResetInfo": "Khi xác thực PIN thất bại quá số lần này, ứng dụng sẽ được đặt lại. Mọi tham chiếu tới tệp cơ sở dữ liệu, tệp khóa và bộ nhớ đệm nội bộ sẽ bị xóa",
+            "dbFilesNotRemoved": "Các tệp cơ sở dữ liệu ở vị trí gốc không bị xóa",
+            "lastAttemptWarningOff": "Ứng dụng sẽ được đặt lại mà không có cảnh báo khi lần thử cuối cùng được phép thất bại",
+            "lastAttemptWarningOn": "Màn hình khóa sẽ cảnh báo khi chỉ thêm một lần nhập sai PIN nữa là ứng dụng sẽ bị đặt lại",
+            "lockDelayImmediately": "Ứng dụng sẽ bị khóa khi chuyển sang chạy nền hoặc sau 1 phút không sử dụng. Bạn cần nhập mã PIN để sử dụng OneKeePass",
+            "lockDelayTimeout": "Ứng dụng sẽ bị khóa khi không được sử dụng trong khoảng thời gian này, dù đang ở chế độ nền hay đang mở. Bạn cần nhập mã PIN để sử dụng OneKeePass",
+            "pinProtected": "Ứng dụng được bảo vệ bằng mã PIN. Bạn cần nhập mã PIN để sử dụng OneKeePass"
+        },
         "appSettings": {
+            "blockScreenshotsAndroid": "Ẩn ứng dụng khỏi ảnh chụp màn hình, bản ghi màn hình và danh sách ứng dụng gần đây",
+            "blockScreenshotsIos": "iOS không cho phép ứng dụng chặn chụp màn hình. Ứng dụng sẽ được ẩn trong trình chuyển đổi ứng dụng và khi màn hình đang được ghi hoặc phản chiếu",
             "clipboardCleard1": "Bộ nhớ tạm sẽ không bị xóa",
             "clipboardCleard2": "Bộ nhớ tạm sẽ được xóa trong {{clipboardTimeoutTime}}",
             "dbRemainOpened": "Cơ sở dữ liệu sẽ duy trì trạng thái mở cho đến khi bị khóa hoặc đóng",
@@ -649,6 +673,9 @@
             "selectGroup": "Vui lòng chọn một nhóm"
         },
         "enterPin": {
+            "lastAttemptWarning": "Nhập sai PIN thêm một lần nữa sẽ đặt lại ứng dụng",
+            "pinMinLength": "Sử dụng ít nhất 4 chữ số",
+            "pinsNotMatching": "Mã PIN không khớp. Hãy thử lại",
             "validPinRequired": "Vui lòng nhập mã PIN hợp lệ"
         },
         "keyFileForm": {

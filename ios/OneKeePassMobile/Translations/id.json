@@ -1,5 +1,12 @@
 {
     "commonTexts": {
+        "appLockDelay": "Jeda kunci aplikasi",
+        "attempts": "Percobaan",
+        "confirmPin": "Konfirmasi PIN",
+        "lastAttemptWarning": "Peringatkan sebelum reset",
+        "newPin": "Masukkan PIN baru",
+        "pin4Digits": "4 digit",
+        "pin6Digits": "6 digit",
         "Source": "Sumber",
         "about": "Tentang",
         "add": "Tambah",
@@ -20,6 +27,7 @@
         "appSecureStoreConnections": "Penyimpanan Aman Aplikasi",
         "autofillSettings": "Pengaturan Isi otomatis",
         "biometrics": "Biometrik",
+        "blockScreenshots": "Blokir tangkapan layar",
         "bytes": "byte",
         "capitalizeFirstLetter": "Kapitalkan huruf pertama",
         "capitalizeWords": "Kapitalkan kata",
@@ -65,6 +73,7 @@
         "fileSize": "Ukuran File",
         "general": "Umum",
         "good": "Baik",
+        "group": "Grup",
         "groupOrCategory": "Grup/Kategori",
         "groups": "Grup",
         "host": "Host",
@@ -113,6 +122,7 @@
         "protected": "Terlindungi",
         "readOnly": "Hanya baca",
         "readOnlyStripDetail": "Perubahan tidak dapat disimpan",
+        "rememberKeyFile": "Ingat berkas kunci",
         "rootUrl": "URL Root",
         "savedInDbFile": "Disimpan di berkas basis data",
         "savedOnThisDevice": "Disimpan hanya di perangkat ini",
@@ -353,6 +363,7 @@
             "pendingPasskeysDisableWarning": "Ada passkey tertunda yang belum disimpan ke database. Harap tinjau sebelum menonaktifkan isi otomatis.",
             "pendingPasskeysMultiDb": "Database berikut memiliki passkey tertunda. Buka setiap database untuk meninjaunya dan menyimpannya.",
             "pendingPasskeysReadOnly": "Ada satu atau lebih passkey tertunda untuk basis data ini. Passkey tersebut disimpan dengan aman dan dapat disimpan setelah Hanya Baca dinonaktifkan untuk basis data ini dan basis data tidak dibuka secara offline.",
+            "rememberKeyFileHelp": "Berkas kunci ini akan terisi saat Anda membuka basis data ini lagi.",
             "saveAsFileExists": "Berkas dengan nama ini sudah ada di folder yang dipilih. Apakah Anda ingin menimpanya?",
             "setupOtp": "Anda dapat mengatur TOTP dengan memindai kode QR atau memasukkan kode rahasia/alamat web OTPAuth",
             "remoteConfigNotAvailable": "Detail koneksi basis data ini disimpan di basis data lain yang saat ini tidak terbuka. Buka basis data tersebut terlebih dahulu lalu buka kembali yang ini — atau buka yang ini secara offline dari cadangan terbaru, dalam mode hanya baca.",
@@ -372,6 +383,7 @@
             "scanError": "Kesalahan memindai",
             "restricted": "Terlarang",
             "invalidReference": "Referensi tidak valid",
+            "invalidUrl": "URL tidak valid",
             "saveAsError": "Error Simpan Sebagai",
             "uploadStatus": "Unggah status"
         },
@@ -382,7 +394,8 @@
             "scannedUrlNotOtpUri": "Alamat web yang dipindai bukan merupakan alamat web tipe OTP",
             "dbMovedOrRenamed": "Sepertinya file database mungkin telah dipindahkan atau diubah namanya. Harap hapus database dan buka kembali file yang telah dipindahkan atau diubah namanya",
             "editingDisabledReadOnly": "Pengeditan dinonaktifkan karena database dibuka dalam mode baca saja",
-            "uploadStatus": "Lampiran yang diunggah sama dengan yang sudah ada"
+            "uploadStatus": "Lampiran yang diunggah sama dengan yang sudah ada",
+            "urlSchemeNotSupported": "Hanya alamat web (http atau https) yang didukung"
         }
     },
     "messageDialog": {
@@ -613,7 +626,18 @@
         "about": {
             "noPersonalInfoCollection": "Aplikasi ini tidak mengumpulkan informasi pribadi apa pun yang dapat diidentifikasi. Tidak ada yang dikumpulkan atau dibagikan dengan pihak eksternal mana pun."
         },
+        "appLockSettings": {
+            "attemptsResetInfo": "Jika autentikasi PIN gagal lebih dari jumlah ini, aplikasi akan direset. Semua referensi ke berkas basis data, berkas kunci, dan cache internal akan dihapus",
+            "dbFilesNotRemoved": "Berkas basis data di lokasi aslinya tidak dihapus",
+            "lastAttemptWarningOff": "Aplikasi direset tanpa peringatan saat percobaan terakhir yang diizinkan gagal",
+            "lastAttemptWarningOn": "Layar kunci memberi peringatan saat satu PIN salah lagi akan mereset aplikasi",
+            "lockDelayImmediately": "Aplikasi akan dikunci saat masuk ke latar belakang, atau setelah 1 menit tidak digunakan. Anda perlu memasukkan PIN untuk menggunakan OneKeePass",
+            "lockDelayTimeout": "Aplikasi akan dikunci jika tidak digunakan selama waktu ini, baik di latar depan maupun di latar belakang. Anda perlu memasukkan PIN untuk menggunakan OneKeePass",
+            "pinProtected": "Aplikasi dilindungi dengan PIN. Anda perlu memasukkan PIN untuk menggunakan OneKeePass"
+        },
         "appSettings": {
+            "blockScreenshotsAndroid": "Menyembunyikan aplikasi dari tangkapan layar, rekaman layar, dan aplikasi terbaru",
+            "blockScreenshotsIos": "iOS tidak mengizinkan aplikasi memblokir tangkapan layar. Aplikasi disembunyikan di pengalih aplikasi dan saat layar direkam atau dicerminkan",
             "clipboardCleard1": "Papan klip tidak akan dibersihkan",
             "clipboardCleard2": "Papan klip akan dibersihkan di {{clipboardTimeoutTime}}",
             "dbRemainOpened": "Basis data akan tetap terbuka sampai dikunci atau ditutup",
@@ -649,6 +673,9 @@
             "selectGroup": "Silakan pilih grup"
         },
         "enterPin": {
+            "lastAttemptWarning": "Satu PIN salah lagi akan mereset aplikasi",
+            "pinMinLength": "Gunakan minimal 4 digit",
+            "pinsNotMatching": "PIN tidak cocok. Coba lagi",
             "validPinRequired": "Silakan masukkan PIN yang valid"
         },
         "keyFileForm": {

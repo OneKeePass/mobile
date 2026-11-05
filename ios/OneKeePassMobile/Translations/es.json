@@ -1,5 +1,12 @@
 {
     "commonTexts": {
+        "appLockDelay": "Retraso del bloqueo de la aplicación",
+        "attempts": "Intentos",
+        "confirmPin": "Confirmar PIN",
+        "lastAttemptWarning": "Avisar antes del restablecimiento",
+        "newPin": "Introduce un PIN nuevo",
+        "pin4Digits": "4 dígitos",
+        "pin6Digits": "6 dígitos",
         "Source": "Fuente",
         "about": "Información sobre",
         "add": "Add",
@@ -20,6 +27,7 @@
         "appSecureStoreConnections": "Almacén seguro de la app",
         "autofillSettings": "Configuración de autocompletar",
         "biometrics": "Biometría",
+        "blockScreenshots": "Bloquear capturas de pantalla",
         "bytes": "bytes",
         "capitalizeFirstLetter": "Poner en mayúscula la primera letra",
         "capitalizeWords": "Poner en mayúscula las palabras",
@@ -65,6 +73,7 @@
         "fileSize": "Tamaño de archivo",
         "general": "General",
         "good": "Bien",
+        "group": "Grupo",
         "groupOrCategory": "Grupo/Categoría",
         "groups": "Grupos",
         "host": "Anfitrión",
@@ -113,6 +122,7 @@
         "protected": "Protegido",
         "readOnly": "Solo lectura",
         "readOnlyStripDetail": "No se pueden guardar los cambios",
+        "rememberKeyFile": "Recordar archivo de claves",
         "rootUrl": "URL raíz",
         "savedInDbFile": "Guardado en el archivo de la base de datos",
         "savedOnThisDevice": "Guardado solo en este dispositivo",
@@ -353,6 +363,7 @@
             "pendingPasskeysDisableWarning": "Hay passkeys pendientes que no han sido confirmados en la base de datos. Por favor, revíselos antes de deshabilitar el autocompletado.",
             "pendingPasskeysMultiDb": "Las siguientes bases de datos tienen passkeys pendientes. Abra cada base de datos para revisarlos y guardarlos.",
             "pendingPasskeysReadOnly": "Hay uno o más passkeys pendientes para esta base de datos. Se conservan de forma segura y podrán guardarse una vez que se desactive Solo lectura para la base de datos y esta no esté abierta sin conexión.",
+            "rememberKeyFileHelp": "Este archivo de claves se completará la próxima vez que abras esta base de datos.",
             "saveAsFileExists": "Ya hay un archivo con este nombre en la carpeta seleccionada. ¿Desea sobrescribirlo?",
             "setupOtp": "Puedes configurar TOTP escaneando un código QR o introduciendo manualmente el secreto o una url OTPAuth",
             "remoteConfigNotAvailable": "Los detalles de conexión de esta base de datos se almacenan en otra base de datos que no está abierta actualmente. Abra primero esa base de datos y luego vuelva a abrir esta, o abra esta sin conexión desde la última copia de seguridad, en modo de solo lectura.",
@@ -372,6 +383,7 @@
             "scanError": "Error de escaneado",
             "restricted": "Restringido",
             "invalidReference": "Referencia inválida",
+            "invalidUrl": "URL no válida",
             "saveAsError": "Error al guardar como",
             "uploadStatus": "Estado de la carga"
         },
@@ -382,7 +394,8 @@
             "scannedUrlNotOtpUri": "La url escaneada no es una url de tipo otp",
             "dbMovedOrRenamed": "Parece que el archivo de base de datos puede haber sido movido o renombrado. Elimine la base de datos y vuelva a abrir el archivo movido o renombrado",
             "editingDisabledReadOnly": "La edición está deshabilitada porque la base de datos está abierta en modo de solo lectura",
-            "uploadStatus": "El archivo adjunto cargado es el mismo que el existente"
+            "uploadStatus": "El archivo adjunto cargado es el mismo que el existente",
+            "urlSchemeNotSupported": "Solo se admiten direcciones web (http o https)"
         }
     },
     "messageDialog": {
@@ -613,7 +626,18 @@
         "about": {
             "noPersonalInfoCollection": "La aplicación no recoge ninguna información personal identificable. No se recoge ni se comparte nada con ninguna parte externa"
         },
+        "appLockSettings": {
+            "attemptsResetInfo": "Si la autenticación con PIN falla más de este número de veces, la aplicación se restablecerá. Se eliminarán todas las referencias a archivos de bases de datos, archivos de claves y cachés internas",
+            "dbFilesNotRemoved": "Los archivos de bases de datos en sus ubicaciones originales no se eliminan",
+            "lastAttemptWarningOff": "La aplicación se restablece sin ningún aviso cuando falla el último intento permitido",
+            "lastAttemptWarningOn": "La pantalla de bloqueo avisa cuando un PIN incorrecto más restablecerá la aplicación",
+            "lockDelayImmediately": "La aplicación se bloqueará cuando pase a segundo plano o tras 1 minuto sin uso. Debes introducir el PIN para usar OneKeePass",
+            "lockDelayTimeout": "La aplicación se bloqueará cuando no se use durante este tiempo, tanto en primer como en segundo plano. Debes introducir el PIN para usar OneKeePass",
+            "pinProtected": "La aplicación está protegida con un PIN. Debes introducir el PIN para usar OneKeePass"
+        },
         "appSettings": {
+            "blockScreenshotsAndroid": "Oculta la aplicación en capturas de pantalla, grabaciones de pantalla y aplicaciones recientes",
+            "blockScreenshotsIos": "iOS no permite que las aplicaciones bloqueen las capturas de pantalla. La aplicación se oculta en el selector de apps y mientras la pantalla se graba o se duplica",
             "clipboardCleard1": "El portapapeles no se borra",
             "clipboardCleard2": "El portapapeles se borrará en {{clipboardTimeoutTime}}",
             "dbRemainOpened": "La base de datos permanecerá abierta hasta que se bloquee o se cierre",
@@ -649,6 +673,9 @@
             "selectGroup": "Seleccione un grupo por favor"
         },
         "enterPin": {
+            "lastAttemptWarning": "Un PIN incorrecto más restablecerá la aplicación",
+            "pinMinLength": "Usa al menos 4 dígitos",
+            "pinsNotMatching": "Los PIN no coinciden. Inténtalo de nuevo",
             "validPinRequired": "Por favor introduce un PIN válido"
         },
         "keyFileForm": {

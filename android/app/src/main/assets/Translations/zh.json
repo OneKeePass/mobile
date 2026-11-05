@@ -1,5 +1,12 @@
 {
     "commonTexts": {
+        "appLockDelay": "应用锁定延迟",
+        "attempts": "尝试次数",
+        "confirmPin": "确认 PIN 码",
+        "lastAttemptWarning": "重置前发出警告",
+        "newPin": "输入新的 PIN 码",
+        "pin4Digits": "4 位数字",
+        "pin6Digits": "6 位数字",
         "Source": "来源",
         "about": "关于",
         "add": "添加",
@@ -20,6 +27,7 @@
         "appSecureStoreConnections": "应用安全存储",
         "autofillSettings": "自动填充设置",
         "biometrics": "生物识别",
+        "blockScreenshots": "阻止截屏",
         "bytes": "字节",
         "capitalizeFirstLetter": "首字母大写",
         "capitalizeWords": "单词首字母大写",
@@ -65,6 +73,7 @@
         "fileSize": "文件大小",
         "general": "通用",
         "good": "好",
+        "group": "分组",
         "groupOrCategory": "分组/分类",
         "groups": "分组",
         "host": "主机",
@@ -113,6 +122,7 @@
         "protected": "受保护",
         "readOnly": "只读",
         "readOnlyStripDetail": "无法保存更改",
+        "rememberKeyFile": "记住密钥文件",
         "rootUrl": "根URL",
         "savedInDbFile": "保存在数据库文件中",
         "savedOnThisDevice": "仅保存在此设备上",
@@ -353,6 +363,7 @@
             "pendingPasskeysDisableWarning": "有待处理的 Passkey 尚未提交到数据库。请在禁用自动填充之前检查它们。",
             "pendingPasskeysMultiDb": "以下数据库有待处理的 Passkey。请打开每个数据库来检查并保存它们。",
             "pendingPasskeysReadOnly": "此数据库有一个或多个待处理的 Passkey。它们已被安全保留，在为该数据库关闭只读并且数据库不是以离线方式打开时即可保存。",
+            "rememberKeyFileHelp": "下次打开此数据库时将自动填入此密钥文件。",
             "saveAsFileExists": "所选文件夹中已存在同名文件。要覆盖它吗？",
             "setupOtp": "您可以通过扫描二维码或手动输入密钥或OTPAuth URL来设置TOTP",
             "remoteConfigNotAvailable": "此数据库的连接详情存储在另一个当前未打开的数据库中。请先打开该数据库，然后重新打开此数据库——或从最新备份离线打开此数据库（只读模式）。",
@@ -372,6 +383,7 @@
             "scanError": "扫描错误",
             "restricted": "受限",
             "invalidReference": "无效引用",
+            "invalidUrl": "无效的 URL",
             "saveAsError": "另存为错误",
             "uploadStatus": "上传状态"
         },
@@ -382,7 +394,8 @@
             "scannedUrlNotOtpUri": "扫描的URL不是OTP类型的URL",
             "dbMovedOrRenamed": "数据库文件似乎已被移动或重命名。请删除该数据库并重新打开已移动或重命名的文件",
             "editingDisabledReadOnly": "编辑已禁用，因为数据库以只读模式打开",
-            "uploadStatus": "上传的附件与现有附件相同"
+            "uploadStatus": "上传的附件与现有附件相同",
+            "urlSchemeNotSupported": "仅支持网址（http 或 https）"
         }
     },
     "messageDialog": {
@@ -613,7 +626,18 @@
         "about": {
             "noPersonalInfoCollection": "本应用不会收集任何个人身份信息，不会收集也不会与任何第三方共享任何信息"
         },
+        "appLockSettings": {
+            "attemptsResetInfo": "当 PIN 码验证失败次数超过此数值时，应用将被重置。所有对数据库文件、密钥文件的引用以及内部缓存都将被删除",
+            "dbFilesNotRemoved": "原始位置的数据库文件不会被删除",
+            "lastAttemptWarningOff": "最后一次允许的尝试失败时，应用将在没有任何警告的情况下被重置",
+            "lastAttemptWarningOn": "当再输错一次 PIN 码就会重置应用时，锁定屏幕会发出警告",
+            "lockDelayImmediately": "应用转入后台或 1 分钟未使用时将被锁定。您需要输入 PIN 码才能使用 OneKeePass",
+            "lockDelayTimeout": "无论应用在前台还是后台，未使用达到此时长后都将被锁定。您需要输入 PIN 码才能使用 OneKeePass",
+            "pinProtected": "应用已受 PIN 码保护。您需要输入 PIN 码才能使用 OneKeePass"
+        },
         "appSettings": {
+            "blockScreenshotsAndroid": "在截屏、录屏和最近使用的应用中隐藏本应用",
+            "blockScreenshotsIos": "iOS 不允许应用阻止截屏。在应用切换器中以及屏幕被录制或镜像时，本应用会被隐藏",
             "clipboardCleard1": "剪贴板不会被清除",
             "clipboardCleard2": "剪贴板将在 {{clipboardTimeoutTime}} 后被清除",
             "dbRemainOpened": "数据库将保持打开状态直到被锁定或关闭",
@@ -649,6 +673,9 @@
             "selectGroup": "请选择一个分组"
         },
         "enterPin": {
+            "lastAttemptWarning": "再输错一次 PIN 码将重置应用",
+            "pinMinLength": "请至少使用 4 位数字",
+            "pinsNotMatching": "PIN 码不一致，请重试",
             "validPinRequired": "请输入有效的 PIN 码"
         },
         "keyFileForm": {
