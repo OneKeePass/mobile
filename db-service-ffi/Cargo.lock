@@ -2040,6 +2040,7 @@ checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 [[package]]
 name = "onekeepass-core"
 version = "0.26.0"
+source = "git+https://github.com/OneKeePass/onekeepass-core.git?tag=v0.26.0#8e3f0ea3c491110ae3a1b87cf31df9e7f0606291"
 dependencies = [
  "base64",
  "botan",
@@ -2432,9 +2433,9 @@ dependencies = [
 
 [[package]]
 name = "psl"
-version = "2.1.245"
+version = "2.1.247"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "46cce9bc841c0eeb395275a775d11e3cc91b904e6ab370a9a42369e111b3038e"
+checksum = "bcf03dc0cd8c65e109a7848e3b4adf06236a181d937af94bff66966e3876b1aa"
 dependencies = [
  "psl-types",
 ]
