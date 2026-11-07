@@ -58,27 +58,7 @@ react {
 /**
  * Set this to true to Run Proguard on Release builds to minify the Java bytecode.
  */
-def enableProguardInReleaseBuilds = false
-
-/**
- * The preferred build flavor of JavaScriptCore (JSC)
- *
- * For example, to use the international variant, you can use:
- * `def jscFlavor = io.github.react-native-community:jsc-android-intl:2026004.+`
- *
- * The international variant includes ICU i18n library and necessary data
- * allowing to use e.g. `Date.toLocaleString` and `String.localeCompare` that
- * give correct results when using with locales other than en-US. Note that
- * this variant is about 6MiB larger per architecture than default.
- */
-
-//TODO: (Custom-Jey)
-// Not used as Hermes is enabled by default in RN 0.81.5
-// Enabled Intl jscFlavor to support the use of react i18next package's compatibilityJSON "v4" mode
-// and use of i18next::pluralResolver
-
-// def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
-// def jscFlavor = 'io.github.react-native-community:jsc-android-intl:2026004.+'
+def enableProguardInReleaseBuilds = true
 
 android {
     ndkVersion rootProject.ext.ndkVersion
@@ -102,7 +82,7 @@ android {
     lintOptions {
         abortOnError false
     }
-    ////////////////////  APK Only ///////////////////
+    ////////////////////  APK Only START ///////////////////
     //TODO: (Custom-Jey) Added for APK release time only
     // needs to be commented out for play store release
     /* 
@@ -125,7 +105,7 @@ android {
         }
     }
     */
-    ////////////////////////////////////////  APK Only ///////////////////
+    ////////////////////////////////////////  APK Only END ///////////////////
     
     namespace "com.onekeepassmobile"
     defaultConfig {
@@ -200,7 +180,7 @@ android {
             signingConfig signingConfigs.debug
         }
 
-        /*
+        /* 
         release {
             // Caution! In production, you need to generate your own keystore file.
             // see https://reactnative.dev/docs/signed-apk-android.
@@ -208,9 +188,20 @@ android {
             // TODO: (Custom-Jey) Changed to signingConfig signingConfigs.release
             signingConfig signingConfigs.release
             minifyEnabled enableProguardInReleaseBuilds
-            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+            shrinkResources enableProguardInReleaseBuilds
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+
+            // Local device testing only. Passing -POKP_LOCAL_RELEASE_TEST to gradle installs the release
+            // build as 'com.onekeepassmobile.releasetest', side by side with the Play installed app
+            // (a locally signed build cannot replace the Play signed one without uninstalling it and losing its data).
+            // The release script never passes this property, so store builds keep the real app id
+            if (project.hasProperty('OKP_LOCAL_RELEASE_TEST')) {
+                applicationIdSuffix ".releasetest"
+                versionNameSuffix "-releasetest"
+            }
         }
         */
+        
     }
 }
 
