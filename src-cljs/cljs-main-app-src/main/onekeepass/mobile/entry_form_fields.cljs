@@ -229,8 +229,10 @@
                                                       :onFocus #(field-focus-action key true)
                                                       :onBlur #(field-focus-action key false)
                                                       :onChangeText (if edit on-change-text nil)
-                                                      ;; Copies only on a completed tap - see 'ios-form-text-input'
-                                                      :onPress (if-not edit
+                                                      ;; Android's native text input takes over the touch, so JS sees it
+                                                      ;; cancelled rather than completed and 'onPress' never fires.
+                                                      ;; 'onPressOut' still fires on the cancel
+                                                      :onPressOut (if-not edit
                                                                     #(cmn-events/write-string-to-clipboard
                                                                       {:field-name key
                                                                        :protected protected
@@ -683,11 +685,12 @@
                        :onFocus #(field-focus-action key true)
                        :onBlur #(field-focus-action key false)
                        :onChangeText nil
-                       ;; Copies only on a completed tap - see 'ios-form-text-input'
-                       :onPress #(cmn-events/write-string-to-clipboard
-                                     {:field-name key
-                                      :protected protected
-                                      :value token})
+                       ;; 'onPress' on iOS - see 'ios-form-text-input'. Android never fires it
+                       ;; for a text input - see 'android-form-text-input'
+                       (if (is-iOS) :onPress :onPressOut) #(cmn-events/write-string-to-clipboard
+                                                            {:field-name key
+                                                             :protected protected
+                                                             :value token})
                        :secureTextEntry false
                        :right nil}]
       [rn-view {:style {:width "10%" :justify-content "center"}}
