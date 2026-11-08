@@ -29,3 +29,9 @@
 -keep class com.swmansion.worklets.** { *; }
 -keep class com.facebook.react.turbomodule.** { *; }
 -keep class com.facebook.react.fabric.** { *; }
+
+# Tink (pulled in by androidx.security:security-crypto) references Error Prone
+# annotations that are compile-time only and not needed at runtime. The Play
+# build gets them through another dependency (most likely vision-camera's); the
+# FOSS apk build excludes vision-camera, so R8 reports them as missing classes
+-dontwarn com.google.errorprone.annotations.**
