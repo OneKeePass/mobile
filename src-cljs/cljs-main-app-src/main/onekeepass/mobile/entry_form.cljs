@@ -81,19 +81,6 @@
   []
   (merge (gl/card-block-style) {:padding-bottom CARD-FIELDS-BOTTOM-PADDING}))
 
-;; The notes card is the one field card that is left unclipped. Ending an editing or saving
-;; left the field showing neither its text nor its label, while the value was still there in
-;; the form data - the notes came back only on opening the entry again, which mounts the field
-;; afresh. The multiline input draws outside the box the card gives it after that switch and
-;; the card's 'overflow hidden' was cutting all of it away
-;;
-;; Dropping the clipping is what makes the notes visible again. It is safe to drop here as the
-;; bottom padding already keeps the field's underline off the card's rounded edge, which is
-;; what the clipping is there for
-(defn- notes-card-style
-  []
-  (merge (fields-card-style) {:overflow "visible"}))
-
 (defn appbar-title
   "Entry form specific title to display"
   []
@@ -341,14 +328,11 @@
 
 (defn notes [edit]
   (let [value @(form-events/entry-form-data-fields :notes)]
-    (when (or edit (not (str/blank? value)))
-      [rn-view {:style (if edit
-                         {:padding-right 5 :padding-left 5 :borderWidth 0.20 :borderRadius 4}
-                         (notes-card-style))}
+    (cond
+      edit
+      [rn-view {:style {:padding-right 5 :padding-left 5 :borderWidth 0.20 :borderRadius 4}}
        [rnp-text-input (merge no-autocorrect-text-props
-                              {:style (merge {:width "100%"}
-                                             (when-not edit
-                                               {:backgroundColor (ef-fields/read-field-background)}))
+                              {:style {:width "100%"}
                                :multiline true
                                :label  (lstr-l "notes")
                                ;; :label (r/as-element [rnp-text {:style {:color "red"}} "My Notes"])
@@ -358,8 +342,11 @@
                                :ref (fn [^js/Ref ref]
                                       (reset! notes-ref ref)
                                       (when (and (is-Android) (not (nil? ref)) (str/blank? value)) (.clear ref)))
-                               :showSoftInputOnFocus edit
-                               :onChangeText (when edit #(form-events/entry-form-data-update-field-value :notes %))})]])))
+                               :onChangeText #(form-events/entry-form-data-update-field-value :notes %)})]]
+
+      (not (str/blank? value))
+      [rn-view {:style (fields-card-style)}
+       [ef-fields/read-field {:key (lstr-l "notes") :value value}]])))
 
 (defn section-header [section-name]
   (let [edit @(form-events/entry-form-field :edit)
