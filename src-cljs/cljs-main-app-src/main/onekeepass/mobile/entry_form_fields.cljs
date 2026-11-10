@@ -16,7 +16,7 @@
             [onekeepass.mobile.rn-components
              :as rnc :refer [animated-circular-progress dots-icon-name
                              no-assist-text-props
-                             page-background-color rn-keyboard rn-pressable
+                             page-background-color rn-keyboard rn-text-input
                              rn-view rnp-button
                              rnp-helper-text rnp-icon-button rnp-switch rnp-text
                              rnp-text-input rnp-text-input-icon]]
@@ -54,9 +54,8 @@
   []
   @rnc/grouped-list-card-color)
 
-;; The read mode field that was last pressed, or nil. A read mode field is a text display and so
-;; cannot hold the focus, but it is drawn with the underline and the label of a focused input so
-;; that pressing it shows which field was copied
+;; The read mode field whose copy icon was last pressed, or nil. It is drawn with the underline and
+;; the label of a focused input so that the form shows which field was copied
 (def ^:private pressed-read-field (r/atom nil))
 
 (defn- pressed-read-field? [key]
@@ -80,16 +79,17 @@
   (if (pressed-read-field? key) @rnc/primary-color @rnc/outline-color))
 
 (defn- read-field-on-press
-  "Pressing a read mode field copies its value to the clipboard and leaves that field looking
-   like the focused one.
+  "Pressing the copy icon of a read mode field copies its full value to the clipboard and leaves
+   that field looking like the focused one.
 
    Dropping the keyboard first blurs whichever text input of the form holds the focus - pressing
    a view of our own does not take the focus off a native input on either platform - so that only
    one field of the form is ever drawn as focused"
   [{:keys [key protected] :as kv}]
   (fn []
+    ;; The backend requires a boolean, and the notes field for one is not given a :protected value
     (cmn-events/write-string-to-clipboard {:field-name key
-                                           :protected protected
+                                           :protected (boolean protected)
                                            :value (to-field-value kv)})
     (.dismiss rn-keyboard)
     (reset! pressed-read-field key)))
@@ -336,26 +336,25 @@
 ;; A masked value is always shown with this many dots so that its length is not given away
 (def ^:private masked-read-value "••••••••")
 
-;; Room for the launch icon that 'text-field' lays over the right end of a url or connection
-;; field, so that a long value wraps before it instead of running under the icon
-(def ^:private read-field-action-icon-space 48)
+;; Two icons can sit side by side at the end of a field, so the outer margins are dropped to leave
+;; more of the row to the value
+(def ^:private read-field-icon-style {:margin-left 0 :margin-right 0})
 
 (defn- read-field-row
   "Lays out a read mode field the way the flat text input of the edit mode is - the label on top,
-   the value below it and a thin underline. The field is a text display and not a text input, so
-   pressing it brings up no keyboard or cursor and starts no autofill request
+   the value below it and a thin underline - with a copy icon at the end of the row
 
-   'onPress' of a pressable fires only for a completed tap. A scroll or the system swipe to switch
-   apps that starts on a field does not copy that field and so does not replace what the user
-   just copied
+   Only the icon copies. Touching the value does not, so that a scroll or the system swipe to
+   switch apps that starts on a field cannot replace what the user just copied, and so that a
+   long press is left free for selecting a part of the value
 
    Args:
-     kv          the field's map - :key and the value are what gets copied. Its label comes from
-                 'to-field-label'. :action-icon-space leaves room for an icon laid over the field
-     value-view  the component showing the value
-     right-view  optional component at the right end of the row, outside of the pressable area
+     kv           the field's map - :key and the value are what gets copied. Its label comes from
+                  'to-field-label'
+     value-view   the component showing the value
+     action-view  optional component placed just before the copy icon
   "
-  [{:keys [key]} _value-view _right-view]
+  [{:keys [key]} _value-view _action-view]
   (r/create-class
    {:display-name "read-field-row"
 
@@ -365,7 +364,7 @@
     (fn [] (clear-pressed-read-field key))
 
     :reagent-render
-    (fn [{:keys [key action-icon-space] :as kv} value-view right-view]
+    (fn [{:keys [key] :as kv} value-view action-view]
       [rn-view {:style {:width "100%"
                         :flexDirection "row"
                         :align-items "center"
@@ -373,26 +372,45 @@
                         :border-bottom-width 0.5
                         :border-bottom-color @rnc/outline-color
                         :backgroundColor (read-field-background)}}
-       [rn-pressable {:style (merge {:flex 1
-                                     :align-self "stretch"
-                                     :justify-content "center"
-                                     :padding-left 16
-                                     :padding-top 8
-                                     :padding-bottom 8}
-                                    (when action-icon-space
-                                      {:padding-right read-field-action-icon-space}))
-                      :android_ripple (when (is-Android)
-                                        #js {:color @rnc/primary-container-color})
-                      :onPress (read-field-on-press kv)}
+       [rn-view {:style {:flex 1
+                         :padding-left 16
+                         :padding-top 8
+                         :padding-bottom 8}}
         [rnp-text {:variant "bodySmall" :style {:color (read-field-label-color key)}}
          (to-field-label kv)]
         value-view]
-       right-view
+       action-view
+       [rnp-icon-button {:style read-field-icon-style
+                         :icon "content-copy"
+                         :onPress (read-field-on-press kv)}]
        [read-field-active-underline key]])}))
+
+(defn- selectable-read-value
+  "Shows a plain text value so that a part of it can be selected and copied with the system menu.
+
+   Neither component does this on both platforms. On iOS a selectable 'Text' can only copy its
+   whole text. On Android a text input with 'editable' false is disabled and cannot be selected.
+   iOS keeps selection on a non editable input only when it is multiline, as the single line one
+   is disabled just as Android's is. The menu of either one offers no cut or paste
+
+   'textBreakStrategy' is explained in 'read-field-value'"
+  [val]
+  (if (is-iOS)
+    ;; A bare input without the padding it has by default, so that its text lines up with the
+    ;; label above it. It does not scroll on its own and the page scrolls instead
+    [rn-text-input {:value val
+                    :editable false
+                    :multiline true
+                    :scrollEnabled false
+                    :style {:padding 0
+                            :paddingTop 0
+                            :fontSize 14
+                            :color @rnc/on-background-color}}]
+    [rnp-text {:selectable true :textBreakStrategy "simple"} val]))
 
 (defn- read-field-value
   "The value of a read mode field - dots when it is masked, colored characters for a revealed
-   password like value and otherwise plain text"
+   password like value, monospaced text for a key and otherwise selectable plain text"
   [{:keys [key protected visible] :as kv}]
   (let [val (to-field-value kv)]
     (cond
@@ -403,29 +421,39 @@
       [cc/colored-password val true {:style {:fontSize 18 :letterSpacing 0.5}}]
 
       ;; A key is monospaced and a bit smaller as a pem or an openssh text reads better that way
-      ;; and more of it fits on a line. Anything else keeps the font of the rest of the form
+      ;; and more of it fits on a line
       ;;
-      ;; The whole value is shown either way - the form is inside a scroll view and so a long
-      ;; value is read by scrolling the page rather than scrolling within the field
+      ;; The whole value is shown - the form is inside a scroll view and so a long value is read
+      ;; by scrolling the page rather than scrolling within the field
       ;; 'textBreakStrategy' is an android only prop and iOS ignores it. Android breaks the lines
       ;; of a text with the high quality strategy by default, which ends a line well before the
       ;; width it has for a value that is one long run of letters and digits like a pem body. The
       ;; simple strategy fills each line as far as it goes, which is what iOS does
-      :else
+      (contains? const/KEY_FIELD_NAMES key)
       [rnp-text {:textBreakStrategy "simple"
-                 :style (when (contains? const/KEY_FIELD_NAMES key)
-                          {:fontFamily rnc/monospace-font-family :fontSize 14})} val])))
+                 :style {:fontFamily rnc/monospace-font-family :fontSize 14}} val]
+
+      :else
+      [selectable-read-value val])))
 
 (defn read-field
   "Shows a field of the entry form in read mode. See 'read-field-row'. A protected field also
-   gets the eye icon that reveals or masks its value"
-  [{:keys [key protected visible] :as kv}]
+   gets the eye icon that reveals or masks its value and :action-view, when given, is an icon
+   placed next to the copy icon"
+  [{:keys [key protected visible action-view] :as kv}]
   [read-field-row kv
    [read-field-value kv]
-   (when protected
-     [rnp-icon-button {:style {:margin-right 0}
-                       :icon (if visible "eye" "eye-off")
-                       :onPress (visibility-toggle-on-press key)}])])
+   [:<>
+    (when protected
+      [rnp-icon-button {:style read-field-icon-style
+                        :icon (if visible "eye" "eye-off")
+                        :onPress (visibility-toggle-on-press key)}])
+    action-view]])
+
+(defn- read-field-launch-icon [on-press]
+  [rnp-icon-button {:style read-field-icon-style
+                    :icon const/ICON-LAUNCH
+                    :onPress on-press}])
 
 (defn text-field
   "Called to show form fields"
@@ -476,14 +504,21 @@
                                       edit
                                       (= (:field-name @field-focused) key)
                                       (not standard-field)))
-        icon-space-required (or is-password-edit? custom-field-edit-focused?)]
+        icon-space-required (or is-password-edit? custom-field-edit-focused?)
+        read-action-view (cond
+                           non-edit-kdbx-url
+                           [read-field-launch-icon #(ef-ao/entry-form-open-url value)]
+
+                           ;; Launch the remote Storage Browser using this connection entry
+                           rs-conn-launch?
+                           [read-field-launch-icon #(rs-events/open-entry-remote entry-type-uuid entry-uuid)])]
     [rn-view {:flexDirection "column"}
      ;; text input field and optional icon button in the same row
      [rn-view {:flexDirection "row" :style {:flex 1}}
       ;; First platform specific text input field
       (cond
         (not edit)
-        [read-field (assoc kvm :action-icon-space (or non-edit-kdbx-url rs-conn-launch?))]
+        [read-field (assoc kvm :action-view read-action-view)]
 
         (is-iOS)
         [ios-form-text-input (assoc kvm :icon-space-required icon-space-required)]
@@ -506,24 +541,7 @@
         [rn-view {:style {:margin-left -5 :backgroundColor cust-color}}
          [rnp-icon-button {:style {:margin-right 0}
                            :icon dots-icon-name
-                           :onPress #(custom-field-menu-show % section-name key protected required data-type)}]])
-
-      ;; We are using 'absolute' position to add this icon button instead of setting to "right" prop of textinput field 
-      ;; and it works in iOS (needs checking in android)
-      (when non-edit-kdbx-url
-        [rn-view {:style {:margin-left -5 :backgroundColor cust-color :position "absolute" :right 0}}
-         [rnp-icon-button {:style {:margin-right 0}
-                           :icon const/ICON-LAUNCH
-                           :onPress (fn []
-                                      (ef-ao/entry-form-open-url value))}]])
-
-      ;; Launch the remote Storage Browser using this connection entry
-      (when rs-conn-launch?
-        [rn-view {:style {:margin-left -5 :backgroundColor cust-color :position "absolute" :right 0}}
-         [rnp-icon-button {:style {:margin-right 0}
-                           :icon const/ICON-LAUNCH
-                           :onPress (fn []
-                                      (rs-events/open-entry-remote entry-type-uuid entry-uuid))}]])]
+                           :onPress #(custom-field-menu-show % section-name key protected required data-type)}]])]
 
      ;; Any error text below the field, otherwise the field's helper text (e.g. CVC, Additional URLs)
      (cond

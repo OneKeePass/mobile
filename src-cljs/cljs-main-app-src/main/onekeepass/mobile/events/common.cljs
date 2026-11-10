@@ -1505,10 +1505,9 @@
                            :field-value value
                            :protected protected
                            :cleanup-after cb-timeout_secs}
-                          #()))
-
-  (when field-name
-    (dispatch [:common/message-snackbar-open (str field-name " " "copied")])))
+                          (fn [api-response]
+                            (when-not (on-error api-response)
+                              (dispatch [:common/message-snackbar-open (str field-name " " "copied")]))))))
 
 
 ;;;;;;;;;;;;;;;;;;;; Open URL ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
