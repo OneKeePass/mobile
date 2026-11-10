@@ -336,9 +336,13 @@
 ;; A masked value is always shown with this many dots so that its length is not given away
 (def ^:private masked-read-value "••••••••")
 
+;; Props shared by every icon at the end of a read mode field - copy, eye and launch. Changing
+;; :size here resizes all of them. Paper's own default size is 24
+;;
 ;; Two icons can sit side by side at the end of a field, so the outer margins are dropped to leave
 ;; more of the row to the value
-(def ^:private read-field-icon-style {:margin-left 0 :margin-right 0})
+(def ^:private read-field-icon-props {:size 20
+                                      :style {:margin-left 0 :margin-right 0}})
 
 (defn- read-field-row
   "Lays out a read mode field the way the flat text input of the edit mode is - the label on top,
@@ -380,9 +384,9 @@
          (to-field-label kv)]
         value-view]
        action-view
-       [rnp-icon-button {:style read-field-icon-style
-                         :icon "content-copy"
-                         :onPress (read-field-on-press kv)}]
+       [rnp-icon-button (merge read-field-icon-props
+                               {:icon "content-copy"
+                                :onPress (read-field-on-press kv)})]
        [read-field-active-underline key]])}))
 
 (defn- selectable-read-value
@@ -445,15 +449,15 @@
    [read-field-value kv]
    [:<>
     (when protected
-      [rnp-icon-button {:style read-field-icon-style
-                        :icon (if visible "eye" "eye-off")
-                        :onPress (visibility-toggle-on-press key)}])
+      [rnp-icon-button (merge read-field-icon-props
+                              {:icon (if visible "eye" "eye-off")
+                               :onPress (visibility-toggle-on-press key)})])
     action-view]])
 
 (defn- read-field-launch-icon [on-press]
-  [rnp-icon-button {:style read-field-icon-style
-                    :icon const/ICON-LAUNCH
-                    :onPress on-press}])
+  [rnp-icon-button (merge read-field-icon-props
+                          {:icon const/ICON-LAUNCH
+                           :onPress on-press})])
 
 (defn text-field
   "Called to show form fields"
