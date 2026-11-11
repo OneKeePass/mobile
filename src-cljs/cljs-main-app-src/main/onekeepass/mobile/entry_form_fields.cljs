@@ -344,6 +344,12 @@
 (def ^:private read-field-icon-props {:size 20
                                       :style {:margin-left 0 :margin-right 0}})
 
+;; The least height of a read mode value - one line of the size 18 text that the masking dots and
+;; a revealed password are drawn with. A revealed plain value has the smaller size of the other
+;; fields, and its line would otherwise be shorter than the dots it replaces. The label and the
+;; value are centered in the row together, so the label moved down a little on every reveal
+(def ^:private read-field-value-min-height 24)
+
 (defn- read-field-row
   "Lays out a read mode field the way the flat text input of the edit mode is - the label on top,
    the value below it and a thin underline - with a copy icon at the end of the row
@@ -385,7 +391,8 @@
                          :padding-bottom 8}}
         [rnp-text {:variant "bodySmall" :style {:color (read-field-label-color key)}}
          (to-field-label kv)]
-        value-view]
+        [rn-view {:style {:min-height read-field-value-min-height}}
+         value-view]]
        action-view
        [rnp-icon-button (merge read-field-icon-props
                                {:icon "content-copy"
