@@ -81,6 +81,20 @@
   []
   (merge (gl/card-block-style) {:padding-bottom CARD-FIELDS-BOTTOM-PADDING}))
 
+;; The notes card is the one field card that is left unclipped. On Android, ending an editing or
+;; a save left the notes card at the right height but showing neither the label nor the text,
+;; while the value was there in the form data - the notes came back only on opening the entry
+;; again, which mounts the card afresh. The card's 'overflow hidden' is what hides them. It was
+;; seen with the earlier multiline input as well as with the text display used in read mode now,
+;; so it comes from the card and not from what is inside it
+;;
+;; Dropping the clipping is what makes the notes visible again. It is safe to drop here as the
+;; bottom padding already keeps the field's underline off the card's rounded edge, which is
+;; what the clipping is there for
+(defn- notes-card-style
+  []
+  (merge (fields-card-style) {:overflow "visible"}))
+
 (defn appbar-title
   "Entry form specific title to display"
   []
@@ -345,7 +359,7 @@
                                :onChangeText #(form-events/entry-form-data-update-field-value :notes %)})]]
 
       (not (str/blank? value))
-      [rn-view {:style (fields-card-style)}
+      [rn-view {:style (notes-card-style)}
        [ef-fields/read-field {:key (lstr-l "notes") :value value}]])))
 
 (defn section-header [section-name]
