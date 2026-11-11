@@ -369,13 +369,16 @@
 
     :reagent-render
     (fn [{:keys [key] :as kv} value-view action-view]
+      ;; The row has no background of its own and the card it sits on shows through. A row sized
+      ;; by its text has a fractional height, and Android can then place the next row a pixel
+      ;; into it once both are turned into whole pixels. A background on the next row painted
+      ;; over this row's dividing line there, and the line went missing on some rows only
       [rn-view {:style {:width "100%"
                         :flexDirection "row"
                         :align-items "center"
                         :min-height 60
                         :border-bottom-width 0.5
-                        :border-bottom-color @rnc/outline-color
-                        :backgroundColor (read-field-background)}}
+                        :border-bottom-color @rnc/outline-color}}
        [rn-view {:style {:flex 1
                          :padding-left 16
                          :padding-top 8

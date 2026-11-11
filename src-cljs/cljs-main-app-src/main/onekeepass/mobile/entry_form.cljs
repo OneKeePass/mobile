@@ -516,6 +516,16 @@
                                              :options  (mapv (fn [v] {:key v :label v}) select-field-options)
                                              :value value
                                              :disabled (not edit)
+                                             ;; In read mode the field sits on the section card and
+                                             ;; lets the card show through, as the read mode text
+                                             ;; fields do - see 'read-field-row'. The input's own theme
+                                             ;; background is the card color only in the light theme,
+                                             ;; and on Android it was also seen hiding the dividing
+                                             ;; line of the field above it. Its bottom line takes the
+                                             ;; color of the other fields' dividing lines
+                                             :text-input-style (when-not edit
+                                                                 {:backgroundColor "transparent"})
+                                             :underline-color (when-not edit @rnc/outline-color)
                                              :on-change #(form-events/update-section-value-on-change
                                                           section-name key (.-label ^js/SelOption %))}]
 
