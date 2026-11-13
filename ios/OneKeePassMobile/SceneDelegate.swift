@@ -41,9 +41,12 @@ class SceneDelegate: NSObject, UIWindowSceneDelegate {
 
   // The user's 'Block screenshots' setting. Set from OkpDbService.setScreenCaptureBlocked each time
   // the UI loads the app preference and when the setting changes.
-  // iOS does not let an app block screenshots. When this is true, a cover is shown instead while
-  // the screen is recorded or mirrored, and when the app goes to the background so that the
-  // app switcher snapshot does not show the database content
+  // iOS has no API to block screenshots. When this is true:
+  //  - the app window is moved into the layer of a secure text field (see 'updateScreenshotShield')
+  //    so that screenshots and recordings show it blank
+  //  - a cover is shown while the screen is recorded or mirrored, and when the app goes to the
+  //    background so that the app switcher snapshot does not show the database content. This
+  //    still works when the secure layer could not be found
   private(set) static var screenCaptureBlocked: Bool = false
 
   private static weak var current: SceneDelegate?
@@ -53,9 +56,74 @@ class SceneDelegate: NSObject, UIWindowSceneDelegate {
 
   private var inBackground: Bool = false
 
+  // Set while the app window's layer is inside the secure text field's layer
+  private var secureField: UITextField?
+  private weak var windowLayerOriginalSuperlayer: CALayer?
+
   static func setScreenCaptureBlocked(_ blocked: Bool) {
     screenCaptureBlocked = blocked
+    current?.updateScreenshotShield()
     current?.updatePrivacyCover()
+  }
+
+  // iOS leaves the content of a secure text entry field out of screenshots and recordings.
+  // This is not a documented API: it relies on the field drawing its text in an internal canvas
+  // view. The app window's layer is placed under that canvas layer. Only the layer tree changes;
+  // the view tree is untouched, so touches, the keyboard and accessibility keep working.
+  // If the canvas layer is not found on the running iOS version, nothing is changed
+  private func updateScreenshotShield() {
+    guard let window = window else { return }
+
+    if Self.screenCaptureBlocked, secureField == nil {
+      guard let originalSuperlayer = window.layer.superlayer else {
+        logger.error("Screenshot shield not applied: window layer has no superlayer")
+        return
+      }
+
+      let field = UITextField()
+      field.isSecureTextEntry = true
+      field.isUserInteractionEnabled = false
+      window.addSubview(field)
+      field.layoutIfNeeded()
+
+      guard let canvasLayer = Self.secureCanvasLayer(of: field) else {
+        logger.error("Screenshot shield not applied: secure canvas layer not found. Sublayers are \(Self.sublayerDelegateNames(of: field))")
+        field.removeFromSuperview()
+        return
+      }
+
+      originalSuperlayer.addSublayer(field.layer)
+      canvasLayer.addSublayer(window.layer)
+
+      secureField = field
+      windowLayerOriginalSuperlayer = originalSuperlayer
+      logger.debug("Screenshot shield applied using \(Self.sublayerDelegateNames(of: field))")
+
+    } else if !Self.screenCaptureBlocked, let field = secureField {
+      if let originalSuperlayer = windowLayerOriginalSuperlayer {
+        originalSuperlayer.addSublayer(window.layer)
+      }
+      field.layer.removeFromSuperlayer()
+      field.removeFromSuperview()
+      secureField = nil
+      windowLayerOriginalSuperlayer = nil
+      logger.debug("Screenshot shield removed")
+    }
+  }
+
+  // The internal view's class name differs between iOS versions (_UITextFieldCanvasView,
+  // _UITextLayoutCanvasView ...), so it is matched by the 'Canvas' part of the name
+  private static func secureCanvasLayer(of field: UITextField) -> CALayer? {
+    field.layer.sublayers?.first { layer in
+      guard let delegate = layer.delegate else { return false }
+      return String(describing: type(of: delegate)).contains("Canvas")
+    }
+  }
+
+  private static func sublayerDelegateNames(of field: UITextField) -> [String] {
+    (field.layer.sublayers ?? []).map { layer in
+      layer.delegate.map { String(describing: type(of: $0)) } ?? String(describing: type(of: layer))
+    }
   }
 
   private func updatePrivacyCover() {
