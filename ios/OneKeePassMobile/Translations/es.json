@@ -637,7 +637,7 @@
         },
         "appSettings": {
             "blockScreenshotsAndroid": "Oculta la aplicación en capturas de pantalla, grabaciones de pantalla y aplicaciones recientes",
-            "blockScreenshotsIos": "iOS no permite que las aplicaciones bloqueen las capturas de pantalla. La aplicación se oculta en el selector de apps y mientras la pantalla se graba o se duplica",
+            "blockScreenshotsIos": "Oculta la aplicación en capturas de pantalla, grabaciones de pantalla y el selector de apps",
             "clipboardCleard1": "El portapapeles no se borra",
             "clipboardCleard2": "El portapapeles se borrará en {{clipboardTimeoutTime}}",
             "dbRemainOpened": "La base de datos permanecerá abierta hasta que se bloquee o se cierre",

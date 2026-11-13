@@ -637,7 +637,7 @@
         },
         "appSettings": {
             "blockScreenshotsAndroid": "Ẩn ứng dụng khỏi ảnh chụp màn hình, bản ghi màn hình và danh sách ứng dụng gần đây",
-            "blockScreenshotsIos": "iOS không cho phép ứng dụng chặn chụp màn hình. Ứng dụng sẽ được ẩn trong trình chuyển đổi ứng dụng và khi màn hình đang được ghi hoặc phản chiếu",
+            "blockScreenshotsIos": "Ẩn ứng dụng khỏi ảnh chụp màn hình, bản ghi màn hình và trình chuyển đổi ứng dụng",
             "clipboardCleard1": "Bộ nhớ tạm sẽ không bị xóa",
             "clipboardCleard2": "Bộ nhớ tạm sẽ được xóa trong {{clipboardTimeoutTime}}",
             "dbRemainOpened": "Cơ sở dữ liệu sẽ duy trì trạng thái mở cho đến khi bị khóa hoặc đóng",

@@ -637,7 +637,7 @@
         },
         "appSettings": {
             "blockScreenshotsAndroid": "Verbirgt die App in Bildschirmfotos, Bildschirmaufnahmen und der Liste der letzten Apps",
-            "blockScreenshotsIos": "iOS erlaubt Apps nicht, Bildschirmfotos zu blockieren. Die App wird im App-Umschalter sowie während einer Bildschirmaufnahme oder -spiegelung ausgeblendet",
+            "blockScreenshotsIos": "Verbirgt die App in Bildschirmfotos, Bildschirmaufnahmen und im App-Umschalter",
             "clipboardCleard1": "Die Zwischenablage wird nicht geleert",
             "clipboardCleard2": "Die Zwischenablage wird in {{clipboardTimeoutTime}} geleert",
             "dbRemainOpened": "Datenbank bleibt geöffnet, bis sie gesperrt oder geschlossen wird",

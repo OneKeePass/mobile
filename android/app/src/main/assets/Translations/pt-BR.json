@@ -637,7 +637,7 @@
         },
         "appSettings": {
             "blockScreenshotsAndroid": "Oculta o app em capturas de tela, gravações de tela e apps recentes",
-            "blockScreenshotsIos": "O iOS não permite que apps bloqueiem capturas de tela. O app fica oculto no alternador de apps e enquanto a tela é gravada ou espelhada",
+            "blockScreenshotsIos": "Oculta o app em capturas de tela, gravações de tela e no alternador de apps",
             "clipboardCleard1": "A área de transferência não será limpa",
             "clipboardCleard2": "A área de transferência será limpa em {{clipboardTimeoutTime}}",
             "dbRemainOpened": "O banco de dados permanecerá aberto até ser bloqueado ou fechado",

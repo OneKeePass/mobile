@@ -637,7 +637,7 @@
         },
         "appSettings": {
             "blockScreenshotsAndroid": "Masque l'application dans les captures d'écran, les enregistrements d'écran et les applications récentes",
-            "blockScreenshotsIos": "iOS ne permet pas aux applications de bloquer les captures d'écran. L'application est masquée dans le sélecteur d'apps et pendant l'enregistrement ou la recopie de l'écran",
+            "blockScreenshotsIos": "Masque l'application dans les captures d'écran, les enregistrements d'écran et le sélecteur d'apps",
             "clipboardCleard1": "Le presse-papier ne sera pas effacé",
             "clipboardCleard2": "Le presse-papier sera vidé en {{clipboardTimeoutTime}}",
             "dbRemainOpened": "La base de données restera ouverte jusqu'à ce qu'elle soit verrouillée ou fermée",

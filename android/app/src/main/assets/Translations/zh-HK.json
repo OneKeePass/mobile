@@ -637,7 +637,7 @@
         },
         "appSettings": {
             "blockScreenshotsAndroid": "在截圖、螢幕錄影和最近使用的應用中隱藏本應用",
-            "blockScreenshotsIos": "iOS 不允許應用阻止截圖。在應用切換器中以及螢幕被錄影或鏡像時，本應用會被隱藏",
+            "blockScreenshotsIos": "在截圖、螢幕錄影和應用切換器中隱藏本應用",
             "clipboardCleard1": "剪貼板不會被清除",
             "clipboardCleard2": "剪貼板將在 {{clipboardTimeoutTime}} 後被清除",
             "dbRemainOpened": "資料庫將保持開啟狀態直到被鎖定或關閉",

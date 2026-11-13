@@ -637,7 +637,7 @@
         },
         "appSettings": {
             "blockScreenshotsAndroid": "Menyembunyikan aplikasi dari tangkapan layar, rekaman layar, dan aplikasi terbaru",
-            "blockScreenshotsIos": "iOS tidak mengizinkan aplikasi memblokir tangkapan layar. Aplikasi disembunyikan di pengalih aplikasi dan saat layar direkam atau dicerminkan",
+            "blockScreenshotsIos": "Menyembunyikan aplikasi dari tangkapan layar, rekaman layar, dan pengalih aplikasi",
             "clipboardCleard1": "Papan klip tidak akan dibersihkan",
             "clipboardCleard2": "Papan klip akan dibersihkan di {{clipboardTimeoutTime}}",
             "dbRemainOpened": "Basis data akan tetap terbuka sampai dikunci atau ditutup",
