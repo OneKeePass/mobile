@@ -63,6 +63,13 @@ callback interface SecureKeyOperation {
     [Throws=SecureKeyOperationError]
     void store_key(string db_key,string enc_key_data);
 
+    // Stores the key of an opened database that is used to encrypt the database content when the
+    // database is locked. The lock may happen in the background after the phone itself is locked,
+    // so iOS keeps this key readable after the first unlock of the device (other keys are readable
+    // only while the device is unlocked)
+    [Throws=SecureKeyOperationError]
+    void store_session_key(string db_key,string enc_key_data);
+
     [Throws=SecureKeyOperationError]
     string? get_key(string db_key);
 

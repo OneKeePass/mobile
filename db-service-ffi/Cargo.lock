@@ -2039,8 +2039,8 @@ checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
 name = "onekeepass-core"
-version = "0.26.0"
-source = "git+https://github.com/OneKeePass/onekeepass-core.git?tag=v0.26.0#8e3f0ea3c491110ae3a1b87cf31df9e7f0606291"
+version = "0.26.1"
+source = "git+https://github.com/OneKeePass/onekeepass-core.git?tag=v0.26.1#d71fd26982b3a22e495242c33baf51daf971701c"
 dependencies = [
  "base64",
  "botan",

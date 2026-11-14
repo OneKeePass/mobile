@@ -14,8 +14,21 @@ class SecureKeyOperationImpl: SecureKeyOperation {
   static var okpAccessGroup = SecureEnclaveServiceSupport.getOkpKeychainAccessGroup()
   
   func storeKey(_ dbKey: String, _ encKeyData: String) throws {
+    // No kSecAttrAccessible is set, so the item gets the default kSecAttrAccessibleWhenUnlocked
+    try addItem(dbKey, encKeyData, accessible: nil)
+  }
+
+  // The key of an opened database is read again when the database is locked on session timeout.
+  // That can happen while the app still runs in the background after the phone is locked, when an item
+  // with the default 'WhenUnlocked' accessibility cannot be read (errSecInteractionNotAllowed).
+  // The key is only used for the in-memory encryption while the database is open and is deleted on close
+  func storeSessionKey(_ dbKey: String, _ encKeyData: String) throws {
+    try addItem(dbKey, encKeyData, accessible: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly)
+  }
+
+  private func addItem(_ dbKey: String, _ encKeyData: String, accessible: CFString?) throws {
     let kv = encKeyData.data(using: String.Encoding.utf8)!
-    let query: [String: AnyObject] = [
+    var query: [String: AnyObject] = [
       // kSecAttrService,  kSecAttrAccount, and kSecClass
       // uniquely identify the item to save in Keychain
       // kSecAttrService as String: "OKP-Service' as AnyObject,
@@ -29,6 +42,10 @@ class SecureKeyOperationImpl: SecureKeyOperation {
       // kSecValueData is the item value to save
       kSecValueData as String: kv as AnyObject
     ]
+
+    if let accessible = accessible {
+      query[kSecAttrAccessible as String] = accessible
+    }
 
     let status: OSStatus = SecItemAdd(query as CFDictionary, nil)
 

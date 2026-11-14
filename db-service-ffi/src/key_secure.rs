@@ -44,7 +44,9 @@ impl kp_service::KeyStoreService for KeyStoreServiceImpl {
             &acct_key
         );
 
-        let stored = match ops.store_key(acct_key.clone(), enc_key.clone()) {
+        // The session key variant is used so that locking the database in the background still
+        // works after the phone itself is locked (iOS)
+        let stored = match ops.store_session_key(acct_key.clone(), enc_key.clone()) {
             Ok(()) => {
                 info!("Encrypted key is stored in key chain");
                 true
@@ -54,7 +56,7 @@ impl kp_service::KeyStoreService for KeyStoreServiceImpl {
                 // is not deleted on closing the database
                 if let SecureKeyOperationError::StoringKeyDuplicateItemError = e {
                     if ops.delete_key(acct_key.clone()).is_ok() {
-                        let r = ops.store_key(acct_key.clone(), enc_key);
+                        let r = ops.store_session_key(acct_key.clone(), enc_key);
                         info!("Second time call store key called and result is {:?}", r);
                         match r {
                             Ok(_) => true,

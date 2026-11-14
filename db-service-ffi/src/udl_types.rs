@@ -124,6 +124,8 @@ pub type SecureKeyOpsResult<T> = std::result::Result<T, SecureKeyOperationError>
 // We need to implement this interface in Swift and Kotlin for the rust side use
 pub trait SecureKeyOperation: Send + Sync {
     fn store_key(&self, db_key: String, enc_key_data: String) -> SecureKeyOpsResult<()>;
+    // For the key of an opened database. See 'store_session_key' in 'db_service.udl'
+    fn store_session_key(&self, db_key: String, enc_key_data: String) -> SecureKeyOpsResult<()>;
     fn get_key(&self, db_key: String) -> SecureKeyOpsResult<Option<String>>;
     fn delete_key(&self, db_key: String) -> SecureKeyOpsResult<()>;
 }
