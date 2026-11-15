@@ -4,6 +4,7 @@
    [onekeepass.mobile.background :as bg]
    [onekeepass.mobile.constants :refer [APP_SETTINGS_PAGE_ID
                                           DEFAULT-SYSTEM-THEME]]
+   [onekeepass.mobile.events.app-lock :as app-lock-events]
    [onekeepass.mobile.events.common :as cmn-events :refer [active-db-key
                                                            on-error
                                                            preference-field-data
@@ -45,7 +46,7 @@
     (<! (timeout 5000))
     (let [tick (js/Date.now)]
       (dispatch [:check-db-list-to-lock tick])
-      (dispatch [:app-lock/lock-on-timeout tick]))
+      (dispatch [:app-lock/lock-on-idle tick]))
     (when @continue-tick
       (recur))))
 
@@ -107,12 +108,16 @@
  (fn [{:keys [db]} [_event-id tick]]
    (if-not (= -1 @db-session-timeout)
      ;; (:opened-db-list db) returns a vec of maps with keys [db-key database-name file-name user-action-time]
-     (let [_db (reduce (fn [db {:keys [db-key user-action-time _database-name]}]
-                         (let [locked? (-> db (get db-key) :locked)]
+     (let [;; The database on screen is in use while the user types or is in a picker
+           ;; the app opened, though no touch is seen
+           in-use-db-key (when (app-lock-events/in-use-without-touch? db) (active-db-key db))
+           _db (reduce (fn [db {:keys [db-key user-action-time _database-name]}]
+                         (let [locked? (-> db (get db-key) :locked)
+                               skip? (or locked? (= db-key in-use-db-key))]
                         ;; If the user is not active for more than db-session-timeout time, the screen is locked
-                        ;; Lock all dbs that are timed out that are not yet locked 
-                        ;; 2 min = 120000 milli seconds , 5 min = 300000 
-                           (if  (and (not locked?)
+                        ;; Lock all dbs that are timed out that are not yet locked
+                        ;; 2 min = 120000 milli seconds , 5 min = 300000
+                           (if  (and (not skip?)
                                      (> (- tick user-action-time) @db-session-timeout))
                              (do
                                #_(println "Locking database.. " database-name)
@@ -142,6 +147,12 @@
 
 (defn app-language-update [lng-selected call-on-success]
   (dispatch [:app-settings/app-preference-update-data :language lng-selected call-on-success]))
+
+(defn screen-capture-blocked-update [blocked?]
+  (dispatch [:app-settings-screen-capture-blocked-update blocked?]))
+
+(defn screen-capture-blocked []
+  (subscribe [:app-preference-data :screen-capture-blocked false]))
 
 (defn db-session-timeout-value
   "An atom that gives the db session timeout in milli seconds"
@@ -217,6 +228,21 @@
                              (when-not (nil? call-on-success)
                                (call-on-success pref-update-m)))))))
 
+;; Saves the setting and also tells the native side right away so that the change
+;; takes effect without restarting the app
+(reg-event-fx
+ :app-settings-screen-capture-blocked-update
+ (fn [{:keys [_db]} [_event-id blocked?]]
+   {:fx [[:dispatch [:app-settings/app-preference-update-data :screen-capture-blocked blocked? nil]]
+         [:bg-set-screen-capture-blocked blocked?]]}))
+
+(reg-fx
+ :bg-set-screen-capture-blocked
+ (fn [blocked?]
+   (bg/set-screen-capture-blocked (boolean blocked?)
+                                  (fn [api-response]
+                                    (on-error api-response)))))
+
 (reg-sub
  :db-session-timeout
  (fn [db [_event-id]]
@@ -244,8 +270,11 @@
  :app-settings/app-preference-loaded
  (fn [{:keys [db]} [_event-id]]
    (let [dbt (get-in db [:app-preference :data :db-session-timeout])
-         cbt (get-in db [:app-preference :data :clipboard-timeout])]
-     {:fx [[:update-timeouts-from-pref [dbt cbt]]]})))
+         cbt (get-in db [:app-preference :data :clipboard-timeout])
+         scb (get-in db [:app-preference :data :screen-capture-blocked])]
+     ;; The native side does not read the preference itself and gets the stored value on each load
+     {:fx [[:update-timeouts-from-pref [dbt cbt]]
+           [:bg-set-screen-capture-blocked scb]]})))
 
 (reg-fx
  :update-timeouts-from-pref

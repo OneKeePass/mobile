@@ -15,13 +15,28 @@
 (defn app-lock-settings-preference-update [kw value]
   (dispatch [:app-lock-settings-preference-update kw value]))
 
-(defn pin-entered [pin]
+(defn pin-entered
+  "Stores a new PIN. 'pin-length' is the digit count of a fixed length PIN (iOS) or nil"
+  [pin pin-length]
   (bg/pin-entered pin
                   (fn [api-reponse]
-                    (when-not (on-error api-reponse)
+                    (if (on-error api-reponse)
+                      ;; The error is shown and the settings page is shown again
+                      (dispatch [:app-lock-settings-pin-setup-cancel])
                       ;; :pin-lock-enabled is already set to true in the backend 
                       ;; and the local copy is set to true in pin-store-action-completed
-                      (dispatch [:pin-store-action-completed true])))))
+                      (dispatch [:pin-store-action-completed true pin-length])))))
+
+(defn pin-setup-start
+  "Shows the PIN pad to enter and confirm a new PIN in place of the settings"
+  []
+  (dispatch [:app-lock-settings-pin-setup-start]))
+
+(defn pin-setup-cancel []
+  (dispatch [:app-lock-settings-pin-setup-cancel]))
+
+(defn pin-setup-active []
+  (subscribe [:app-lock-settings-pin-setup-active]))
 
 (defn pin-removed []
   (bg/pin-removed (fn [api-response]
@@ -46,20 +61,51 @@
 (reg-event-fx
  :to-app-lock-settings-page
  (fn [{:keys [db]} [_event-id]]
-   {:db (-> db (assoc-in [:app-lock-settings :pin-auth-completed] false))
+   {:db (-> db
+            (assoc-in [:app-lock-settings :pin-auth-completed] false)
+            (assoc-in [:app-lock-settings :pin-setup-active] false))
     :fx [[:dispatch [:common/next-page APP_LOCK_SETTINGS_PAGE_ID "appLockSettings"]]]}))
 
 (reg-event-fx
+ :app-lock-settings-pin-setup-start
+ (fn [{:keys [db]} [_event-id]]
+   {:db (assoc-in db [:app-lock-settings :pin-setup-active] true)}))
+
+(reg-event-fx
+ :app-lock-settings-pin-setup-cancel
+ (fn [{:keys [db]} [_event-id]]
+   {:db (assoc-in db [:app-lock-settings :pin-setup-active] false)}))
+
+(reg-sub
+ :app-lock-settings-pin-setup-active
+ (fn [db _query-vec]
+   (boolean (get-in db [:app-lock-settings :pin-setup-active]))))
+
+;; Lock delay applied whenever the PIN lock is turned on. Same as the 'lock_timeout' default
+;; in db-service-ffi app_preference.rs
+;; The delay picker is hidden while the PIN lock is off, so a stored value at that point
+;; was never seen by the user (older installs stored 0 - "Immediately" - by default)
+(def ^:private DEFAULT-LOCK-TIMEOUT 60000)
+
+(reg-event-fx
  :pin-store-action-completed
- (fn [{:keys [db]} [_event-id flag]]
-   ;; local data upate as backend is updated 
-   {:db  (update-app-lock-preference-field-data db :pin-lock-enabled flag)
-    ;; Need to set :pin-auth-completed to true so that user is not asked to enter pin 
-    ;; after they enable the app lock and set up a new pins
-    :fx [(when flag [:dispatch [:app-lock-settings-pin-verified-success]])]}))
+ (fn [{:keys [db]} [_event-id flag pin-length]]
+   ;; local data upate as backend is updated
+   {:db  (-> db
+             (update-app-lock-preference-field-data :pin-lock-enabled flag)
+             ;; The backend clears the length on both enabling and disabling and the length
+             ;; of a new fixed length PIN is stored below
+             (update-app-lock-preference-field-data :pin-length pin-length)
+             (assoc-in [:app-lock-settings :pin-setup-active] false))
+    :fx [;; Need to set :pin-auth-completed to true so that user is not asked to enter pin
+         ;; after they enable the app lock and set up a new pins
+         (when flag [:dispatch [:app-lock-settings-pin-verified-success]])
+         (when flag [:dispatch [:app-lock-settings-preference-update :lock-timeout DEFAULT-LOCK-TIMEOUT]])
+         (when (and flag pin-length)
+           [:app-settings/bg-update-preference [{:app-lock-pin-length pin-length} (fn [_m])]])]}))
 
 ;; See :pin-store-completed for pin-lock-enabled updating
-;; :lock-timeout :attempts-allowed 
+;; :lock-timeout :attempts-allowed :last-attempt-warning
 (reg-event-fx
  :app-lock-settings-preference-update
  (fn [{:keys [db]} [_event-id kw value]]
@@ -69,6 +115,9 @@
 
                   :attempts-allowed
                   {:app-lock-attempts-allowed value}
+
+                  :last-attempt-warning
+                  {:app-lock-last-attempt-warning value}
                   ;; default
                   {})]
      {;; Updates local copy (should this be called after backend update ?)

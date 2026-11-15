@@ -1,5 +1,6 @@
 (ns onekeepass.mobile.app-settings
   (:require
+   [onekeepass.mobile.background :refer [is-iOS]]
    [onekeepass.mobile.common-components :refer [settings-section-header]]
    [onekeepass.mobile.constants :as const :refer [DARK-THEME
                                                   DEFAULT-SYSTEM-THEME
@@ -13,7 +14,8 @@
                                                     rn-section-list rn-view
                                                     rnms-modal-selector
                                                     rnp-divider rnp-list-icon
-                                                    rnp-list-item rnp-text]]
+                                                    rnp-list-item rnp-switch
+                                                    rnp-text]]
    [onekeepass.mobile.translation :as t :refer [lstr-bl lstr-cv lstr-l lstr-mt]]
    [reagent.core :as r]))
 
@@ -189,6 +191,21 @@
                                       :variant "titleMedium"} (lstr-l title)])
                    :right (fn [_props] (r/as-element [rnp-list-icon {:icon const/ICON-CHEVRON-RIGHT}]))}]])
 
+(defn block-screenshots-row-item [title]
+  (let [blocked? @(as-events/screen-capture-blocked)]
+    [rn-view {:style {:margin-top 10 :margin-bottom 10}}
+     [rn-view {:style {:flexDirection "row" :min-height 50 :justify-content "space-between"}}
+      [rnp-text {:style {:align-self "center" :padding-left 15} :variant "titleMedium"} (lstr-l title)]
+      [rn-view {:style {:padding-right 10 :align-self "center"}}
+       [rnp-switch {:style {:align-self "center"}
+                    :value blocked?
+                    :onValueChange (fn []
+                                     (as-events/screen-capture-blocked-update (not blocked?)))}]]]
+     [rn-view {:style {:margin-top 5 :margin-left 15 :margin-right 15}}
+      [rnp-text (if (is-iOS)
+                  (lstr-mt 'appSettings 'blockScreenshotsIos)
+                  (lstr-mt 'appSettings 'blockScreenshotsAndroid))]]]))
+
 (defn row-item
   "Provides a row component - a view with children list-item-modal-selector and db-timeout-explain
    for the 'renderItem' prop of rn-section-list
@@ -211,7 +228,10 @@
       [row-item-with-select title clipboard-session-timeout-options @(as-events/clipboard-timeout-value) as-events/update-clipboard-timeout]
 
       (= key "APP-LOCK-SETTINGS")
-      [app-lock-settings-row-item title])))
+      [app-lock-settings-row-item title]
+
+      (= key "BLOCK-SCREENSHOTS")
+      [block-screenshots-row-item title])))
 
 (defn settings-list-content []
   (let [sections [{;; Here title is for section and used in settings-section-header
@@ -228,7 +248,8 @@
 
                   {:title "appProtection"
                    :key "App Protection"
-                   :data [{:title "appLockSettings" :key "APP-LOCK-SETTINGS"}]}]]
+                   :data [{:title "appLockSettings" :key "APP-LOCK-SETTINGS"}
+                          {:title "blockScreenshots" :key "BLOCK-SCREENSHOTS"}]}]]
     [rn-section-list  {:style {}
                        :sections (clj->js sections)
                        :renderItem  (fn [props]

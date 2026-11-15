@@ -60,6 +60,8 @@ object DbServiceAPI {
                 BackendEventDispatcher(reactContext),
                 apiCallBackService,
                 SecureEnclaveServiceSupport(reactContext),
+                // Android has none of the platform specific initial actions
+                PlatformInitOptions(),
             )
 
             initialized = true;

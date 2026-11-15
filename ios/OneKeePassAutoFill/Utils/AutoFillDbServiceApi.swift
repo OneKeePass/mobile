@@ -40,7 +40,8 @@ class AutoFillDbServiceAPI {
       
       let securEnclaveService = SecureEnclaveServiceSupport()
       
-      dbServiceInitialize(cmnService, secKeyOps, eventDispatcher,apiCallBackService,securEnclaveService)
+      // The extension has no previous home dir to move from
+      dbServiceInitialize(cmnService, secKeyOps, eventDispatcher,apiCallBackService,securEnclaveService, PlatformInitOptions())
             
       initialized = true
       Swift.debugPrint("API initialize is done")

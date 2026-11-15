@@ -9,6 +9,7 @@
                                                            get-in-key-db
                                                            on-error
                                                            on-ok]]
+   [onekeepass.mobile.utils :as u]
    [re-frame.core :refer [dispatch reg-event-fx reg-fx reg-sub subscribe]]))
 
 ;; State under [(active-db-key) :custom-icons]:
@@ -132,9 +133,11 @@
 (reg-event-fx
  :custom-icons/add-from-url
  (fn [{:keys [db]} [_ url on-success-event]]
-   {:fx [[:dispatch [:common/message-modal-show nil 'downloadingFavicon]]
-         [:bg-add-custom-icon-from-url
-          [(active-db-key db) url on-success-event]]]}))
+   (if-let [web-url (u/web-url url)]
+     {:fx [[:dispatch [:common/message-modal-show nil 'downloadingFavicon]]
+           [:bg-add-custom-icon-from-url
+            [(active-db-key db) web-url on-success-event]]]}
+     {:fx [[:dispatch [:common/error-box-show 'invalidUrl 'urlSchemeNotSupported]]]})))
 
 (reg-event-fx
  :custom-icons-add-from-url-completed

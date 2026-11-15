@@ -229,6 +229,8 @@
 
                             ;; This style applies to the text input field
                             text-input-style
+                            ;; Optional color of the text input's bottom line. Paper's own is used when nil
+                            underline-color
                             ;; This style is meant to the pop dialog that shows the select option list
                             option-container-style]
                      :or {label-extractor-fn select-field-label-extractor
@@ -248,7 +250,11 @@
                         :disabled disabled
                         :selectedItemTextStyle {:color @(:selected-text-color modal-selector-colors) :fontWeight "bold"}
                         :onChange on-change}
-   [rnp-text-input {:style (merge {:width "100%"} text-input-style) :editable false :label text-label :value value}]])
+   [rnp-text-input {:style (merge {:width "100%"} text-input-style)
+                    :underlineColor underline-color
+                    :editable false
+                    :label text-label
+                    :value value}]])
 
 ;; Note:
 ;; As we wrap the rnms-modal-selector in Pressable component, all press events are handled by rn-pressable

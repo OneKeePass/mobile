@@ -1,0 +1,2 @@
+;; Reuse the CLJS lint configuration when the repository is opened at mobile/.
+{:config-paths ["../src-cljs/.clj-kondo"]}

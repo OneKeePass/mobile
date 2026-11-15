@@ -90,6 +90,17 @@ class DbServiceModule(reactContext: ReactApplicationContext) :
         promise.resolve(EventEmitter.otpAuthUrlOnCreate())
     }
 
+    // Called by the UI when the app preference is loaded and when the user changes the
+    // 'Block screenshots' setting. Window flags can only be changed on the UI thread
+    @ReactMethod
+    fun setScreenCaptureBlocked(blocked: Boolean, promise: Promise) {
+        ScreenCaptureGuard.blocked = blocked
+        reactApplicationContext.currentActivity?.let { activity ->
+            activity.runOnUiThread { ScreenCaptureGuard.apply(activity) }
+        }
+        promise.resolve(DbServiceAPI.jsonService().okJsonString("Done"))
+    }
+
     // IMPORTANT:
     // Need to use explicit background thread to call all the backend apis so that UI thread can be
     // released and otherwise UI thread will be blocked

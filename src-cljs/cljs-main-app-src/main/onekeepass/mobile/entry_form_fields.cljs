@@ -16,7 +16,7 @@
             [onekeepass.mobile.rn-components
              :as rnc :refer [animated-circular-progress dots-icon-name
                              no-assist-text-props
-                             page-background-color rn-keyboard rn-pressable
+                             page-background-color rn-keyboard rn-text-input
                              rn-view rnp-button
                              rnp-helper-text rnp-icon-button rnp-switch rnp-text
                              rnp-text-input rnp-text-input-icon]]
@@ -50,15 +50,12 @@
 
 (defn read-field-background
   "In read mode the fields of a section sit on a card of the grouped list kind, so they have to
-   carry that card's color. 'RNPTextInput' otherwise gives every text input the theme background,
-   which is the card color only in the light theme"
+   carry that card's color, which differs from the page background in the dark theme"
   []
   @rnc/grouped-list-card-color)
 
-;; The read mode field shown as a text display - a revealed password, a key - that was last
-;; pressed, or nil. Such a field is not a text input and so cannot hold the focus, but it is drawn
-;; with the underline and the label of a focused one so that pressing it gives the same feedback
-;; as pressing any other field of the form does
+;; The read mode field whose copy icon was last pressed, or nil. It is drawn with the underline and
+;; the label of a focused input so that the form shows which field was copied
 (def ^:private pressed-read-field (r/atom nil))
 
 (defn- pressed-read-field? [key]
@@ -82,27 +79,33 @@
   (if (pressed-read-field? key) @rnc/primary-color @rnc/outline-color))
 
 (defn- read-field-on-press
-  "Pressing the value of a read mode field copies it to the clipboard and leaves that field
-   looking like the focused one.
+  "Pressing the copy icon of a read mode field copies its full value to the clipboard and leaves
+   that field looking like the focused one.
 
    Dropping the keyboard first blurs whichever text input of the form holds the focus - pressing
    a view of our own does not take the focus off a native input on either platform - so that only
    one field of the form is ever drawn as focused"
   [{:keys [key protected] :as kv}]
   (fn []
+    ;; The backend requires a boolean, and the notes field for one is not given a :protected value
     (cmn-events/write-string-to-clipboard {:field-name key
-                                           :protected protected
+                                           :protected (boolean protected)
                                            :value (to-field-value kv)})
     (.dismiss rn-keyboard)
     (reset! pressed-read-field key)))
 
+(defn- clear-pressed-read-field
+  "Takes the mark off the given field if it is the one carrying it"
+  [key]
+  (swap! pressed-read-field (fn [pressed] (when-not (= pressed key) pressed))))
+
 (defn- visibility-toggle-on-press
   "Shows or masks the value of a protected field.
 
-   Revealing takes the masked text input out of the tree - it is replaced by
-   'colored-read-field' or by 'multi-line-read-field'. Android then hands the focus that input
-   held to another text input on the page, and that one draws its underline and its label in
-   the active color as though the user had tapped it. iOS does not move focus in that way
+   In edit mode a multi line field is remounted by this change - see 'mask-remount-key'. Android
+   then hands the focus that input held to another text input on the page, and that one draws
+   its underline and its label in the active color as though the user had tapped it. iOS does
+   not move focus in that way
 
    Dropping whatever holds the focus once the change has been made leaves the other fields
    looking as they did. 'Keyboard.dismiss' is what does it - it blurs the currently focused
@@ -111,20 +114,15 @@
   [key]
   (fn []
     (form-events/entry-form-field-visibility-toggle key)
-    ;; Masking again puts a text input back in place of the text display, so the mark the display
-    ;; carried goes with it and must not be left behind for the next reveal
-    (reset! pressed-read-field nil)
+    ;; The mark shows the field that was copied, which is not what pressing the eye icon does
+    (clear-pressed-read-field key)
     (when (is-Android)
       (js/setTimeout (fn [] (.dismiss rn-keyboard)) 0))))
 
 (def ^:private field-focused (r/atom {:key nil :focused false}))
 
 (defn field-focus-action [key flag]
-  (swap! field-focused assoc :field-name key :focused flag)
-  ;; A text input taking the focus is what takes the mark off a pressed read mode field, the same
-  ;; way it takes the focus off the input that held it before
-  (when flag
-    (reset! pressed-read-field nil)))
+  (swap! field-focused assoc :field-name key :focused flag))
 
 ;; Some field values carry embedded new lines - the passkey private key is stored as a pem with
 ;; LF line endings and an ssh key is the same. A text input shows such a value on a single line
@@ -187,10 +185,8 @@
 
                                        protected
                                        visible
-                                       edit
                                        on-change-text
-                                       icon-space-required
-                                       _non-edit-kdbx-url] :as kv}]
+                                       icon-space-required] :as kv}]
   (let [label (to-field-label kv)
         val (to-field-value kv)
         masked? (and protected (not visible))
@@ -198,24 +194,19 @@
         ;; A masked value is left as a single line as secureTextEntry does not work with multiline.
         ;; Revealing such a field is what turns it into a multi line input - in edit mode that is
         ;; also the only way a key with its line breaks can be typed or pasted into it.
-        ;; A revealed one in read mode never reaches here - see 'multi-line-read-field'
         grow? (and multi-line? (not masked?))]
 
     ;; (println "Lable is " label)
     ;; We need to use this ^:key so that text-input field is unique
-    ;; Otherwise :defaultValue will show old value when we change from non edit to edit
-    ^{:key (str edit key protected (mask-remount-key multi-line? masked?))} [rnp-text-input (merge
+    ^{:key (str key protected (mask-remount-key multi-line? masked?))} [rnp-text-input (merge
                                                       no-assist-text-props
                                                       {:label label
                                                       :defaultValue val
                                                       ;; :value val
-                                                      ;;:editable edit
-                                                      :showSoftInputOnFocus edit
                                                       :ref (fn [^js/Ref ref]
                                                              (when (and (not (nil? ref)) (str/blank? value)) (.clear ref)))
                                                       :keyboardType "default" #_(if-not protected "email-address" "default")
                                                       :style (merge {:width (if icon-space-required  "90%" "100%")}
-                                                                    (when-not edit {:backgroundColor (read-field-background)})
                                                                     (cond
                                                                       grow?
                                                                       {:max-height multi-line-field-max-height}
@@ -228,13 +219,7 @@
                                                       :multiline (or grow? (not protected))
                                                       :onFocus #(field-focus-action key true)
                                                       :onBlur #(field-focus-action key false)
-                                                      :onChangeText (if edit on-change-text nil)
-                                                      :onPressOut (if-not edit
-                                                                    #(cmn-events/write-string-to-clipboard
-                                                                      {:field-name key
-                                                                       :protected protected
-                                                                       :value val})
-                                                                    nil)
+                                                      :onChangeText on-change-text
                                                       :secureTextEntry masked?
                                                       ;; It looks like we can have only one icon
                                                       :right (when protected
@@ -265,13 +250,10 @@
 
 (defn ios-form-text-input [{:keys [key
                                    value
-                                   _read-value
                                    protected
                                    visible
-                                   edit
                                    on-change-text
-                                   icon-space-required
-                                   _non-edit-kdbx-url] :as kv}]
+                                   icon-space-required] :as kv}]
   (let [label (to-field-label kv)
         val (to-field-value kv)
         masked? (and protected (not visible))
@@ -279,7 +261,6 @@
         ;; A masked value is left as a single line as secureTextEntry does not work with multiline.
         ;; Revealing such a field is what turns it into a multi line input - in edit mode that is
         ;; also the only way a key with its line breaks can be typed or pasted into it.
-        ;; A revealed one in read mode never reaches here - see 'multi-line-read-field'
         grow? (and multi-line? (not masked?))]
     ;; iOS does not otherwise need a key - unlike android this input is a controlled one and its
     ;; ':value' cannot go stale. It is used only to remount on a mask change - see the comments
@@ -291,8 +272,6 @@
                      ;; In 0.16.0, while using multiline = true, edit did not work with :value val and need to use :defaultValue
                      :value val
                      ;;:defaultValue val
-
-                     :showSoftInputOnFocus edit
 
                      ;; Using the 'keyboardType email-address' will not show ":" in the keyboard (0.16.0)
                      ;; :keyboardType "email-address"
@@ -308,7 +287,6 @@
                        ;; On device, this behaviour is not seen
                        ;; :textContentType (if (or (not protected) visible) nil "newPassword")
                      :style (merge {:width (if icon-space-required  "90%" "100%")}
-                                   (when-not edit {:backgroundColor (read-field-background)})
                                    (cond
                                      grow?
                                      {:max-height multi-line-field-max-height}
@@ -333,13 +311,7 @@
 
                      :onFocus #(field-focus-action key true)
                      :onBlur #(field-focus-action key false)
-                     :onChangeText (if edit on-change-text nil)
-                     :onPressOut (if-not edit
-                                   #(cmn-events/write-string-to-clipboard 
-                                     {:field-name key
-                                      :protected protected
-                                      :value val})
-                                   nil)
+                     :onChangeText on-change-text
                      :secureTextEntry masked?
                      ;; It looks like we can have only one icon
                      :right (when protected
@@ -352,92 +324,150 @@
                                                 :onPress (visibility-toggle-on-press key)}])))}
 )]))
 
-;; Read mode monospace + per character coloring (see 'colored-read-field') is applied only to
-;; the protected fields whose key is in this set. A password and the passkey secret fields are
-;; random looking strings and benefit from this. Other protected fields (e.g a free text
-;; security answer) are left as plain text. Add a field key here to opt it in
+;; Read mode monospace + per character coloring is applied only to the protected fields whose
+;; key is in this set. A password and the passkey secret fields are random looking strings and
+;; benefit from this. Other protected fields (e.g a free text security answer) are left as plain
+;; text. Add a field key here to opt it in
 (def ^:private colorable-protected-field-names
   #{PASSWORD
     const/KPEX_PASSKEY_USER_HANDLE
     const/KPEX_PASSKEY_CREDENTIAL_ID})
 
-(defn- colored-read-field
-  "Shows a revealed protected field in read mode as a text display instead of the native
-   text input so that each character can have its own color - a native TextInput shows its
-   value in a single color
+;; A masked value is always shown with this many dots so that its length is not given away
+(def ^:private masked-read-value "••••••••")
 
-   The field is laid out like the flat text input used in read mode - the label on top, the
-   value below it and a thin underline. Pressing on the value copies it to the clipboard and
-   the eye icon toggles back to the masked native input
+;; Props shared by every icon at the end of a read mode field - copy, eye and launch. Changing
+;; :size here resizes all of them. Paper's own default size is 24
+;;
+;; Two icons can sit side by side at the end of a field, so the outer margins are dropped to leave
+;; more of the row to the value
+(def ^:private read-field-icon-props {:size 20
+                                      :style {:margin-left 0 :margin-right 0}})
+
+;; The least height of a read mode value - one line of the size 18 text that the masking dots and
+;; a revealed password are drawn with. A revealed plain value has the smaller size of the other
+;; fields, and its line would otherwise be shorter than the dots it replaces. The label and the
+;; value are centered in the row together, so the label moved down a little on every reveal
+(def ^:private read-field-value-min-height 24)
+
+(defn- read-field-row
+  "Lays out a read mode field the way the flat text input of the edit mode is - the label on top,
+   the value below it and a thin underline - with a copy icon at the end of the row
+
+   Only the icon copies. Touching the value does not, so that a scroll or the system swipe to
+   switch apps that starts on a field cannot replace what the user just copied, and so that a
+   long press is left free for selecting a part of the value
+
+   Args:
+     kv           the field's map - :key and the value are what gets copied. Its label comes from
+                  'to-field-label'
+     value-view   the component showing the value
+     action-view  optional component placed just before the copy icon
   "
-  [{:keys [key icon-space-required] :as kv}]
-  (let [label (to-field-label kv)
-        val (to-field-value kv)]
-    [rn-view {:style {:width (if icon-space-required "90%" "100%")
-                      :flexDirection "row"
-                      :align-items "center"
-                      :min-height 60
-                      :padding-left 16
-                      :border-bottom-width 0.5
-                      :border-bottom-color @rnc/outline-color
-                      :backgroundColor (read-field-background)}}
-     [rn-pressable {:style {:flex 1 :padding-top 8 :padding-bottom 8}
-                    :onPress (read-field-on-press kv)}
-      [rnp-text {:variant "bodySmall" :style {:color (read-field-label-color key)}} label]
-      [cc/colored-password val true {:style {:fontSize 18 :letterSpacing 0.5}}]]
-     [rnp-icon-button {:style {:margin-right 0}
-                       :icon "eye"
-                       :onPress (visibility-toggle-on-press key)}]
-     [read-field-active-underline key]]))
+  [{:keys [key]} _value-view _action-view]
+  (r/create-class
+   {:display-name "read-field-row"
 
-(defn- multi-line-read-field
-  "Shows a field whose value needs more than one line - a passkey private key pem, an ssh key,
-   the additional urls - in read mode as a text display instead of the native text input
+    ;; The mark is held per field name, and so would otherwise show up on the same field of the
+    ;; next entry opened or when coming back from the edit mode
+    :component-will-unmount
+    (fn [] (clear-pressed-read-field key))
 
-   A text input is not used here for two reasons. It lays such a value out on a single line so
-   only the tail of the value can be seen, and it takes focus when pressed which brings up the
-   soft keyboard even though nothing can be typed in read mode
+    :reagent-render
+    (fn [{:keys [key] :as kv} value-view action-view]
+      ;; The row has no background of its own and the card it sits on shows through. A row sized
+      ;; by its text has a fractional height, and Android can then place the next row a pixel
+      ;; into it once both are turned into whole pixels. A background on the next row painted
+      ;; over this row's dividing line there, and the line went missing on some rows only
+      [rn-view {:style {:width "100%"
+                        :flexDirection "row"
+                        :align-items "center"
+                        :min-height 60
+                        :border-bottom-width 0.5
+                        :border-bottom-color @rnc/outline-color}}
+       [rn-view {:style {:flex 1
+                         :padding-left 16
+                         :padding-top 8
+                         :padding-bottom 8}}
+        [rnp-text {:variant "bodySmall" :style {:color (read-field-label-color key)}}
+         (to-field-label kv)]
+        [rn-view {:style {:min-height read-field-value-min-height}}
+         value-view]]
+       action-view
+       [rnp-icon-button (merge read-field-icon-props
+                               {:icon "content-copy"
+                                :onPress (read-field-on-press kv)})]
+       [read-field-active-underline key]])}))
 
-   A masked value is not shown here but by the native text input - its secureTextEntry draws a
-   dot that a text of our own cannot match in size
+(defn- selectable-read-value
+  "Shows a plain text value so that a part of it can be selected and copied with the system menu.
 
-   The field is laid out like the flat text input used in read mode - the label on top, the value
-   below it and a thin underline. Pressing on the value copies it to the clipboard and, for a
-   protected field, the eye icon masks it again
-  "
-  [{:keys [key protected icon-space-required] :as kv}]
-  (let [label (to-field-label kv)
-        val (to-field-value kv)]
-    [rn-view {:style {:width (if icon-space-required "90%" "100%")
-                      :flexDirection "row"
-                      :align-items "center"
-                      :min-height 60
-                      :padding-left 16
-                      :border-bottom-width 0.5
-                      :border-bottom-color @rnc/outline-color
-                      :backgroundColor (read-field-background)}}
-     [rn-pressable {:style {:flex 1 :padding-top 8 :padding-bottom 8}
-                    :onPress (read-field-on-press kv)}
-      [rnp-text {:variant "bodySmall" :style {:color (read-field-label-color key)}} label]
+   Neither component does this on both platforms. On iOS a selectable 'Text' can only copy its
+   whole text. On Android a text input with 'editable' false is disabled and cannot be selected.
+   iOS keeps selection on a non editable input only when it is multiline, as the single line one
+   is disabled just as Android's is. The menu of either one offers no cut or paste
+
+   'textBreakStrategy' is explained in 'read-field-value'"
+  [val]
+  (if (is-iOS)
+    ;; A bare input without the padding it has by default, so that its text lines up with the
+    ;; label above it. It does not scroll on its own and the page scrolls instead
+    [rn-text-input {:value val
+                    :editable false
+                    :multiline true
+                    :scrollEnabled false
+                    :style {:padding 0
+                            :paddingTop 0
+                            :fontSize 14
+                            :color @rnc/on-background-color}}]
+    [rnp-text {:selectable true :textBreakStrategy "simple"} val]))
+
+(defn- read-field-value
+  "The value of a read mode field - dots when it is masked, colored characters for a revealed
+   password like value, monospaced text for a key and otherwise selectable plain text"
+  [{:keys [key protected visible] :as kv}]
+  (let [val (to-field-value kv)]
+    (cond
+      (and protected (not visible))
+      [rnp-text {:style {:fontSize 18 :letterSpacing 2}} masked-read-value]
+
+      (and protected (contains? colorable-protected-field-names key))
+      [cc/colored-password val true {:style {:fontSize 18 :letterSpacing 0.5}}]
+
       ;; A key is monospaced and a bit smaller as a pem or an openssh text reads better that way
-      ;; and more of it fits on a line. Anything else keeps the font of the rest of the form so
-      ;; that it does not read as a different kind of value than the fields around it
+      ;; and more of it fits on a line
       ;;
-      ;; The whole value is shown either way - the form is inside a scroll view and so a long
-      ;; value is read by scrolling the page rather than scrolling within the field
+      ;; The whole value is shown - the form is inside a scroll view and so a long value is read
+      ;; by scrolling the page rather than scrolling within the field
       ;; 'textBreakStrategy' is an android only prop and iOS ignores it. Android breaks the lines
       ;; of a text with the high quality strategy by default, which ends a line well before the
       ;; width it has for a value that is one long run of letters and digits like a pem body. The
-      ;; key then sat in a narrow column with a wide empty strip before the eye icon. The simple
-      ;; strategy fills each line as far as it goes, which is what iOS does
+      ;; simple strategy fills each line as far as it goes, which is what iOS does
+      (contains? const/KEY_FIELD_NAMES key)
       [rnp-text {:textBreakStrategy "simple"
-                 :style (when (contains? const/KEY_FIELD_NAMES key)
-                          {:fontFamily rnc/monospace-font-family :fontSize 14})} val]]
-     (when protected
-       [rnp-icon-button {:style {:margin-right 0}
-                         :icon "eye"
-                         :onPress (visibility-toggle-on-press key)}])
-     [read-field-active-underline key]]))
+                 :style {:fontFamily rnc/monospace-font-family :fontSize 14}} val]
+
+      :else
+      [selectable-read-value val])))
+
+(defn read-field
+  "Shows a field of the entry form in read mode. See 'read-field-row'. A protected field also
+   gets the eye icon that reveals or masks its value and :action-view, when given, is an icon
+   placed next to the copy icon"
+  [{:keys [key protected visible action-view] :as kv}]
+  [read-field-row kv
+   [read-field-value kv]
+   [:<>
+    (when protected
+      [rnp-icon-button (merge read-field-icon-props
+                              {:icon (if visible "eye" "eye-off")
+                               :onPress (visibility-toggle-on-press key)})])
+    action-view]])
+
+(defn- read-field-launch-icon [on-press]
+  [rnp-icon-button (merge read-field-icon-props
+                          {:icon const/ICON-LAUNCH
+                           :onPress on-press})])
 
 (defn text-field
   "Called to show form fields"
@@ -445,7 +475,6 @@
            value
            _field-name
            protected
-           visible
            standard-field
            required
            data-type
@@ -490,32 +519,26 @@
                                       (= (:field-name @field-focused) key)
                                       (not standard-field)))
         icon-space-required (or is-password-edit? custom-field-edit-focused?)
-        ;; A revealed password or passkey secret in read mode is shown as a colored text
-        ;; display instead of the native text input - see 'colored-read-field'
-        colored-read? (and (not edit) protected visible
-                           (contains? colorable-protected-field-names key))
-        ;; A revealed value with embedded new lines is shown in read mode as a text display and
-        ;; not as a text input - see 'multi-line-read-field'. A masked one stays with the text
-        ;; input so that its dots keep looking like those of the other masked fields
-        multi-line-read? (and (not edit)
-                              (not (and protected (not visible)))
-                              (multi-line-field? key (to-field-value kvm)))]
+        read-action-view (cond
+                           non-edit-kdbx-url
+                           [read-field-launch-icon #(ef-ao/entry-form-open-url value)]
+
+                           ;; Launch the remote Storage Browser using this connection entry
+                           rs-conn-launch?
+                           [read-field-launch-icon #(rs-events/open-entry-remote entry-type-uuid entry-uuid)])]
     [rn-view {:flexDirection "column"}
      ;; text input field and optional icon button in the same row
      [rn-view {:flexDirection "row" :style {:flex 1}}
       ;; First platform specific text input field
       (cond
-        colored-read?
-        [colored-read-field (assoc kvm :icon-space-required icon-space-required)]
-
-        multi-line-read?
-        [multi-line-read-field (assoc kvm :icon-space-required icon-space-required)]
+        (not edit)
+        [read-field (assoc kvm :action-view read-action-view)]
 
         (is-iOS)
-        [ios-form-text-input (assoc kvm :icon-space-required icon-space-required :non-edit-kdbx-url non-edit-kdbx-url)]
+        [ios-form-text-input (assoc kvm :icon-space-required icon-space-required)]
 
         :else
-        [android-form-text-input (assoc kvm :icon-space-required icon-space-required :non-edit-kdbx-url non-edit-kdbx-url)])
+        [android-form-text-input (assoc kvm :icon-space-required icon-space-required)])
       ;; An icon to launch PasswordGenerator
       (when is-password-edit?
         [rn-view {:style {:margin-left -5 :backgroundColor cust-color}}
@@ -532,24 +555,7 @@
         [rn-view {:style {:margin-left -5 :backgroundColor cust-color}}
          [rnp-icon-button {:style {:margin-right 0}
                            :icon dots-icon-name
-                           :onPress #(custom-field-menu-show % section-name key protected required data-type)}]])
-
-      ;; We are using 'absolute' position to add this icon button instead of setting to "right" prop of textinput field 
-      ;; and it works in iOS (needs checking in android)
-      (when non-edit-kdbx-url
-        [rn-view {:style {:margin-left -5 :backgroundColor cust-color :position "absolute" :right 0}}
-         [rnp-icon-button {:style {:margin-right 0}
-                           :icon const/ICON-LAUNCH
-                           :onPress (fn []
-                                      (ef-ao/entry-form-open-url value))}]])
-
-      ;; Launch the remote Storage Browser using this connection entry
-      (when rs-conn-launch?
-        [rn-view {:style {:margin-left -5 :backgroundColor cust-color :position "absolute" :right 0}}
-         [rnp-icon-button {:style {:margin-right 0}
-                           :icon const/ICON-LAUNCH
-                           :onPress (fn []
-                                      (rs-events/open-entry-remote entry-type-uuid entry-uuid))}]])]
+                           :onPress #(custom-field-menu-show % section-name key protected required data-type)}]])]
 
      ;; Any error text below the field, otherwise the field's helper text (e.g. CVC, Additional URLs)
      (cond
@@ -664,35 +670,20 @@
         valid-token-found (not (nil? token))]
     [rn-view
      [rn-view {:flexDirection "row" :style {:flex 1}}
-      [rnp-text-input {:label (if (= OTP key) (lstr-l 'oneTimePasswordTotp) key)
-                       :value (if valid-token-found (formatted-token token) "  ")
-                       :showSoftInputOnFocus false
-                       :autoCapitalize "none"
-                       :keyboardType "email-address"
-                       :autoCorrect false
-                       :selectTextOnFocus false
-                       :spellCheck false
-                       :textContentType "none"
-                       :style {:width "90%" :fontSize 30}
-                           ;;:textColor @rnc/custom-color0
-                       :onFocus #(field-focus-action key true)
-                       :onBlur #(field-focus-action key false)
-                       :onChangeText nil
-                       :onPressOut #(cmn-events/write-string-to-clipboard
-                                     {:field-name key
-                                      :protected protected
-                                      :value token})
-                       :secureTextEntry false
-                       :right nil}]
-      [rn-view {:style {:width "10%" :justify-content "center"}}
+      [read-field-row {:key key
+                       :protected protected
+                       :value token
+                       :field-name (if (= OTP key) (lstr-l 'oneTimePasswordTotp) key)}
+       [rnp-text {:style {:fontSize 30}} (if valid-token-found (formatted-token token) "  ")]
+       [rn-view {:style {:width "10%" :justify-content "center"}}
            ;; Use {:transform [{:scaleX -1} to reverse direction
-       [animated-circular-progress {:style {:transform [{:scaleX 1}]}
-                                    :tintColor @rnc/circular-progress-color
-                                    :size 35
-                                    :width 2
-                                    :fill (js/Math.round (* 100 (/ ttl period)))
-                                    :rotation 360}
-        (fn [_v] (r/as-element [rnp-text {:style {:transform [{:scaleX 1}]}} ttl]))]]]
+        [animated-circular-progress {:style {:transform [{:scaleX 1}]}
+                                     :tintColor @rnc/circular-progress-color
+                                     :size 35
+                                     :width 2
+                                     :fill (js/Math.round (* 100 (/ ttl period)))
+                                     :rotation 360}
+         (fn [_v] (r/as-element [rnp-text {:style {:transform [{:scaleX 1}]}} ttl]))]]]]
 
      (when-not valid-token-found
        [rnp-helper-text {:type "error" :visible true} "Invalid otp url. No token is generated"])]))

@@ -81,11 +81,12 @@
   []
   (merge (gl/card-block-style) {:padding-bottom CARD-FIELDS-BOTTOM-PADDING}))
 
-;; The notes card is the one field card that is left unclipped. Ending an editing or saving
-;; left the field showing neither its text nor its label, while the value was still there in
-;; the form data - the notes came back only on opening the entry again, which mounts the field
-;; afresh. The multiline input draws outside the box the card gives it after that switch and
-;; the card's 'overflow hidden' was cutting all of it away
+;; The notes card is the one field card that is left unclipped. On Android, ending an editing or
+;; a save left the notes card at the right height but showing neither the label nor the text,
+;; while the value was there in the form data - the notes came back only on opening the entry
+;; again, which mounts the card afresh. The card's 'overflow hidden' is what hides them. It was
+;; seen with the earlier multiline input as well as with the text display used in read mode now,
+;; so it comes from the card and not from what is inside it
 ;;
 ;; Dropping the clipping is what makes the notes visible again. It is safe to drop here as the
 ;; bottom padding already keeps the field's underline off the card's rounded edge, which is
@@ -341,14 +342,11 @@
 
 (defn notes [edit]
   (let [value @(form-events/entry-form-data-fields :notes)]
-    (when (or edit (not (str/blank? value)))
-      [rn-view {:style (if edit
-                         {:padding-right 5 :padding-left 5 :borderWidth 0.20 :borderRadius 4}
-                         (notes-card-style))}
+    (cond
+      edit
+      [rn-view {:style {:padding-right 5 :padding-left 5 :borderWidth 0.20 :borderRadius 4}}
        [rnp-text-input (merge no-autocorrect-text-props
-                              {:style (merge {:width "100%"}
-                                             (when-not edit
-                                               {:backgroundColor (ef-fields/read-field-background)}))
+                              {:style {:width "100%"}
                                :multiline true
                                :label  (lstr-l "notes")
                                ;; :label (r/as-element [rnp-text {:style {:color "red"}} "My Notes"])
@@ -358,8 +356,11 @@
                                :ref (fn [^js/Ref ref]
                                       (reset! notes-ref ref)
                                       (when (and (is-Android) (not (nil? ref)) (str/blank? value)) (.clear ref)))
-                               :showSoftInputOnFocus edit
-                               :onChangeText (when edit #(form-events/entry-form-data-update-field-value :notes %))})]])))
+                               :onChangeText #(form-events/entry-form-data-update-field-value :notes %)})]]
+
+      (not (str/blank? value))
+      [rn-view {:style (notes-card-style)}
+       [ef-fields/read-field {:key (lstr-l "notes") :value value}]])))
 
 (defn section-header [section-name]
   (let [edit @(form-events/entry-form-field :edit)
@@ -515,6 +516,16 @@
                                              :options  (mapv (fn [v] {:key v :label v}) select-field-options)
                                              :value value
                                              :disabled (not edit)
+                                             ;; In read mode the field sits on the section card and
+                                             ;; lets the card show through, as the read mode text
+                                             ;; fields do - see 'read-field-row'. The input's own theme
+                                             ;; background is the card color only in the light theme,
+                                             ;; and on Android it was also seen hiding the dividing
+                                             ;; line of the field above it. Its bottom line takes the
+                                             ;; color of the other fields' dividing lines
+                                             :text-input-style (when-not edit
+                                                                 {:backgroundColor "transparent"})
+                                             :underline-color (when-not edit @rnc/outline-color)
                                              :on-change #(form-events/update-section-value-on-change
                                                           section-name key (.-label ^js/SelOption %))}]
 
@@ -710,7 +721,13 @@
      [rn-view {:style {:height 10}}]
      [rn-view {:style {:flexDirection "row" :justify-content "space-between"}}
       [rnp-text {:variant "bodySmall" :style {:color @rnc/on-surface-variant}} "Last Modification Time"]
-      [rnp-text {:variant "bodySmall"} (utc-str-to-local-datetime-str last-modification-time)]]]))
+      [rnp-text {:variant "bodySmall"} (utc-str-to-local-datetime-str last-modification-time)]]
+     (when-let [group-name @(form-events/entry-group-name)]
+       [:<>
+        [rn-view {:style {:height 10}}]
+        [rn-view {:style {:flexDirection "row" :justify-content "space-between"}}
+         [rnp-text {:variant "bodySmall" :style {:color @rnc/on-surface-variant}} (lstr-l 'group)]
+         [rnp-text {:variant "bodySmall" :style {:flexShrink 1 :textAlign "right" :margin-left 10}} group-name]]])]))
 
 ;;;;;;;;;;;;;;;;;;;;  Attachment ;;;;;;;;;;;;;;;;;;;;
 

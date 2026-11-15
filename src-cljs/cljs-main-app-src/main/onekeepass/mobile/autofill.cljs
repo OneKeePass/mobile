@@ -39,7 +39,8 @@
 
       [rn-view  {:style {}}
        [rn-view {:style {:flexDirection "row" :min-height 50 :justify-content "space-between"}}
-        [rnp-text {:style {:align-self "center" :padding-left 5} :variant "titleMedium"} text]
+        ;; flex-shrink lets long translated labels wrap instead of pushing the switch off-screen
+        [rnp-text {:style {:flex-shrink 1 :align-self "center" :padding-left 5 :padding-right 10} :variant "titleMedium"} text]
         [rn-view {:style {:padding-right 10 :align-self "center"}}
          [rnp-switch {:style {:align-self "center"}
                       :value enabled?

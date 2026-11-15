@@ -54,6 +54,12 @@ class SecureKeyOperationImpl(val reactContext: ReactApplicationContext) : Secure
         }
     }
 
+    // iOS stores the opened database's key with a different Keychain accessibility. Android's
+    // EncryptedSharedPreferences can be read while the phone is locked, so the same store is used
+    override fun storeSessionKey(dbKey: String, encKeyData: String) {
+        storeKey(dbKey, encKeyData)
+    }
+
     override fun getKey(dbKey: String): String? {
         var k = sharedPreferences?.getString(dbKey, "NoKey")
         Log.d(TAG, "Returning key $k")

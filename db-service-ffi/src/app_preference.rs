@@ -27,6 +27,10 @@ pub struct PreferenceData {
     app_lock_timeout: Option<i64>,
     app_lock_attempts_allowed: Option<usize>,
     app_lock_lock_app_settings: Option<bool>,
+    app_lock_pin_length: Option<usize>,
+    app_lock_last_attempt_warning: Option<bool>,
+
+    screen_capture_blocked: Option<bool>,
     //app_lock_preference: Option<AppLockPreference>,
 
     // Generator options sent from the password generator page
@@ -68,6 +72,11 @@ pub(crate) struct DatabasePreference {
     // and the UI callers that do not send it working
     #[serde(default)]
     read_only: bool,
+
+    // The key file the user opted to remember for this db. Only the file name in the app's key
+    // files dir is kept as the full path of that dir can change (iOS app container on app update)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    key_file_name: Option<String>,
     //TDOO:
     // Add after how many times of using biometric, we need to ask user to enter password something similar MacOS does
     // Add PIN protection for each db  - db_open_pin_enabled:bool,; Need to store the PIN in secure enclave
@@ -89,18 +98,41 @@ pub(crate) struct AppLockPreference {
     // When this is true and pin_lock_enabled is true, user can access the 'App Settings' only
     // after reentering the PIN again
     lock_app_settings: bool,
+
+    // Number of digits of the PIN when it was set with a fixed length (iOS only). The UI then
+    // shows that many places and checks the PIN once the last digit is entered.
+    // None for PINs set on Android or before this was added. The UI then lets the PIN be of
+    // any length and asks the user to confirm it
+    // The PIN is stored as a number and so the length cannot be got from it (leading zeros)
+    #[serde(default)]
+    pin_length: Option<usize>,
+
+    // When true, the lock screen warns that one more wrong PIN resets the app. Some users want
+    // the reset to happen without any warning to whoever is trying PINs
+    #[serde(default = "default_last_attempt_warning")]
+    last_attempt_warning: bool,
     // May be used in the future
     // When this is enabled, the app will be reset when the no of pin auth failures > attempts_allowed
     // reset_on_lock_failures:bool,
+}
+
+// Preference files from before this setting keep the warning that was shown till then
+fn default_last_attempt_warning() -> bool {
+    false
 }
 
 impl Default for AppLockPreference {
     fn default() -> Self {
         Self {
             pin_lock_enabled: false,
-            lock_timeout: Default::default(),
+            // 60 seconds rather than 0 ("Immediately") so that a short trip out of the app does not
+            // ask for the PIN again. The UI resets to the same value (DEFAULT-LOCK-TIMEOUT in
+            // events/app_lock_settings.cljs) whenever the PIN lock is turned on
+            lock_timeout: 60000,
             attempts_allowed: 10,
             lock_app_settings: Default::default(),
+            pin_length: None,
+            last_attempt_warning: default_last_attempt_warning(),
         }
     }
 }
@@ -209,6 +241,13 @@ pub(crate) struct Preference {
     // serde default keeps the preference files written before this field was introduced loadable
     #[serde(default)]
     password_gen_preference: PasswordGeneratorPreference,
+
+    // When true, the app asks the OS to keep its screens out of screenshots, recordings and the
+    // app switcher. Android enforces it with FLAG_SECURE; iOS can only cover the screen while it
+    // is being recorded or mirrored and when the app goes to the background
+    // serde default keeps the preference files written before this field loadable
+    #[serde(default)]
+    screen_capture_blocked: bool,
 }
 
 impl Default for Preference {
@@ -228,6 +267,7 @@ impl Default for Preference {
             database_preferences: vec![],
             app_lock_preference: AppLockPreference::default(),
             password_gen_preference: PasswordGeneratorPreference::default(),
+            screen_capture_blocked: false,
         }
     }
 }
@@ -294,6 +334,25 @@ impl Preference {
             self,
             preference_data.app_lock_lock_app_settings,
             app_lock_preference.lock_app_settings,
+            updated
+        );
+
+        pref_update!(
+            self,
+            preference_data.app_lock_last_attempt_warning,
+            app_lock_preference.last_attempt_warning,
+            updated
+        );
+
+        if let Some(len) = preference_data.app_lock_pin_length {
+            self.app_lock_preference.pin_length = Some(len);
+            updated = true;
+        }
+
+        pref_update!(
+            self,
+            preference_data.screen_capture_blocked,
+            screen_capture_blocked,
             updated
         );
 
@@ -433,7 +492,13 @@ impl Preference {
             .iter_mut()
             .find(|d| d.db_key == db_pref.db_key)
         {
-            *m = db_pref;
+            // The UI never changes the remembered key file through this update and its copy of
+            // the preference may be older than the one here. So the existing value is kept
+            let key_file_name = m.key_file_name.take();
+            *m = DatabasePreference {
+                key_file_name,
+                ..db_pref
+            };
         } else {
             self.database_preferences.push(db_pref);
         }
@@ -462,6 +527,9 @@ impl Preference {
 
     pub(crate) fn update_app_lock_with_pin_enabled(&mut self, pin_lock_enabled: bool) {
         self.app_lock_preference.pin_lock_enabled = pin_lock_enabled;
+        // Any earlier length belongs to the previous PIN. The UI sends the length of a new
+        // fixed length PIN after this
+        self.app_lock_preference.pin_length = None;
         self.write_to_app_dir();
     }
 
@@ -548,9 +616,62 @@ impl Preference {
                 db_open_biometric_enabled: false,
                 db_unlock_biometric_enabled: true,
                 read_only,
+                key_file_name: None,
             });
         }
         self.write_to_app_dir();
+    }
+
+    pub(crate) fn db_key_file_name(&self, db_key: &str) -> Option<String> {
+        self.database_preferences
+            .iter()
+            .find(|p| p.db_key == db_key)
+            .and_then(|d| d.key_file_name.clone())
+    }
+
+    // Stores or clears the remembered key file of a db. Does nothing when the db is not in the
+    // recently used list (e.g a db handed over by another app) as it cannot be reopened from there
+    pub(crate) fn set_db_key_file_name(&mut self, db_key: &str, key_file_name: Option<String>) {
+        if self.find_db_info(db_key).is_none() {
+            return;
+        }
+
+        if let Some(d) = self
+            .database_preferences
+            .iter_mut()
+            .find(|d| d.db_key == db_key)
+        {
+            if d.key_file_name == key_file_name {
+                return;
+            }
+            d.key_file_name = key_file_name;
+        } else if key_file_name.is_some() {
+            // Same defaults as the UI side uses for a db that has no preference yet
+            self.database_preferences.push(DatabasePreference {
+                db_key: db_key.to_string(),
+                db_open_biometric_enabled: false,
+                db_unlock_biometric_enabled: true,
+                read_only: false,
+                key_file_name,
+            });
+        } else {
+            return;
+        }
+        self.write_to_app_dir();
+    }
+
+    // Called when a key file is deleted from the app's key files dir
+    pub(crate) fn clear_key_file_name_references(&mut self, key_file_name: &str) {
+        let mut changed = false;
+        for d in self.database_preferences.iter_mut() {
+            if d.key_file_name.as_deref() == Some(key_file_name) {
+                d.key_file_name = None;
+                changed = true;
+            }
+        }
+        if changed {
+            self.write_to_app_dir();
+        }
     }
 
     pub(crate) fn database_preferences(&self) -> &Vec<DatabasePreference> {
@@ -683,6 +804,7 @@ impl From<PreferenceV400> for Preference {
             database_preferences,
             app_lock_preference: AppLockPreference::default(),
             password_gen_preference: PasswordGeneratorPreference::default(),
+            screen_capture_blocked: false,
         };
 
         // RecentlyUsed is changed in the new Preference struct

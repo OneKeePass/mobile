@@ -97,6 +97,11 @@
 (defn groups-listing []
   (subscribe [:groups/listing]))
 
+(defn entry-group-name
+  "Name of the group the entry in the form belongs to, or nil while the groups are not loaded"
+  []
+  (subscribe [:entry-form-group-name]))
+
 (defn visible? [key]
   (subscribe [:entry-form-field-in-visibile-list key]))
 
@@ -274,6 +279,15 @@
      (get data fields)
      ;; a vector field names
      (select-keys data fields))))
+
+;; Looked up in all groups and not in ':groups/listing', which leaves out the recycle bin and
+;; deleted groups, so that a deleted entry still shows the group it now sits in
+(reg-sub
+ :entry-form-group-name
+ :<- [:entry-form-data]
+ :<- [:groups-data]
+ (fn [[{:keys [group-uuid]} {:keys [groups]}] _query-vec]
+   (get-in groups [group-uuid :name])))
 
 (defn entry-form-section-field-value
   "Returns an atom that resolves to the value of the section field whose

@@ -66,7 +66,9 @@
                    :onFocus #(field-focus-action key true)
                    :onBlur #(field-focus-action key false)
                    :onChangeText (if edit on-change-text nil)
-                   :onPressOut #(form-events/copy-field-to-clipboard key) #_(if-not edit
+                   ;; Copies only on a completed tap. 'onPressOut' also fires when a touch ends a scroll
+                   ;; or a system swipe, copying the field under the finger
+                   :onPress #(form-events/copy-field-to-clipboard key) #_(if-not edit
                                        #(cmn-events/write-string-to-clipboard {:field-name key
                                                                                :protected protected
                                                                                :value value})
@@ -151,7 +153,8 @@
                        :onFocus #(field-focus-action key true)
                        :onBlur #(field-focus-action key false)
                        :onChangeText nil
-                       :onPressOut #(form-events/copy-otp-token-to-clipboard key token)
+                       ;; Copies only on a completed tap - see 'ios-form-text-input'
+                       :onPress #(form-events/copy-otp-token-to-clipboard key token)
                        :secureTextEntry false
                        :right nil}]
       [rn-view {:style {:width "10%" :justify-content "center"}}

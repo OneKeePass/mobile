@@ -31,7 +31,7 @@ struct RegisteredOtpIdentity {
 }
 
 fn registered_otp_ids_dir() -> OkpResult<PathBuf> {
-    super::app_group_shared_root_sub_dir(REGISTERED_OTP_IDS_DIR)
+    super::app_group_okp_shared_sub_dir(REGISTERED_OTP_IDS_DIR)
 }
 
 fn registered_otp_ids_file(db_key: &str) -> OkpResult<PathBuf> {

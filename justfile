@@ -23,6 +23,14 @@ npx-rn-android:
 npx-rn-android-select:
     npx react-native run-android --list-devices 
 
+## Use this when we want to install release build on device along side the existing play store one.
+## The cljs release build and ffi lib release build should be completed before running target.
+## run-android builds, installs and launches the app
+## Need to export OKP_FOSS_BUILD=1 if we using APK release on device. On emulator we can run the build without appIdSuffix.
+## Pass '--list-devices' if required
+npx-rn-android-releasetest:
+    npx react-native run-android --mode=release --no-packager --extra-params="-POKP_LOCAL_RELEASE_TEST" --appIdSuffix releasetest
+
 ## Refer comments in android/app/build.gradle
 ## Uses app id 'com.onekeepassmobile.debug'
 ## Equivalent: npx react-native run-android --appId com.onekeepassmobile.debug --list-devices

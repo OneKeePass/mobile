@@ -371,6 +371,19 @@ class OkpDbService: NSObject {
     DbServiceAPI.iosSupportService().deleteBookMarkData(keyFileUrl!.absoluteString)
   }
   
+  // Called by the UI when the app preference is loaded and when the user changes the
+  // 'Block screenshots' setting
+  @objc
+  func setScreenCaptureBlocked(_ blocked: Bool,
+                               resolve: @escaping RCTPromiseResolveBlock,
+                               reject _: @escaping RCTPromiseRejectBlock)
+  {
+    DispatchQueue.main.async {
+      SceneDelegate.setScreenCaptureBlocked(blocked)
+    }
+    resolve(DbServiceAPI.jsonService().okJsonString("Done"))
+  }
+
   // Returns the javascript errors recorded by the fatal handler, as the text shown to the
   // user on the launch after a crash. An empty string when there is nothing recorded
   @objc

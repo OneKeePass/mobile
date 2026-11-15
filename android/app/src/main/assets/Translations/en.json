@@ -1,5 +1,12 @@
 {
     "commonTexts": {
+        "appLockDelay": "App lock delay",
+        "attempts": "Attempts",
+        "confirmPin": "Confirm PIN",
+        "lastAttemptWarning": "Warn before reset",
+        "newPin": "Enter a new PIN",
+        "pin4Digits": "4 digits",
+        "pin6Digits": "6 digits",
         "Source": "Source",
         "about": "About",
         "add": "Add",
@@ -20,6 +27,7 @@
         "appSecureStoreConnections": "App Secure Store",
         "autofillSettings": "Autofill Settings",
         "biometrics": "Biometrics",
+        "blockScreenshots": "Block screenshots",
         "bytes": "bytes",
         "capitalizeFirstLetter": "Capitalize first letter",
         "capitalizeWords": "Capitalize words",
@@ -65,6 +73,7 @@
         "fileSize": "File Size",
         "general": "General",
         "good": "Good",
+        "group": "Group",
         "groupOrCategory": "Group/Category",
         "groups": "Groups",
         "host": "Host",
@@ -113,6 +122,7 @@
         "protected": "Protected",
         "readOnly": "Read only",
         "readOnlyStripDetail": "Changes cannot be saved",
+        "rememberKeyFile": "Remember key file",
         "rootUrl": "Root Url",
         "savedInDbFile": "Saved in the database file",
         "savedOnThisDevice": "Saved on this device only",
@@ -353,6 +363,7 @@
             "pendingPasskeysDisableWarning": "There are pending passkeys that have not been committed to the database. Please review them before disabling autofill.",
             "pendingPasskeysMultiDb": "The following databases have pending passkeys. Open each database to review and save them.",
             "pendingPasskeysReadOnly": "There are one or more pending passkeys for this database. They are kept safely and can be saved once Read Only is turned off for the database and it is not opened offline.",
+            "rememberKeyFileHelp": "This key file is filled in the next time you open this database.",
             "saveAsFileExists": "A file with this name is already there in the selected folder. Do you want to overwrite it?",
             "setupOtp": "You can set up TOTP by scanning a QR code or manually entering the secret or an OTPAuth url",
             "remoteConfigNotAvailable": "This database's connection details are stored in another database that is not currently open. Open that database first and then reopen this one — or open this one offline from the latest backup, in read only mode.",
@@ -372,6 +383,7 @@
             "scanError": "Scan Error",
             "restricted": "Restricted",
             "invalidReference": "Invalid reference",
+            "invalidUrl": "Invalid URL",
             "saveAsError": "Save as Error",
             "uploadStatus": "Upload status"
         },
@@ -382,7 +394,8 @@
             "scannedUrlNotOtpUri": "The scanned url is not an otp type url",
             "dbMovedOrRenamed": "It appears the database file might have been moved or renamed. Please remove the database and reopen the moved or renamed file",
             "editingDisabledReadOnly": "Editing is disabled as the database is opened in read only mode",
-            "uploadStatus": "The uploaded attachment is the same as the existing one"
+            "uploadStatus": "The uploaded attachment is the same as the existing one",
+            "urlSchemeNotSupported": "Only web addresses (http or https) are supported"
         }
     },
     "messageDialog": {
@@ -613,7 +626,18 @@
         "about": {
             "noPersonalInfoCollection": "The application does not collect any of the personal identifiable information. Nothing is collected or shared with any external party"
         },
+        "appLockSettings": {
+            "attemptsResetInfo": "When PIN authentication fails more than this many times, the app will be reset. All references to database files, key files and internal caches will be removed",
+            "dbFilesNotRemoved": "The database files in their original locations are not removed",
+            "lastAttemptWarningOff": "The app is reset without any warning when the last allowed attempt fails",
+            "lastAttemptWarningOn": "The lock screen warns when one more wrong PIN will reset the app",
+            "lockDelayImmediately": "The app will be locked when it goes to the background, or after 1 minute without use. You need to enter the PIN to use OneKeePass",
+            "lockDelayTimeout": "The app will be locked when it is not used for this long, whether it is in the foreground or in the background. You need to enter the PIN to use OneKeePass",
+            "pinProtected": "The app is protected with a PIN. You need to enter the PIN to use OneKeePass"
+        },
         "appSettings": {
+            "blockScreenshotsAndroid": "Hides the app from screenshots, screen recordings and recent apps",
+            "blockScreenshotsIos": "Hides the app from screenshots, screen recordings and the app switcher",
             "clipboardCleard1": "Clipboard will not be cleared",
             "clipboardCleard2": "Clipboard will be cleared in {{clipboardTimeoutTime}}",
             "dbRemainOpened": "Database will remain open till locked or closed",
@@ -649,6 +673,9 @@
             "selectGroup": "Please select a group"
         },
         "enterPin": {
+            "lastAttemptWarning": "One more wrong PIN will reset the app",
+            "pinMinLength": "Use at least 4 digits",
+            "pinsNotMatching": "The PINs do not match. Try again",
             "validPinRequired": "Please enter a valid PIN"
         },
         "keyFileForm": {

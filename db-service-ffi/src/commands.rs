@@ -213,6 +213,13 @@ pub enum CommandArg {
         read_only: bool,
     },
 
+    // key_file_name is the full key file path the UI used to open the db
+    DbKeyFileArg {
+        db_key: String,
+        remember_key_file: bool,
+        key_file_name: Option<String>,
+    },
+
     OtpSettingsArg {
         otp_settings: OtpSettings,
     },
@@ -608,6 +615,28 @@ impl Commands {
                     parse_command_args_or_json_error!(&args, DbReadOnlyArg { db_key, read_only });
                 AppState::set_db_read_only_preference(&db_key, read_only);
                 InvokeResult::with_ok(()).json_str()
+            }
+
+            // Called after a db is opened from the open database dialog
+            "set_db_key_file" => {
+                let (db_key, remember_key_file, key_file_name) = parse_command_args_or_json_error!(
+                    &args,
+                    DbKeyFileArg {
+                        db_key,
+                        remember_key_file,
+                        key_file_name
+                    }
+                );
+                let key_file_name = key_file_name
+                    .filter(|_| remember_key_file)
+                    .and_then(|k| util::key_file_name_component(&k));
+                AppState::set_db_key_file_name_preference(&db_key, key_file_name);
+                InvokeResult::with_ok(()).json_str()
+            }
+
+            "db_remembered_key_file" => {
+                let (db_key,) = parse_command_args_or_json_error!(&args, DbKey { db_key });
+                ok_json_str(util::db_remembered_key_file(&db_key))
             }
 
             "combined_category_details" => {

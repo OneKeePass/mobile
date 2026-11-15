@@ -109,4 +109,11 @@ public class OkpEvents: RCTEventEmitter {
   public static func sendAppBecomesInActive() {
     instance?.sendEvent(withName: EVENT_APP_BECOMES_INACTIVE, body: "{}")
   }
+  
+  // Sent when a document picker the app presented comes on screen. The UI side then does not
+  // count the picking time as idle time, as for Android's activity for result (see MainActivity)
+  public static func sendOwnPickerShown() {
+    instance?.sendEvent(withName: EVENT_APP_BECOMES_INACTIVE,
+                        body: DbServiceAPI.jsonService().okJsonString("ActivityForResult"))
+  }
 }

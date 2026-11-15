@@ -231,7 +231,8 @@
     ;; in the main app. We are using the main app's app-lock implementation
     ;; for the android autofill also
     (if (= lock-state :locked)
-      [rn-view
+      ;; The lock screen scrolls and needs a parent with a height
+      [rn-view {:style {:flex 1}}
        [app-lock/content]]
 
       [rn-view {:style {:flex 1 :width "100%"}}

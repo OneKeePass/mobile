@@ -367,7 +367,10 @@
  (fn [{:keys [_db]} [_event-id]]
    {:fx [[:dispatch [:entry-category/load-categories-to-show]]
          [:dispatch [:groups/load]]
-         [:dispatch [:entry-list/reload-selected-entry-items]]]}))
+         [:dispatch [:entry-list/reload-selected-entry-items]]
+         ;; The search term stays in place across these changes, so its matches are
+         ;; fetched again - a deleted entry must not linger in the results
+         [:dispatch [:search/reload]]]}))
 
 ;; Called to set a previously opened database as current active one
 (reg-event-fx
@@ -891,11 +894,12 @@
  :lock-on-session-timeout
  (fn [{:keys [db]} [_event-id db-key]]
    (let [curr-dbkey (:current-db-file-name db)
-         ;; The navigation/app-lock dispatches only apply when the timed-out db is
-         ;; the one currently on screen; they run only after the lock succeeds.
+         ;; The navigation only applies when the timed-out db is the one currently
+         ;; on screen; it runs only after the lock succeeds.
+         ;; The app lock is not done here. It follows its own lock delay
+         ;; (see :app-lock/lock-on-idle) so that it does not fire earlier than the user set
          follow-ups (if (= curr-dbkey db-key)
-                      [[:common/to-home-page]
-                       [:app-lock/current-db-locked-on-timeout]]
+                      [[:common/to-home-page]]
                       [])]
      {:fx [[:bg-lock-kdbx [db-key follow-ups]]]})))
 
@@ -1501,10 +1505,9 @@
                            :field-value value
                            :protected protected
                            :cleanup-after cb-timeout_secs}
-                          #()))
-
-  (when field-name
-    (dispatch [:common/message-snackbar-open (str field-name " " "copied")])))
+                          (fn [api-response]
+                            (when-not (on-error api-response)
+                              (dispatch [:common/message-snackbar-open (str field-name " " "copied")]))))))
 
 
 ;;;;;;;;;;;;;;;;;;;; Open URL ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

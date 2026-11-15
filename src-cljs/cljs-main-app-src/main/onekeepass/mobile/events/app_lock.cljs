@@ -3,26 +3,27 @@
   (:require
    [onekeepass.mobile.events.common :as cmn-events :refer [app-lock-preference  on-ok on-error]]
    [re-frame.core :refer [dispatch subscribe reg-event-fx reg-sub reg-fx]]
-   [onekeepass.mobile.translation :refer [lstr-mt]]
    [onekeepass.mobile.background :as bg]))
 
-(defn app-lock-verify-pin-handler
-  "Called when pin verification backend returns. This is fn is passed from the pin entry dialog"
-  [verify-result]
-  (dispatch [:app-lock-verified verify-result]))
-
-(defn verify-pin-entered [pin verify-pin-handler-fn]
+(defn verify-pin-entered
+  "Checks the PIN with the stored one. 'verify-pin-handler-fn' receives true or false, or nil
+   when the check itself failed (the error is already shown by 'on-ok')"
+  [pin verify-pin-handler-fn]
   (bg/pin-verify pin
                  (fn [api-reponse]
-                   ;; Need to use when-some instead of when-let
-                   ;; when-some evaluates when 'on-ok' return a non nil value
+                   ;; (:ok api-reponse) is either true or false
+                   (verify-pin-handler-fn (on-ok api-reponse)))))
 
-                   ;; However when-let evaluates when 'on-ok' return value is true 
-                   ;; ( i.e (boolean (on-ok ...)) = true and not false)
-
-                   ;; (:ok api-reponse) is either true or false 
-                   (when-some [verify-result (on-ok api-reponse)]
-                     (verify-pin-handler-fn verify-result)))))
+(defn verify-app-lock-pin
+  "Checks the PIN entered on the app lock screen. 'rejected-fn' is called when the PIN is wrong
+   or could not be checked. A failed check does not count as a wrong attempt"
+  [pin rejected-fn]
+  (verify-pin-entered pin
+                      (fn [verified?]
+                        (when (some? verified?)
+                          (dispatch [:app-lock-verified verified?]))
+                        (when-not verified?
+                          (rejected-fn)))))
 
 (defn app-lock-state []
   (subscribe [:app-lock-state]))
@@ -33,15 +34,21 @@
   [app-db]
   (= :locked (get-in app-db [:app-lock :state])))
 
-;;;;;;;;;; Some generic dialog direct events ;;;;;;;;
+(defn attempts-remaining
+  "The number of wrong PINs still allowed before the app is reset"
+  []
+  (subscribe [:app-lock-attempts-remaining]))
 
-(defn locked-app-log-in-dialog-close-disp-fx-vec []
-  [:generic-dialog-close :locked-app-log-in-dialog])
+(defn in-use-without-touch?
+  "True while the user works in the app without touching it - typing with the keyboard up, or
+   in a picker or share sheet the app itself opened. The database session timeout
+   does not lock the database on screen meanwhile, as that would drop any unsaved edit"
+  [app-db]
+  (let [{:keys [keyboard-visible inactive-since]} (get-in app-db [:app-lock])]
+    (boolean (or keyboard-visible (:own-activity inactive-since)))))
 
-(defn locked-app-log-in-dialog-update-with-map-disp-fx-vec [state-m]
-  [:generic-dialog-update-with-map :locked-app-log-in-dialog state-m])
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defn keyboard-visibility-changed [visible?]
+  (dispatch [:app-lock/keyboard-visibility-changed visible?]))
 
 #_(reg-event-fx
    :app-lock-app-locked
@@ -55,19 +62,67 @@
                            {:state :unlocked
                             :last-user-action-time (js/Date.now)}))}))
 
+;; Time allowed in a picker or share sheet that the app itself opened, used in place of a shorter
+;; lock delay. Without this, the time spent locating a database file counts against
+;; a delay like 15 seconds and the app locks while the user is still opening the database
+(def ^:private OWN-ACTIVITY-MIN-LOCK-TIMEOUT 300000)
+
+;; Idle time in the foreground before the app locks when the lock delay is "Immediately"
+;; That option is about leaving the app and locking within seconds while the user reads an entry
+;; is not wanted. Same as the default lock delay so that "Immediately" is never less strict
+;; in the foreground than the default
+(def ^:private IMMEDIATELY-FOREGROUND-IDLE-TIMEOUT 60000)
+
+(defn- lock-app [db attempts-allowed]
+  (-> db (assoc-in [:app-lock :state] :locked)
+      (assoc-in [:app-lock :attempts-count-remaining] attempts-allowed)))
+
 ;; Called from the native event when app goes background
+;; 'own-activity?' is true when the app opened a picker or share sheet. On iOS the app does not
+;; go to the background for a picker and this event is sent by the picker itself
+;; The time spent out of the app is checked in ':app-lock/app-becoming-active'
+;; The foreground idle time is checked in ':app-lock/lock-on-idle'
+;; ':inactive-since' is kept whether or not the PIN lock is on, as the database session timeout
+;; also uses it (see 'in-use-without-touch?')
 (reg-event-fx
  :app-lock/app-becoming-inactive
- (fn [{:keys [db]} [_event-id]]
+ (fn [{:keys [db]} [_event-id own-activity?]]
    (let [{:keys [pin-lock-enabled lock-timeout attempts-allowed]} (app-lock-preference db)]
-     ;;(println ":app-lock/app-becoming-inactive is called...")
-     (if (and pin-lock-enabled (= lock-timeout 0)) 
-       {:db (-> db (assoc-in [:app-lock :state] :locked)
-                (assoc-in [:app-lock :attempts-count-remaining] attempts-allowed))}
+     (cond
+       (and pin-lock-enabled (= lock-timeout 0) (not own-activity?))
+       {:db (lock-app db attempts-allowed)}
+
+       ;; iOS may send more than one inactive event before the app is active again
+       ;; and the earliest one is kept
+       (nil? (get-in db [:app-lock :inactive-since]))
+       {:db (assoc-in db [:app-lock :inactive-since] {:time (js/Date.now)
+                                                       :own-activity own-activity?})}
+
+       :else
        {}))))
 
+;; Called from the native event when app comes to foreground
+(reg-event-fx
+ :app-lock/app-becoming-active
+ (fn [{:keys [db]} [_event-id]]
+   (let [{:keys [pin-lock-enabled lock-timeout attempts-allowed]} (app-lock-preference db)
+         {:keys [time own-activity]} (get-in db [:app-lock :inactive-since])
+         allowed-time (if own-activity (max lock-timeout OWN-ACTIVITY-MIN-LOCK-TIMEOUT) lock-timeout)
+         lock? (and pin-lock-enabled
+                    (some? time)
+                    (> (- (js/Date.now) time) allowed-time))
+         db (update db :app-lock dissoc :inactive-since)]
+     {:db (if lock?
+            (lock-app db attempts-allowed)
+            ;; Coming back to the app is a user action. The time away was checked above and
+            ;; must not count again against the foreground idle time
+            (assoc-in db [:app-lock :last-user-action-time] (js/Date.now)))
+      ;; Time in the app's own picker is not idle time for the database on screen either.
+      ;; Time spent in other apps still counts against the database session timeout
+      :fx [(when (and own-activity (not lock?))
+             [:dispatch [:user-action-detected]])]})))
 
-;; Called when the app starts and this event called in this sequence: 
+;; Called when the app starts and this event called in this sequence:
 ;; :load-app-preference ->  :bg-app-preference -> :app-preference-loaded
 
 ;; Because the events ':load-app-preference' or ':bg-app-preference' called in some other ocassions 
@@ -82,56 +137,52 @@
          ;; NOTE: app-lock is nil when the app starts first time
          lock-app? (and (nil? app-lock) pin-lock-enabled)]
      ;; (println ":app-lock/app-launched is called and pin-lock-enabled , attempts-allowed, lock-app? are  " pin-lock-enabled attempts-allowed lock-app?)
-     (if lock-app?
+     (cond
+       lock-app?
        {:db (-> db (assoc-in [:app-lock] {:state :locked
                                           :attempts-count-remaining attempts-allowed
                                           :app-launched true}))}
+
+       ;; Marks the app start as done. Otherwise, after the PIN lock is turned on in settings,
+       ;; the next ':app-preference-loaded' would lock the app as if it were just launched
+       (nil? app-lock)
+       {:db (assoc db :app-lock {:state :unlocked})}
+
+       :else
        {}))))
 
 (reg-event-fx
  :app-lock/update-app-active-time
  (fn [{:keys [db]} [_event-id time-now]]
-   ;;(println "time-now is " time-now)
-   {:db (-> db (assoc-in [:app-lock :last-user-action-time] time-now))}))
+   {:db (assoc-in db [:app-lock :last-user-action-time] time-now)}))
 
-;; TODO: Investicate
-;; Though user activity is happening, sometime this ':app-lock/lock-on-timeout' is called 
-;; particularly in Android when this forced timeout is used 1 min
-(def ^:private ENFORCED-TIMEOUT-IN-MILLISECONDS 120000)
-
-
-;; In case of '(= lock-timeout 0)' (app lockout is set with the option "Immediately"), we use this
-;; 'ENFORCED-TIMEOUT-IN-MILLISECONDS' as default app lock timeout time to be safe.
-
-;; If we do not do that, the app lock will happen only when any db is locked but db-session-timeout may be larger
-;; Also the home page needs protection when user after entering PIN and keeps the app in the foreground without doing anything
-
-;; App lock timeout checked and the app will be locked accordingly
+;; Typing does not produce touch events. While the keyboard is showing (e.g. entering the
+;; database password), the app is taken as being in use
 (reg-event-fx
- :app-lock/lock-on-timeout
+ :app-lock/keyboard-visibility-changed
+ (fn [{:keys [db]} [_event-id visible?]]
+   {:db (assoc-in db [:app-lock :keyboard-visible] visible?)
+    ;; The typing just ended is a user action for both the app lock and the database on screen
+    :fx [(when-not visible?
+           [:dispatch [:user-action-detected]])]}))
+
+;; Called on every tick while the app is in the foreground. The app locks when there was no
+;; user action for the lock delay. Time out of the app is not counted here. That is checked
+;; in ':app-lock/app-becoming-active'
+(reg-event-fx
+ :app-lock/lock-on-idle
  (fn [{:keys [db]} [_event-id tick]]
    (let [{:keys [pin-lock-enabled lock-timeout attempts-allowed]} (app-lock-preference db)
-         last-user-action-time (get-in db [:app-lock :last-user-action-time])
-         final-time-out (if (= lock-timeout 0) ENFORCED-TIMEOUT-IN-MILLISECONDS  lock-timeout)]
-     ;; (println " tick last-user-action-time lock-timeout > test"  tick last-user-action-time lock-timeout (and (not (nil? last-user-action-time)) (> (- tick last-user-action-time) lock-timeout))) 
-     (if pin-lock-enabled
-       (if (and (not (nil? last-user-action-time)) (> (- tick last-user-action-time) final-time-out))
-         {:db (-> db (assoc-in [:app-lock :state] :locked)
-                  (assoc-in [:app-lock :attempts-count-remaining] attempts-allowed))}
-         {})
-       {}))))
-
-;; This is called from event ':lock-on-session-timeout' when the current db is locked
-;; The app is also then locked
-;; Should we do only for  '(= lock-timeout 0)' (app lockout is set as "Immediately") ?
-(reg-event-fx
- :app-lock/current-db-locked-on-timeout
- (fn [{:keys [db]} [_event-id]]
-   (let [{:keys [pin-lock-enabled attempts-allowed]} (app-lock-preference db)]
-     ;;(println ":app-lock/current-db-locked-on-timeout is called")
-     (if pin-lock-enabled
-       {:db (-> db (assoc-in [:app-lock :state] :locked)
-                (assoc-in [:app-lock :attempts-count-remaining] attempts-allowed))}
+         {:keys [last-user-action-time inactive-since keyboard-visible]} (get-in db [:app-lock])
+         idle-timeout (if (= lock-timeout 0) IMMEDIATELY-FOREGROUND-IDLE-TIMEOUT lock-timeout)]
+     (if (and pin-lock-enabled
+              (not (app-locked? db))
+              ;; The tick keeps running while a picker is open (always on iOS, often on Android)
+              (nil? inactive-since)
+              (not keyboard-visible)
+              (some? last-user-action-time)
+              (> (- tick last-user-action-time) idle-timeout))
+       {:db (lock-app db attempts-allowed)}
        {}))))
 
 ;; Called when after user entered PIN is verified from backend
@@ -145,12 +196,11 @@
        {:db (-> db (assoc-in [:app-lock :state] :unlocked)
                 ;; Reset the attemps check
                 (assoc-in [:app-lock :attempts-count-remaining] attempts-allowed)
-                ;; The user action time is updated
+                ;; The idle time starts again from the unlock
                 (assoc-in [:app-lock :last-user-action-time] (js/Date.now)))
-        :fx [[:dispatch (locked-app-log-in-dialog-close-disp-fx-vec)]
-             ;; Any 'otpauth://' url that arrived while the app lock screen was showing
-             ;; waits for this
-             [:dispatch [:otp-url-received/check-pending]]]})
+        ;; Any 'otpauth://' url that arrived while the app lock screen was showing
+        ;; waits for this
+        :fx [[:dispatch [:otp-url-received/check-pending]]]})
 
      ;; PIN verification failed (else part)
      (let [{:keys [attempts-count-remaining]} (get-in db [:app-lock])
@@ -163,9 +213,8 @@
        (if attempts-exceeded
          ;; Call app reset
          {:fx [[:bg-app-reset]]}
-         {:db (-> db (assoc-in [:app-lock :attempts-count-remaining] attempts-count-remaining))
-          :fx [[:dispatch (locked-app-log-in-dialog-update-with-map-disp-fx-vec
-                           {:error-text (lstr-mt 'enterPin 'validPinRequired)})]]})))))
+         ;; The PIN pad shakes and clears its dots for a wrong PIN
+         {:db (-> db (assoc-in [:app-lock :attempts-count-remaining] attempts-count-remaining))})))))
 
 (reg-fx
  :bg-app-reset
@@ -180,9 +229,7 @@
    ;; Ensure that app-lock is in unlocked state as app is reset
    {:db (-> db (assoc-in [:app-lock :state] :unlocked)) 
     :fx [;; This event loads app peference and then navigates to home page
-         [:dispatch [:common/to-home-page]]
-         ;; Need to close the dialog 
-         [:dispatch (locked-app-log-in-dialog-close-disp-fx-vec)]]}))
+         [:dispatch [:common/to-home-page]]]}))
 
 (reg-sub
  :app-lock-state
@@ -190,6 +237,11 @@
    (let [s (get-in db [:app-lock :state])]
      (if-not (nil? s) s
              :unlocked))))
+
+(reg-sub
+ :app-lock-attempts-remaining
+ (fn [db _query-vec]
+   (get-in db [:app-lock :attempts-count-remaining])))
 
 (comment
   (in-ns 'onekeepass.mobile.events.app-lock)

@@ -75,7 +75,32 @@
             (assoc-in [:open-database :database-full-file-name] full-file-name-uri)
             (assoc-in [:open-database :dialog-show] true))
 
-    :fx [[:dispatch [:common/next-page LOGIN_PAGE_ID (lstr-dlg-title 'unlockDatabase)]]]}))
+    :fx [[:dispatch [:common/next-page LOGIN_PAGE_ID (lstr-dlg-title 'unlockDatabase)]]
+         ;; The key file is remembered in the main app against its own db key
+         [:bg-db-remembered-key-file [full-file-name-uri (org-db-file-path db full-file-name-uri)]]]}))
+
+(reg-fx
+ :bg-db-remembered-key-file
+ (fn [[db-key org-db-key]]
+   (when org-db-key
+     (bg/db-remembered-key-file
+      org-db-key
+      (fn [api-response]
+        ;; Not finding it only means the user selects the key file as before
+        (when-some [key-file-info (on-ok api-response #(println "Remembered key file is not loaded " %))]
+          (dispatch [:open-database-remembered-key-file-loaded db-key key-file-info])))))))
+
+(reg-event-db
+ :open-database-remembered-key-file-loaded
+ (fn [db [_event-id db-key {:keys [file-name full-file-name]}]]
+   (let [{:keys [database-full-file-name key-file-name]} (:open-database db)]
+     ;; Used only when the login page is still for the same db and the user has not selected
+     ;; a key file in the meantime
+     (if (and (= db-key database-full-file-name) (nil? key-file-name))
+       (-> db
+           (assoc-in [:open-database :key-file-name-part] file-name)
+           (assoc-in [:open-database :key-file-name] full-file-name))
+       db))))
 
 
 (reg-event-fx

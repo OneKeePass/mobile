@@ -13,6 +13,7 @@
                           dispatch
                           reg-fx]]
    [onekeepass.mobile.background :as bg]
+   [onekeepass.mobile.utils :as u]
    [onekeepass.mobile.constants :as const :refer [URL
                                                   USERNAME
                                                   PASSWORD
@@ -53,21 +54,21 @@
 (reg-event-fx
  :entry-form-open-url
  (fn [{:keys [_db]} [_event-id url-value]]
-   (let [l-url-value (str/lower-case url-value)]
-     (cond
-
-       (str/starts-with? l-url-value "kdbx:")
+   (let [url-value (str/trim url-value)
+         [scheme _] (u/split-url-scheme url-value)]
+     (case scheme
+       "kdbx"
        {:fx [[:dispatch [:entry-form-auto-open-resolve-properties]]]}
 
-       (or (str/starts-with? l-url-value "https://") (str/starts-with? url-value "http://"))
-       {:fx [[:common/bg-open-https-url [url-value]]]}
-
-       (str/starts-with? l-url-value "file://")
+       "file"
        {}
 
-       ;; Otherwise we assume it is a web url without the protocol prefix. Just add the prefix and open
-       :else
-       {:fx [[:common/bg-open-https-url [(str "https://" l-url-value)]]]}))))
+       ;; http(s) or no scheme at all - a value without a scheme is assumed to be a web url
+       ("http" "https" nil)
+       {:fx [[:common/bg-open-https-url [(u/web-url url-value)]]]}
+
+       ;; Other schemes are not passed to the OS so that a url in a shared database cannot launch other apps
+       {:fx [[:dispatch [:common/error-box-show 'invalidUrl 'urlSchemeNotSupported]]]}))))
 
 (defn auto-open-properties-dispatch-fn
   "The arg 'auto-open-props' is passed to the dispatch response handler fn"

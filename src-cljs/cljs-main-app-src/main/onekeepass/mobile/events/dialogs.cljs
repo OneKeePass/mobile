@@ -91,28 +91,6 @@
 
 (defn-generic-dialog-subs-events before-storage-selection-info-dialog [[data nil]])
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   app-pin-lock-settings-dialog   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defn-generic-dialog-disp-events app-pin-lock-settings-dialog [[show-with-state state-m]
-                                                               ;; e.g fields-value-vec =  [kws-v value]
-                                                               ;; kws-v is a vec or kw
-                                                               ;; See :generic-dialog-update
-                                                               #_[update fields-value-vec]
-                                                               [update-with-map state-m]
-                                                               [close nil]])
-
-(defn-generic-dialog-subs-events app-pin-lock-settings-dialog [[data nil]])
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   locked-app-log-in-dialog   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; dialog-identifier-kw is :locked-app-log-in-dialog
-(defn-generic-dialog-disp-events locked-app-log-in-dialog [[show nil]
-                                                           [update-with-map state-m]
-                                                           [close nil]])
-
-(defn-generic-dialog-subs-events locked-app-log-in-dialog [[data nil]])
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;   merge-result-dialog   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
