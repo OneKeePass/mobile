@@ -127,7 +127,6 @@ android {
 
 
         //TODO: (Custom-Jey) Added for release time upload key
-        /*
         release {
             if (project.hasProperty('OKP_APP_UPLOAD_STORE_FILE')) {
                 storeFile file(OKP_APP_UPLOAD_STORE_FILE)
@@ -136,7 +135,6 @@ android {
                 keyPassword OKP_APP_UPLOAD_KEY_PASSWORD
             }
         }
-         */
 
 
         //TODO: (Custom-Jey) Added for release time APK build key
@@ -180,7 +178,6 @@ android {
             signingConfig signingConfigs.debug
         }
 
-        /* 
         release {
             // Caution! In production, you need to generate your own keystore file.
             // see https://reactnative.dev/docs/signed-apk-android.
@@ -200,7 +197,6 @@ android {
                 versionNameSuffix "-releasetest"
             }
         }
-        */
         
     }
 }
